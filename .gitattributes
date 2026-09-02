@@ -19,3 +19,8 @@
 # console toolchain expects CRLF (see .editorconfig note).
 *.ps1 text eol=crlf
 *.psm1 text eol=crlf
+
+# Golden-hash contract: telemetry.proto bytes are hashed by
+# TelemetryContractTests.Proto_GoldenHash_MustMatch - the checkout must be
+# byte-identical everywhere (LF), never CRLF-converted.
+*.proto text eol=lf

@@ -18,6 +18,7 @@
       "iCemDataMonitor.HostClient\\iCemDataMonitor.HostClient.csproj",
       "iCemDataMonitor.Host\\iCemDataMonitor.Host.csproj",
       "iCemDataMonitor.Host.Tests\\iCemDataMonitor.Host.Tests.csproj",
+      "iCemDataMonitor.Shell.WinUI\\iCemDataMonitor.Shell.WinUI.csproj",
       "iCemDataMonitor.Tools.IconGen\\iCemDataMonitor.Tools.IconGen.csproj",
       "iCemDataMonitor.Emulator.WinUI\\iCemDataMonitor.Emulator.WinUI.csproj",
       "iCemDataMonitor.UI.Tests\\iCemDataMonitor.UI.Tests.csproj",

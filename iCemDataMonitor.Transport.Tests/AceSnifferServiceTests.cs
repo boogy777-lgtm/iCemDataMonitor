@@ -15,24 +15,36 @@ public class AceSnifferServiceTests
         get
         {
             var dir = AppContext.BaseDirectory;
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 12 && dir is not null; i++)
             {
-                if (Directory.Exists(Path.Combine(dir, "Wireshark")))
+                // 2026-09-01 repo restructure: the Wireshark captures moved to
+                // docs\Wireshark (plain Wireshark\ kept for older checkouts).
+                if (Directory.Exists(Path.Combine(dir, "docs", "Wireshark")) ||
+                    Directory.Exists(Path.Combine(dir, "Wireshark")))
                     return dir;
-                dir = Path.GetDirectoryName(dir)!;
+                dir = Path.GetDirectoryName(dir);
             }
-            throw new DirectoryNotFoundException("Cannot find repo root (Wireshark directory)");
+            throw new DirectoryNotFoundException(
+                "Cannot find repo root (docs/Wireshark captures directory)");
         }
     }
 
-    private static string MainPcapngPath =>
-        Path.Combine(RepoRoot, "Wireshark", "iCemCrio.pcapng.bin");
+    /// <summary>Resolve a capture file under the repo's Wireshark directory
+    /// (docs\Wireshark since the 2026-09-01 restructure, plain Wireshark\
+    /// before it).</summary>
+    private static string CapturePath(string fileName)
+    {
+        var root = RepoRoot;
+        var p = Path.Combine(root, "docs", "Wireshark", fileName);
+        if (File.Exists(p)) return p;
+        return Path.Combine(root, "Wireshark", fileName);
+    }
 
-    private static string CrioTest4PcapngPath =>
-        Path.Combine(RepoRoot, "Wireshark", "CrioTest4.pcapng");
+    private static string MainPcapngPath => CapturePath("iCemCrio.pcapng.bin");
 
-    private static string OfficePcapngPath =>
-        Path.Combine(RepoRoot, "Wireshark", "iCem без крио.pcapng.bin");
+    private static string CrioTest4PcapngPath => CapturePath("CrioTest4.pcapng");
+
+    private static string OfficePcapngPath => CapturePath("iCem без крио.pcapng.bin");
 
     private static LantableRegistry Lantable
     {

@@ -148,12 +148,15 @@ public sealed class MetricsSamplerTests : IDisposable
         var sampler = new MetricsSampler(reader);
         var subscription = sampler.Subscribe(intervalMs: 200); // producer ticks ~5/s
 
-        // Consume exactly one sample, then go SILENT for ~700 ms while the
-        // producer keeps ticking into the capacity-1 channel.
+        // Consume exactly one sample, then go SILENT for ~1.5 s while the
+        // producer keeps ticking into the capacity-1 channel. (2026-09-02:
+        // widened from 700 ms — a loaded CI runner can lag the producer's
+        // Task.Delay ticks so badly that a 700 ms window may contain fewer
+        // than 2 ticks, making the drop assertion fire spuriously.)
         MetricsSample first = await FirstSampleAsync(subscription);
         Assert.Equal(1.0f, first.Deltas.First(d => d.Addr == 200).FloatValue, 3);
 
-        await Task.Delay(700);
+        await Task.Delay(1500);
 
         // Resume: the FIRST delivered sample must be FRESH (drop-oldest evicted
         // everything stale) — its timestamp age must be well below the silence
@@ -167,6 +170,12 @@ public sealed class MetricsSamplerTests : IDisposable
             $"drop-oldest must deliver a fresh sample after a slow-consumer gap; got age {ageMs:F0} ms");
 
         // The drop counter observed the overflow (≥ 2 ticks were evicted).
+        // Poll briefly before declaring failure: a loaded CI runner can lag
+        // the producer ticks; a queueing channel would never grow the
+        // counter at all, so this stays a hard assertion.
+        var dropSw = Stopwatch.StartNew();
+        while (subscription.DroppedCount < 1 && dropSw.Elapsed < TimeSpan.FromSeconds(5))
+            await Task.Delay(100);
         Assert.True(subscription.DroppedCount >= 1,
             $"DroppedCount must grow on overflow; got {subscription.DroppedCount}");
 

@@ -45,7 +45,9 @@ jobs:
         shell: pwsh
 
       - name: Run tests
-        run: dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m
+        # Category!=Live: LIVE interop tests (LiveModbusEmulatorTests) require a
+        # running iCem.exe + operator prompt - a dev-machine-only verdict.
+        run: dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m --filter "Category!=Live"
         shell: pwsh
 
       - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)
