@@ -37,11 +37,15 @@ jobs:
         shell: pwsh
 
       - name: Build solution
-        run: dotnet build iCemDataMonitor.sln -c Release --nologo
+        # CI.slnf = iCemDataMonitor.sln minus Burservis.iCem.DataMonitor (+ Tests):
+        # the AddIn links the proprietary Halliburton iCem SDK via absolute
+        # HintPaths (C:\Program Files\Halliburton\iCem\Bin) that exist only on a
+        # dev machine with iCem installed; build-msi.ps1 skips it there too.
+        run: dotnet build CI.slnf -c Release --nologo
         shell: pwsh
 
       - name: Run tests
-        run: dotnet test iCemDataMonitor.sln -c Release --no-build --nologo --blame-hang-timeout 10m
+        run: dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m
         shell: pwsh
 
       - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)

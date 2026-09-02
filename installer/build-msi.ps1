@@ -340,14 +340,26 @@ foreach ($f in @('shell', 'emulator')) {
 # staging + normalization steps are retired with the shipped-ini era.
 
 # ---------------------------------------------------------- 6. AddIn --------
-Invoke-Checked {
-    dotnet build (Join-Path $Repo 'Burservis.iCem.DataMonitor\Burservis.iCem.DataMonitor.csproj') `
-        -c $Configuration
-} "build Burservis.iCem.DataMonitor ($Configuration)"
-$addinDll = Join-Path $Repo "Burservis.iCem.DataMonitor\bin\$Configuration\Burservis.iCem.DataMonitor.dll"
-if (-not (Test-Path -LiteralPath $addinDll)) { throw "AddIn dll not found: $addinDll" }
-Copy-Item -LiteralPath $addinDll -Destination (Join-Path $Stage 'addin\') -Force
-Write-Host '== AddIn staged'
+# 2026-09-02: the AddIn (Burservis.iCem.DataMonitor, net48) links against the
+# proprietary Halliburton iCem SDK via ABSOLUTE HintPaths
+# (C:\Program Files\Halliburton\iCem\Bin\*.dll) - a machine-local vendor
+# install that can never be committed to the sources-only repo. On hosts
+# WITHOUT the iCem SDK (CI runners) the AddIn build is SKIPPED with a
+# warning: the MSI then ships host+shell+emulator only, the addin\ stage
+# stays empty (Payload.Addin = 0 files) - the MSI itself stays valid.
+$iCemBin = 'C:\Program Files\Halliburton\iCem\Bin'
+if (Test-Path -LiteralPath $iCemBin -PathType Container) {
+    Invoke-Checked {
+        dotnet build (Join-Path $Repo 'Burservis.iCem.DataMonitor\Burservis.iCem.DataMonitor.csproj') `
+            -c $Configuration
+    } "build Burservis.iCem.DataMonitor ($Configuration)"
+    $addinDll = Join-Path $Repo "Burservis.iCem.DataMonitor\bin\$Configuration\Burservis.iCem.DataMonitor.dll"
+    if (-not (Test-Path -LiteralPath $addinDll)) { throw "AddIn dll not found: $addinDll" }
+    Copy-Item -LiteralPath $addinDll -Destination (Join-Path $Stage 'addin\') -Force
+    Write-Host '== AddIn staged'
+} else {
+    Write-Warning "vendor iCem SDK not found ($iCemBin) - AddIn build SKIPPED, MSI ships without addin\"
+}
 
 # ------------------------------------------------------------- 7. prune -----
 # PS 5.1 BUG: -Include is silently IGNORED with -LiteralPath (deletes
