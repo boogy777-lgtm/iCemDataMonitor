@@ -19,10 +19,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up .NET SDK 10.0.x (global.json picks the exact band)
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -51,11 +51,15 @@ jobs:
         shell: pwsh
 
       - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)
+        # 2026-09-02: the step hung >1 h on the runner once (first-ever CI MSI
+        # build, cold cache). Cap it so a hang fails fast and leaves a full log
+        # for diagnosis instead of burning the 6 h job limit.
+        timeout-minutes: 30
         run: installer/build-msi.ps1 -MsiVersion 0.0.0
         shell: pwsh
 
       - name: Upload MSI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: msi-ci
           path: dist/*.msi

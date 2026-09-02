@@ -16,7 +16,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Extract version from tag
         run: |
@@ -30,7 +30,7 @@ jobs:
         shell: pwsh
 
       - name: Set up .NET SDK 10.0.x (global.json picks the exact band)
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
