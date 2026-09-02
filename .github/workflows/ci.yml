@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test and pack MSI
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK 10.0.x (global.json picks the exact band)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install WiX v5 toolset
+        run: dotnet tool install --global wix --version 5.0.2
+        shell: pwsh
+
+      - name: Add dotnet global tools to PATH
+        run: |
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.dotnet\tools"
+          Write-Host "Added $env:USERPROFILE\.dotnet\tools to PATH for subsequent steps"
+        shell: pwsh
+
+      - name: Build solution
+        run: dotnet build iCemDataMonitor.sln -c Release --nologo
+        shell: pwsh
+
+      - name: Run tests
+        run: dotnet test iCemDataMonitor.sln -c Release --no-build --nologo --blame-hang-timeout 10m
+        shell: pwsh
+
+      - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)
+        run: installer/build-msi.ps1 -MsiVersion 0.0.0
+        shell: pwsh
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: msi-ci
+          path: dist/*.msi
+          retention-days: 7

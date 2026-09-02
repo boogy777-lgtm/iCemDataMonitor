@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark" data-app-version="32">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
+<title>iCem Data Monitor | Регистры</title>
+<link rel="stylesheet" href="main.css?v=32">
+</head>
+<body>
+
+<!-- Inline SVG icons (vector iconography — no bitmaps, no CDN), same language as the legacy dashboard -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ic-gear" viewBox="0 0 24 24">
+      <path d="M19.4 13a7.9 7.9 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.8 7.8 0 0 0-1.7-1L15 3.2h-4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L6.5 11a7.9 7.9 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.7h4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5-2.1-1.6zM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5z"/>
+    </symbol>
+    <symbol id="ic-sun" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>
+      </g>
+    </symbol>
+    <symbol id="ic-moon" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="header">
+  <div class="header-title">
+    <svg class="icon" width="18" height="18"><use href="#ic-gear"/></svg>
+    <h1>iCem Data Monitor | Регистры</h1>
+  </div>
+  <div class="info" id="clock">--</div>
+  <div class="header-right">
+    <!-- группа 1: состояние системы (связь + зоны данных) -->
+    <span title="связь с iCem (шина открыта ∧ AddIn жив)"><span class="lamp-dot grey" id="lampIcem"></span>iCem</span>
+    <span title="COM zone active"><span class="lamp-dot grey" id="lampCom"></span>COM</span>
+    <span title="LAN zone active"><span class="lamp-dot grey" id="lampLan"></span>LAN</span>
+    <span title="RAW zone active"><span class="lamp-dot grey" id="lampRaw"></span>RAW</span>
+    <span class="lamp-sep"></span>
+    <!-- группа 2: службы приложения -->
+    <span title="веб-сервер отвечает на опрос панели"><span class="lamp-dot grey" id="lampSrv"></span>Web Server</span>
+    <span title="Modbus TCP publisher"><span class="lamp-dot grey" id="lampModbus"></span>Modbus</span>
+    <span title="сниффер ACE LAN"><span class="lamp-dot grey" id="lampSniffer"></span>Сниффер</span>
+    <span class="lamp-sep"></span>
+    <!-- группа 3: внешние подсистемы -->
+    <span title="OPC DA — внешний слой"><span class="lamp-dot grey" id="lampOpc"></span>OPC</span>
+    <button class="theme-btn" id="themeToggle" type="button" title="Тёмная/светлая тема">
+      <svg class="icon" width="15" height="15"><use href="#ic-sun"/></svg>
+    </button>
+    <button class="btn btn-sm status-btn" id="btnStatus" type="button" title="Статусная страница: карточки и метрики">Status</button>
+  </div>
+</div>
+
+<main class="dash-layout">
+
+  <!-- ── Главная страница: ТОЛЬКО разделы регистров (W26.3 декрет) ─────────── -->
+  <section id="viewMain" class="card panel">
+    <div class="panel-header">
+      <span class="panel-title">Разделы регистров</span>
+      <button class="btn btn-sm" id="btnClear" type="button" title="Снять все отметки графиков">Очистить выбор</button>
+      <span class="muted" id="selCount">0 выбрано</span>
+      <span class="muted" id="lastUpdate">зеркало шины 0..599 · обновление 1 с</span>
+    </div>
+    <!-- W10: chart names live in their OWN strip ABOVE the plot. -->
+    <div class="chart-header"><div class="chart-legend" id="chartLegend"></div></div>
+    <div class="chart-canvas-wrap">
+      <canvas id="chartCanvas"></canvas>
+      <div class="chart-empty" id="chartEmpty">Отметьте регистры чекбоксами, чтобы строить историю</div>
+    </div>
+    <!-- W26.4: selected-variables table — ALWAYS under the chart. -->
+    <div class="sel-table-wrap">
+      <table class="reg-table" id="selTable">
+        <thead><tr><th class="r-addr">addr</th><th class="r-name">имя</th><th class="r-value-h">значение</th></tr></thead>
+        <tbody><tr><td colspan="3" class="muted empty-row">нет отмеченных переменных</td></tr></tbody>
+      </table>
+    </div>
+    <div class="panel-scroll zones-scroll">
+      <div id="zones"><div class="muted empty-row">загрузка зеркала регистров…</div></div>
+    </div>
+  </section>
+
+  <!-- ── Status page: карточки + живые метрики (все контролы W26.3) ────────── -->
+  <section id="viewStatus" class="hidden">
+    <section class="cards-row" id="statusCards">
+    <div class="card stat-card">
+      <div class="card-title">Шина</div>
+      <div class="card-value"><span class="lamp-dot grey" id="cardBusLamp"></span><span id="cardBus">—</span></div>
+      <div class="card-sub muted">bus_open = хост присоединён к mmf-шине</div>
+    </div>
+    <div class="card stat-card">
+      <div class="card-title">iCEM</div>
+      <div class="card-value"><span class="lamp-dot grey" id="cardAddinLamp"></span><span id="cardAddin">—</span></div>
+      <div class="card-sub muted">связь с iCem.exe (addin_alive)</div>
+    </div>
+    <div class="card stat-card">
+      <div class="card-title">Heartbeat</div>
+      <div class="card-value hb-chip"><span class="lamp-dot grey pulse" id="cardHeartbeatLamp"></span><span class="mono" id="cardHeartbeat">—</span></div>
+      <div class="card-sub muted">reg 3 · живой gRPC-стрим</div>
+    </div>
+    <div class="card stat-card">
+      <div class="card-title">COM-порт</div>
+      <div class="card-value mono" id="cardComPort">—</div>
+      <div class="card-sub muted" id="cardComPortSub">com_port</div>
+    </div>
+    <div class="card stat-card">
+      <div class="card-title">Case state</div>
+      <div class="card-value two-line">
+        <div>case: <span id="cardCaseState">—</span></div>
+        <div>LAN: <span id="cardCaseLan">—</span></div>
+      </div>
+      <div class="card-sub muted">case_state / case_lan_state (enum, без сырых чисел)</div>
+    </div>
+    <div class="card stat-card wide-card">
+      <div class="card-title">Зоны bus (truth age)</div>
+      <table class="mini-table" id="zonesTable">
+        <thead><tr><th>зона</th><th>активна</th><th>возраст</th></tr></thead>
+        <tbody><tr><td colspan="3" class="muted">—</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card stat-card wide-card">
+      <div class="card-title">Слои</div>
+      <div class="layer-chips" id="layerChips">
+        <span class="badge grey-chip">modbus: —</span>
+        <span class="badge grey-chip">web: —</span>
+        <span class="badge grey-chip">sniffer: —</span>
+      </div>
+      <div class="card-sub muted" id="layerError"></div>
+    </div>
+  </section>
+
+  <!-- ── Live metrics (SubscribeMetrics over gRPC-Web) ─────────────────────── -->
+  <section class="card panel">
+    <div class="panel-header">
+      <span class="panel-title">Живые метрики</span>
+      <span class="hb-chip" title="пульс heartbeat из потока MetricsSample"><span class="lamp-dot grey pulse" id="pulseLamp"></span><span>HB</span><span class="mono" id="pulseHb">—</span></span>
+      <span class="badge yellow hidden" id="clampedBadge">interval_clamped → min 200 ms</span>
+      <span class="muted" id="metricsMeta">регистров: 0 · сэмплов: 0</span>
+      <span class="muted" id="lastSampleAt"></span>
+    </div>
+    <div class="panel-scroll">
+      <table class="reg-table" id="metricsTable">
+        <thead><tr><th class="r-addr">addr</th><th>значение</th><th class="r-kind">тип</th><th class="r-age">обновлён</th></tr></thead>
+        <tbody><tr><td colspan="4" class="muted empty-row">ожидание первого сэмпла…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  </section><!-- /viewStatus -->
+
+</main>
+
+<script src="main.js?v=32"></script>
+<script>
+/* 2026-08-31 (owner decree «даже смена темы — тоже CLI — bool для
+ * одновременного использования в web и winui»): the theme is ONE station-wide
+ * bool served by the host (GetUiPrefs/SetUiTheme over gRPC-Web on this same
+ * origin). This inline script is the honest seam while the SPA bundle
+ * (main.js) is a generated artifact without sources in this repo:
+ *   1. page load  → GetUiPrefs wins over the bundle's localStorage flashcache
+ *                    (theme changed from WinUI while the page was closed is
+ *                    corrected on the next load);
+ *   2. toggle     → SetUiTheme (idempotent) AFTER the bundle's own click
+ *                    listener has flipped the visual — this script runs later
+ *                    in listener order, so it reads the already-flipped
+ *                    data-theme and the host writes the file + pokes the
+ *                    shell-owned event (the live WinUI flips instantly).
+ * Wire shape = the exact binary framing pinned by
+ * iCemDataMonitor.Host.Tests GrpcChannelIntegrationTests.
+ * Tcp_GrpcWebRawHttp11_GetStatus_BrowserParity. Failure handling: host
+ * unreachable / UNIMPLEMENTED (old host build) ⇒ silent keep of the
+ * localStorage theme — never a broken page.
+ * RETIREMENT NOTE: when the SPA source tree is rebuilt (regenerate
+ * src/generated/TelemetryServiceClientPb.ts with the new rpcs and route
+ * THEME_KEY through GetUiPrefs/SetUiTheme), this inline script must be
+ * deleted together with that change — one owner per behavior. */
+(function () {
+  "use strict";
+  var METHOD_BASE = window.location.origin + "/icemdatamonitor.v1.TelemetryService/";
+  var SET_LIGHT = new Uint8Array([0x08, 0x01]); // SetUiThemeRequest: field 1 varint bool
+  var SET_DARK  = new Uint8Array([0x08, 0x00]);
+
+  function frame(msg) {
+    var out = new Uint8Array(5 + msg.length);
+    out[0] = 0x00; // gRPC-Web DATA frame
+    out[1] = (msg.length >>> 24) & 0xFF;
+    out[2] = (msg.length >>> 16) & 0xFF;
+    out[3] = (msg.length >>> 8) & 0xFF;
+    out[4] = msg.length & 0xFF;
+    out.set(msg, 5);
+    return out;
+  }
+
+  function u32(b, i) { return ((b[i] << 24) | (b[i+1] << 16) | (b[i+2] << 8) | b[i+3]) >>> 0; }
+
+  async function rpcUnary(method, msg) {
+    var res = await fetch(METHOD_BASE + method, {
+      method: "POST",
+      headers: { "Content-Type": "application/grpc-web+proto" },
+      body: frame(msg),
+    });
+    var body = new Uint8Array(await res.arrayBuffer());
+    if (body.length < 5 || body[0] !== 0x00) throw new Error("bad grpc-web data frame");
+    var len = u32(body, 1);
+    // Trailer frame ([0x80][len][ascii headers]) carries grpc-status; proto3
+    // default omission means an EMPTY message can be a SUCCESS (theme=dark),
+    // so success must come from the trailer, never from the message size.
+    if (5 + len + 5 <= body.length && body[5 + len] === 0x80) {
+      var trailers = new TextDecoder().decode(
+        body.subarray(10 + len, 10 + len + u32(body, 5 + len + 1)));
+      if (trailers.indexOf("grpc-status: 0") === -1)
+        throw new Error("grpc error: " + trailers.trim());
+    } else {
+      throw new Error("missing grpc-web trailer frame");
+    }
+    return body.subarray(5, 5 + len);
+  }
+
+  function parseThemeLight(msg) {
+    for (var i = 0; i + 1 < msg.length; i++)
+      if (msg[i] === 0x08) return msg[i + 1] !== 0; // UiPrefs.theme_light (field 1, varint)
+    return false; // absent field ⇒ proto3 default = dark
+  }
+
+  function applyTheme(light) {
+    document.documentElement.setAttribute("data-theme", light ? "light" : "dark");
+    var use = document.querySelector("#themeToggle use");
+    if (use) use.setAttribute("href", light ? "#ic-moon" : "#ic-sun"); // mirrors the bundle's applyTheme
+  }
+
+  rpcUnary("GetUiPrefs", new Uint8Array(0)).then(function (msg) {
+    var light = parseThemeLight(msg);
+    if ((document.documentElement.getAttribute("data-theme") === "light") !== light)
+      applyTheme(light); // host truth ≠ localStorage flashcache → correct honestly
+  }).catch(function () { /* host unreachable — keep the bundle's theme */ });
+
+  var btn = document.getElementById("themeToggle");
+  if (btn) btn.addEventListener("click", function () {
+    var light = document.documentElement.getAttribute("data-theme") !== "light";
+    rpcUnary("SetUiTheme", light ? SET_LIGHT : SET_DARK)
+      .catch(function () { /* host unreachable — the visual flip already happened */ });
+  });
+})();
+</script>
+</body>
+</html>

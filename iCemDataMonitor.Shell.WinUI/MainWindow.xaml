@@ -1,0 +1,214 @@
+<Window
+    x:Class="iCemDataMonitor.Shell.WinUI.MainWindow"
+    xmlns:local="using:iCemDataMonitor.Shell.WinUI"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid x:Name="RootGrid" Background="{ThemeResource MacWindowBrush}">
+        <Grid.Resources>
+            <!-- 2026-08-31 (owner decree): status-area state brushes. A
+                 ThemeResource INSIDE an element-scope resource re-resolves on
+                 the theme switch, so code-behind only swaps the Background key
+                 (healthy/degraded) and never duplicates palette literals. -->
+            <SolidColorBrush x:Key="StatusHealthyBrush" Color="{ThemeResource MacGreenColor}"/>
+            <SolidColorBrush x:Key="StatusDegradedBrush" Color="{ThemeResource MacOrangeColor}"/>
+        </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- W14.5: кастомный title bar (ExtendsContentIntoTitleBar). Директива
+             владельца 2026-08-21: гамбургер УБРАН; в полосе — РОДНАЯ иконка
+             приложения + заголовок. Высота 40px (macOS-стандарт) вместо 32px,
+             чтобы 20×20 иконка из ICO смотрелась чётко. -->
+        <Border x:Name="AppTitleBar" Grid.Row="0"
+                Height="40"
+                Background="{ThemeResource MacWindowBrush}"
+                BorderBrush="{ThemeResource MacSurface2Brush}"
+                BorderThickness="0,0,0,0.6">
+            <StackPanel Orientation="Horizontal" Padding="12,0,0,0" Spacing="10">
+                <Image x:Name="TitleBarIcon"
+                       Width="20" Height="20"
+                       VerticalAlignment="Center"
+                       Stretch="Uniform"/>
+                <TextBlock Text="iCem Data Monitor"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="{ThemeResource MacLabelBrush}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- macOS-style header bar: theme switch right (заголовок переехал
+             в титульную полосу — W14) -->
+        <Grid Grid.Row="1"
+              Background="{ThemeResource MacSurfaceBrush}"
+              Padding="16,6"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{ThemeResource MacSurface2Brush}">
+            <ToggleSwitch x:Name="ThemeSwitch"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Toggled="ThemeSwitch_Toggled">
+                <ToggleSwitch.OffContent>
+                    <!-- dark now ⇒ show sun (target = light) — system yellow on dark -->
+                    <FontIcon Glyph="&#xE706;" FontSize="12" Foreground="{ThemeResource MacYellowBrush}"/>
+                </ToggleSwitch.OffContent>
+                <ToggleSwitch.OnContent>
+                    <!-- light now ⇒ show moon (target = dark) — dark gray on light -->
+                    <FontIcon Glyph="&#xE708;" FontSize="12" Foreground="{ThemeResource MacLabel2Brush}"/>
+                </ToggleSwitch.OnContent>
+            </ToggleSwitch>
+        </Grid>
+
+        <!-- 2026-08-27 (owner decree, CORRECTED the same day): the «Панель»
+             tab (embedded WebView2 over the host's web SPA dashboard) is
+             RESTORED — the removal misread the decree. The «Эмулятор» tab
+             stays REMOVED (the emulator is a SEPARATE INDEPENDENT app with
+             its own UI). -->
+        <NavigationView x:Name="Nav"
+                        Grid.Row="2"
+                        PaneDisplayMode="LeftCompact"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        IsPaneToggleButtonVisible="False"
+                        Background="{ThemeResource MacWindowBrush}"
+                        SelectionChanged="Nav_SelectionChanged"
+                        Loaded="Nav_Loaded">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Состояние" Tag="status">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9D9;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <!-- Old W11 order was [Состояние | Панель | Эмулятор]; the
+                     emulator tab is gone for good, «Панель» returns after it. -->
+                <NavigationViewItem Content="Панель" Tag="web">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE774;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <Grid>
+                <!-- Status page: REACTIVE — TextBlocks are fed from the
+                     StatusViewModel OAPH projections (unidirectional flow). -->
+                <ScrollViewer x:Name="StatusPage" Visibility="Collapsed" Padding="20,12"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              HorizontalContentAlignment="Stretch">
+                    <StackPanel Spacing="12" MaxWidth="640" HorizontalAlignment="Left">
+                        <!-- 2026-08-31 (owner decree): the old orange-only
+                             lost-link BANNER is replaced by a permanent
+                             STATUS AREA — green = host healthy/connected,
+                             orange = degraded (host down / link lost /
+                             viewer mode). Stale data is NEVER masked — facts
+                             below keep the last known values. The dimmed
+                             Border is a tint layer; the content sits ABOVE
+                             it undimmed (a dimmed button would look
+                             disabled). «Перезапуск хоста» pokes the host's
+                             named restart event (E.2.7: the host restarts
+                             ITSELF — the SAME mechanism as its tray
+                             [Перезапуск]); enabled only while connected. -->
+                        <Grid>
+                            <Border x:Name="ConnBannerBackground"
+                                    Background="{StaticResource StatusDegradedBrush}"
+                                    Opacity="0.18" CornerRadius="6"/>
+                            <Grid Padding="10,6" ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="ConnBannerText" FontSize="12" FontWeight="SemiBold"
+                                           TextWrapping="Wrap" VerticalAlignment="Center"
+                                           Foreground="{ThemeResource MacLabelBrush}"
+                                           Text="определение состояния хоста…"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <!-- 2026-08-31 (decree 2): «Запустить хост» —
+                                         enabled ONLY in the Down state (host not
+                                         running / viewer mode); runs the SAME
+                                         ensure-host flow as the cold start. -->
+                                    <Button x:Name="LaunchHostButton"
+                                            Content="Запустить хост" FontSize="12"
+                                            VerticalAlignment="Center"
+                                            IsEnabled="False"/>
+                                    <!-- 2026-08-31 (BUG1 decree): «Перезапуск хоста» —
+                                         enabled whenever the HOST is alive (green
+                                         AND orange-with-alive-host); disabled only
+                                         in the Down state (nothing to restart). -->
+                                    <Button x:Name="RestartHostButton"
+                                            Content="Перезапуск хоста" FontSize="12"
+                                            VerticalAlignment="Center"
+                                            IsEnabled="False"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                        <TextBlock Text="Состояние системы (работает всегда)"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource MacAccentBrush}"/>
+                        <StackPanel Spacing="6">
+                            <TextBlock x:Name="BusFact" FontSize="13" Foreground="{ThemeResource MacLabelBrush}"/>
+                            <TextBlock x:Name="ComFact" FontSize="13" Foreground="{ThemeResource MacLabelBrush}"/>
+                            <TextBlock x:Name="LanFact" FontSize="13" Foreground="{ThemeResource MacLabelBrush}"/>
+                            <TextBlock x:Name="RawFact" FontSize="13" Foreground="{ThemeResource MacLabelBrush}"/>
+                        </StackPanel>
+                        <TextBlock Text="Службы (переключатели — вкл/выкл)"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource MacAccentBrush}"/>
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <ToggleSwitch x:Name="ModbusSwitch" OffContent="" OnContent=""/>
+                                <TextBlock x:Name="ModbusText" VerticalAlignment="Center" FontSize="13"
+                                           Foreground="{ThemeResource MacLabelBrush}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <ToggleSwitch x:Name="SnifferSwitch" OffContent="" OnContent=""/>
+                                <TextBlock x:Name="SnifferText" VerticalAlignment="Center" FontSize="13"
+                                           Foreground="{ThemeResource MacLabelBrush}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="OpcText" FontSize="13"
+                                       Foreground="{ThemeResource MacLabel2Brush}"/>
+                        </StackPanel>
+                        <!-- W21.4 owner decree: the console checkbox lives HERE
+                             (Status tab) — its state is the HOST's truth
+                             (HostStatus.console_visible), toggled via RPC.
+                             2026-08-27: «Автозагрузка» checkbox joined it —
+                             same law over HostStatus.autostart_enabled and the
+                             SetAutostart RPC. -->
+                        <CheckBox x:Name="ConsoleSwitch"
+                                  Content="Показывать консоль host'а"
+                                  FontSize="13"
+                                  Foreground="{ThemeResource MacLabelBrush}"/>
+                        <CheckBox x:Name="AutostartSwitch"
+                                  Content="Автозагрузка host'а"
+                                  FontSize="13"
+                                  Foreground="{ThemeResource MacLabelBrush}"/>
+                        <TextBlock x:Name="StatusLine" FontSize="11"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 2026-08-27 (corrected decree): the «Панель» page — an
+                     embedded WebView2 renders the HOST's web SPA dashboard.
+                     The browser is initialized lazily (first selection, one
+                     shot) and navigates to http://localhost:{web_port} ONLY
+                     when web_on=1 in station.ini; otherwise an honest muted
+                     note is shown and the WebView core is never created.
+                     Any failure (unreadable ini, missing WebView2 runtime)
+                     lands as honest text here — the shell never crashes. -->
+                <Grid x:Name="WebPage" Visibility="Collapsed">
+                    <WebView2 x:Name="PanelWebView" Visibility="Collapsed"/>
+                    <TextBlock x:Name="WebPageMessage"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               MaxWidth="420"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               FontSize="13"
+                               Foreground="{ThemeResource MacLabel2Brush}"
+                               Visibility="Collapsed"/>
+                </Grid>
+            </Grid>
+        </NavigationView>
+    </Grid>
+</Window>

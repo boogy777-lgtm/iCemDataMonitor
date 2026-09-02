@@ -1,0 +1,64 @@
+flowchart LR
+    subgraph DISK["%ProgramData%/Halliburton/iCem/DataMonitoring  (2026-08-31: moved from LOCALAPPDATA)"]
+        SETTINGS[(emule_config.xml)]
+    end
+
+    subgraph DEPLOY["C:\\Program Files\\Halliburton\\iCemMonitor\\iCemEmulator\\  (own folder)"]
+        EXE["iCemEmulator.exe — ONE app"]
+    end
+
+    subgraph APP["iCemEmulator.exe — UI + engine in ONE process (mutex Global\\iCemEmulator_v1)"]
+        WIN["MainWindow (WinUI 3, framed)<br/>hosts EmulatorPage"]
+        EMPAGE["EmulatorPage (iCemDataMonitor.Emulator.WinUI)"]
+        EMUVM["EmulatorViewModel ReactiveUI<br/>1 Hz status poll"]
+        PIPECL["ControlPipeClient (SHARED with the CLI)"]
+
+        HOST["EmuEngineHost — hosted IN-PROCESS<br/>Start() at launch, Stop() on window close"]
+        TIMER["System.Threading.Timer<br/>Period=1000 ms"]
+        CTL["ControlPipeServer<br/>JSON-lines"]
+        SETTINGS -->|"XML_Load at startup<br/>(explicit enables honored)"| HOST
+        HOST -->|"owns"| TIMER
+        WIN --> EMPAGE --> EMUVM --> PIPECL
+        PIPECL -->|"control pipe JSON-lines"| CTL
+        CTL -->|"status/vars/profiles"| PIPECL
+
+        TIMER -->|"1_Hz_tick"| SIM[SimulationEngine]
+        SIM -->|"double[] values"| CONV[UnitConversion.ToTarget per variable]
+        CONV -->|"values_in_target_units"| FMT[SignalWireCodec.FormatLine]
+        FMT -->|"CSV_line_32_fields_CRLF"| COM[ComSerialEmitter]
+
+        subgraph PROVIDERS["LAN payload provider chain (outer->inner)"]
+            UNIT[UnitConvertingPayloadProvider]
+            MAN[ManualOverridePayloadProvider]
+            DFB[DfbAcePayloadProvider]
+            BASE[AcePayloadProvider]
+            BRIDGE{DfbEngineBridge}
+            NET[DfbNetwork]
+            SRC[DfbSignalSource]
+            BASE -->|"decorate"| DFB
+            BRIDGE -->|"TryCreateNetwork"| NET
+            NET -->|"reads"| SRC
+            DFB -->|"wraps"| MAN
+            MAN -->|"wraps"| UNIT
+        end
+
+        HOST -->|"equipment/firmware flag"| BASE
+        HOST -->|"UnitSettings each tick"| UNIT
+        UNIT -->|"List<AceVectorData>"| LAN[AceLanEmitter]
+        CTL -->|"IEmuControl (gate)"| HOST
+    end
+
+    subgraph CLI["iCemEmulator.exe --cli <command> (second process, one-shot)"]
+        CCLIENT["ControlClient<br/>attach parent console, JSON reply, exit 0/1/2"]
+    end
+
+    CCLIENT -->|"same control pipe, no mutex"| CTL
+
+    COM -->|"RS-232_9600_8N1"| COM2[COM2 / com0com pair]
+    LAN -->|"raw_802.3_LLC_multicast"| NIC[Intel 82574L adapter]
+
+    COM2 -->|"FLECS_CMT_v4.53_CSV"| ICEM[iCem.exe]
+    NIC -->|"ACE_frame"| ICEM
+    NIC -->|"ACE_frame"| SNIFF[POC AceSnifferService]
+
+    note["GONE (schema delta 2026-08-27): headless iCemEmule.exe, iCemEmule.WinUI.exe embed wrapper,<br/>EmuleSupervisor / IEngineControlChannel / GrpcEngineControl host-RPC seam, HWND shell embed"]

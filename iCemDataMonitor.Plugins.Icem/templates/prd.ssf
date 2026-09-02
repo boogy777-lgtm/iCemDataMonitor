@@ -1,0 +1,6 @@
+*Pressure, Rate, Density input, ... Includes High pressure,Liquid rate, and Fluid density Unit types
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Pumping Pr,Pumping Pressure High,71,185
+0,Slurry Rate,Slurry Rate,130,80
+0,Slurry Density,Slurry Density,178,57

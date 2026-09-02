@@ -1,0 +1,18 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+1,CT Speed,Running Speed,100,249
+1,Depth,Tubing Depth,21,124
+0,Flow 1 Rate,Flow 1 Rate,130,80
+0,Flow 1 Total,Flow 1 Total,202,286
+0,Flow 2 Rate,Flow 2 Rate,130,80
+0,Flow 2 Total,Flow 2 Total,202,286
+0,Pipe Weight,Pipe Weight,32,96
+0,Annulus Pr @WH,Annulus Pressure @WH,71,185
+0,Pressure 1,Pressure 1,71,185
+0,Pressure 2,Pressure 2,71,185
+0,Back Press Ann,Back Pressure-Ann,71,185
+0,Backside Pr,Backside Pressure,71,185
+0,CT Run Speed,CT Running Speed,100,249
+1,Running Speed1,Running Speed1,100,249
+0,CT Depth,CT Depth,21,124
+1,CT Stretch,CT Stretch,21,124

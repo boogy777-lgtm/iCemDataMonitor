@@ -1,0 +1,57 @@
+﻿stateDiagram-v2
+    [*] --> Unknown : iCem.exe start (no active case) — reg1=0
+    Unknown --> NotStarted : case opened — reg1=1
+    NotStarted --> InProgress : acquisition started — reg1=2
+    InProgress --> Completed : acquisition completed — reg1=3
+    InProgress --> Suspended : acquisition suspended — reg1=4
+    Suspended --> InProgress : acquisition resumed
+    Unknown --> SimulationRunning : simulation mode — reg1=5
+    SimulationRunning --> Unknown : simulation end
+    Completed --> Unknown : case closed/next case
+
+    note right of InProgress
+        reg1 = RealtimeState enum passthrough (tap-exposed ONLY):
+        Unknown=0 NotStarted=1 InProgress=2
+        Completed=3 Suspended=4 SimulationRunning=5
+        source: CementCase.RealtimeCase.RealtimeState
+        (vendor enum, ¬ invented)
+    end note
+
+    note left of InProgress
+        reg3 heartbeat: +1/s ALWAYS while AddIn loaded
+        (pipeline-alive), wrap 32000→0, decoupled from
+        Streaming
+    end note
+
+    note right of Unknown
+        reg2 = LANManager.LANStatus passthrough:
+        None=0 Selected=1 Streaming=2 Recording=4
+        LostConnection=8 Pausing=16 (ComPortStates)
+    end note
+
+    note left of Unknown
+        reg0 = D1 first-valid-wins latch:
+        number of COM device actively feeding (1..16),
+        0=none; other devices discarded; re-arbitrate
+        only on stream loss
+    end note
+
+%% ── Zone liveness FSM (statechart-as-pattern; ONE machine, THREE instances:
+%%    com_stream / lan_stream_crio / raw_com_line). TOTAL transition table —
+%%    falsifier: ZoneLivenessTests.TransitionTable_Total (6 rows) + 3 facts;
+%%    Э2b rows B02/B09/B13/B17..B20 = the same function in CSV form. ──────────
+stateDiagram-v2
+    [*] --> Idle : module load (no bus writes yet)
+    Idle --> Active : MarkWritten (pair/line landed;\nheader flag raised BY THE WRITE —\nUpdateZoneHeaderLocked)
+    Idle --> Idle : Poll (any silence) — no-op,\nno repeated posts (no bounce)
+    Active --> Active : MarkWritten (evidence refreshed)
+    Active --> Active : Poll, silence ≤ 5 s\n(boundary == timeout is NOT beyond)
+    Active --> Idle : Poll, silence > 5 s —\npost SetZoneActive(zone,false) EXACTLY ONCE\n(FLAG ONLY — body cells never zeroed)
+
+    note right of Active
+        STALE-HOLD: Active→Idle touches the header
+        flag byte ONLY (com@18 / lan@27 / raw@36);
+        data cells persist byte-exact indefinitely.
+        Reconnect = MarkWritten → Active (counter
+        continues from the header-persisted value).
+    end note

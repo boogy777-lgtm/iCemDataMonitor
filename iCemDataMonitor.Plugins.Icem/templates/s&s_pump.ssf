@@ -1,0 +1,31 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Job Time,Job Time,42,215
+0,Base Eng RPM,Base Engine RPM,79,13
+0,Eng Water Temp,Engine Water Temp,88,213
+0,Discharge Rate,Discharge Rate,130,80
+0,Discharge Tot,Discharge Total,202,285
+0,Dsch Pressure,Discharge Pressure,71,185
+0,Eng Fuel Temp,Engine Fuel Temp,88,213
+0,Eng Fuel Pres,Engine Fuel Pressure,71,185
+0,Engine Oil Temp,Engine Oil Temp,88,213
+0,Engine Oil Pr,Engine Oil Pressure,71,185
+0,Trans Oil Temp,Transmission Oil Temp,88,213
+0,Trans Oil Pres,Transmission Oil Press,71,185
+0,Pump Oil Temp,Pump Oil Temp,88,213
+0,Pump Oil Pr,Pump Oil Pressure,71,185
+0,Pump RPM,Pump RPM,79,13
+0,Gen Analog 6,Generic Analog 6,0,0
+0,Gen Freq 2,Generic Frequency 2,0,0
+0,Eng Percent Ld,Engine Percent Load,63,154
+0,Throttle RPM Sp,Throttle RPM Setpoint,79,13
+0,Idle RPM,Engine Idle RPM,79,13
+0,Requested Gear,Requested Gear,0,0
+0,Curr Act Gear,Current Active Gear,0,0
+0,Lock-up Status,Lock-up Status,0,0
+0,Lock-up Inhibit,Lock-up Inhibit,0,0
+0,Torque Inhibit,Torque Inhibit,0,0
+0,SftShft inhibit,Soft-Shift inhibit,0,0
+0,Pump Con State,Pump Controller State,0,0
+0,Eng Equip Type,Engine Equipment Type,0,0
+0,Trns Equip Type,Transmission Equip Type,0,0

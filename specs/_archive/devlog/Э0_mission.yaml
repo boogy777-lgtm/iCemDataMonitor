@@ -1,0 +1,45 @@
+meta:
+  id: iCemAddIn-E0
+  unit: iCemAddIn
+  date: 2026-08-18
+  source_of_truth: "SOURCE LOCATED: C:\\iCEM\\DataTap.AddIn (Halliburton.iCem.DataTap.AddIn, net48 x64 Prism AddIn) + tests C:\\iCEM\\DataTap.AddIn.Tests — GAP RESOLVED (see GAP.yaml); contract = code v5 + specs Э2/Э2b/Э4"
+  scope: "dll in-proc inside iCem.exe; maps iCem internal variables → POC bus registers (bus register map v5)"
+  consumers: [POC BusReader→ModbusTcpPublisher, BusHealthMonitor, station-cli]
+  deployment:
+    artifact: "C:\\Program Files\\Halliburton\\iCem\\Bin\\Modules\\Halliburton.iCem.DataTap.AddIn.dll = 51712 B, 2026-08-18 11:27 (deployed by user directive 2026-08-18)"
+    revision_contents: "v5 contract FULL MIGRATION + edge truth tables (Э2b, 44 rows pinned clean) + ZoneStaleness seam + ZoneLiveness FSM (statechart-as-pattern) + ZoneHeaderOffsets decision table; suite 236/236 PASS + BusSelfTest green at build time"
+    backup: "Halliburton.iCem.DataTap.AddIn.dll.bak-20260817-v5first (50688 B — first v5 build 2026-08-17 20:32, non-*.dll name ⇒ Prism catalog-safe)"
+    bus_file_state: "station_bus.dat ALREADY v5-full 20066 B (FULL MIGRATION executed on stand 2026-08-18 08:09 by the first v5 dll — upgrade path proven in production; file untouched by the deploy)"
+mission:
+  problem: "POC needs iCem case state + telemetry on the shared bus without touching iCem vendor code"
+  goal: "VERBATIM copy: ∀ iCem variable exposed to AddIn ⇒ its bus register receives the variable bytes unscaled, unformed; header state regs = vendor enum passthroughs"
+  anti_goal: "¬ scaling, ¬ unit conversion, ¬ filtering, ¬ aggregation, ¬ formation logic, ¬ invented states"
+doctrine:
+  role: "DUMB TRANSLATOR (operator doctrine 2026-08-17)"
+  law: "content(register) == bytes(tap value) ∧ ¬∃ transformation; header state = tap-exposed enums ONLY (unknown=0)"
+  truncation_meaning: "INC-06 signature [00 xx 00 yy] = 8-bit truncation of CDAB words in a mechanical copy (byte-math proven, Э6) — v5 lan path writes full 4-byte CDAB, byte-width casts BANNED"
+  forward_compat: "firmware decompiled by operator; protocol update + NEW emulator pending ⇒ docs must NOT over-fit current wire details"
+decisions:
+  - decision: "COM telemetry architecture compromise (USER DECREE 2026-08-18): com_stream 4..199 = ONE named source only (flecs 4.53 family, full semantic name→register mapping); named ComMap extensions for other families (plc/unipro/compupac/other) are REJECTED unless the user decrees otherwise"
+  - decision: "raw_com_line 400..599 = the universal positional lane (float32 CDAB, field i → 400+i*2, ≤100 fields, template-agnostic) — EVERY template flows there with zero name coverage; mapping raw positional values to tags for non-flecs templates = CONSUMER-side responsibility (human maps manually), NOT code. Rationale: templates are position→tag tables; duplicating that matching in the AddIn for every family = N mappings to maintain; one mapped source + one universal raw lane = minimal code surface"
+  - decision: "PROMOTION-CANDIDATE (§15.2): 3-layer VariableId design for FUTURE named coverage (enum / alias sidecar / closed address law) survives the adversarial review ONLY as Э8_design_variableid.yaml v2 (identity = name not DB ID, per-authority enums, append-only address book with contract tests, tiered coverage, 100% lives solely in the ace_full reserve under a future zone decree); implementation ONLY on explicit user decree; long-form: specs/iCemAddIn/FUTURE_full_coverage_spec.md (user-decreed md)"
+inputs:
+  - name: iCem internal variables
+    type: "in-proc (VariableProviderFactory poll: serial-equipment → com map, LAN-equipment SourceComPort==17 → lan map)"
+  - name: iCem case state
+    type: "in-proc (CementCase.RealtimeCase.RealtimeState enum passthrough → reg1)"
+  - name: iCem LAN state
+    type: "in-proc (LANManager.LANStatus ComPortStates passthrough → reg2)"
+  - name: raw COM line
+    type: "in-proc (IPort.DataStream on ComPortPropertyChanged → raw_com_line chars)"
+outputs:
+  - name: station_bus.dat MMF Global\StationBus_v1
+    type: "v5: header regs 0..3 {comPortActive D1-latch, caseState, caseLanState, heartbeat always-tick wrap 32000} + com_stream 4..199 + lan_stream_crio 200..399 (full CDAB) + raw_com_line 400..599 (u16 per char); NEVER 600+"
+kill_criteria:
+  - "ANY transformation logic found inside AddIn (scaling, rounding, unit map, threshold, formation) = defect BY DEFINITION"
+  - "AddIn writes a register whose content != bytes of the corresponding tap value"
+  - "AddIn writes a register outside its v5 surface (600+ ace_full reserve) = ownership breach"
+  - "lan_stream_crio pair write with a zeroed high byte (INC-06 signature) = defect"
+  - "reg3 heartbeat frozen while iCem/AddIn alive = defect (pipeline-alive broken)"
+  - "reg1/reg2 emit a value outside the tap enums = defect (invented state)"
+  - "lan_stream_crio data present while the Lan liveness block (19/27/41) stays unmarked = defect (D4 — AddIn owns the Lan liveness block for lan_stream_crio)"

@@ -1,0 +1,4 @@
+key,structure,scope,effect,restart_required,evidence
+ComPort entries,"repeating tuple (EquipmentPort, IsSerialPortforInput, device)",serial connector wiring,declares which iCem equipment entry binds which physical/virtual COM port and whether it is the input serial port,yes (iCem.exe restart),assumption-from-config-schema
+DataInterval,scalar int,acquisition pacing,poll/acquisition interval for the connector read cycle,yes (iCem.exe restart),assumption
+String Configuration,scalar string (e.g. 'Space Separated'),connector parse format,FLECS connector IGNORES it — ',' separator hardcoded in iCem FLECS parser (INC-05); applies to Generic connector ONLY,no (ignored by FLECS),live-observation-IL

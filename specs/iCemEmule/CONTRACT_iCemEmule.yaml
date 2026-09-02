@@ -1,0 +1,189 @@
+# CONTRACT — iCemEmule (норматив, актуализирован 2026-08-21; E1/E2/E3 — историческая декомпозиция, см. file_ownership-маркер)
+# ∀ агент ⇒ реализует ТОЛЬКО свои файлы из file_ownership ∧ использует ТОЛЬКО эти типы на границах.
+# Изменение контракта = СТОП + эскалация. Additive поля в DTO допустимы, breaking — нет.
+
+project:
+  root: C:\Users\HALLIBURTON\iCemDataMonitor\iCemEmule
+  tfm: net8.0-windows
+  output: Exe (CONSOLE headless engine, W11.9; NO UI framework), AssemblyName=iCemEmule
+  nuget: [SharpPcap 6.0.0, PacketDotNet 1.4.7, System.IO.Ports 8.0.0, System.Drawing.Common 8.0.10]   # уже в csproj, НЕ трогать csproj
+  assets: templates\{flecs_4.53.json, plc_basic.json, variable_registry.json, lantable_registry.json}
+          # копируются в output автоматически (csproj Content templates\**)
+
+hard_requirements:
+  R1: "¬ MongoDB. Ни одной ссылки на MongoDB.* / RealtimeDB. Эмулятор пишет ТОЛЬКО в COM-порт и LAN multicast."
+  R2: "Данные обновляются ровно 1 раз/сек (1 Hz tick). Без checkbox 'Deterministic' и любых per-variable чекбоксов."
+  R3: "Два независимых потока: LAN (ACE raw 802.3 multicast) ∧ COM (FLECS serial). Каждый включается/выключается отдельно. У каждого — своя вкладка."
+  R4: "LAN: кадры строго по PROTOCOL.md §1 так, чтобы iCem.exe нативно sniff-ил их без изменений iCem."
+  R5: "COM: при смене шаблона в dropdown набор передаваемых полей перестраивается НА ЛЕТУ (следующий тик уже новый формат, без рестарта потока/приложения)."
+  R6: "LAN: при смене equipment/srcMac/adapter перестройка на лету (читаются каждый тик). Набор sv ФИКСИРОВАН = 20 sv (6 legacy + 14 firmware Beartooth), полный список в ace_wire.superframe_svs. [AMENDED 2026-08-17: legacy 6 sv сохранены в прежнем порядке без изменений — это field-verified сет, который iCem нативно читает; добавлены 14 таблиц прошивки (RT Data/Observer/Bool/Totals/HPVT/Pump Life/Blend/Strings/Spare/DI/Relay), имена сигналов 1:1 из C:\\RE, каждая таблица ≤124 Б. Ранее AMENDED 2026-08-10: template dropdown на LAN-вкладке удалён — мёртвый контрол; cross-family links в variable_registry отсутствуют (0 vars lan+flecs), все lan simulation = flat 0 ⇒ data-gap, ¬ code-gap. Значения FF-сигналов станут живыми автоматически, когда в variable_registry.json lan-family simulation заполнится данными — AcePayloadProvider уже читает этот путь, смена кода = 0.]"
+  R7: "Единицы: ОДНО глобальное меню единиц на вкладке \"Units\" (влияет на COM и LAN). Пресеты: FirmwareDefault (gpm/°C/ppg/psi/bbl/ft), LanNative (bbl/min/°F/lb-gal), Metric (m³/min/°C/g-cc/bar/m), Imperial (bbl/min/°F/ppg/psi/ft) + per-group переопределения (UnitsOf). LAN: внешний декоратор UnitConvertingPayloadProvider конвертирует payload каждый тик; COM: значения конвертируются в EmuEngineHost.Tick до FormatLine (W11.4+; TrayApp удалён). Примечание: \"bpm\" не конвертируется (единица прошивки = identity, защита от неверной конверсии PS/DS Rate в gpm). [AMENDED 2026-08-17: добавлено правило firmware-native: под пресетом Прошивка конвертируются только legacy-нативы bbl/min и °F; нативы gal/min/°c/lb-gal/g-cc/bbl/ft/psi — identity (NeedsConversion). Плюс кросс-групповой guard в Convert (GroupOf(to)!=group ⇒ identity).]"
+
+namespaces:
+  core:     Halliburton.iCemEmule.Core
+  emitters: Halliburton.iCemEmule.Emitters
+  ui:       (removed W11.4 - UI = iCemDataMonitor.Emulator.WinUI EmulatorPage, separate assembly)
+  selftest: Halliburton.iCemEmule.SelfTest
+
+# ─── ACE wire constants (PROTOCOL.md §1, ¬ изменять) ───────────────────────
+ace_wire:
+  frame_total_bytes: 152          # 14 Eth + 3 LLC + 3 Magic + 8 Header + 124 Payload
+  dst_mac: "03:00:01:00:00:20"    # L2 multicast group
+  src_mac_default: "00:80:2F:23:F4:44"   # NI OUI (cRIO из захвата) — историческая константа; движок шлёт srcMac="" ⇒ auto-MAC открытого адаптера (настройки LanSrcMac больше нет)
+  ieee8023_length: 0x008A         # =138, НЕ EtherType
+  llc: [0x03, 0x03, 0x08]         # DSAP, SSAP, Control I-frame N(S)=4 (константа, ¬ инкремент)
+  magic: [0x00, 0xD0, 0x0D]       # offsets 17..19 — фильтр iCem
+  equipment_offset: 0x14          # uint32 BE, default 0x00A86F46 (11038534), configurable
+  sv_offset: 0x18                 # uint32 BE
+  payload_offset: 0x1C            # 124 bytes
+  superframe_svs: [0x13120203, 0x13120206, 0x13120200, 0x13120209, 0x1312020C, 0x1312020F,
+                   0x13120212, 0x13120215, 0x13120218, 0x1312021B, 0x1312021E, 0x13120221,
+                   0x13120224, 0x13120227, 0x1312022A, 0x1312022D, 0x13120230, 0x13120233,
+                   0x13120236, 0x13120239]
+                   # [AMENDED 2026-08-17: +14 firmware-таблиц Beartooth (RT Data/Observer/Bool/Totals/HPVT/Pump Life/Blend/Strings/Spare/DI/Relay),
+                   #  имена 1:1 из C:\RE, все ≤124 Б. Первые 6 — legacy Cementer (полевой verified-сет, порядок не менять).]
+  pacing: "каждый sv ровно 1 Hz; бёрст в конце секунды по паттерну cRIO-дампа: старт ≈0.938 с, интервал ≈5.25 мс между кадрами (порядок как в superframe_svs)"
+  signal_encoding:
+    FF: "float32 BE (IEEE754); sentinel = -9999.0f"
+    UL: "uint32 BE; value = round(sim * dasFactor)"
+    SI: "int32 BE; value = round(sim * dasFactor)"
+    HX: "uint32 BE hex"
+    UC: "ASCII, NUL-padded до size"
+    default: "4 байта zeros"
+
+# ─── Единицы измерений (R7, dropdown «Units») ────────────────────────────
+unit_presets:
+  presets: { 0: FirmwareDefault, 1: LanNative, 2: Metric, 3: Imperial }
+  units_per_preset:
+    FirmwareDefault: { Flow: gpm,      Temperature: °C,   Density: ppg,    Volume: bbl, Level: ft, Pressure: psi }
+    LanNative:       { Flow: bbl/min,  Temperature: °F,   Density: lb/gal, Volume: bbl, Level: ft, Pressure: psi }
+    Metric:          { Flow: m³/min,   Temperature: °C,   Density: g/cc,   Volume: m³,  Level: m,  Pressure: bar }
+    Imperial:        { Flow: bbl/min,  Temperature: °F,   Density: ppg,    Volume: bbl, Level: ft, Pressure: psi }
+  conversions_native_to_target:
+    - { from: "bbl/min", to: "gpm",     factor: 42.0 }
+    - { from: "bbl/min", to: "m³/min",  factor: 0.158987 }
+    - { from: "gpm",     to: "m³/min",  factor: 0.00378541 }
+    - { from: "ppg",     to: "g/cc",    factor: 0.119826 }
+    - { from: "psi",     to: "bar",     factor: 0.0689476 }
+    - { from: "ft",      to: "m",       factor: 0.3048 }
+    - { from: "bbl",     to: "gal",     factor: 42.0 }
+    - { from: "°F",      to: "°C",      formula: "(v-32)*5/9" }
+    # Кодирование на проводе: native → preset (ToTarget); CommitEdit: preset → native (ToWire).
+    # Неизвестные/неконвертируемые единицы (составные X/Y, UC-строки, mA, %, Hz, bpm) — identity, без изменений.
+  firmware_native_rule:
+    # Правило NeedsConversion (защита 1:1 «прошивка ⇄ провода»): под пресетом FirmwareDefault
+    # конвертируются ТОЛЬКО legacy-нативные единицы bbl/min (Flow) и °F (Temperature);
+    # firmware-native единицы {gal/min, °c, lb/gal, g/cc, bbl, ft, psi} — identity
+    # (прошивка уже передаёт их в своих единицах; пересчёт ломал соответствие — кейс MB_DensHPVT g/cc).
+    # Плюс кросс-групповой guard в Convert: GroupOf(to) != GroupOf(from) ⇒ identity для ВСЕХ групп.
+    # Под остальными пресетами (LanNative/Metric/Imperial) — обычная конверсия.
+  overrides_per_group:
+    # Переопределение группы = своя единица вместо пресетной (вкладка «Units», ComboBox «По пресету» + UnitsOf).
+    # TargetUnit(group) = непустой *Override иначе единица пресета.
+    Flow:        { override_unit: "любая из UnitsOf(Flow) — bbl/min, gpm, gal/min, m³/min",  default: "по пресету" }
+    Temperature: { override_unit: "°F, °C",                                                    default: "по пресету" }
+    Density:     { override_unit: "ppg, lb/gal, g/cc, kg/m³",                                  default: "по пресету" }
+    Volume:      { override_unit: "bbl, gal, m³",                                              default: "по пресету" }
+    Level:       { override_unit: "ft, m",                                                     default: "по пресету" }
+    Pressure:    { override_unit: "psi, bar, kPa",                                             default: "по пресету" }
+    # GroupOf(unit): конвертируются только известные группы (Flow/Temperature/Density/Volume/Level/Pressure);
+    # "bpm" → None (единица прошивки, identity — PS/DS Rate НЕ конвертируется в gpm).
+
+# ─── FLECS serial wire constants ────────────────────────────────────────────
+com_wire:
+  baud: 9600
+  parity: None
+  dataBits: 8
+  stopBits: One
+  line: "позиционный CSV по шаблону, terminator CRLF"
+  formats: { elapsed: "F1 (секунды от старта потока)", int: "целое", default: "F2" }
+  invariant_culture: true
+  rate: "1 строка/сек"
+
+# ─── Contract types (C# сигнатуры — единственные границы) ───────────────────
+contracts:
+  # Core → все
+  DeviceTemplate: |
+    public sealed class DeviceTemplate {
+      public string Name; public string DeviceType;
+      public int[] AutoSelectIndices;           // может быть пустым
+      public TemplateVariable[] Variables;      // отсортированы по Index
+      public int FieldCount => Variables.Length;
+    }
+    public sealed class TemplateVariable {
+      public int Index; public string Name; public string LegacyName; public string UoM;
+      public double BaseValue; public double Amplitude; public double Frequency;
+      public string Format;                     // "elapsed" | "int" | "" (=>F2)
+      public double TogglePeriod;               // >0 => digital toggle 0/1
+      public bool ExcludeFromTelemetry;
+    }
+  # Core: движок симуляции (1 Hz, stateful по elapsed)
+  ISimulationEngine: |
+    public interface ISimulationEngine {
+      IReadOnlyList<DeviceTemplate> Templates { get; }          // весь каталог (все deviceType)
+      DeviceTemplate Current { get; }
+      void SetTemplate(string deviceType, string templateName); // hot swap, thread-safe, следующий Tick = новый набор
+      double[] Tick();                // значения по Current.Variables, длина = FieldCount
+      void ResetClock();              // elapsed=0 (при старте потока)
+      event Action? TemplateSwapped;
+    }
+    // waveform: elapsed=>elapsed; toggle=>(int)(elapsed/TogglePeriod)%2;
+    //           amp>0&&freq>0 => base + amp*sin(2π f elapsed); else base.   (БЕЗ deterministic-ветки)
+  # Core: LAN payload provider (domain-знание lantable)
+  IAcePayloadProvider: |
+    public sealed record AceVectorData(uint SvNumber, string Name, byte[] Payload /*124 bytes*/);
+    public interface IAcePayloadProvider {
+      // Набор sv для текущего шаблона/equipment. Перечитывается emitter'ом после TemplateSwapped.
+      IReadOnlyList<AceVectorData> GetSuperframe(uint equipmentNumber, double elapsedSeconds);
+      IReadOnlyList<uint> ActiveSvNumbers { get; }   // default = ace_wire.superframe_svs
+    }
+    // Маппинг значений: lantable_registry.json (signals: byteOffset,size,valueType,dasFactor,name)
+    //   значение сигнала = simulation из variable_registry.json по совпадению name ↔ families.lan.wireName/alias,
+    //   иначе константа base (или 0). waveform — те же правила, что ISimulationEngine.
+  # Emitters (транспорт, ¬ domain)
+  IComEmitter: |
+    public interface IComEmitter : IDisposable {
+      bool IsOpen { get; } string? PortName { get; } long LinesSent { get; }
+      string Open(string portName);              // "" = OK, иначе текст ошибки
+      void SendLine(string line);                // добавляет CRLF сам; thread-safe
+      void Close();
+      event Action<string>? StatusChanged;
+    }
+  IAceLanEmitter: |
+    public interface IAceLanEmitter : IDisposable {
+      bool IsOpen { get; } string? AdapterName { get; } long FramesSent { get; }
+      static IReadOnlyList<string> ListAdapters();          // SharpPcap CaptureDeviceList, friendly descr
+      string Open(string adapterDescriptionOrName);        // "" = OK, иначе текст ошибки (вкл. "Npcap not found")
+      void SendSuperframe(IReadOnlyList<AceVectorData> vectors, uint equipmentNumber, string srcMac);
+      //   ^ строит 152-байт кадры по ace_wire ∧ инжектит бёрстом (cRIO-паттерн):
+      //     старт ≈0.938 с, интервал ≈5.25 мс; >6 sv ⇒ старт сдвигается, чтобы бёрст не вылез за секунду;
+      //     вызывается 1 раз/сек извне.
+      void Close();
+      event Action<string>? StatusChanged;
+    }
+
+# ─── file_ownership ─────────────────────────────────────────────────────────
+# ARCHIVED 2026-08-21 (owner decree): историческая E1/E2/E3-декомпозиция (WinForms-эра:
+# Ui/MainForm.cs, Ui/*Tab.cs, Ui/TrayApp.cs удалены W11.4) перенесена в
+# specs/_archive/devlog/CONTRACT_iCemEmule_file_ownership_E1E3.md.
+# Актуальное владение: engine = iCemEmule/ + iCemEmule.Core/; супервизия =
+# iCemDataMonitor.Emulator.Core/EmuleSupervisor.cs; UI = server-dotnet/iCemDataMonitor.Emulator.WinUI/.
+
+orchestration:
+  tick_owner: "EmuEngineHost System.Threading.Timer 1000 ms — единственный владелец 1 Hz часов (W11.4+; E3 WinForms-Timer удалён)."
+  tick_flow: "EmuEngineHost.Tick() → COM: SendLine(FormatLine) ; LAN: SendSuperframe(GetSuperframe) асинхронно (Task.Run, send-gate _lanSending)"
+  template_swap: "tab dropdown change ⇒ engine.SetTemplate(...) ⇒ TemplateSwapped ⇒ COM: следующая строка нового формата; LAN: следующий superframe нового набора sv. Потоки НЕ останавливаются."
+  stream_enable: "COM tab: Open(port) на enable, Close на disable. LAN tab: Open(adapter) на enable. Независимо."
+  settings: "XML %ProgramData%\\Halliburton\\iCem\\DataMonitoring\\emule_config.xml (2026-08-31 owner decree: moved from %LOCALAPPDATA%\\Halliburton\\iCem\\iCemEmule\\settings.xml — copy-migration, legacy kept; root element <iCemEmule> unchanged): LanEnabled, LanAdapter, LanEquipment, LanFirmwareSvEnabled, UnitPreset, Unit*Override, ComEnabled, ComPort, ComDeviceType, ComTemplateName, ComEmuleEnabled, LanEmuleEnabled (W14 emulation gates), WindowXYWH (legacy). Additive schema. Defaults: ALL toggles OFF (inert start)."
+  tray: "(удалён W11.4 — headless; супервизия процессами через iCemDataMonitor.Emulator.Core.EmuleSupervisor)"
+
+acceptance:
+  A1: "dotnet build — 0 errors."
+  A2: "iCemEmule.exe --selftest: frame roundtrip (build→parse: eq/sv/payload byte-equal) PASS; FLECS line format per template PASS. Exit 0."
+  A3: "UI (iCemDataMonitor.Emulator.WinUI): вкладки COM/LAN/Units — enable/disable + dropdowns + live-таблицы 1 Hz; рендер через owned-overlay HWND embed (W12) или standalone окно."
+  A4: "grep 'Mongo' по iCemEmule\\*.cs = 0 совпадений (кроме слова в комментарии 'no Mongo')."
+  A5: "COM template swap: сменить flecs_4.53→plc_basic в dropdown при включённом потоке ⇒ следующая строка имеет FieldCount plc_basic. (ручная проверка user'ом)"
+  A6: "--selftest: T6 firmware_registry (14 таблиц ≤124 Б), T7 unit-конверсия (множители 42/5-9/0.119826/0.3048/0.0689476), T8 superframe 20 sv + конверсия на проводе — PASS. Exit 0."
+  A7: "--selftest: T9 (UnitSettings/переопределения), T10 (COM-конверсия) PASS. Exit 0. [ADDED 2026-08-17]"
+  A8: "(ручная проверка user'ом) Вкладка Units: смена пресета → значения COM-строки и LAN-кадров пересчитываются без рестарта. [ADDED 2026-08-17]"
+  A9: "--selftest: T11–T19 (матрица конверсии, алиасы, неконвертируемые, roundtrip, пресет-матрица 4×6, 1:1-гарантия firmware, байт-уровень, кросс-группа, g/cc-регрессия) PASS. Exit 0. [ADDED 2026-08-17]"

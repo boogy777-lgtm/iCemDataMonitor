@@ -1,0 +1,16 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Controller Time,U2 UNIPRO Local Time,42,215
+0,UNIPRO Event,U2 UNIPRO Event Number,0,0
+0,CT Speed,CT Running Speed,100,249
+0,Depth,Tubing Depth,21,122
+0,Tubing Pr,Pressure,71,185
+0,Pump Rate,Pump Rate,130,75
+0,Pump Total,Pump Total,202,286
+0,Pipe Light,Pipe Light,32,96
+0,Wellhead Pres,Wellhead Pressure,71,185
+0,N2 Rate,N2 Standard Rate,130,80
+0,N2 Total,N2 Standard Total,202,285
+0,Pipe Weight,Pipe Weight,32,96
+0,Spare Pr,Spare Pressure,71,185
+0,N2 Temp,N2 Temperature,88,213

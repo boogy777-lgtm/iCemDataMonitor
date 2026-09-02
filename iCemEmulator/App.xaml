@@ -1,0 +1,16 @@
+<Application
+    x:Class="Halliburton.iCemEmulator.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    RequestedTheme="Dark">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- macOS design tokens — the SAME linked ThemeResources.xaml
+                     the EmulatorPage merges at page level (one design source) -->
+                <ResourceDictionary Source="ThemeResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

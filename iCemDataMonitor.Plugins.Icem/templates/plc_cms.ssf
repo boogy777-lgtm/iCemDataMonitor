@@ -1,0 +1,70 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,LA1 Rate,LA 1 Rate,130,75
+0,LA1 Conc,LA 1 Concentration,129,324
+0,LA1 Stg Tot,LA1 Stage Total,202,286
+0,LA1 Job Tot,LA1 Job Total,202,286
+0,LA2 Rate,LA 2 Rate,130,75
+0,LA2 Conc,LA 2 Concentration,129,324
+0,LA2 Stg Tot,LA2 Stage Total,202,286
+0,LA2 Job Tot,LA2 Job Total,202,286
+0,LA3 Rate,LA 3 Rate,130,75
+0,LA3 Conc,LA 3 Concentration,129,324
+0,LA3 Stg Tot,LA3 Stage Total,202,286
+0,LA3 Job Tot,LA3 Job Total,202,286
+0,LA4 Rate,LA 4 Rate,130,75
+0,LA4 Conc,LA 4 Concentration,129,324
+0,LA4 Stg Tot,LA4 Stage Total,202,286
+0,LA4 Job Tot,LA4 Job Total,202,286
+0,LA5 Rate,LA 5 Rate,130,75
+0,LA5 Conc,LA 5 Concentration,129,324
+0,LA5 Stg Tot,LA5 Stage Total,202,286
+0,LA5 Job Tot,LA5 Job Total,202,286
+0,LA6 Rate,LA 6 Rate,130,75
+0,LA6 Conc,LA 6 Concentration,129,324
+0,LA6 Stg Tot,LA6 Stage Total,202,286
+0,LA6 Job Tot,LA6 Job Total,202,286
+0,Mix Water Rate,Mix Water Rate,130,75
+0,Water Stg Tot,Mix Water Stg Total,202,286
+0,Mix Water Total,Mix Water Total,202,286
+0,PS Pump Rate,Pass-Side Pump Rate,130,80
+0,PS Pmp Stg Tot,PS Pump Stage Total,202,285
+0,PS Pump Total,Pass-Side Pump Total,202,285
+0,DS Pump Rate,Driv-Side Pump Rate,130,80
+0,DS Pmp Stg Tot,DS Pump Stage Total,202,285
+0,DS Pump Total,Driv-Side Pump Total,202,285
+0,Comb Pump Rate,Combined Pump Rate,130,80
+0,Comb Stg Total,Combined Stage Total,202,285
+0,Comb Pump Total,Combined Pump Total,202,285
+0,Belly MagMeter,Belly MagMeter,130,80
+0,Mag Stage Total,Mag Stage Total,202,285
+0,Mag Meter Total,Mag Meter Total,202,285
+0,Manual Rate,Manaul Rate,130,75
+0,Man Stage Total,Man Stage Total,202,286
+0,Manual Total,Manaul Total,202,286
+0,LA1 Rate2,LA1 Rate2,130,75
+0,LA2 Rate2,LA2 Rate2,130,75
+0,LA3 Rate2,LA3 Rate2,130,75
+0,LA4 Rate2,LA4 Rate2,130,75
+0,LA5 Rate2,LA5 Rate2,130,75
+0,LA6 Rate2,LA6 Rate2,130,75
+0,UNIPRO Event,U2 UNIPRO Event Number,0,0
+0,LA1 Conc Setpt,LA 1 Conc Setpoint,129,324
+0,LA2 Conc Setpt,LA 2 Conc Setpoint,129,324
+0,LA3 Conc Setpt,LA 3 Conc Setpoint,129,324
+0,LA4 Conc Setpt,LA 4 Conc Setpoint,129,324
+0,LA5 Conc Setpt,LA 5 Conc Setpoint,129,324
+0,LA6 Conc Setpt,LA 6 Conc Setpoint,129,324
+0,Sys Status,System Status,0,0
+0,LA1 Status,LA1 Status,0,0
+0,LA2 Status,LA2 Status,0,0
+0,LA3 Status,LA3 Status,0,0
+0,LA4 Status,LA4 Status,0,0
+0,LA5 Status,LA5 Status,0,0
+0,LA6 Status,LA6 Status,0,0
+0,LA1 Index,LA1 Index,0,0
+0,LA2 Index,LA2 Index,0,0
+0,LA3 Index,LA3 Index,0,0
+0,LA4 Index,LA4 Index,0,0
+0,LA5 Index,LA5 Index,0,0
+0,LA6 Index,LA6 Index,0,0

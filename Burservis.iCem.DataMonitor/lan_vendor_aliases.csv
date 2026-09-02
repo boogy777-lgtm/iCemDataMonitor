@@ -1,0 +1,74 @@
+idx,vendor_name
+0,Rcrc Density
+1,Recirc Fl Rte
+2,Rec Vlv Cmd
+3,Dwnhole Density
+5,Mix Wtr Stg Tot
+6,Mix Wtr Job Tot
+7,Dwnhole Tub Lvl
+8,Mix Pump Pres
+9,Mix Water Pres
+10,Auto or Man Mix
+13,Cmnt Vlv Cmd
+15,Vol Water %
+16,Vol Mtr Rate
+17,Vol Mtr Stg Tot
+18,Vol Mtr Job Tot
+19,Stage Sacks Cmt
+20,Job Sacks Cmt
+21,Mud Cup Dens
+22,CurBld Density
+23,CurBld Yield
+24,CurBld Wtr Req
+25,CurBld Mix Rate
+27,Unit Num
+34,Raw Pmp A Press
+36,SideA Pr At KO
+37,SideA KO?
+39,Pump A Stg Tot
+40,Pump A Job Tot
+42,Raw Pmp B Press
+44,SideB Pr At KO
+45,SideB KO?
+47,Pump B Stg Tot
+48,Pump B Job Tot
+49,Cmb Pump Rate
+50,Cmb Stg Total
+51,Cmb Job Total
+52,Highest Pmp P
+54,Digital In
+55,Digital Out
+56,Display Temp
+57,Controller Temp
+58,Analog In 1
+59,Analog In 2
+60,Analog In 3
+61,Analog In 4
+62,Analog In 5
+63,Analog In 6
+64,Analog In 7
+65,Analog In 8
+66,Analog Out 1
+67,Analog Out 2
+68,Analog Out 3
+69,Analog Out 4
+70,Count In 1
+71,Count In 2
+72,Count In 3
+73,Count In 4
+74,Count In 5
+75,Count In 6
+80,Spare Count 1
+81,Spare StgTot1
+82,Spare JobTot1
+83,Spare Count 2
+84,Spare StgTot2
+85,Spare JobTot2
+86,Spare Count 3
+87,Spare StgTot3
+88,Spare JobTot3
+89,Spare Count 4
+90,Spare StgTot4
+91,Spare JobTot4
+94,Op Track IDNum
+95,Cmnt Ops Track

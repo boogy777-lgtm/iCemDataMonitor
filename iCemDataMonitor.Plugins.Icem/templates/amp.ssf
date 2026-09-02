@@ -1,0 +1,94 @@
+0,Time & Date,Equipment Time & Date,42,215
+0,Unit Num,Unit Num,0,0
+0,UNIPRO Event,Unipro Event,0,0
+0,Sys Status,System Status,0,0
+0,LA1 Status,LA1 Status,0,0
+0,LA1 MasterRate,LA1 Master Rate,130,75
+0,LA1 Rate,LA 1 Rate,130,75
+0,LA1 Aux Rate,LA1 Auxilary Rate,130,75
+0,LA1 Conc Setpt,LA1 Conc Setpoint,129,324
+0,LA1 Conc,LA 1 Conc.,129,324
+0,LA1 Stg Tot,LA 1 Stg. Tot.,202,286
+0,LA1 Job Tot,LA 1 Job Tot.,202,286
+0,LA1 TankVolUsed,LA1 Tank Volume Used,202,286
+0,LA2 Status,LA2 Status,0,0
+0,LA2 MasterRate,LA2 Master Rate,130,75
+0,LA2 Rate,LA 2 Rate,130,75
+0,LA2 Aux Rate,LA2 Auxilary Rate,130,75
+0,LA2 Conc Setpt,LA2 Conc Setpoint,129,324
+0,LA2 Conc,LA 2 Conc.,129,324
+0,LA2 Stg Tot,LA 2 Stg Tot.,202,286
+0,LA2 Job Tot,LA 2 Job Tot.,202,286
+0,LA2 TankVolUsed,LA2 Tank Volume Used,202,286
+0,LA3 Status,LA3 Status,0,0
+0,LA3 MasterRate,LA3 Master Rate,130,75
+0,LA3 Rate,LA 3 Rate,130,75
+0,LA3 Aux Rate,LA3 Auxilary Rate,130,75 
+0,LA3 Conc Setpt,LA3 Conc Setpoint,129,324
+0,LA3 Conc,LA 3 Conc.,129,324
+0,LA3 Stg Tot,LA 3 Stg Tot.,202,286
+0,LA3 Job Tot,LA 3 Job Tot.,202,286
+0,LA3 TankVolUsed,LA3 Tank Volume Used,202,286
+0,LA4 Status,LA4 Status,0,0
+0,LA4 MasterRate,LA4 Master Rate,130,75
+0,LA4 Rate,LA 4 Rate,130,75
+0,LA4 Aux Rate,LA4 Auxilary Rate,130,75
+0,LA4 Conc Setpt,LA4 Conc Setpoint,129,324
+0,LA4 Conc,LA 4 Conc.,129,324
+0,LA4 Stg Tot,LA 4 Stg Tot.,202,286
+0,LA4 Job Tot,LA 4 Job Tot.,202,286
+0,LA4 TankVolUsed,LA4 Tank Volume Used,202,286
+0,LA5 Status,LA5 Status,0,0
+0,LA5 MasterRate,LA5 Master Rate,130,75
+0,LA5 Rate,LA 5 Rate,130,75
+0,LA5 Aux Rate,LA5 Auxilary Rate,130,75
+0,LA5 Conc Setpt,LA5 Conc Setpoint,129,324
+0,LA5 Conc,LA 5 Conc.,129,324
+0,LA5 Stg Tot,LA 5 Stg Tot.,202,286
+0,LA5 Job Tot,LA 5 Job Tot.,202,286
+0,LA5 TankVolUsed,LA5 Tank Volume Used,202,286
+0,LA6 Status,LA6 Status,0,0
+0,LA6 MasterRate,LA6 Master Rate,130,75
+0,LA6 Rate,LA 6 Rate,130,75
+0,LA6 Aux Rate,LA6 Auxilary Rate,130,75
+0,LA6 Conc Setpt,LA6 Conc Setpoint,129,324
+0,LA6 Conc,LA 6 Conc.,129,324
+0,LA6 Stg Tot,LA 6 Stg Tot.,202,286
+0,LA6 Job Tot,LA 6 Job Tot.,202,286
+0,LA6 TankVolUsed,LA6 Tank Volume Used,202,286
+0,LA7 Status,LA7 Status,0,0
+0,LA7 MasterRate,LA7 Master Rate,130,75
+0,LA7 Rate,LA 7 Rate,130,75
+0,LA7 Aux Rate,LA7 Auxilary Rate,130,75
+0,LA7 Conc Setpt,LA7 Conc Setpoint,129,324
+0,LA7 Conc,LA 7 Conc.,129,324
+0,LA7 Stg Tot,LA 7 Stg Tot.,202,286
+0,LA7 Job Tot,LA 7 Job Tot.,202,286
+0,LA7 TankVolUsed,LA7 Tank Volume Used,202,286
+0,LA8 Status,LA8 Status,0,0
+0,LA8 MasterRate,LA8 Master Rate,130,75
+0,LA8 Rate,LA 8 Rate,130,75
+0,LA8 Aux Rate,LA8 Auxilary Rate,130,75
+0,LA8 Conc Setpt,LA8 Conc Setpoint,129,324
+0,LA8 Conc,LA 8 Conc.,129,324
+0,LA8 Stg Tot,LA 8 Stg. Tot.,202,286
+0,LA8 Job Tot,LA 8 Job Tot.,202,286
+0,LA8 TankVolUsed,LA8 Tank Volume Used,202,286
+0,Mix Water Rate,Mix Water Rate,130,75
+0,Water Stg Tot,Water Stg Tot,202,285
+0,Mix Water Total,Mix Water Total,202,285
+0,PS Pump Rate,Ps Pump Rate,130,80
+0,PS Pmp Stg Tot,PS Pump Stage Total,202,285
+0,PS Pump Total,Ps Pump Total,202,285
+0,DS Pump Rate,Ds Pump Rate,130,80
+0,DS Pmp Stg Tot,DS Pump Stage Total,202,285
+0,DS Pump Total,Ds Pump Total,202,285
+0,Comb Pump Rate,Comb Pump Rate,130,80
+0,Comb Stg Total,Comb Stg Total,202,285
+0,Comb Pump Total,Comb Pump Total,202,285
+0,Belly MagMeter,Belly MagMeter,130,80
+0,Mag Stage Total,Mag Stage Total,202,285
+0,Mag Meter Total,Mag Meter Total,202,285
+0,Manual Rate,Manual Rate,130,75
+0,Man Stage Total,Man Stage Total,202,286
+0,Manual Total,Manual Total,202,286

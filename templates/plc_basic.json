@@ -1,0 +1,17 @@
+{
+  "name": "plc basic",
+  "deviceType": "PLC",
+  "autoSelectIndices": [3, 4, 2, 7, 6, 9],
+  "variables": [
+    { "registry": "PLC Timestamp",      "index": 0 },
+    { "registry": "PLC Status",         "index": 1 },
+    { "registry": "Suction Pressure",   "index": 2 },
+    { "registry": "Discharge Pressure", "index": 3 },
+    { "registry": "Pump Rate",          "index": 4 },
+    { "registry": "Flow Rate",          "index": 5 },
+    { "registry": "Tank Level",         "index": 6 },
+    { "registry": "Tank Temperature",   "index": 7 },
+    { "registry": "Motor Speed",        "index": 8 },
+    { "registry": "Valve Position",     "index": 9 }
+  ]
+}

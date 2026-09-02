@@ -1,0 +1,12 @@
+*Ace Elite Azonix ADC serial data template
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Recirc Density,Recirc Density,178,57
+0,DH Density,Downhole Density,178,57
+0,Water Rate,Water Rate,130,80
+0,Comb Pump Rate,Combined Pump Rate,130,80
+0,PS Pump Press,Pass-Side Pump Pressure,71,713
+0,DS Pump Press,Driv-Side Pump Pressure,71,713
+0,Mix Water Vol,Foam Stg Mix Water Vol,202,286
+0,Pump Stg Tot,Pump Stage Total,202,285
+0,HalWin Event,HalWin Event Number,0,0

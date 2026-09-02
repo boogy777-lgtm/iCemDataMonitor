@@ -1,0 +1,297 @@
+# HES_64 SQL Server Schema — Discovery Report
+# Date: 2026-08-10
+# Source: live SQL Server instance HES_64, database "Cementing"
+# Reverse-engineered by: insite-plugin (iCemDataMonitor.Plugins.Icem Domain Architect)
+
+meta:
+  instance_status: RUNNING (MSSQL$HES_64 service state = Running)
+  instance_name: HES_64 (local named instance)
+  database: Cementing
+  total_tables: 200+ (dbo schema, full list in discovery output)
+  lan_relevant_tables: 7 core tables
+  authentication: Windows Integrated (trusted connection)
+  encryption: TLS (Encrypt=True; TrustServerCertificate=True)
+
+connection_string:
+  template: "Data Source=(local)\\HES_64;Initial Catalog=Cementing;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;"
+  provider: System.Data.SqlClient
+  source_file: "C:\\Program Files\\Halliburton\\iCem\\Bin\\iCem.exe.config"
+  connection_name: DBConnectionString
+  alternate_source: CmtEdm5000 (EDM database, separate catalog for design data)
+
+# ── Core LAN Tables (ACE frame data sink) ──
+
+tables:
+  Equipment:
+    purpose: "LAN equipment instances per job. Maps logical LAN unit numbers to equipment IDs."
+    columns:
+      - name: JobId
+        type: uniqueidentifier
+        description: "FK to Job table"
+      - name: EquipmentId
+        type: uniqueidentifier
+        description: "PK — unique equipment instance"
+      - name: RemoteEquipmentId
+        type: uniqueidentifier (nullable)
+        description: "Remote view cross-reference"
+      - name: ResultModeId
+        type: int (nullable)
+        description: "Result mode (design vs realtime)"
+      - name: CementCaseId
+        type: uniqueidentifier (nullable)
+      - name: EquipmentPortId
+        type: int (nullable)
+        description: "FK to EquipmentPort"
+      - name: ComDeviceTypeId
+        type: int (nullable)
+      - name: LanDeviceTypeId
+        type: int (nullable)
+        description: "FK to LanDeviceType: 1=Unknown, 2=Blender, 3=Cementer, 4=CoiledTubing, 5=GatheringConveyer, 6=Instruments, 7=LIMTrailer, 8=MountainMover, 9=Pump, 10=ToteTruck, 11=CleanStream"
+      - name: LanUnitNumber
+        type: nvarchar(20) (nullable)
+        description: "LAN equipment identifier string (e.g. '2825864942', '11067257', '11038534')"
+      - name: LanLogicalNumber
+        type: int (nullable)
+        description: "Logical unit number within LAN network"
+      - name: EquipmentLogicalNumber
+        type: int (nullable)
+        description: "Application-level logical number"
+    sample_data:
+      - "JobId=759C2BCF-9981-4CBA-A668-63BB1A78C6D7, LanUnitNumber=2825864942, LanDeviceTypeId=3 (Cementer)"
+      - "EquipmentId: 0x00A86F46 (11038534) = the cRIO in iCemCrio.pcapng.bin"
+    row_count: 6 (in sample job)
+
+  EquipmentRecord:
+    purpose: "ACE service-vector record type definitions. Each row = one named record type (e.g. 'Lnd Mix Section'). DataType=1 for all LAN records."
+    columns:
+      - name: JobId
+        type: uniqueidentifier
+        description: "FK to Job"
+      - name: EquipmentRecordId
+        type: uniqueidentifier
+        description: "PK"
+      - name: RemoteEquipmentRecordId
+        type: uniqueidentifier (nullable)
+      - name: EquipmentId
+        type: uniqueidentifier
+        description: "FK to Equipment"
+      - name: Name
+        type: nvarchar(20)
+        description: "Record type name — matches ACE ServiceVector LantableNT RecordName"
+      - name: DataType
+        type: tinyint
+        description: "Always 1 for LAN records. Data encoding format indicator."
+    distinct_record_types:
+      - "Flecs 1 COM1"        # FLECS serial data
+      - "Land Addon IO"        # ACE SV 0x1312020C
+      - "Lnd Automation"       # ACE SV 0x13120203 (6 variables)
+      - "Lnd Mix Section"      # ACE SV 0x13120200 (27 variables)
+      - "Lnd Ops Track"        # ACE SV 0x1312020F (2 variables)
+      - "Lnd Pump Sect"        # ACE SV 0x13120206 (20 variables)
+      - "Lnd RAWIO Data"       # ACE SV 0x13120209 (23 variables)
+      - "Other 1 COM1" through "Other 1 COM10"
+      - "Plc 1 COM1"
+      - "RTD Import"
+      - "UniproII 1 COM9"
+    variable_counts:
+      Lnd_Mix_Section: 27
+      Lnd_Pump_Sect: 20
+      Lnd_RAWIO_Data: 23
+      Lnd_Automation: 6
+      Lnd_Ops_Track: 2
+    # Note: 3 jobs = 3 sets of EquipmentRecord rows (15 total Lnd records across 3 jobs)
+
+  EquipmentVariable:
+    purpose: "Column definitions within EquipmentData VARBINARY blobs. Maps ColumnNumber → EquipmentDataColumnName (Value1-ValueN)."
+    columns:
+      - name: JobId
+        type: uniqueidentifier
+        description: "FK to Job"
+      - name: EquipmentVariableId
+        type: uniqueidentifier
+        description: "PK"
+      - name: EquipmentRecordId
+        type: uniqueidentifier
+        description: "FK to EquipmentRecord"
+      - name: Name
+        type: nvarchar(50)
+        description: "Variable display name (e.g. 'Recirc Density', 'Pump A Pressure')"
+      - name: UnitClassId
+        type: int
+        description: "Unit class (e.g. 178=lb/gal, 71=psi, 130=bbl/min, 50=ft, 202=bbl, 63=%, 0=dimensionless/flag, 10=cuft/sk, 56=gal/sk, 88=degF, 257=sacks)"
+      - name: ColumnNumber
+        type: int
+        description: "0-based column position within the VARBINARY blob"
+      - name: IsString
+        type: bit (nullable)
+        description: "NULL for all Lnd records (all numeric). Likely true for string-type variables."
+      - name: EquipmentDataColumnName
+        type: nvarchar(20)
+        description: "Column alias in serialized form (Value1, Value2, ... ValueN)"
+      - name: UnitMeasureId
+        type: int (nullable)
+        description: "Specific unit measure within class"
+    mapping_example:
+      Lnd_Mix_Section:
+        ColumnNumber_1: { Name: "Rcrc Density",    EquipmentDataColumnName: "Value1",  UnitClassId: 178 }
+        ColumnNumber_2: { Name: "Recirc Fl Rte",    EquipmentDataColumnName: "Value2",  UnitClassId: 130 }
+        ColumnNumber_8: { Name: "Dwnhole Tub Lvl",  EquipmentDataColumnName: "Value8",  UnitClassId: 50 }
+        ColumnNumber_9: { Name: "Mix Pump Pres",    EquipmentDataColumnName: "Value9",  UnitClassId: 71 }
+        ColumnNumber_27: { Name: "Event Number",    EquipmentDataColumnName: "Value27", UnitClassId: 0 }
+
+  EquipmentData:
+    purpose: "Time-series data for equipment records. Data column = VARBINARY blob containing serialized variable values."
+    columns:
+      - name: JobId
+        type: uniqueidentifier
+        description: "FK to Job"
+      - name: EquipmentRecordId
+        type: uniqueidentifier
+        description: "FK to EquipmentRecord"
+      - name: EquipmentDataId
+        type: int
+        description: "Auto-increment PK"
+      - name: DateTime
+        type: datetime2
+        description: "Timestamp of this data row (1-second intervals in sample data)"
+      - name: Data
+        type: varbinary(MAX)
+        description: "Serialized column values. Length varies by record type."
+    row_count: 55718
+    blob_sizes:
+      210: 11623   # Lnd Mix Section (27 vars), Lnd Pump Sect (20), etc.
+      195: 31457   # most common — likely Flecs/PLC serial records
+      175: 8439
+      139: 634
+      119: 633
+      104: 637
+      94: 639
+      34: 634
+      9: 634
+      295: 387
+      99: 1
+    blob_decode_strategy:
+      description: >
+        EquipmentData.Data is a serialized row buffer. For Lan records, the blob
+        encodes EquipmentVariable columns in ColumnNumber order. Each column's byte
+        width depends on the ACE ValueType (from LantableNT.xml) — same encoding
+        as the wire format but stored contiguously without the 24-byte ACE header.
+
+        To decode EquipmentData for a given EquipmentRecord:
+          1. Join EquipmentRecord → EquipmentVariable (ordered by ColumnNumber)
+          2. Join EquipmentVariable → LantableNT.xml Signal (by RecordName + VariableName/SignalName)
+             or via ReferenceLanEquipmentVariable (3 rows only — too sparse, fallback)
+          3. Use LantableNT Signal defs (ValueType, Size, DASConversionFactor) to parse
+             each column from the blob at cumulative byte offsets
+          4. Apply same decode rules as LantableRegistry.DecodeSignals
+
+        Alternative decode approach (pragmatic):
+          Since the blob stores values in the same encoding as the wire ACE frame
+          signal area, but packed contiguously:
+            - For each EquipmentVariable in ColumnNumber order,
+            - Look up LantableNT signal by VariableName/RecordName match
+            - Read Size bytes from blob, decode per ValueType, apply DasFactor
+
+        The 210-byte Lnd Mix Section blob (27 vars) averages 7.78 bytes/var.
+        Mixed types: float32 (4), float64 (8), int32 (4), uint32 (4),
+        int16 (2), uint16 (2), int8 (1), string (variable).
+        This is consistent with 27 ACE signals packed end-to-end.
+
+  EquipmentStatus:
+    purpose: "Online/offline status of equipment instances over time."
+    columns:
+      - JobId: uniqueidentifier
+      - EquipmentStatusId: uniqueidentifier (PK)
+      - EquipmentId: uniqueidentifier (FK)
+      - DateTime: datetime2
+      - Online: bit
+
+  EquipmentPort:
+    purpose: "Named port definitions (likely serial COM ports or network interfaces)."
+    columns:
+      - EquipmentPortId: int (PK)
+      - Name: nvarchar
+
+  ReferenceLanEquipmentVariable:
+    purpose: "Reference table mapping LAN equipment variables to Lantable definitions. Very sparse (3 rows only)."
+    columns:
+      - ReferenceLanEquipmentVariableId: int (PK)
+      - Name: nvarchar (e.g. "Discharge Rate", "Discharge Pressure", "Expected Pressure")
+      - UnitClassId: int
+      - UnitMeasureId: int
+      - DisplayName: nvarchar
+      - RecordName: nvarchar (nullable — all NULL in sample)
+      - LanDeviceType: nvarchar (nullable)
+      - RecordId: int (nullable)
+      - LanValueType: nvarchar (nullable — all NULL in sample)
+      - Size: int (nullable — all NULL)
+      - SignalNumber: int (nullable — all NULL)
+      - HexOffset: float (nullable)
+      - HexLength: float (nullable)
+      - ByteOffset: int (nullable — all NULL)
+    assessment: "Too sparse (3 rows, all nullable encoding fields) to use as primary decode reference. LantableNT.xml is the authoritative source."
+
+  LanDeviceType:
+    purpose: "Lookup table for LAN device types."
+    rows:
+      - { LanDeviceTypeId: 1,  Name: "Unknown" }
+      - { LanDeviceTypeId: 2,  Name: "Blender" }
+      - { LanDeviceTypeId: 3,  Name: "Cementer" }
+      - { LanDeviceTypeId: 4,  Name: "Coiled Tubing" }
+      - { LanDeviceTypeId: 5,  Name: "Gathering Conveyer" }
+      - { LanDeviceTypeId: 6,  Name: "Instruments" }
+      - { LanDeviceTypeId: 7,  Name: "LIM Trailer" }
+      - { LanDeviceTypeId: 8,  Name: "Mountain Mover" }
+      - { LanDeviceTypeId: 9,  Name: "Pump" }
+      - { LanDeviceTypeId: 10, Name: "Tote Truck" }
+      - { LanDeviceTypeId: 11, Name: "CleanStream" }
+
+# ── Data Flow (How iCem writes LAN data) ──
+
+data_flow:
+  description: >
+    iCem.exe ACE sniffer (Npcap/PcapDotNet) captures ACE frames from
+    ethernet multicast. BufferDataProcessor decodes frames using
+    LantableNT.xml. EquipmentDataWriter serializes decoded values into
+    VARBINARY blobs and INSERTs into EquipmentData table, one row per
+    EquipmentRecord per timestamp.
+
+    LAN data NEVER reaches:
+      - MongoDB RealtimeDB
+      - RabbitMQ
+      - Lan.Streamer.Web
+    These are exclusive to FLECS/PLC serial paths.
+
+  pcapng_to_sql_path:
+    step_1: "Npcap promiscuous capture, BPF filter 'ether multicast'"
+    step_2: "AceFrameParser.IsAceFrame(): check 03 03 08 | 03 03 09 at offset 14"
+    step_3: "Extract EquipmentNumber (frame[20:24] BE), ServiceVector (frame[24:28] BE)"
+    step_4: "LantableNT.xml lookup by ServiceVectorNumber → ServiceVector/Signals"
+    step_5: "DecodeSignals(): parse frame[28:152] per signal ByteOffset, Size, ValueType, DASConversionFactor"
+    step_6: "EquipmentDataWriter serializes decoded doubles → VARBINARY blob"
+    step_7: "INSERT INTO EquipmentData (EquipmentRecordId, DateTime, Data)"
+
+  server_dotnet_read_strategy:
+    description: >
+      server-dotnet CAN read HES_64 as a 3rd data source, but the README §12.3
+      recommends against it: vendor schema, fragile (requires iCem.exe running),
+      varbinary blobs. The recommended approach is own Npcap sniffer (B2 task).
+
+      If HES_64 read is nevertheless required:
+        1. Open SqlConnection with connection_string.template
+        2. Query: SELECT ed.EquipmentRecordId, ed.DateTime, ed.Data, er.Name
+           FROM EquipmentData ed
+           JOIN EquipmentRecord er ON ed.EquipmentRecordId = er.EquipmentRecordId
+           WHERE ed.DateTime >= @since
+           ORDER BY ed.DateTime
+        3. For each blob, decode using EquipmentVariable + LantableNT definitions
+        4. Map to canonical Lan/... variable names via variable_registry.json
+
+# ── Open Questions ──
+
+unknowns:
+  - "Blob serialization format: is there a fixed header before column data? The 210-byte Lnd Mix Section blob begins with 0x0A29... which may be a row header. Full reverse-engineering of the blob layout requires comparing known ACE frame signal values to EquipmentData blob bytes for the same timestamp."
+  - "EquipmentData.Data for Lnd Automation (6 vars, 210 bytes): 210/6 = 35 bytes per value — too large for simple types. The blob may contain additional metadata (timestamp, quality flags, raw+scaled pairs) beyond just the decoded signal values."
+  - "EquipmentRecord.DataType=1 is universal for LAN. Are there other DataType values indicating different blob encodings?"
+  - "ReferenceLanEquipmentVariable has only 3 rows with NULL encoding fields. Is there a populated version on production systems, or is LantableNT.xml always the authority?"
+  - "CmtEdm5000 database: separate catalog for design/EDM data, contains additional equipment metadata tables."

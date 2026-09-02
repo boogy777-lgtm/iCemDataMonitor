@@ -1,0 +1,70 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Job Time,Job Time,42,215
+0,Slurry Rate,Slurry Rate,130,80
+0,Job Slurry Vol,Job Slurry Volume,202,285
+0,Clean Rate,Clean Rate,130,80
+0,Clean Volume,Clean Volume,202,285
+0,Target Density,Target Density,178,57
+0,RatioMetr Dens,RatioMetric Density,178,57
+0,Slurry Density,Slurry Density,178,57
+0,Stage At Bldr,Stage At Blender,0,0
+0,Gen Analog 7,Generic Analog 7,0,0
+0,Gen Analog 8,Generic Analog 8,0,0
+0,SS1 RPM,Sand Screw 1 RPM,79,13
+0,SS2 RPM,Sand Screw 2 RPM,79,13
+0,SS3 RPM,Sand Screw 3 RPM,79,13
+0,SS1 DAC count,Sand Screw 1 DAC Counts,0,0
+0,SS2 DAC count,Sand Screw 2 DAC Counts,0,0
+0,SS3 DAC count,Sand Screw 3 DAC Counts,0,0
+0,Freq Rate 3,Freq Rate 2,130,80
+0,Freq Total 3,Freq Volume 2,202,286
+0,Freq Rate 4,Freq Rate 3,130,80
+0,Freq Vol 4,Freq Volume 3,202,286
+0,Gen Analog 1,Generic Analog 1,0,0
+0,Gen Analog 2,Generic Analog 2,0,0
+0,Gen Analog 3,Generic Analog 3,0,0
+0,Gen Analog 4,Generic Analog 4,0,0
+0,Gen Analog 5,Generic Analog 5,0,0
+0,SS1 Rate,SS 1 Rate,53,143
+0,SS2 Rate,SS 2 Rate,53,143
+0,SS3 Rate,SS 3 Rate,53,143
+0,Sand Rate,Sand Delivery Rate,130,78
+0,SS1 Job Tot,SS 1 Job Total,126,136
+0,SS2 Job Tot,SS 2 Job Total,126,136
+0,SS3 Job Tot,SS 3 Job Total,126,136
+0,Sand Total,Sand Total,126,136
+0,Calc Dens,Calculated Density,178,57
+0,Fluid spec Vol,Fluid Specific Gravity,10,275
+0,Bulk Density,Bulk Density,178,52
+0,Prop Spec Vol,Proppant Specific Vol,10,275
+0,Gen Analog 9,Generic Analog 9,0,0
+0,Sand Total1,Sand Total1,126,137
+0,LA1 Rate,LA 1 Rate,130,75
+0,LA1 Job Tot,LA 1 Job Total,202,285
+0,LA2 Rate,LA 2 Rate,130,75
+0,LA2 Job Tot,LA 2 Job Total,202,285
+0,LA3 Rate,LA 3 Rate,130,75
+0,LA3 Job Tot,LA 3 Job Total,202,285
+0,LA4 Rate,LA 4 Rate,130,75
+0,LA4 Job Tot,LA 4 Job Total,202,285
+0,LA5 Rate,LA 5 Rate,130,75
+0,LA5 Job Tot,LA 5 Job Total,202,285
+0,LA6 Rate,LA 6 Rate,130,75
+0,LA6 Job Tot,LA 6 Job Total,202,285
+0,Clean Rate 1,Clean Rate 1,130,80
+0,Clean Vol 1,Clean Volume 1,202,285
+0,Clean Rate 2,Clean Rate 2,130,80
+0,Clean Vol 2,Clean Volume 2,202,286
+0,LA1 Conc,LA 1 Concentration,129,324
+0,LA2 Conc,LA 2 Concentration,129,324
+0,LA3 Conc,LA 3 Concentration,129,324
+0,DA1 Conc Setpt,DA 1 Conc Setpoint,111,463
+0,DA2 Conc Setpt,DA 2 Conc Setpoint,111,463
+0,LA6 Conc,LA 6 Concentration,129,324
+0,LA1 Stg Tot,LA 1 Stage Total,202,286
+0,LA2 Stg Tot,LA 2 Stage Total,202,286
+0,LA3 Stg Tot,LA 3 Stage Total,202,286
+0,LA4 Stg Tot,LA 4 Stage Total,202,286
+0,LA5 Stg Tot,LA 5 Stage Total,202,286
+0,LA6 Stg Tot,LA 6 Stage Total,202,286

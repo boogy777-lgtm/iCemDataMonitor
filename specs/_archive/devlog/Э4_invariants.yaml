@@ -1,0 +1,152 @@
+meta:
+  id: iCemAddIn-E4
+  unit: iCemAddIn
+  date: 2026-08-17
+  basis: "CODE laws (source LOCATED: C:\\iCEM\\DataTap.AddIn — GAP RESOLVED); falsifiers live in the AddIn xunit suite (DataTap.AddIn.Tests) + BusSelfTest.exe + POC stand tests"
+invariants:
+  - law: "∀ register written by AddIn ⇒ content == bytes(tap value) byte-exact; ¬∃ scaling/rounding/unit-map/formation logic inside AddIn (DUMB-TRANSLATOR law)"
+    classification: doctrine
+    source: "operator doctrine 2026-08-17 (supersedes domain-logic framing)"
+    falsifier: DataTap.AddIn.Tests (map/pair byte pins) + LiveModbusEmulatorTests
+    probe: "dotnet test DataTap.AddIn.Tests (byte-exact CDAB pins) ∧ dotnet test --filter FullyQualifiedName~LiveModbusEmulatorTests"
+    note: "ANY transformation found inside AddIn = defect BY DEFINITION (Э0 kill_criteria)"
+
+  - law: "∀ lan_stream_crio (200..399) float-pair write ⇒ full 4 bytes written: reg[N] = low word BE (bytes C,D), reg[N+1] = high word BE (bytes A,B); ¬∃ word where highByte==0 ∧ lowByte!=0 (INC-06 signature [00 xx 00 yy] BANNED)"
+    classification: wire
+    source: "INC-06 (byte-math root cause, Э6) + bus register map v5"
+    falsifier: BusWriterTests.WriteFloatPair_LanStreamCrio_FullCdab_MarksLanLivenessBlock + BusWriterTests.LanFlag_ZeroOnChannelLoss_DataCellsRetained
+    probe: "dotnet test --filter FullyQualifiedName~WriteFloatPair_LanStreamCrio (pins 15.79f→A3 D7 41 7C @reg200, -12.5f→00 00 C1 48 @reg202)"
+    note: "v5 re-introduces the lan zone (lan_stream_crio) with the full-word write path only; byte-width casts on this path = defect"
+
+  - law: "∀ register ⇒ exactly ONE writer; AddIn surface = header regs 0..3 + com_stream 4..199 + lan_stream_crio 200..399 + raw_com_line 400..599; ace_full reserve 600..10000 = NOBODY in v5 (DEFERRED, user decision 2026-08-17) ⇒ AddIn write ≥ 600 = breach"
+    classification: ownership
+    source: "bus register map v5 (user decree 2026-08-17) + Station.Sdk.Bus.BusLayout v5"
+    falsifier: BusSelfTest (aceFull.600/10000, AddInMaxReg guard) + BusWriteTruthTableTests
+    probe: "BusSelfTest.exe (exit 0 = all ownership pins green) ∧ BusWriteTruthTableTests"
+    note: "v5 has NO POC writer at all — the POC is reader/publisher only; the v4 POC lan/lan_ext zones are GONE, absorbed into the ace_full reserve"
+
+  - law: "D4 liveness ownership (architect decision 2026-08-17): the Lan liveness block (tick@0x13(19), flag@0x1B(27), counter@0x29(41)) governs lan_stream_crio 200..399 — writer = AddIn; com_stream marks the Com block (10/18/37), raw_com_line marks the Raw block (28/36/45); ace_full (deferred) has NO liveness block — the future ace_full writer will claim the former Wits block 49..63 via a layoutVer bump"
+    classification: liveness-ownership
+    source: "user decree v5 (D1/D2 pre-decided; liveness assignment left open ⇒ D4) + Э2 header_liveness_lan"
+    falsifier: BusSelfTest (lan block pins per D4) + LanFullCoverageTests
+    probe: "stand: lan_stream_crio data present while AddIn loaded ⇒ Lan activeFlag=1 mirrors 200..399 over Modbus (A4)"
+    note: "FINAL (D4, resolved 2026-08-17): the AddIn owns the Lan liveness block and marks it per lan_stream_crio batch — tick u64@0x13(19) + flag u8@0x1B(27) + counter u32@0x29(41); the superseded draft 'lan liveness stays POC-owned, AddIn lan writes data-only' is DEAD (under ace_full deferral it would leave lan_stream_crio unmirrored forever)"
+
+  - law: "reg 3 heartbeat: +1/s ALWAYS while AddIn loaded (pipeline-alive) ∧ wrap 32000→0 (D2); DECOUPLED from Streaming state; frozen ⇔ iCem/AddIn dead"
+    classification: liveness
+    source: "user decree v5 2026-08-17 (PARADIGM CHANGE vs v4 reg5 streaming-link)"
+    falsifier: BusLayoutTests.HeaderStateRegisterMapV5_MatchesContract (HeartbeatWrap pin) + stand probe
+    probe: "station-cli header; sample reg3 twice 2 s apart; equal values while iCem alive ⇒ AddIn defect"
+    note: "v4 law 'heartbeat ⇔ Streaming' is FROZEN HISTORY — heartbeat is now pipeline-alive, NOT iCem-recording truth"
+
+  - law: "STALE-HOLD: ∀ channel loss/stop ⇒ AddIn NEVER zeroes body registers — last values persist; heartbeat unaffected by channel state; zone activeFlag flips are header-only hold semantics (A4/A5); v5.1 raw zone: per-FIELD stale-hold (unparseable field ⇒ pair not written; shorter line ⇒ tail pairs retained)"
+    classification: persistence
+    source: "bus register map v5 STALE-HOLD LAW (user decree 2026-08-17) + v5.1 CHANGE 2 (user decree 2026-08-18)"
+    falsifier: BusWriterTests.WriteRawLine_TruncatesAt100Fields_AndShorterLineStaleHoldsTail + DataTapEdgeTruthTableTests.DomainC_RawCsv_TruthRow (C03/C08)
+    probe: "dotnet test --filter FullyQualifiedName~StaleHoldsTail (shorter line leaves prior tail field pairs; no zeroing path exists in writer)"
+    note: "no writer path zeroes a body register on loss — the only zero-writes are fresh-create/expansion of the backing file"
+
+  - law: "reg 1 caseState ∈ RealtimeState passthrough {0..5} ∧ reg 2 caseLanState ∈ ComPortStates passthrough {0,1,2,4,8,16}; ¬∃ invented state values (tap-exposed ONLY; unknown/unavailable = 0)"
+    classification: tap-passthrough
+    source: "v5 rule 'tap-only' + vendor enums RealtimeState.cs / ComPortStates.cs"
+    falsifier: BusLayoutTests.HeaderStateRegisterMapV5_MatchesContract (value pins) + stand observation
+    probe: "station-cli header on stand: reg1 ∈ 0..5 ∧ reg2 ∈ {0,1,2,4,8,16} at all times"
+    note: "any other value on the wire = defect (composite/derived states BANNED — v4's composite ResolveLanStatus 0/2/3 is FROZEN HISTORY)"
+
+  - law: "reg 0 comPortActive = D1 first-valid-wins latch: latch ⇔ ∃ COM device delivering parseable telemetry (non-empty DataStream line ∧ State∈{Streaming,Recording}); lines from non-latched devices discarded; re-arbitration ONLY on stream loss (state ∉ {Streaming,Recording} ∨ silence > 5 s)"
+    classification: arbitration
+    source: "v5 D1 multi-device law (user decree 2026-08-17)"
+    falsifier: ComFeedLatchTests (7 cases) + stand probe
+    probe: "dotnet test --filter FullyQualifiedName~ComFeedLatchTests ∧ two-device stand: reg0 stays on the first feeding device while both stream"
+    note: "raw_com_line receives ONLY the latched device's line (same latch)"
+
+  - law: "∀ AddIn map entry ⇒ address ∈ com_stream 4..199 ∨ lan_stream_crio 200..399; ¬∃ entry ≥ 600 (ace_full reserve); lan map = 96 signals (idx 0..95, ACE superframe per PROTOCOL.md), com map = 34 flecs entries"
+    classification: mapping
+    source: "gen_datatap_map.ps1 (generation-time uniqueness assertion) + variable_registry.json"
+    falsifier: DataTapAddressMapTests.ComMap_StaysInsideComStreamZone + LanMap_StaysInsideLanStreamCrioZone_AndCovers96Signals + NeitherMap_LeaksIntoAceFullZone
+    probe: "dotnet test --filter FullyQualifiedName~DataTapAddressMapTests"
+    note: "overlap names (e.g. Recirc Density in both maps) resolve by SOURCE AFFINITY: EquipmentVariableSource.SourceComPort==17 ⇒ lan map"
+
+  - law: "LAN vendor-alias law (user dispatch 2026-08-18, additive-only n+1): the vendor LAN source exposes ABBREVIATED cRIO display names (live POLLUNIV harvest — specs/FlecsEmu/Э2c 73 names: 'Rcrc Density', 'Mix Wtr Stg Tot', 'Analog In 5', 'Op Track IDNum', …) ⇒ LanMap carries them as GENERATED alias keys (sidecar lan_vendor_aliases.csv → gen_datatap_map.ps1 overlay) mapping to the EXISTING addr=200+idx*2 entries — never a new address, never a moved entry, never a registry change; an alias colliding with any key at a different address = GENERATION-TIME FAILURE (Assert-Unique over registry keys + aliases together); cross-map names are legal (per-map lookup + source affinity; 'Unit Num' com=6 ∧ lan=254); name resolution ≠ value acceptance (idx95 'Cmnt Ops Track' resolves but BadType-skips — UC string); after this extension ALL 96 lan idx are name-resolvable (95 numeric + 1 string-badtype)"
+    classification: mapping
+    source: "LAN audit 2026-08-18 (specs/FlecsEmu/Э2c_lan_zone_classification.csv) + user dispatch LanMap EXTENSION"
+    falsifier: DataTapAddressMapTests.TryGetLanAddress_VendorAliases_ResolveToExistingAddrs (73 rows) + VendorAliases_DoNotLeakAcrossZones + Normalization_RegistryCoverage_AllKeysResolveToOwnAddress (ambiguity-free invariant) + BusSelfTest map.lan.alias.* pins
+    probe: "dotnet test --filter FullyQualifiedName~VendorAliases ∧ BusSelfTest.exe ∧ stand post-deploy: SKIPTOP MISS no longer lists the 73 abbreviated names; lanPairs per tick rises from 23 toward 95 — VERIFIED 2026-08-18 ~14:5x: lanPairs 23→95 live in TapOut.log after the alias deploy"
+    note: "root cause (Э2c): LanMap keys were full LantableNT names; the vendor tap exposes abbreviated display names — pure name-mismatch, addresses were always correct; the generator+sidecar is the source of truth (DataTapAddressMap.cs is GENERATED — never hand-edit)"
+
+  - law: "SINGLE-NAMED-SOURCE law (user decree 2026-08-18, Э0 decisions): ONLY the flecs family has a named com map (ComMap = 34 flecs entries, addr=4+idx*2); ALL other families (plc/unipro/compupac/any template) flow ONLY raw-positionally through raw_com_line 400..599 (float32 CDAB, field i → 400+i*2, ≤100 fields, template-agnostic); a named ComMap entry for a non-flecs family = defect by definition — such an extension requires an EXPLICIT user decree; mapping raw positional values to tags for non-flecs templates = CONSUMER-side responsibility (human maps manually), ¬ code"
+    classification: architecture
+    source: "user decree 2026-08-18 (COM telemetry architecture compromise) + Э0 decisions block"
+    falsifier: "structural: gen_datatap_map.ps1 emits ComMap ONLY from the registry flecs family loop (gen-time) ∧ DataTapAddressMapTests.ComMap_StaysInsideComStreamZone (max addr 70 = exactly 34 flecs entries, no other-family names) ∧ TryGetComAddress_MapsRegistryKeys (flecs-name pins)"
+    probe: "dotnet test --filter FullyQualifiedName~DataTapAddressMapTests ∧ grep: any com map key outside registry flecs family = breach"
+    note: "the universal raw lane is the escape hatch for every template — positional coverage costs zero name maintenance (v5.1 CHANGE 2, Э2 raw_com_line_zone); raw-consumer tag mapping is a HUMAN table, never AddIn code (one mapped source + one universal lane = minimal code surface)"
+
+  - law: "dictionary: NEW bus files created with regCount=10001 (20066 B) per D3 (ace_full reserve 600..10000 physically exists); FINAL shapes = layoutVer 5, regCount ∈ [650..65535], len==64+2N; legacy layouts (layoutVer 2..4) = upgrade sources ONLY — v2 650/1364, v3-small 1650/3364, v3-full/v4-full 8404/16872 ⇒ EXPAND once to 10001/20066 (body preserved byte-exact, tail zeroed, layoutVer=5); layoutVer=5"
+    classification: dictionary
+    source: "user decree 2026-08-17 D3 (reserve up to 10k) + FULL MIGRATION (v4-full = upgrade source, never final)"
+    falsifier: BusWriterTests.Open_CreatesFile_V5Full (regCount=10001/20066 B pins) + BusWriterTests.Upgrade_V4FullFile_ExpandsToV5Full_BodyPreserved_TailZeroed_NoWitsZeroing (v4-full expands, ¬ opens as-is) + BusWriterTests.Upgrade_V3FullFile_ExpandsToV5Full_BodyPreserved (v3-full same path) + BusWriterTests.Open_ArbitraryLegacyShape_IsForeign_DisablesWriter (non-source legacy rejected)
+    probe: "new file from AddIn ⇒ station-cli header shows regCount=10001; v4-full file on stand ⇒ next AddIn open leaves it at 10001/20066"
+    note: "FULL MIGRATION (user decision 2026-08-17): the old rule 'v4 8404/16872 files open as-is (valid legacy shape); AddIn must not reject them' is DEAD — the AddIn must EXPAND them (never bump-only, never reject); expansion runs ONCE under Global\StationBusMutex_v1 while the AddIn is the first/only opener (INC-03 ordered restart)"
+
+  - law: "INC-03 ordered-restart: the expansion runs ONCE under Global\\StationBusMutex_v1 while the AddIn is the FIRST/ONLY opener; the named section capacity is frozen at creation until ALL handles close — a live smaller-capacity section blocks the sized view (Windows ACCESS DENIED) ⇒ the opener fails fast with the typed BusAccessDeniedException.ForSectionCapacity (path + required bytes + ordered-restart runbook) surfaced via BusWriter.LastOpenError ∧ TapLog, writer disabled; after holders close, the retry loop re-opens and attaches the v5-full section"
+    classification: ordered-restart
+    source: "INC-03 (capacity frozen until all handles close) + user decision FULL MIGRATION 2026-08-17 + Э2 ordered_restart_law"
+    falsifier: BusWriterTests.Upgrade_BlockedByStaleSection_FailsFastWithOrderedRestartRunbook + BusSelfTest (blocked.open/blocked.typed/blocked.runbook/blocked.fileUpgraded/blocked.reopenAfterHoldersClosed)
+    probe: "dotnet test --filter FullyQualifiedName~Upgrade_BlockedByStaleSection ∧ BusSelfTest.exe (exit 0)"
+    note: "fail-fast is bounded: the writer never throws to vendor threads — the typed error rides on the DISABLED writer (LastOpenError) and the module logs the full runbook once per open-attempt cycle"
+
+  - law: "single-MMf-funnel (architecture audit 2026-08-18): EVERY bus byte flows through ONE funnel — BusWriteQueue.Post → BusWriter; MemoryMappedFile/FileStream к station_bus.dat referenced ONLY in BusWriter.cs (production); com/lan/raw streams converge BEFORE the funnel as plain data (PollResolution.Outcome), never as competing writers; new stream = new candidates list into the same resolution law, ¬ a new writer class (clone = drift vector)"
+    classification: ownership
+    source: "architecture audit 2026-08-18 (user query: layers/statecharts/GOF) — layer split REJECTED as already-present; formalized as law"
+    falsifier: "structural grep: 'MemoryMappedFile' ∧ 'station_bus' в C:\\iCEM\\DataTap.AddIn\\*.cs ⇒ BusWriter.cs ONLY (BusSelfTest.cs = test harness, TapLog.cs = own log file)"
+    probe: "grep MemoryMappedFile C:\\iCEM\\DataTap.AddIn — any second production hit = funnel breach"
+    note: "vendor-free decision laws live ABOVE the funnel as pure classes (ComFeedLatch/PollResolution/ZoneStaleness — test-seams per poly_criterion); DataTapModule = vendor-facing adapter shell; statechart/GOF ceremony rejected (audit verdict, Э2b evidence: 44 edge rows pinned, 0 defects)"
+
+  - law: "FLECS connector ignores 'String Configuration' (Space Separated) ⇔ separator ',' hardcoded in iCem FLECS parser (IL-verified)"
+    classification: config
+    source: "INC-05 IL evidence"
+    falsifier: "config surface only — no runtime test possible (iCem vendor binary)"
+    probe: "toggle String Configuration in user.config; FLECS parse behavior unchanged"
+    note: "setting applies to Generic connector ONLY"
+
+  - law: "template-change tail-hold (Э2b domain A): a COM template switch (any varCount same/fewer/more) takes effect from the NEXT 1 Hz tick via the STATIC compiled-in DataTapAddressMap — matched names write at addr=4+idx*2 (drift structurally impossible, no runtime map load exists); tail regs beyond the new set RETAIN last values byte-exact (zeroing = defect); unknown new names are skipped at lookup (¬badtype, ¬write); com flag stays 1 while ≥1 pair writes per tick"
+    classification: persistence
+    source: "Э2b_edge_truth_tables.csv rows A01..A24 (truth table, user directive 2026-08-18)"
+    falsifier: DataTapEdgeTruthTableTests.DomainA_TemplateChange_TruthRow (24 rows)
+    probe: "dotnet test --filter FullyQualifiedName~DomainA_TemplateChange_TruthRow"
+    note: "DA finding: there is NO template event/load path — a switch manifests only as a changed name set in the next GatherCandidates snapshot; the poll path is name-based and device-blind (identity axis is a no-op by design; D1 latch gates reg0+raw ONLY)"
+
+  - law: "latch stability under template change (Э2b A27): ComFeedLatch state/port/evidence is invariant across ANY candidate-set change (incl. the empty set) — template change ∉ release conditions; release ⇔ UpdateLatchLossPolicy (port state ∉ {Streaming,Recording} ∨ line silence >5 s)"
+    classification: arbitration
+    source: "Э2b rows A01..A24 (reg0 conjunct) + A27"
+    falsifier: DataTapEdgeTruthTableTests.DomainA_Latch_HasNoTemplateInput + ComFeedLatchTests
+    probe: "dotnet test --filter FullyQualifiedName~DomainA_Latch_HasNoTemplateInput"
+    note: "structural: ComFeedLatch public surface = OnLine/Release/IsSilentBeyond ONLY; no call site from the poll path"
+
+  - law: "LAN flap discipline (Э2b B09/B10/B17..B20): silences shorter than the 5 s idle window NEVER drop the lan flag (no bounce); the flag drops AT MOST once per loss episode (¬active ⇒ no repeated SetZoneActive posts); boundary: silence == 5 s exactly is NOT beyond; every flap burst writes the SAME addr=200+idx*2 with the counter strictly monotonic (header-persisted); data cells never zeroed between bursts"
+    classification: liveness
+    source: "Э2b rows B09..B20 (truth table, user directive 2026-08-18)"
+    falsifier: DataTapEdgeTruthTableTests.DomainB_LanTransitional_TruthRow (B09/B10) + DomainB_IdleThreshold_TruthRow (B17..B20) + ZoneLivenessTests.TransitionTable_Total (6 строк state×event) + ZoneLivenessTests.Drop_HappensExactlyOnce_PerCrossing + Reconnect_ReArms_AfterDrop
+    probe: "dotnet test --filter FullyQualifiedName~DomainB_ ∧ dotnet test --filter FullyQualifiedName~ZoneLivenessTests"
+    note: "idle/liveness = statechart-as-PATTERN: ZoneLiveness FSM (vendor-free, explicit TOTAL transition function; diagram в Э3) — ONE machine, THREE instances (com/lan/raw); decision law ZoneStaleness.ShouldDrop внутри; реплицированные (flag,timestamp) поля и разбросанные if-сайты из DataTapModule изъяты (pure move) — репликация = колыбель багов (fix com, forget lan)"
+
+  - law: "LAN reconnect stability (Э2b B05..B07/B13/B21/B22): writes resume at the SAME addr=200+idx*2 (static map — no shift); the write itself re-raises flag 0→1 (UpdateZoneHeaderLocked — the module NEVER posts SetZoneActive(Lan,true)); the counter continues from the header-persisted value across flaps AND writer process restarts (monotonic, ¬reset); a layoutVer-5 file reopens as-is (no reshape, cells byte-exact); caseLanState (reg2) is a reactive passthrough that NEVER gates the writer (no code path from LANStatus to any write/staleness decision)"
+    classification: persistence
+    source: "Э2b rows B05..B08/B13/B21/B22"
+    falsifier: DataTapEdgeTruthTableTests.DomainB_LanTransitional_TruthRow + DomainB_CaseLanState_NeverGatesWriter + DomainB_Reconnect_CounterMonotonic_AddrStable
+    probe: "dotnet test --filter FullyQualifiedName~DataTapEdgeTruthTableTests"
+    note: "DA finding: no LAN event handler exists (only ComPortPropertyChanged for serial) — link transitions manifest solely through the candidate set; flag=1 ∧ never-received is an UNREACHABLE input (the module's only flag-raiser is a pair write) — Э2b rows B04/B08/B12/B16"
+
+  - law: "com_stream idx0 timestamp (regs 4..5) = UnixTimestampSeconds int32 RAW BITS in the CDAB word order (low word @4 BE, high word @5 BE): int32/uint32 read in the consumer's standard word order MUST yield unix seconds; the float32 read of the pair is garbage BY DECREE — the Modbus consumer owns read formatting; the vendor 'Time & Date' value arrives numeric as .NET UTC ticks ⇒ conversion (ticks−621355968000000000)/10^7 is the ONLY sanctioned non-passthrough (user decree supersedes the dumb-translator default at this ONE address; dispatch row: address==ComTimestampReg ⇒ WriteInt32Pair, else WriteFloatPair); idx1 'Unit Num' STAYS float32 CDAB — small int, float-exact, magnitude defect existed only at idx0 (documented asymmetry, Э2b T03)"
+    classification: wire
+    source: "CHANGE 1 user decree 2026-08-18 (contract v5.1); live defect evidence: regs 4..5 carried float(6.39e17 ticks) — int32 read yielded 1561194447 ≠ unix now"
+    falsifier: DataTapEdgeTruthTableTests.DomainT_Timestamp_TicksToUnixSeconds_BitsPinned (byte pin 49 40 6A 84 = unix 1787054400) + BusWriterTests.WriteInt32Pair_ComStream_RawBits_AndLiveness + BusWriterTests.WriteInt32Pair_ZoneGuards_SilentNoOps
+    probe: "dotnet test --filter FullyQualifiedName~Timestamp_ ∧ stand: read regs 4..5 as uint32 CDAB-order ⇒ value within seconds of current unix time — VERIFIED 2026-08-18 ~14:5x: regs 4..5 live-verified as int32 unix bits (0x6A84xxxx pattern)"
+    note: "any float-write landing at regs 4..5 after v5.1 = defect; the int32 pair writer shares the CDAB word-order wire image and the single-mutex-hold atomicity law with WriteFloatPair (one funnel: WritePairWords)"
+
+  - law: "raw_com_line 400..599 = float32 CDAB POSITIONAL CSV fields (contract v5.1): the last COM line from the latched device (D1) is split on ','; field i (0-based over the RAW line AS-IS — excludeFromTelemetry fields INCLUDED, DA decision 2026-08-18: positional stability beats name filtering, the zone is template-agnostic) parses via double.TryParse(NumberStyles.Float, invariant) and lands at 400+i*2; ≤100 fields (truncate at 99); unparseable field ⇒ pair NOT written (per-field stale-hold); shorter line ⇒ tail pairs stale-held; empty line ⇒ no-op; liveness = line-ARRIVAL evidence (one mark per line even when 0 fields parse); the v5 u16-per-char path is RETIRED (git history only — NO dual-write)"
+    classification: wire
+    source: "CHANGE 2 user decree 2026-08-18 (contract v5.1)"
+    falsifier: DataTapEdgeTruthTableTests.DomainC_RawCsv_TruthRow (C01..C08) + BusWriterTests.WriteRawLine_CsvFields_AsFloatCdab_UpdatesRawLivenessOnce + BusWriterTests.WriteRawLine_TruncatesAt100Fields_AndShorterLineStaleHoldsTail + BusSelfTest raw.fields pin
+    probe: "dotnet test --filter FullyQualifiedName~RawCsv ∧ BusSelfTest.exe (exit 0) ∧ stand: 'get raw' of a numeric line reads float32 CDAB pairs at 400+i*2 — VERIFIED 2026-08-18 ~14:5x: get raw live-verified 100 CDAB positional floats"
+    note: "RIPPLE APPLIED 2026-08-18 (same-day downstream changeset): Station.Sdk BusLayout raw-zone doc, Station.Cli 'get raw' decoder, Station.Transport ModbusContractTests raw pins, specs/dotnet-server Э2/Э4/Э5/Э7 raw rows all flipped to float32 CDAB positional — live-verified on the stand 2026-08-18 ~14:5x (dll 55808 B = v5.1: int32-timestamp regs 4..5 + raw CDAB positional + 73 lan aliases; live gate 3/3 PASS; lanPairs 23→95 in TapOut.log)"

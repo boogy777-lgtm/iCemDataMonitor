@@ -1,0 +1,43 @@
+meta:
+  id: iCemEmule-E0
+  unit: iCemEmulator
+  date: 2026-08-27
+  source_of_truth:
+    - C:/Users/HALLIBURTON/iCemPOC/iCemEmulator/Program.cs
+    - C:/Users/HALLIBURTON/iCemPOC/iCemEmulator/App.xaml.cs
+    - C:/Users/HALLIBURTON/iCemPOC/iCemEmule.Core/Core/EmuEngineHost.cs
+    - C:/Users/HALLIBURTON/iCemPOC/iCemEmule.Core/Control/EmulatorAppContract.cs
+    - C:/Users/HALLIBURTON/iCemPOC/server-dotnet/iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml
+  scope: INDEPENDENT stand emulator APP with built-in WinUI 3 UI + CLI for FLECS serial + ACE LAN telemetry; global units preset; optional +14 firmware SV tables; the engine runs IN-PROCESS inside the app; the control surface is the same EmulatorPage the shell used to embed, now hosted ONLY by this app.
+  consumers: [iCem.exe FLECS CMT v4.53 parser, POC AceSnifferService, transport live gate (emule_config.xml patching + process probing)]
+mission:
+  problem: replace physical CMT v4.53 device + NI cRIO ACE producer on operator/SIT stand
+  goal: emit wire-exact FLECS CSV (COM) and ACE raw 802.3 frames (LAN) at 1 Hz without modifying iCem
+  anti_goal: iCemEmulator must NOT write to MongoDB/RealtimeDB; it owns only COM + LAN outputs
+  lifecycle: "ONE app: iCemEmulator.exe (owner decree 2026-08-27 — REPLACES the headless iCemEmule.exe + iCemEmule.WinUI.exe pair). (1) UI mode: no args ⇒ WinUI 3 window (EmulatorPage) with the engine running IN-PROCESS (EmuEngineHost hosted service — no child spawn, no EmuleSupervisor, no host ControlEngine RPC); window close = app stop. (2) CLI mode: iCemEmulator.exe --cli <command> ⇒ one-shot console command to the RUNNING instance over \\.\pipe\iCemEmule.Control (same JSON grammar/exit codes as the old --ctl); honest «эмулятор не запущен» when no instance runs. (3) --selftest / --landiag <adapter> diag modes. Single-instance mutex Global\iCemEmulator_v1 (UI mode only; --cli never takes it). Deploy folder: C:\Program Files\Halliburton\iCemMonitor\iCemEmulator\ (installer does placement)."
+inputs:
+  - port: COM2 (or com0com pair)
+    protocol: RS-232 9600 8N1 FLECS positional CSV
+    source: SignalWireCodec.FormatLine driven by SimulationEngine template (EmuEngineHost 1 Hz tick)
+  - port: Intel 82574L adapter raw socket
+    protocol: ACE raw 802.3 LLC multicast dst 03:00:01:00:00:20
+    source: AceLanEmitter driven by UnitConvertingPayloadProvider > ManualOverridePayloadProvider > DfbAcePayloadProvider > AcePayloadProvider chain
+  - file: "%ProgramData%/Halliburton/iCem/DataMonitoring/emule_config.xml"   # 2026-08-31 owner decree: moved from %LOCALAPPDATA%/.../iCemEmule/settings.xml (copy-migration, legacy kept); root element <iCemEmule> UNCHANGED
+    owner: EmuSettings
+  - pipe: "\\.\\pipe\\iCemEmule.Control"   # name UNCHANGED
+    owner: ControlPipeServer (JSON-lines; CLI client = iCemEmulator.exe --cli; UI client = EmulatorViewModel via the SHARED ControlPipeClient — ONE seam, in-proc)
+outputs:
+  - COM line: 32 CSV fields for flecs_4.53 (Time & Date + Unit Num excluded via excludeFromTelemetry), 9 for plc_basic, CRLF terminator, 1 line/sec
+  - LAN frame: 152-byte ACE frame; sv u32 @ frame 0x18(24); payload 124 B @ frame 0x1C(28); signal O @ payload[O-4] = frame 0x18+O; 6 sv superframe default, 20 sv with LanFirmwareSvEnabled; 1 superframe/sec (burst pacing 5.25 ms, start 0.938 s)
+kill_criteria:
+  - any signal written at frame offset != 0x18+O (offset law payload_index = ByteOffset-4 violated)
+  - Cmnt Ops Track Descript (UC, O=8, Size=120) not transmittable: (8-4)+120=124 must pass overflow guard
+  - flecs_4.53 line field count != 32
+  - default superframe sv count != 6
+  - timer interval != 1000 ms
+  - any MongoDB.* reference in iCemEmulator/*.cs / iCemEmule.Core/*.cs
+  - second iCemEmulator.exe UI instance is allowed to start (mutex Global\iCemEmulator_v1)
+  - emule_config.xml not loaded before the engine Start() applies it
+  - the app spawning a CHILD engine process (in-proc law: EmuEngineHost hosted in-process) or referencing iCemDataMonitor.Emulator.Core / host RPC
+  - --cli taking the single-instance mutex (CLI must reach the RUNNING instance, never block on the mutex)
+  - control pipe name / settings path / process name drift: \\.\pipe\iCemEmule.Control, %ProgramData%\Halliburton\iCem\DataMonitoring\emule_config.xml, process name iCemEmulator are transport-live-gate pins

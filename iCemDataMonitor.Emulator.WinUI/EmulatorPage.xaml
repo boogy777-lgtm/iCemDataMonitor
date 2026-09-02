@@ -1,0 +1,287 @@
+﻿<UserControl
+    x:Class="iCemDataMonitor.Emulator.WinUI.EmulatorPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- W13: macOS grouped layout (Inside_UI_KIT reference) —
+         caption-above cards, segmented tab control in a track, framed list
+         wells, accent only on the primary commit buttons. All x:Names
+         preserved — code-behind untouched.
+         W13.6: HorizontalAlignment=Stretch (было Left) — StackPanel при Left
+         ширится по ШИРОКОМУ РЕБЁНКУ ⇒ ширина табов зависела от контента
+         вкладки (autopsy: 578 на старте → 747 после заполнения списка).
+         P3 2026-08-27 (owner complaint «во всём WinUI нету скролла»): the
+         page owns its ScrollViewer — scrolls in EVERY host (shell tab grid,
+         iCemEmule.WinUI window). Vertical bar Auto, horizontal disabled;
+         the inner ListViews keep their own MaxHeight scrolling. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalContentAlignment="Stretch"
+                  VerticalAlignment="Stretch">
+        <StackPanel Spacing="16" MaxWidth="{StaticResource MacPageColumnWidth}" HorizontalAlignment="Stretch" Padding="4">
+
+        <!-- ═══ Header ═══ -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="Эмулятор iCemEmulator"
+                       FontSize="{ThemeResource MacFontSize17}" FontWeight="SemiBold"
+                       Foreground="{ThemeResource MacLabelBrush}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Ellipse x:Name="EmuLamp" Width="8" Height="8" VerticalAlignment="Center"
+                         Fill="{ThemeResource MacGreenBrush}"/>
+                <TextBlock x:Name="EmuStatusText" VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeBody}"
+                           Foreground="{ThemeResource MacLabelBrush}"/>
+                <TextBlock x:Name="EmuUptime" VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeCaption}"
+                           Foreground="{ThemeResource MacLabel2Brush}"/>
+                <TextBlock x:Name="EmuPid" VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeCaption}"
+                           Foreground="{ThemeResource MacLabel2Brush}"/>
+                <!-- 2026-08-29 (owner couldn't find the LAN switch — the LAN
+                     tab is Collapsed at startup): one-line LAN truth in the
+                     page header, driven by the same 1 Hz snapshot as every
+                     other status text (RenderSnapshot). ⚠ lines render orange
+                     from code-behind. Texts: «LAN: выкл» /
+                     «LAN: стрим → {адаптер}» / «LAN: ⚠ адаптер не выбран» /
+                     «LAN: ⚠ Npcap не установлен». -->
+                <TextBlock x:Name="LanHeaderStatus" VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeCaption}"
+                           Foreground="{ThemeResource MacLabel2Brush}"/>
+                <!-- 2026-08-27 (owner decree): движок встроен в это приложение —
+                     запускать/останавливать отдельный процесс нечего; окно
+                     закрыли = эмулятор остановлен. -->
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel x:Name="EmuContent" Spacing="12">
+            <!-- ═══ Segmented tabs (kit MacSegmented: track 24/r6/pad2,
+                 equal-width segments stretched to full width — width sync
+                 in code-behind per kit EqualSegmentsPanel doctrine) ═══ -->
+            <Border x:Name="EmuTabsTrack"
+                    Background="{ThemeResource MacSegmentedTrackBrush}"
+                    CornerRadius="6" Padding="2">
+                <SelectorBar x:Name="EmuTabs" Background="Transparent"
+                             HorizontalAlignment="Stretch">
+                    <SelectorBarItem Text="COM" IsSelected="True"/>
+                    <SelectorBarItem Text="LAN"/>
+                    <SelectorBarItem Text="Units"/>
+                </SelectorBar>
+            </Border>
+
+            <!-- P4 2026-08-27: the command note lives DIRECTLY under the tabs —
+                 a refusal is the toggles' only feedback and must be visible
+                 without scrolling (it used to sit at the very bottom of the
+                 page under the Units tab content). ⚠ lines render orange
+                 (MacOrangeBrush) from code-behind; ✓ lines secondary. -->
+            <TextBlock x:Name="CommandNoteText" FontSize="{ThemeResource MacFontSizeCaption}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource MacLabel2Brush}"/>
+
+            <!-- ═══ COM tab ═══ -->
+            <StackPanel x:Name="ComPanel" Spacing="8">
+                <TextBlock Text="ПОТОК COM" Style="{ThemeResource MacCardCaption}"/>
+                <Border Style="{ThemeResource MacCard}">
+                    <StackPanel Spacing="12">
+                        <!-- P4 2026-08-27 (clickability contract): the stream
+                             switches are ALWAYS clickable while the engine
+                             runs (EmuContent visible ⇔ Running=true; otherwise
+                             the launch stub covers the page). NO IsEnabled
+                             gate — not even on port/adapter selection: an
+                             unstartable stream must surface as the actionable
+                             CommandNote above, never as a silently disabled
+                             control. -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ToggleSwitch x:Name="ComStreamSwitch" OffContent="" OnContent=""/>
+                            <TextBlock x:Name="ComStreamText" VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeBody}"
+                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                        </StackPanel>
+                        <!-- W14: flecsEmu "Emule" checkbox → ToggleSwitch. OFF =
+                             freeze: генератор не двигает провод, только ручная запись -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ToggleSwitch x:Name="ComEmulateSwitch" OffContent="" OnContent=""/>
+                            <TextBlock Text="Эмуляция (автогенерация значений)"
+                                       VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeSecondary}"
+                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                        </StackPanel>
+                        <TextBlock x:Name="ComDetailText" FontSize="{ThemeResource MacFontSizeSecondary}"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                        <!-- W14: Grid */Auto — кнопка «Обновить» всегда в границах
+                             карточки, комбобокс занимает остаток (не распирает строку) -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="ComPortCombo" MinWidth="140" VerticalAlignment="Center"
+                                      HorizontalAlignment="Stretch"
+                            PlaceholderText="COM-порт"/>
+                            <Button Grid.Column="1" x:Name="RefreshPortsButton" Content="Обновить порты"/>
+                        </Grid>
+                        <ComboBox x:Name="ProfileCombo" HorizontalAlignment="Left" MinWidth="260"
+                                  PlaceholderText="Профиль (шаблон COM)"/>
+                        <Button x:Name="RefreshVarsButton" Content="Обновить переменные"
+                                HorizontalAlignment="Left"/>
+                        <TextBlock x:Name="VarsNote" FontSize="{ThemeResource MacFontSizeCaption}"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                        <Border Style="{ThemeResource MacListWell}">
+                            <!-- W14: строки кликабельны (kit MacTableViewRow:
+                                 selected = soft accent highlight) — клик грузит
+                                 переменную в редактор ниже -->
+                            <ListView x:Name="ComVarsList" MaxHeight="260" SelectionMode="Single"
+                                      Background="Transparent" BorderThickness="0"
+                                      Padding="{StaticResource MacListScrollInset}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnSpacing="14">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="70"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" FontSize="{StaticResource MacFontSizeSecondary}"
+                                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="{StaticResource MacFontSizeSecondary}"
+                                                       HorizontalTextAlignment="Right" HorizontalAlignment="Right"
+                                                       Foreground="{ThemeResource MacAccentBrush}"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Uom}" FontSize="{StaticResource MacFontSizeCaption}"
+                                                       Foreground="{ThemeResource MacLabel2Brush}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Border>
+                        <TextBlock Text="Переопределения значений"
+                                   FontSize="{ThemeResource MacFontSizeSecondary}" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ComboBox x:Name="ComVarCombo" MinWidth="220" VerticalAlignment="Center"
+                                      PlaceholderText="Переменная"/>
+                            <TextBox x:Name="ComValueBox" Width="110" VerticalAlignment="Center"
+                                     PlaceholderText="Значение"/>
+                            <Button x:Name="ComSetButton" Content="Установить"
+                                    Style="{ThemeResource AccentButtonStyle}"/>
+                            <Button x:Name="ComClearButton" Content="Сброс"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ═══ LAN tab ═══ -->
+            <StackPanel x:Name="LanPanel" Spacing="8" Visibility="Collapsed">
+                <TextBlock Text="ПОТОК LAN (cRIO)" Style="{ThemeResource MacCardCaption}"/>
+                <Border Style="{ThemeResource MacCard}">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ToggleSwitch x:Name="LanStreamSwitch" OffContent="" OnContent=""/>
+                            <TextBlock x:Name="LanStreamText" VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeBody}"
+                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                        </StackPanel>
+                        <!-- W14: flecsEmu "Emule" checkbox → ToggleSwitch -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ToggleSwitch x:Name="LanEmulateSwitch" OffContent="" OnContent=""/>
+                            <TextBlock Text="Эмуляция (автогенерация значений)"
+                                       VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeSecondary}"
+                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                        </StackPanel>
+                        <TextBlock x:Name="LanDetailText" FontSize="{ThemeResource MacFontSizeSecondary}"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                        <!-- W14 fix: длинные имена адаптеров распирали строку и
+                             уводили «Обновить адаптеры» за границу — Grid */Auto -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="LanAdapterCombo" VerticalAlignment="Center"
+                                      HorizontalAlignment="Stretch"
+                                      PlaceholderText="Сетевой адаптер"/>
+                            <Button Grid.Column="1" x:Name="RefreshAdaptersButton" Content="Обновить адаптеры"/>
+                        </Grid>
+                        <!-- 2026-08-29 (Npcap/adapter honesty): a probed-EMPTY
+                             adapter list must SAY why next to the combo
+                             (was: silent empty combo). Collapsed when no hint;
+                             text comes from the VM (LanAdapterHint). -->
+                        <TextBlock x:Name="LanAdapterHintText" FontSize="{ThemeResource MacFontSizeCaption}"
+                                   TextWrapping="Wrap" Visibility="Collapsed"
+                                   Foreground="{ThemeResource MacOrangeBrush}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="Оборудование" VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeSecondary}"
+                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                            <TextBox x:Name="EquipmentBox" Width="130" VerticalAlignment="Center"
+                                     PlaceholderText="0x00A86F46"/>
+                            <Button x:Name="ApplyEquipmentButton" Content="Применить"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ToggleSwitch x:Name="FirmwareSwitch" OffContent="" OnContent=""/>
+                            <TextBlock Text="firmware-таблицы (доп. SV в суперкадре)"
+                                       VerticalAlignment="Center" FontSize="{ThemeResource MacFontSizeSecondary}"
+                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                        </StackPanel>
+                        <Border Style="{ThemeResource MacListWell}">
+                            <ListView x:Name="LanVarsList" MaxHeight="240" SelectionMode="Single"
+                                      Background="Transparent" BorderThickness="0"
+                                      Padding="{StaticResource MacListScrollInset}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnSpacing="14">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="70"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Sv}" FontSize="{StaticResource MacFontSizeCaption}"
+                                                       Foreground="{ThemeResource MacLabel2Brush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="{StaticResource MacFontSizeSecondary}"
+                                                       Foreground="{ThemeResource MacLabelBrush}"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="{StaticResource MacFontSizeSecondary}"
+                                                       HorizontalTextAlignment="Right" HorizontalAlignment="Right"
+                                                       Foreground="{ThemeResource MacAccentBrush}"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding Uom}" FontSize="{StaticResource MacFontSizeCaption}"
+                                                       Foreground="{ThemeResource MacLabel2Brush}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Border>
+                        <TextBlock Text="Переопределения сигналов (живые значения, не шапка)"
+                                   FontSize="{ThemeResource MacFontSizeSecondary}" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ComboBox x:Name="LanVarCombo" MinWidth="300" VerticalAlignment="Center"
+                                      PlaceholderText="Сигнал (SV)"/>
+                            <TextBox x:Name="LanValueBox" Width="110" VerticalAlignment="Center"
+                                     PlaceholderText="Значение"/>
+                            <Button x:Name="LanSetButton" Content="Установить"
+                                    Style="{ThemeResource AccentButtonStyle}"/>
+                            <Button x:Name="LanClearButton" Content="Сброс"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ◆◆◆ Units tab ◆◆◆ -->
+            <StackPanel x:Name="UnitsPanel" Spacing="8" Visibility="Collapsed">
+                <TextBlock Text="Единицы измерения" Style="{ThemeResource MacCardCaption}"/>
+                <Border Style="{ThemeResource MacCard}">
+                    <StackPanel Spacing="12">
+                        <TextBlock x:Name="UnitsPresetText" FontSize="{ThemeResource MacFontSizeBody}"
+                                   Foreground="{ThemeResource MacLabelBrush}"/>
+                        <ComboBox x:Name="PresetCombo" HorizontalAlignment="Left" MinWidth="280"
+                                  PlaceholderText="Пресет единиц"/>
+                        <TextBlock x:Name="UnitsOverridesText" FontSize="{ThemeResource MacFontSizeSecondary}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                        <TextBlock Text="Переопределение по группе (пусто = следовать пресету)"
+                                   FontSize="{ThemeResource MacFontSizeSecondary}" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource MacLabel2Brush}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ComboBox x:Name="UnitGroupCombo" MinWidth="170" VerticalAlignment="Center"
+                                      PlaceholderText="Группа"/>
+                            <TextBox x:Name="UnitValueBox" Width="130" VerticalAlignment="Center"
+                                     PlaceholderText="единица (gpm, bar…)"/>
+                            <Button x:Name="UnitApplyButton" Content="Применить"
+                                    Style="{ThemeResource AccentButtonStyle}"/>
+                            <Button x:Name="UnitClearButton" Content="Сбросить"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

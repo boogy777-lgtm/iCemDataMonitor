@@ -1,0 +1,22 @@
+key,default,scope,effect,restart_required
+LanEnabled,false,LAN stream enable guard,triggers AceLanEmitter.Open in AutoStartStreams; read every tick,yes (loaded once at startup; UI toggle does not require restart)
+LanAdapter,empty string,LAN adapter selection,substring match against CaptureDeviceList description/name; passed to AceLanEmitter.Open,yes
+LanEquipment,0x00A86F46,LAN equipment number,written to ACE frame offset 0x14(20) as uint32 BE; read every tick,no
+LanEmuleEnabled,true,LAN emulation gate (W14),ON = автогенерация payload (DFB live); OFF = freeze: последний superframe + живые ручные override/units декораторы; read at startup, saved on setemulate lan,no
+LanFirmwareSvEnabled,false,LAN superframe composition,adds 14 firmware SV (20 total) via AcePayloadProvider.IncludeFirmwareTables; read every tick,no
+UnitPreset,1,global units preset,1=LanNative (identity, matches real cRIO wire); 0=FirmwareDefault; 2=Metric; 3=Imperial; applied to COM values and LAN payload decorator every tick,no
+UnitFlowOverride,empty string,per-group unit override,"replaces preset unit for Flow group (bbl/min/gpm/gal/min/m³/min); empty=follow preset; applied to COM+LAN every tick",no
+UnitTemperatureOverride,empty string,per-group unit override,"replaces preset unit for Temperature group (°F/°C); empty=follow preset",no
+UnitDensityOverride,empty string,per-group unit override,"replaces preset unit for Density group (ppg/lb/gal/g/cc/kg/m³); empty=follow preset",no
+UnitVolumeOverride,empty string,per-group unit override,"replaces preset unit for Volume group (bbl/gal/m³); empty=follow preset",no
+UnitLevelOverride,empty string,per-group unit override,"replaces preset unit for Level group (ft/m); empty=follow preset",no
+UnitPressureOverride,empty string,per-group unit override,"replaces preset unit for Pressure group (psi/bar/kPa); empty=follow preset",no
+ComEnabled,false,COM stream enable guard,triggers ComSerialEmitter.Open in AutoStartStreams; read every tick,yes
+ComEmuleEnabled,true,COM emulation gate (W14),ON = waveform-генерация; OFF = freeze: последние значения + актуальные ручные override'ы; read at startup, saved on setemulate com,no
+ComPort,empty string,COM port selection,passed to ComSerialEmitter.Open; read every tick,yes
+ComDeviceType,empty string,Template catalog filter,selects deviceType for ComTab template dropdown; read at template load,no
+ComTemplateName,empty string,Selected template,passed to SimulationEngine.SetTemplate at swap; read every tick,no
+WindowX,-1,Window placement (legacy),headless-unused field (W11.4); -1 means not saved,no
+WindowY,-1,Window placement (legacy),headless-unused field (W11.4); -1 means not saved,no
+WindowWidth,0,Window placement (legacy),headless-unused field (W11.4),no
+WindowHeight,0,Window placement (legacy),headless-unused field (W11.4),no

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>iCemDataMonitor.Data</RootNamespace>
+    <AssemblyName>iCemDataMonitor.Data</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\iCemDataMonitor.Contracts\iCemDataMonitor.Contracts.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Sdk\iCemDataMonitor.Sdk.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Plugins.Icem\iCemDataMonitor.Plugins.Icem.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 2026-09-01 (owner decree «Блок 2 п.5/6»): Microsoft.* on the 10.0.0 train. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="iCemDataMonitor.Data.Tests" />
+  </ItemGroup>
+
+</Project>

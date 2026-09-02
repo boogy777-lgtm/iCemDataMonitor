@@ -1,0 +1,390 @@
+﻿# iCemDataMonitor.Sdk Contract: Shared-Memory Bus (TZ_ARCH_V2.yaml — handoff spec of record)
+# replaces: v1 pipe/TCP DataTap JSONL + SQLite ×4 + 14000-reg Modbus map (REMOVAL = wave-2; v1 artifacts archived → specs\archive\v1\)
+# status: Verified | layer: iCemDataMonitor.Sdk (governed by insite-sdk eidos) | owner: insite-data (storage/bus) + insite-sdk (Sdk constants)
+# verified against code: 2026-08-21 — iCemDataMonitor.Sdk\Bus\BusLayout.cs (v5: LayoutVersion=5, RegCount=10001, TotalFileBytes=20066,
+#   HeaderRegCount=4), iCemDataMonitor.Data\Bus\BusReader.cs / BusMapping.cs / BusZoneWriter.cs / LanBusSink.cs (V6: LIVE cRIO-window
+#   writer, owner directive 2026-08-25),
+#   iCemDataMonitor.Transport\ModbusTcpPublisher.cs (mirrors words 0..3, v5 zone consts). Live file check 2026-08-21: magic OK,
+#   10001 regs, com/lan/raw active flags True; data frozen since 18.08 (producer AddIn not running) — NOT a storage defect.
+# rule_n_plus_1: C_{n+1} = Bus v6 (iCemDataMonitor.Sdk.Bus); System_{1..n} = v5 layout untouched in place — ace_full 600..10000 is a
+#   RESERVED/DEFERRED range inside the v5 geometry (no body shift; future writer = schema delta + layoutVer bump)
+# order law: Structure ≺ Contract ≺ Logic — this file + BusLayout.cs pin the layout BEFORE any layer code
+# producer duality: net48 AddIn (Burservis.iCem.DataMonitor.dll inside iCem.exe) re-declares matching constants
+#   (C# 7.3 copy, see BusLayout.cs header comment) — values are the wire contract
+# single-writer law (v5, amended by delta 1.6.1): com_stream + raw_com_line + header state regs 0..3 = AddIn (net48) —
+#   SINGLE writer. lan_stream_crio = DUAL writer (1.6.1, owner directive 2026-08-25): AddIn writes the cRIO stream +
+#   stale-hold rewrites; POC LanBusSink V6 writes DECODED cRIO-window signals per ACE frame + marks the zone liveness
+#   block per frame batch. ace_full 600..10000 = RESERVED/DEFERRED (nobody writes in v5).
+#   (BusZoneWriter/LanBusSink machinery is LIVE for the cRIO window; it is the future ace_full writer's foundation).
+#   Readers never write.
+# schema delta 1.6.1 (owner directive 2026-08-25 — LanBusSink V6): POC becomes the SECOND writer of lan_stream_crio
+#   200..399 (decoded cRIO-mapped signals, liveness marked per frame batch); com_stream/raw_com_line/header remain
+#   AddIn-single; ace_full still RESERVED (nobody writes); lan_ext (registry index ≥96 → 650+) still skipped — schema
+#   delta, ¬ flag flip. [current]
+# schema delta 1.1.0 (operator directive): 5 WITS channels leave com_main → NEW wits zone 600..649 (+50 regs). [history]
+# schema delta 1.2.0 (operator directive): WITS REMOVED — zone 600..649 → RESERVED. [history]
+# schema delta 1.3.0 (operator directive — FULL ACE dictionary): lan_ext → 650..8403; dynamic-regCount validation law. [history]
+# schema delta 1.4.0 (operator directive): HEADER STATE REGISTERS REDESIGNED — body words 0..15 CURRENT-state-only. [history]
+# schema delta 1.5.0 (user decree 2026-08-17 — bus register map v5): header state block = body regs 0..3 ONLY
+#   {comPortActive, caseState, caseLanState, heartbeat}; HeaderRegCount 16→4; zones com_stream 4..199 / lan_stream_crio
+#   200..399 / raw_com_line 400..599 (ALL AddIn-owned); ace_full 600..10000 = RESERVED/DEFERRED; default dictionary 8404→10001
+#   (D3); Lan liveness block governs lan_stream_crio (D4); heartbeat paradigm change (always-tick, wrap 32000, NOT
+#   Streaming-gated — pipeline-alive signal, D2); comPortActive first-valid-wins latch (D1); STALE-HOLD LAW (no zero-on-stop).
+#   layoutVer 4→5. Colloquially the deployed map is "v5.1": raw_com_line = float32 CDAB positional fields of the last CSV
+#   line (the u16-per-char encoding retired).
+# schema delta 1.6.0 (user decision 2026-08-17 — FULL MIGRATION): the v4-full shape 8404/16872 is NO LONGER a final shape —
+#   it is an UPGRADE SOURCE expanded IN PLACE to 10001/20066 (layoutVer=5, body 64..16871 preserved byte-exact, tail zeroed).
+#   v3-full migrates the same way; v2 650/1364 and v3-small 1650/3364 already target 10001. Every layoutVer-5 file on disk is
+#   exactly 10001/20066. INC-03 ordered-restart law: section capacity is frozen until ALL handles close.
+# debt_4 (2026-08-14): v1 DEAD consts ∧ WitsSlots table REMOVED from BusLayout (Sdk); v1 spec artifacts → specs\archive\v1\.
+
+CONTRACT_BusV2:
+  status: Verified
+  version: "1.6.1 (layout v5, deployed map v5.1; delta 1.6.1 = LanBusSink V6 dual-writer amendment, owner directive 2026-08-25)"
+  layer: iCemDataMonitor.Sdk
+  namespace: iCemDataMonitor.Sdk.Bus
+  files:
+    - "iCemDataMonitor.Sdk\\Bus\\BusLayout.cs"
+    - "iCemDataMonitor.Sdk\\Bus\\RegisterMapV2.cs"
+    - "iCemDataMonitor.Sdk\\Bus\\IniSchema.cs"
+  source_spec: "C:\\iCEM\\TZ_ARCH_V2.yaml (axioms A1-A5, §3 register map, §4 bus contract, §6 ini contract)"
+  context: |
+    iCem.exe = source of truth (A1). The DataMonitor AddIn (Burservis.iCem.DataMonitor.dll, net48)
+    mirrors header state regs 0..3 + com_stream + lan_stream_crio + raw_com_line DIRECTLY into a
+    persisted file-backed MMF. POC processes are pure readers/publishers of layers (A2) — POC
+    restart loses nothing (A3); the POC's ONLY bus writer in v5 is LanBusSink V6 (lan_stream_crio
+    200..399 cRIO window, directive 2026-08-25) — it writes NOTHING else. Bus body is a byte-exact
+    Modbus-wire copy ⇒ Modbus layer = memcpy; OPC/Web layers decode pairs. Readers:
+    ModbusTcpPublisher, Kestrel web endpoints (via BusRingService/BusAddrRingService → in-memory
+    RingHistory 600 s — no persistent web-ring history), iCemDataMonitor.Cli, BusHealthMonitor.
+
+# ═══════════════════════════════════════════════════
+# §1. Bus identity and backing
+# ═══════════════════════════════════════════════════
+Identity:
+  mapping_name: "'Global\\iCemDataMonitorBus_v1' (BusLayout.GlobalBusName — deployed AddIn writes the Global\\ namespace; the session-local 'iCemDataMonitorBus_v1' variant, BusLayout.BusName, is documented only, risk R3 retired)"
+  mutex_name: "iCemDataMonitorBusMutex_v1 (BusLayout.MutexName); opened as 'Global\\iCemDataMonitorBusMutex_v1' (BusReader.DefaultMutexName)"
+  backing: "PERSISTED file mapping: C:\\ProgramData\\Halliburton\\iCem\\DataMonitoring\\Data.dat"
+  file_size: "RUNTIME DATA: 64 + regCount × 2 B — current-default dictionary 20066 B (10001 regs, D3). Valid FINAL shapes: layoutVer=5 ∧ regCount ∈ [650..65535] with matching length (§8.1); legacy shapes layoutVer<5 are upgrade sources, never final"
+  magic: "'STNB' (file bytes 53 54 4E 42; LE u32 = 0x424E5453)"
+  version: "1 (frozen — bus protocol version, NOT the layout version)"
+  layout_version: "5 (v1.5.0/v1.6.0: bus register map v5 — header state block 0..3 {comPortActive, caseState, caseLanState, heartbeat}, HeaderRegCount 16→4; zones com_stream 4..199 / lan_stream_crio 200..399 / raw_com_line 400..599; ace_full 600..10000 RESERVED/DEFERRED; FULL MIGRATION — every legacy shape expands to 10001/20066). Colloquially 'v5.1' = the deployed v5 map with raw_com_line as float32 CDAB positional fields (u16-per-char retired). Dictionary GROWTH alone (regCount change, same header schema) does NOT bump this — growth = ini-only (§8.1). Bump ONLY on header schema change."
+
+# ═══════════════════════════════════════════════════
+# §2. File layout — header (64 B, byte-exact)
+# ═══════════════════════════════════════════════════
+HeaderLayout:
+  endianness: "header multi-byte fields LITTLE-endian (both sides Windows .NET); body word bytes BIG-endian (§4)"
+  fields:
+    - name: magic
+      offset: "0..3"
+      type: "4 ASCII bytes"
+      semantics: "'STNB' — mapping prefix check"
+    - name: version
+      offset: "4..5"
+      type: u16
+      semantics: "bus protocol version = 1"
+    - name: layoutVer
+      offset: "6..7"
+      type: u16
+      semantics: "header layout version = 5 (v5 = bus register map v5 — header state block 0..3 CURRENT-state-only, HeaderRegCount 4; v4 = 16-reg state block, frozen history; v3 = lan_ext appended, wits removed → reserved); dictionary growth does NOT bump this — bump on ANY header FIELD change only (§8)"
+    - name: regCount
+      offset: "8..9"
+      type: u16
+      semantics: "total holding registers — RUNTIME DATA, header self-description. Current-default dictionary = 10001 (HR 0..10000). Valid FINAL ∈ [650..65535] with fileLength == 64 + regCount × 2 ∧ layoutVer==5 (§8.1 shape law v5)"
+    - name: com_lastWriteTick
+      offset: "10..17"
+      type: u64
+      semantics: "DateTime.UtcNow.Ticks at last com_stream write by AddIn (UTC ticks — age computable across reboot, ¬ TickCount64)"
+    - name: com_activeFlag
+      offset: "18"
+      type: u8
+      semantics: "1 = COM source active ⇒ zone rewritten each second; 0 = hold (A4/A5)"
+    - name: lan_lastWriteTick
+      offset: "19..26"
+      type: u64
+      semantics: "DateTime.UtcNow.Ticks at last lan_stream_crio write (D4: the Lan liveness block governs lan_stream_crio — writers = AddIn cRIO stream ∧ POC LanBusSink V6 decoded signals, delta 1.6.1)"
+    - name: lan_activeFlag
+      offset: "27"
+      type: u8
+      semantics: "1 = lan_stream_crio source active (D4)"
+    - name: raw_lastWriteTick
+      offset: "28..35"
+      type: u64
+      semantics: "DateTime.UtcNow.Ticks at last raw_com_line write by AddIn"
+    - name: raw_activeFlag
+      offset: "36"
+      type: u8
+      semantics: "1 = raw_com_line preview active"
+    - name: com_writeCount
+      offset: "37..40"
+      type: u32
+      semantics: "producer counter (W1-pinned): wrapping count of float-pair writes by the zone's writer; diagnostic only — readers MUST NOT rely on exactness"
+    - name: lan_writeCount
+      offset: "41..44"
+      type: u32
+      semantics: "producer counter, lan_stream_crio zone (AddIn)"
+    - name: raw_writeCount
+      offset: "45..48"
+      type: u32
+      semantics: "producer counter, raw_com_line zone"
+    - name: reserved_zero_block
+      offset: "49..63"
+      type: "15 zero bytes"
+      semantics: "former wits header block (49..61) + reserved tail (62..63) — MUST remain zero; the future ace_full writer claims this block ⇒ layoutVer bump at that time (D4)"
+  zone_block_order: "ComMain(0), Lan(1), RawReserve(2) strided at 10/19/28 (9 B each); Wits block reserved-zero. ZoneKind order is APPEND-ONLY: LanExt=4 has NO dedicated header block (v4 compile-compat alias of the Lan block)"
+  zone_order_axiom: "per-zone header block index ≡ ZoneKind value — positional binding, never name binding; offsets 0..48 are v1-stable"
+  shared_liveness_law: |
+    v5 (D4): the Lan liveness block (tick@19..26, flag@27, counter@41..44) governs
+    lan_stream_crio — writers = AddIn (cRIO stream) ∧ POC LanBusSink V6 (decoded cRIO-window
+    signals; delta 1.6.1, owner directive 2026-08-25). ZoneKind.LanExt
+    aliases the Lan block in ZoneLastWriteTickOffset/ZoneActiveFlagOffset/ZoneWriteCountOffset
+    for v4 compile-compat until the Plugins/Transport agents rewire. ZoneKind.Wits maps to the
+    former wits offsets (49/57/58) — reserved-zero, reads as never-written. ¬ adding a 4th
+    per-zone header block: it would push the counters and renumber header offsets (forbidden —
+    §9 additive_only; offsets 0..48 are v1-stable).
+
+# ═══════════════════════════════════════════════════
+# §3. File layout — body and zone map v5
+# ═══════════════════════════════════════════════════
+BodyLayout:
+  offset: "64..(64 + regCount × 2 − 1) — RUNTIME DATA; current-default dictionary 64..20065 (10001 regs)"
+  content: "regCount × u16 words = byte-exact copy of Modbus-TCP wire register payload (FC03 response body)"
+  memcpy_law: "Modbus layer copies body words verbatim to the wire — zero re-encode; OPC/Web layers decode CDAB pairs"
+  ModbusTick:
+    doctrine: "PLC-STYLE (operator directive 2026-08-14): the Modbus refresh interval is EXTERNAL config — iCemDataMonitor.ini key modbus_tick_ms, valid range 200..500 ms, default 500. Plain overwrite every cycle; delta-based change detection is BANNED (complicates verification)."
+    key: "modbus_tick_ms (int, [station] section, 200..500, default 500 — fail-fast outside range)"
+    semantics: "active zones overwritten every cycle; inactive zones hold external writes (A4/A5); active-zone external write survives ≤ one tick"
+
+ZoneMapV5:
+  com_stream:
+    range: "HR 4..199 (196 regs = 98 float32 CDAB)"
+    float_capacity: 98
+    source: "AddIn: full stream VariableProviderFactory — POLL-ONLY"
+    writer: "AddIn (net48) — SINGLE writer"
+    mapping: "registry v2: tapName → canonical → address = 4 + index × 2"
+    overflow: "registry entries beyond 98 ⇒ truncate in registry order + warn per entry (¬ exception); see RegisterMapV2.cs"
+    note: "v5: NO overlap with the header state block (0..3) — the v4 4..15 overlap/skip rule is GONE; first usable com pair = reg 4"
+  lan_stream_crio:
+    range: "HR 200..399 (200 regs = 100 float32 CDAB)"
+    float_capacity: 100
+    source: "AddIn (cRIO per Wireshark/PROTOCOL.md curated view), independent of recording; POC LanBusSink V6 decodes ACE frames and writes registry-mapped cRIO-window signals (delta 1.6.1)"
+    writer: "DUAL (1.6.1): AddIn (net48) cRIO stream + POC LanBusSink V6 decoded cRIO signals — writes serialized by the shared per-float-pair mutex (§5); both carry the same cRIO dataset (POC decoded, AddIn raw/stale-hold)"
+    mapping: "registry v2: Lan/* → address = 200 + index × 2"
+    overflow: "truncate + warn (same rule as com_stream)"
+    liveness: "Lan header block (tick@19..26, flag@27, counter@41..44) — D4; marked by AddIn ∧ POC per frame batch"
+  raw_com_line:
+    range: "HR 400..599 (200 regs = 100 float32 CDAB positional fields)"
+    float_capacity: 100
+    source: "AddIn raw COM preview: last CSV line, positional fields"
+    writer: "AddIn (net48) — SINGLE writer"
+    parse: "v5.1: float32 CDAB positional — field i → 400 + i×2, up to 100 fields (the u16-per-char encoding RETIRED); non-numeric tokens skipped; overflow truncated"
+    naming: "no canonical names — positional only; OPC projection uses 'R%addr%' placeholders"
+  ace_full:
+    range: "HR 600..10000 (9401 regs) — RESERVED/DEFERRED (layout v5, user decree 2026-08-17)"
+    float_capacity: "— (no writer, no v5 reader decodes this zone)"
+    status: "RESERVED/DEFERRED — the exhaustive ACE dump layout is designed LATER from measured ACE composition (documentation-only future work). NOBODY writes 600..10000 in v5; the former wits zone (600..649, RESERVED-DEAD since v3) and the former lan_ext zone (650..8403) are ABSORBED into this reserve. External A5 Modbus FC06/FC16 writes persist there (unread)."
+    writer: "NONE — reserved/deferred"
+    mapping: "NONE — registry MUST NOT map entries into 600..10000; the Sdk carries NO slot table for it"
+    frozen_history: "former v2 wits pinned slots — addresses live ONLY in this spec: Pump Pressure 600, Flow Rate In 602, Fluid Density In 604, Water Rate 606, Total Volume Pumped 608; 610..649 was reserved zeros"
+
+HeaderStateRegisters:
+  location: "body words 0..3 (file offsets 64..71), int16 each, big-endian bytes on the wire (body word law); HeaderRegCount = 4 — the Modbus publisher mirrors words 0..3 (auto-follows the const)"
+  state_law: "CURRENT STATE ONLY — every register in 0..3 carries the state observed at the last writer tick; NO timeout/threshold-derived values anywhere (the deleted 30 s starvation logic is BANNED). STALE-HOLD LAW: NO writer ever zeroes these (or any) registers on channel loss/stop — last values persist; heartbeat keeps ticking."
+  ownership_law: "single-writer-per-register (lan_stream_crio = DUAL writer since delta 1.6.1: AddIn ∧ POC LanBusSink V6 — same cRIO dataset, writes serialized by the named mutex per float-pair); the AddIn owns ALL 4 LIVE header regs {0,1,2,3}; the POC writes NOTHING in the header (its ONLY writer is LanBusSink V6 in lan_stream_crio 200..399); every register write goes through the named mutex (per-field write law §5)."
+  table:
+    - reg: 0
+      name: RegComPort
+      semantics: "comPortActive u16: N of COMN currently feeding; 0=none. D1 multi-device law: first-valid-wins latch — the dll locks onto the FIRST COM device delivering parseable telemetry; others discarded; re-arbitrate only on stream loss."
+      writer: "AddIn"
+    - reg: 1
+      name: RegCaseState
+      semantics: "iCem case state; ONLY values actually exposed by the iCem tap API; invented states forbidden; unknown/unavailable = 0; enum filled by the dll author."
+      writer: "AddIn"
+    - reg: 2
+      name: RegCaseLanState
+      semantics: "LAN/cRIO state; same rule: tap-exposed only; unknown = 0."
+      writer: "AddIn"
+    - reg: 3
+      name: RegHeartbeat
+      semantics: "heartbeat u16 — PARADIGM CHANGE (v5): +1/s ALWAYS while the AddIn is loaded (iCem running) = pipeline-alive signal (iCem up ∧ POC reading ∧ Modbus publishing); NO LONGER tied to Streaming state; MOVED from v4 reg 5. D2: wraps 32000→0 (HeartbeatWrap). Frozen ⇔ iCem/AddIn dead (NOT ⇔ ¬Streaming)."
+      writer: "AddIn"
+  frozen_history: |
+    v4 (schema delta 1.4.0): 16-reg block {0,1,2,5,8,9,10 live} — RegComPort=0, RegComState=1,
+    RegRawFeedState=2, RegHeartbeat=5, RegLanStatus=8, RegLanConnected=9, RegLanRecording=10;
+    regs 3,4,6,7,11,12..15 reserved-zero. REPLACED wholesale by v5: reg 1 is now caseState,
+    reg 2 caseLanState, reg 3 heartbeat, and regs 4..15 are com_stream float pairs again.
+    FROZEN v4 consts (RegComState/ComState*/RawFeed*/LanStatus*...) remain in BusLayout for
+    compile-compat only — DO NOT use in new code.
+
+# ═══════════════════════════════════════════════════
+# §4. Word order and CDAB encoding (pinned)
+# ═══════════════════════════════════════════════════
+WordOrder:
+  axiom: "float32 = IEEE-754 CDAB: low word (bytes C,D) in reg[N]; high word (bytes A,B) in reg[N+1]; big-endian bytes INSIDE each register word"
+  producer_pin: "verified against iCemDataMonitor.Transport\\ModbusTcpPublisher.cs: reg[N] = bits & 0xFFFF, reg[N+1] = bits >> 16 (BitConverter.SingleToUInt32Bits)"
+  body_byte_order: "each u16 word big-endian in the file (network order) ⇒ Modbus layer memcpy; header fields little-endian (§2)"
+  pins:
+    - float: 1.0f
+      bits: 0x3F800000
+      registers: "[0x0000, 0x3F80]"
+    - float: 15.79f
+      bits: 0x417CA3D7
+      registers: "[0xA3D7, 0x417C]"
+  codec: "iCemDataMonitor.Sdk.Bus.CdabCodec — Split/Combine, zero-allocation; net48 re-declaration documented in BusLayout.cs"
+
+# ═══════════════════════════════════════════════════
+# §5. Atomicity model
+# ═══════════════════════════════════════════════════
+Atomicity:
+  mutex: "named Mutex 'iCemDataMonitorBusMutex_v1' (same session as mapping; Global\\-variant if sessions diverge)"
+  writer_law: "writers acquire the mutex per FLOAT-PAIR (2-word write: reg[N], reg[N+1]) — and per STATE REGISTER (single-word writes into 0..3, per-field under the mutex; single-writer-per-register law §3)"
+  reader_law: "readers acquire the mutex ONCE and copy the FULL body (64 + regCount × 2 − 64 = regCount × 2 B snapshot, sized from the header) — torn float pairs are impossible by construction"
+  single_writer_per_zone: "no zone has two writers EXCEPT lan_stream_crio (delta 1.6.1: AddIn cRIO stream ∧ POC LanBusSink V6 decoded signals — the shared per-float-pair mutex §5 serializes their writes; last-writer-wins is acceptable: both carry the same cRIO dataset, one raw one decoded). com_stream + raw_com_line + header state regs 0..3 = AddIn single writer; the POC writes nothing else (ace_full reserved/deferred). Counters/flags are the only cross-zone shared fields (written by their sole owners)."
+  lock_scope: "snapshot copy happens UNDER the mutex; decode/emit happens OUTSIDE it (O(1) lock hold)"
+
+# ═══════════════════════════════════════════════════
+# §6. Persistence and stale-hold semantics
+# ═══════════════════════════════════════════════════
+Persistence:
+  backing: "persisted file mapping (64 + regCount × 2 B — current default 20066 B; dirty pages negligible I/O)"
+  stale_hold: "STALE-HOLD LAW (v5 global invariant): NO writer ever zeroes registers on channel loss/stop — last values persist in cells; disabling a channel freezes its zone; heartbeat keeps ticking. Last state survives crash/reboot (AC4): readers map and read stale values until a source reactivates."
+  active_zone_law: "activeFlag=1 ⇒ zone rewritten by its writer every second (A4); Modbus layer copies only active zones"
+  inactive_zone_law: "activeFlag=0 ⇒ zone NOT touched by anyone; external Modbus FC06/FC16 writes persist (A5) — this is spec'd edge-case logic, ¬ a bug; the reserved ace_full range 600..10000 is PERMANENTLY in this state (no writer exists in v5)"
+  race_verdict: "external write vs writer tick in an ACTIVE zone ⇒ bus (source of truth) wins; external write lives ≤ 1 s (operator-approved engineering decision, AC5)"
+  heartbeat_independence: "reg 3 (RegHeartbeat, moved from v4 reg 5) ticks +1/s ALWAYS while the AddIn is loaded — bus liveness provable with POC dead (AC3); frozen ⇔ iCem dead, ¬ ¬Streaming"
+
+# ═══════════════════════════════════════════════════
+# §7. iCemDataMonitor.ini contract (schema + validation; parsing = W5)
+# ═══════════════════════════════════════════════════
+IniContract:
+  location: "next to iCemDataMonitor.Tray exe; absent ⇒ create with defaults at startup (W5)"
+  read_semantics: "read ONCE at startup; change ⇒ restart (hot-reload FORBIDDEN — operator requirement)"
+  validation_semantics: "invalid values ⇒ fail-fast with clear log error; ¬ silent default (validator = IniOptions.Validate, iCemDataMonitor.Sdk.Bus)"
+  defaults:
+    modbus_on: 1          # owner decree 2026-08-31: modbus ON by default
+    web_on: 1             # owner decree 2026-08-28: web ON by default (optional key — absent ⇒ 1)
+    opcda_on: 0
+    lansniffer_on: 0      # 1.6.1: default 0 (opt-in); when 1 — POC LanBusSink V6 writes DECODED cRIO-window signals into lan_stream_crio 200..399 + marks zone liveness per frame batch (owner directive 2026-08-25). Stand station.ini = 1 (V6 live).
+    emule_on: 0           # iCemEmule child process, STARTUP-ONLY (optional key — absent ⇒ 0)
+    com_port: RETIRED     # 2026-08-31 owner decree: dead key REMOVED from the schema — accepted-and-ignored, never emitted (the AddIn never reads the ini; bus reg 0 is written by the AddIn itself)
+    modbus_port: 502
+    web_port: 8090
+    modbus_tick_ms: 500   # PLC cadence [200..500]
+    mmf_name: "Global\\iCemDataMonitorBus_v1"
+    mmf_path: "C:\\ProgramData\\Halliburton\\iCem\\DataMonitoring\\Data.dat"
+    zones: "wits_base=600, wits_len=0, lan_ext_base=650, lan_ext_len=0, total=10001 (2026-08-31: com/lan/raw base+len REMOVED — dead keys, accepted-and-ignored; runtime geometry = compile-time BusLayout.*BaseReg)"
+    ui_set_as_default: 1  # optional key — absent ⇒ 1
+  zone_note: "v5 map: com_stream 4..199, lan_stream_crio 200..399, raw_com_line 400..599 — COMPILE-TIME (BusLayout constants; 2026-08-31: the ini keys were dead and removed). The v4 keys wits/lan_ext are RETAINED inert by design, default len=0 (zone off — both ranges absorbed into the ace_full reserve 600..10000, which has NO ini key: schema-only, nobody writes)."
+  validation_rules:
+    - "flags ∈ {0,1}"
+    - "modbus_port ∧ web_port ∈ 1..65535; modbus_tick_ms ∈ [200..500] (2026-08-31: com_port range rule removed with the dead key)"
+    - "zone base ≥ ZoneBaseMin=4 (the zone-map floor)"
+    - "zone length even (CDAB pairs); 0 = zone off"
+    - "total ∈ [650..65535] — RUNTIME DATA (dynamic-regCount law); NOT pinned to a compile-time constant"
+    - "both zone keys (wits/lan_ext — v4-compat inert, default 0 = off) inside 0..total-1, no pairwise overlap"
+
+# ═══════════════════════════════════════════════════
+# §8. Evolution law
+# ═══════════════════════════════════════════════════
+EvolutionLaw:
+  zone_bounds: "zone bounds = ini DATA, ¬ code (TZ §3) — rebinding zones ⇒ ini edit + restart + OPC projection update; no recompile"
+  layout_version: "ANY header FIELD change (offset, type, semantics, counter layout) ⇒ layoutVer += 1 + coordinated AddIn re-release; old files rejected on mismatch (layoutVer<5 is an upgrade source, never a final shape)"
+  additive_only: "new fields may occupy reserved bytes (49..63) or extend the header ONLY with a layoutVer bump; ¬ renumber, ¬ retype, ¬ semantic reuse; offsets 0..48 are v1-stable; ZoneKind values APPEND-ONLY (LanExt=4 added after 0..3, ¬ reordered)"
+  registers: "reg addresses are zone-relative by construction (zoneBase + index×2) ⇒ zone rebase = registry rebuild, ¬ source rewrite"
+  anti_drift: "any change to BusLayout/RegisterMapV2/IniSchema requires this spec updated in the SAME changeset (additive-tier baseline)"
+
+DynamicRegCountLaw:
+  axiom: "FINAL shape valid ⇔ magic=='STNB' ∧ version==1 ∧ layoutVer==5 ∧ regCount (read from header) satisfies 650 ≤ regCount ≤ 65535 ∧ fileLength == 64 + regCount × 2. layoutVer < 5 = UPGRADE-SOURCE layouts, NEVER final shapes."
+  anchor: "the VALIDITY ANCHOR is the header self-description (regCount + file length), ¬ a compile-time constant — BusLayout.RegCount (10001) is the current-default dictionary, ¬ the acceptance gate"
+  code: "BusLayout.IsValidShape(magic, version, layoutVer, regCount, fileLength) — the acceptance gate; BusLayout.RegCountMin = 650 ∧ RegCountMax = 65535 ∧ BytesPerReg = 2"
+  runtime_data: "total size = iCemDataMonitor.ini [zones] total= + header regCount — layers size their views from the header / ini / snapshot, ¬ from BodyBytes/TotalFileBytes consts"
+  growth: "future dictionary growth = ini-only (total=) — no layoutVer bump, no recompile; layoutVer stays 5 while the header schema is unchanged"
+  bounds_note: "lower bound 650 = v2 shape (smallest accepted dictionary); upper bound 65535 = u16 header field ceiling (max file 131134 B)"
+  v1_dead: "v1 (layoutVer=1 ∧ regCount=600 ∧ 1264 B) is OUT of the law ⇒ fail-safe, NO upgrade path (v1 consts REMOVED from BusLayout — debt_4; shape history lives in this spec)"
+
+UpgradeRule:
+  axiom: "FULL MIGRATION (user decision 2026-08-17): every recognized legacy dictionary shape expands IN PLACE, ONCE, under the mutex, to the FULL v5 dictionary (10001 regs / 20066 B, layoutVer=5); layoutVer-5 files open as-is (never upgrade candidates); anything else = fail-safe"
+  eligibility: "IsUpgradeable(1, 2, 650, 1364) ⇔ TRUE; IsUpgradeable(1, 3, 1650, 3364) ⇔ TRUE; IsUpgradeable(1, 3, 8404, 16872) ⇔ TRUE (v3-full — migrates); IsUpgradeable(1, 4, 8404, 16872) ⇔ TRUE (v4-full — migrates); IsUpgradeable(1, 5, 10001, 20066) ⇔ FALSE (current final — open as-is); IsUpgradeable(1, 1, 600, 1264) ⇔ FALSE (v1 DEAD)"
+  migration_procedure:
+    common:
+      1: "expand file to 20066 B (TotalFileBytes)"
+      2: "set layoutVer=5 (offset 6) + regCount=10001 (offset 8)"
+      3: "PRESERVE the old body verbatim; zero the NEW tail"
+    v2_to_full:
+      body: "preserve 64..1363; zero 1364..20065; ALSO zero former wits header fields 49..63 (reserved-zero law — v2 predates it)"
+    v3_small_to_full:
+      body: "preserve 64..3363 (incl. the small lan_ext 650..1649); zero 3364..20065"
+    v3_full_v4_full_to_full:
+      body: "preserve 64..16871 byte-exact; zero 16872..20065; header 49..63 need NO re-zeroing (reserved-zero in every v3/v4-full file by induction — v2-upgrade zeroing ∨ all-zero fresh create; pinned by tests)"
+  not_upgradeable: "any other (version, layoutVer, regCount, fileLength) ⇒ FALSE ⇒ caller fail-safe: writer DISABLED (no data written into a foreign layout) / reader fails clean with error log"
+  valid_open_as_is: "any FINAL shape satisfying the shape law (layoutVer 5, regCount ∈ [650..65535], matching length) ⇒ open as-is, no upgrade"
+  open_algorithm: "1) magic prefix check; 2) IsUpgradeable ⇒ expand to full v5 under the mutex; 3) IsValidShape ⇒ open as-is; 4) else ⇒ fail-safe"
+  owner: "upgrade executes ONCE at mapping open — AddIn (writer) ∧ BusReader/BusZoneWriter (reader/retained writer), same rule, first-come-upgrades; mutex held during upgrade"
+  inc_03_ordered_restart_law: "the MMF section capacity is frozen at creation until ALL handles close — the expansion needs the upgrader as the FIRST/ONLY opener; a live small-capacity section held by another process blocks the sized view ⇒ the opener must fail fast with the typed section-capacity access-denied error carrying the ordered-restart runbook (stop ALL station processes incl. iCem.exe, start the producer FIRST, then consumers)"
+  net48_addin_note: "the AddIn owns header state regs 0..3 ∧ writes ONLY regs ≤ 599 (com_stream/lan_stream_crio/raw_com_line data) — it MUST NOT write ace_full 600..10000 (reserved/deferred); its open-validation MUST apply the shape law (accept any layoutVer-5 regCount ∈ [650..65535] with matching file length): v5 dictionary growth is transparent to the AddIn"
+
+# ═══════════════════════════════════════════════════
+# §9. Bans
+# ═══════════════════════════════════════════════════
+AntiPatterns:
+  - "¬ anonymous MMF (CreateNew without file) — dies with owner process (TZ alternatives matrix)"
+  - "¬ broker service/queue — SPOF + external infra, violates minimalism"
+  - "¬ writers locking the whole body — per-float-pair lock only (§5)"
+  - "¬ readers decoding under the mutex — copy-under-lock, decode-outside"
+  - "¬ zone name string binding — header zone block index ≡ ZoneKind byte value"
+  - "¬ named variables in raw zone — positional only (R6: raw = blind snapshot)"
+  - "¬ writes into the reserved ace_full range 600..10000 (ANY writer in v5 — the range is RESERVED/DEFERRED; the former wits zone is absorbed into it)"
+  - "¬ resurrect wits / prematurely write ace_full — 600..10000 stays reserved until a schema delta + layoutVer bump with operator sign-off; former wits slot addresses live ONLY in §3 frozen_history, ¬ in code"
+  - "¬ renumbering ZoneKind values / header offsets / zone ranges — append-only (layoutVer bump is the ONLY sanctioned change)"
+  - "¬ hardcoded total size as the validity anchor — the header regCount + file length is the anchor (dynamic-regCount law §8.1); consts are current-default only"
+  - "¬ timeout/threshold-derived values in state regs 0..3 — CURRENT state only (the deleted 30 s starvation logic is BANNED, layoutVer 5 law)"
+  - "¬ cross-writer register writes — single-writer-per-register law: v5 header state regs 0..3 are ALL AddIn-owned; the POC writes NOTHING in the header"
+  - "¬ zeroing registers on channel loss/stop — STALE-HOLD LAW: last values persist in cells"
+  - "¬ System.Text.Json / attributes in iCemDataMonitor.Sdk.Bus — BCL-only, attribute-free"
+  - "¬ hot-reload of ini — restart-only (operator requirement)"
+  - "¬ silent default on invalid ini — fail-fast"
+
+# ═══════════════════════════════════════════════════
+# §10. Contract tests (iCemDataMonitor.Sdk.Tests / iCemDataMonitor.Data.Tests / iCemDataMonitor.Transport.Tests)
+# ═══════════════════════════════════════════════════
+ContractTests:
+  location: iCemDataMonitor.Sdk.Tests (net8, xunit) + iCemDataMonitor.Data.Tests + iCemDataMonitor.Transport.Tests (byte-level expansion, publisher map edge)
+  layout: "10001 regs (current default); zone bounds 4..199 / 200..399 / 400..599 / 600..10000 (reserved/deferred); no overlap; float caps 98/100/100; 64+20002=20066"
+  header_offsets: "every const == spec offset (4/6/8, 10/18, 19/27, 28/36, 37/41/45, 49..63 reserved-zero block, 64)"
+  shared_liveness: "ZoneLastWriteTickOffset(LanExt) == 19 ∧ ZoneActiveFlagOffset(LanExt) == 27 ∧ ZoneWriteCountOffset(LanExt) == 41 (lan block, D4); ZoneLastWriteTickOffset(Wits) == 49 (reserved-zero, reads as never-written)"
+  cdab_pins: "1.0f → [0x0000, 0x3F80]; 15.79f → [0xA3D7, 0x417C]; roundtrip; cross-check vs ModbusTcpPublisher formula (bits & 0xFFFF, bits >> 16)"
+  magic_version: "Magic == 0x424E5453; MagicBytes == 'STNB'; Version == 1; LayoutVersion == 5; RegCount == 10001 (current default, ¬ anchor); HeaderRegCount == 4; BodyBytes == 20002; TotalFileBytes == 20066"
+  state_registers: "4 pins: RegComPort=0, RegCaseState=1, RegCaseLanState=2, RegHeartbeat=3; HeaderRegCount=4; HeartbeatWrap=32000; NO overlap with com_stream (first com pair = reg 4)"
+  frozen_history: "RegHeartbeat MOVED 5→3; regs 4..15 are com_stream float pairs again (the v4 skip rule is GONE); frozen v4 consts compile-compat only"
+  dynamic_shapes: "IsValidShape TRUE for (magic,1,5,10001,20066) ∧ any N ∈ [650..65535] with len==64+2N at layoutVer 5; FALSE for bad magic, version≠1, layoutVer∉{5} (1,2,3,4,6), regCount 649/65536, any length mismatch"
+  upgrade_rule: "IsUpgradeable TRUE for (1,2,650,1364) ∧ (1,3,1650,3364) ∧ (1,3,8404,16872) ∧ (1,4,8404,16872) exactly; FALSE for final (1,5,10001,20066) ∧ v1 (1,1,600,1264 — DEAD) ∧ all mismatches; every expansion lands at layoutVer=5 ∧ 10001/20066 ∧ preserves the old body byte-exact ∧ zeroes the tail (byte-level tests); v2 expansion also zeroes header 49..63"
+  reserved_ace_full: "AceFullBaseReg=600 ∧ AceFullEndReg=10000 ∧ AceFullRegCount=9401; NO writer maps into 600..10000; NO WitsSlots/slot-table surface on BusLayout (removed — debt_4); former wits slot addresses live in §3 frozen_history"
+  ini_validate: "defaults (wits_len=0, lan_ext_len=0, total=10001) → valid; accepts total ∈ {650, 1650, 8404, 10001, 65535} (no 'total' error); rejects total 649/65536, overlap, out-of-range vs total, base < 4, odd length, bad ports, modbus_tick_ms outside [200..500]; 2026-08-31: com_port + com/lan/raw zone keys removed (retired — accepted-and-ignored)"
+  publisher_map_edge: "publisher serves the FULL dictionary — map edge at 10001; words beyond 8403 (the grown tail) read zero-hold until a future writer claims ace_full; header mirror = words 0..3 (HeaderRegCount, auto-follows the const)"
+
+# ═══════════════════════════════════════════════════
+# §11. Open items (delegated)
+# ═══════════════════════════════════════════════════
+OpenItems:
+  - item: "future ace_full writer (600..10000) — exhaustive ACE dump layout designed LATER from measured ACE composition (documentation-only future work, user decree 2026-08-17); it claims the former Wits header block 49..63 ⇒ layoutVer bump at that time; LanBusSink V6 is LIVE for the cRIO window (200..399) and its machinery is the future ace_full writer's foundation (deferral-gated there only)"
+    owner: insite-data + insite-plugin (W2)
+    contract_impact: "lifting the deferral is a schema delta (additive), NOT a production flag flip; no impact on the current v5 wire contract"
+  - item: "Plugins/Transport agents rewire to the v5 zone consts (ComStreamBaseReg/LanStreamCrioBaseReg/RawComLineBaseReg/AceFullBaseReg) — ZoneDescriptor v4 rows ∧ ZoneKind.LanExt/Wits aliases stay frozen for compile-compat until then (append-only law)"
+    owner: insite-plugin + insite-transport
+    contract_impact: "none on this schema — the BusLayout v5 consts are authoritative"
+  - item: "3 OPC folder paths (R1) + in-process vs external OPC server (R2)"
+    owner: insite-transport (W3 recon)
+    contract_impact: "none on bus layout — OPC is a pure reader projection"
+  - item: "session divergence handling (Global\\ prefix auto-fallback logic)"
+    owner: insite-core (W5) + insite-plugin (W2)
+    contract_impact: "none — names pinned here (§1); fallback is runtime policy"
+  - item: "iCemDataMonitor.ini location: exe folder vs %ProgramData% (operator question)"
+    owner: insite-core (W5)
+    contract_impact: "none on schema (§7)"
+  - item: "modbus_tick_ms ini key landing (W5) — BusRingService tick defaults to 1000 ms until the ini key drives it; web-ring storage = in-memory RingHistory 600 s (no persistent history, deliberate — risk R4)"
+    owner: insite-core (W5) + insite-data (W4)
+    contract_impact: "none on this schema (§3 ModbusTick); ring is a iCemDataMonitor.Data reader artifact, ¬ a bus concern"
+  - item: "RESOLVED by 1.2.0..1.6.0 + debt_4: wits zone / WitsSlots / AddIn wits stream (operator directive removed WITS — zone reserved-dead in v3/v4, absorbed into ace_full reserve in v5; slot table removed from code 2026-08-14); v4 16-reg state block (replaced by v5 0..3); v4-full 8404/16872 final shape (FULL MIGRATION to 10001/20066)"
+    owner: insite-sdk
+    contract_impact: "resolved: history lives ONLY in this spec (§3 frozen_history)"

@@ -1,0 +1,35 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Recirc Density,Recirc Density,178,57
+0,DH Density,Downhole Density,178,57
+0,Water Rate,Water Rate,130,80
+0,Comb Pump Rate,Combined Pump Rate,130,80
+0,PS Pump Press,Pass-Side Pump Pressure,71,713
+0,DS Pump Press,Driv-Side Pump Pressure,71,713
+0,Mix Water Vol,Foam Stg Mix Water Vol,202,286
+0,Water Total,Water Total,202,285
+0,Pump Stg Tot,Pump Stage Total,202,286
+0,Comb Pump Total,Combined Pump Total,202,285
+0,Cmnt Valve Psn,Cement Valve Position,63,154
+0,Water Valve Psn,Water Valve Position,63,154
+0,PS Pump Rate,Pass-Side Pump Rate,130,80
+0,DS Pump Rate,Driv-Side Pump Rate,130,80
+0,Dig out,Digital Out,0,0
+0,HalWin Event,HalWin Event Number,0,0
+0,Temperature,Temperature,88,213
+0,rho12_hat,rho12_hat,178,57
+0,h2_hat,h2_hat,21,122
+0,vhp_density_HP,vhp_density_HP,178,57
+0,ve_rho12,ve_rho12,178,57
+0,Ve_h2_hat,Ve_h2_hat,21,122
+0,va_t2,va_t2,0,0
+0,Tub Height,Tub Height,21,122
+0,Ve_density,Ve_density,178,57
+0,Ve_dist_hat,Ve_dist_hat,0,0
+0,Extra Press 1,Extra Press 1,71,185
+0,Extra Press 2,Extra Press 2,71,185
+0,Extra Rate 1,Extra Rate 1,130,80
+0,Extra Total 1,Extra Total 1,202,285
+0,Extra Rate 2,Extra Rate 2,130,80
+0,Extra Total 2,Extra Total 2,202,285
+0,Wtr/slry Ratio,Water/Slurry Ratio,63,154

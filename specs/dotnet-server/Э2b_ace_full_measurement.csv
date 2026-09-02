@@ -1,0 +1,53 @@
+section,fact,measured,unit,evidence,note
+capture,iCemCrio.pcapng.bin packets total,7225,packets,Wireshark/iCemCrio.pcapng.bin,247 non-ACE = DHCP DISCOVER x117 + others
+capture,iCemCrio ACE frames,6978,frames,same,152-B filter: dst MAC 03:00:01:00:00:20 + magic 00 D0 0D @0x11(17)
+capture,iCemCrio distinct sv on wire,6,sv,same,"0x13120203 Lnd Automation; 0x13120206 Lnd Pump Sect; 0x13120200 Lnd Mix Section; 0x13120209 Lnd RAWIO Data; 0x1312020C Land Addon IO; 0x1312020F Lnd Ops Track"
+capture,iCemCrio sv balance,1163,frames-per-sv,same,6978 = 6x1163 balanced
+capture,iCemCrio superframes,1163,bursts,same,6 frames per burst = 1 Hz per sv
+capture,iCemCrio burst-order deviations,0,reorders,same,"strict 6-cycle over all 6978 frames; PROTOCOL.md §9.3 claim '1 reorder' NOT reproducible from current file"
+capture,iCemCrio within-burst dt median,5.25,ms,same,n=5815
+capture,iCemCrio between-burst dt median,973.7,ms,same,n=1162
+capture,iCemCrio equipment,0x00A86F46(11038534),uint32 BE,same,6978/6978 frames; 1 distinct value
+capture,iCemCrio header anomalies,0,frames,same,"len=152 / length field 0x008A / LLC 03 03 08 / dst MAC / magic: 100% clean"
+capture,iCemCrio unique payloads,4786,payloads,same,2192 duplicates (reproduces PROTOCOL.md §9.4-3)
+capture,iCemCrio first-payload golden match,6/6,sv,same,byte-exact vs PROTOCOL.md §9.2 decode tables
+capture,CrioTest4.pcapng,87,packets,Wireshark/CrioTest4.pcapng,"DLT_NULL loopback TCP (AddIn relay path); 0 ACE frames — not a raw-ACE capture"
+capture,iCem third capture (Wireshark * .pcapng.bin 287560 B),1604,packets,Wireshark,"SSDP/DHCP/IGMP/mDNS only; 0 ACE frames (cRIO not streaming ACE)"
+registry,lantable_registry.json entries,213,sv-entries,iCemEmule/templates/lantable_registry.json,19 duplicate rows across 4 sv numbers
+registry,lantable_registry.json unique sv numbers,194,sv,same,loader dedup first-occurrence-wins
+registry,lantable_registry.json signal rows,4386,signals,same,incl. 457 rows of dropped duplicate-sv definitions
+registry,lantable_registry.json signals on unique sv,3929,signals,same,runtime-reachable set
+registry,lantable_registry.json distinct signal names,3296,names,same,
+registry,lantable_registry.json valueType distribution,FF=1767 UL=1029 SI=224 HX=286 SL=718 SS=13 US=17 SC=8 FD=162 UI=35 UC=127,counts,same,"11 distinct types; all handled by iCemDataMonitor.Plugins.Icem DecodeSignals"
+registry,lantable_registry.json equipmentTypes,Pump=31 Blender=79 LIMTrailer=10 Prop=6 MountainMover=1 GatheringConveyer=1 Instruments=38 ToteTruck=2 CoiledTubing=7 CleanStream=2 WL=2 Cementer=34,counts,same,12 equipment families
+registry,Cementer equipment sv tables,34,sv,same,579 signals total
+registry,Cementer sv by family,0x131201xx=22tables(360sig) 0x131202xx=6tables(96sig) 0x131203xx=6tables(123sig),tables,same,"only the 6 0x131202xx 'Lnd' tables observed on wire (legacy6)"
+registry,Cementer valueTypes,FF=444 HX=101 FD=16 UL=13 US=4 UC=1,counts,same,579 total
+registry,legacy6 signals per sv,Automation=6 PumpSect=20 MixSection=27 RAWIO=23 AddonIO=18 OpsTrack=2,signals,same,"total 96; matches PROTOCOL.md §6.2"
+registry,legacy6 all signals transmittable,true,fact,same,all ByteOffset>=4 and (O-4)+size<=124 (PROTOCOL.md §8.4)
+registry,firmware_registry.json sv tables,14,sv,iCemEmule/templates/firmware_registry.json,"0x13120212..0x13120239 step 3 (RT Data A .. RT Spare AI/FI)"
+registry,firmware_registry.json signals,267,signals,same,"FF=180 HX=75 UL=7 UC=5; per-table 21/17/29/25/29/22/23/23/14/12/4/16/13/19"
+registry,firmware_variables.json variables,267,vars,iCemEmule/templates/firmware_variables.json,1:1 with firmware signals
+registry,merged registry unique sv,208,sv,same,194 legacy + 14 firmware; 0 sv collisions
+registry,merged registry signals,4196,signals,same,3929 legacy-unique + 267 firmware
+registry,lantable byteOffset min/max across 4386 rows,4/124,bytes,same,"0 signals with O<4; 25 numeric signals at O=124 size=4 unmappable to 124-B payload"
+registry,lantable_registry.json SHA256,29569012CC502E7493F360332C0FAC3778071CCC376D1DBD7654DBA954BBDEA6,hash,Get-FileHash,"identical: iCemEmule/templates + server-dotnet/iCemDataMonitor.Plugins.Icem/templates + iCemEmule/publish/templates"
+registry,provenance LantableNT.xml,C:\iCEM\Halliburton.iCem.CementingData.Units\Halliburton.iCem.CementingData.Units\LantableNT.xml,path,Get-FileHash,"SHA256 DA633E2C28B2BAB0D36869FD26A9EE6BE8BF63CBF92E97FF3FD93660008054A0 == tools/ace_replay/lantable_extracted.xml; generator tools/gen_lantable_registry.py + overrides tools/lantable_overrides.json"
+registry,iCem-side parser constants,frame 152 / payload 124 / equipment @0x14(20) / sv @0x18(24) / LLC filter 03 03 08 or 09,consts,C:\iCEM\...\RealTime\LANSetup\MulticastReceive.cs,"TruckNumberSize=4 ServiceVectorSize=4 RawDataSize=124 MaxSizeToRead=152 TruckNumberIndexInPacketBuffer=20"
+registry,AceFilter.xml role,variable-name whitelist for iCem-to-Insite copy (NOT frame layout),fact,C:\iCEM\...\RealTime\LANSetup\AceFilter.xml,RecordNames + Variables lists
+overlap,curated cRIO set = lan family entries idx 0..95,96,entries,templates/variable_registry.json (repo root; shipped by iCemDataMonitor.Plugins.Icem.csproj),"shipped file: 3507 vars / 3463 lan entries idx 0..3462 / 3459 with sv field"
+overlap,legacy6 signal names vs curated 96 wirekeys,96/96,matched,same,0 unmatched
+overlap,legacy96 backfilled sv fields,92/96,entries,iCemDataMonitor.Plugins.Icem.Tests/LegacySvBackfillTests.cs,"4 text-only without numeric dictionary signal: Auto or Manual Mix / Cmnt Ops Track Descript / Side A Kicked Out? / Side B Kicked Out?"
+overlap,v5 lan_stream_crio capacity vs legacy signals,100 float pairs >= 96 signals,fits,iCemDataMonitor.Sdk/Bus/BusLayout.cs:339-342,regs 200..391 used (192); 8 regs spare
+capacity,v5 zone bounds (authoritative),com_stream 4..199 / lan_stream_crio 200..399 / raw_com_line 400..599 / ace_full RESERVE 600..10000 (9401 regs),regs,iCemDataMonitor.Sdk/Bus/BusLayout.cs:343-360,"ace_full DEFERRED, nobody writes in v5; dictionary 10001"
+capacity,ace_full reserve extent,600..10000 = 9401 regs,regs,BusLayout.AceFullEndReg=10000,"reserve up to 10k; reads as never-written; layout designed LATER from THIS measurement"
+capacity,ace_full as float32 CDAB pairs (future),4700,float slots,9401/2,layout decision deferred — this measurement is the design input
+capacity,wire-reality full stream (legacy6 + firmware14 = 20 SV),363,values-per-cycle,96+267,726 regs as float pairs — FITS the reserve
+capacity,Cementer-catalog scope (34 Cementer SV + 14 firmware),846,values,579+267,1692 regs as float pairs — FITS the reserve
+capacity,full merged catalog (194 legacy SV + 14 firmware),4196,values,3929+267,8392 regs as float pairs — FITS the 9401-reg reserve
+capacity,full lantable rows incl duplicates,4386,rows,213 entries,8772 regs as float pairs — FITS the 9401-reg reserve
+capacity,1-reg-per-value layout for merged catalog,4196 <= 9401,fits,regs,lots spare — sizing constraint relaxed by the reserve
+capacity,verdict,"the 600..10000 reserve (9401 regs) holds the full merged catalog as float pairs (8392); layout TBD by this measurement when ace_full is implemented",verdict,measurement,"no ace_full code now — reserve only"
+future_work,firmware 14 SV merge into iCemDataMonitor.Plugins.Icem LantableRegistry,deferred,-,specs/dotnet-server/Э2_contracts.csv ace_full_reserve_zone,"add firmware_registry.json + firmware_variables.json to plugin templates when ace_full lands; legacy 6 SV behavior unchanged"
+future_work,PROTOCOL.md §9.3 '1 reorder' note,unreproducible,measured 0,this measurement,re-verify against dump or correct the claim
+future_work,ace_full design,deferred until measured ACE composition drives it,-,THIS measurement file,"design the ace_full layout FROM these facts (sv balance, valueTypes, payload offsets, catalog sizes); reserve stays untouched until then"

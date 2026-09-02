@@ -1,0 +1,20 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Controller Time,Controller Loc Time,42,215
+0,UNIPRO Event,UNIPRO Event Number,0,0
+0,Recirc Density,Recirc. Density,178,57
+0,Recirc Conc,Recirc. Concent.,111,57
+0,Cement Density,Cmnt Density,178,57
+0,Cement Conc,Cmnt Concent.,111,57
+0,Water Rate,H2O Rate,130,80
+0,Water Total,H2O Total,202,285
+0,PS Pump Press,P-S Pump Press,71,185
+0,DS Pump Press,D-S Pump Press,71,185
+0,DS Pump Rate,D-S Pump Rate,130,80
+0,DS Pump Total,D-S Pump Total,202,285
+0,PS Pump Rate,P-S Pump Rate,130,80
+0,PS Pump Total,P-S Pump Total,202,285
+0,Cement Rt 1,Cement Rate 1,130,80
+0,Water Valve Psn,H2O Valve Psn,63,154
+0,Comb Pump Rate,Combo Pmp Rate,130,80
+0,Comb Pump Total,Combo Pmp Total,202,285

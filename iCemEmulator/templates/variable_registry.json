@@ -1,0 +1,2752 @@
+{
+  "version": 1,
+  "families": {
+    "flecs": {
+      "modbusBase": 2
+    },
+    "plc": {
+      "modbusBase": 200
+    },
+    "lan": {
+      "modbusBase": 400
+    }
+  },
+  "variables": [
+    {
+      "name": "UnixTimestamp",
+      "display": "Time & Date",
+      "uom": "",
+      "color": "#888888",
+      "families": {
+        "flecs": {
+          "alias": "Time & Date",
+          "index": 0,
+          "wireName": "Time & Date"
+        }
+      },
+      "simulation": {
+        "base": 0,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "elapsed"
+      },
+      "excludeFromTelemetry": true
+    },
+    {
+      "name": "UnitNum",
+      "display": "Unit Num",
+      "uom": "",
+      "color": "#888888",
+      "families": {
+        "flecs": {
+          "alias": "Unit Num",
+          "index": 1,
+          "wireName": "Unit Num"
+        }
+      },
+      "simulation": {
+        "base": 1,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "int"
+      },
+      "excludeFromTelemetry": true
+    },
+    {
+      "name": "SlurryDensity",
+      "display": "Slurry Density",
+      "uom": "ppg",
+      "color": "#CC3300",
+      "families": {
+        "flecs": {
+          "alias": "Recirc Density",
+          "index": 2
+        }
+      },
+      "simulation": {
+        "base": 15.8,
+        "amplitude": 0.4,
+        "frequency": 0.1,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "DH_Density",
+      "display": "DH Density",
+      "uom": "ppg",
+      "color": "#339933",
+      "families": {
+        "flecs": {
+          "alias": "DH Density",
+          "index": 3
+        }
+      },
+      "simulation": {
+        "base": 15.9,
+        "amplitude": 0.3,
+        "frequency": 0.08,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "MixWaterRate",
+      "display": "Mix Water Rate",
+      "uom": "bpm",
+      "color": "#006699",
+      "families": {
+        "flecs": {
+          "alias": "Mix Water Rate",
+          "index": 4,
+          "wireName": "Mix Water Rate"
+        }
+      },
+      "simulation": {
+        "base": 2.1,
+        "amplitude": 1.0,
+        "frequency": 0.15,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "PumpRate",
+      "display": "Comb Pump Rate",
+      "uom": "bpm",
+      "color": "#FF9933",
+      "families": {
+        "flecs": {
+          "alias": "Comb Pump Rate",
+          "index": 5
+        }
+      },
+      "simulation": {
+        "base": 4.2,
+        "amplitude": 0.8,
+        "frequency": 0.12,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "PumpPressure",
+      "display": "PS Pump Press",
+      "uom": "psi",
+      "color": "#634B9F",
+      "families": {
+        "flecs": {
+          "alias": "PS Pump Press",
+          "index": 6
+        }
+      },
+      "simulation": {
+        "base": 2500,
+        "amplitude": 200,
+        "frequency": 0.05,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "DSPumpPress",
+      "display": "DS Pump Press",
+      "uom": "psi",
+      "color": "#FFCC05",
+      "families": {
+        "flecs": {
+          "alias": "DS Pump Press",
+          "index": 7,
+          "wireName": "DS Pump Press"
+        }
+      },
+      "simulation": {
+        "base": 1800,
+        "amplitude": 150,
+        "frequency": 0.06,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "WaterStgTot",
+      "display": "Water Stg Tot",
+      "uom": "bbl",
+      "color": "#D86C27",
+      "families": {
+        "flecs": {
+          "alias": "Water Stg Tot",
+          "index": 8,
+          "wireName": "Water Stg Tot"
+        }
+      },
+      "simulation": {
+        "base": 120,
+        "amplitude": 2,
+        "frequency": 0.02,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "MixWaterTotal",
+      "display": "Mix Water Total",
+      "uom": "bbl",
+      "color": "#009999",
+      "families": {
+        "flecs": {
+          "alias": "Mix Water Total",
+          "index": 9,
+          "wireName": "Mix Water Total"
+        }
+      },
+      "simulation": {
+        "base": 80,
+        "amplitude": 1.5,
+        "frequency": 0.025,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "PumpStgTot",
+      "display": "Pump Stg Tot",
+      "uom": "bbl",
+      "color": "#660066",
+      "families": {
+        "flecs": {
+          "alias": "Pump Stg Tot",
+          "index": 10,
+          "wireName": "Pump Stg Tot"
+        }
+      },
+      "simulation": {
+        "base": 200,
+        "amplitude": 3,
+        "frequency": 0.018,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "CombPumpTotal",
+      "display": "Comb Pump Total",
+      "uom": "bbl",
+      "color": "#A1A744",
+      "families": {
+        "flecs": {
+          "alias": "Comb Pump Total",
+          "index": 11
+        }
+      },
+      "simulation": {
+        "base": 100.0,
+        "amplitude": 2.5,
+        "frequency": 0.02,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "CementValvePsn",
+      "display": "Cmnt Valve Psn",
+      "uom": "%",
+      "color": "#CC3300",
+      "families": {
+        "flecs": {
+          "alias": "Cmnt Valve Psn",
+          "index": 12
+        }
+      },
+      "simulation": {
+        "base": 85.0,
+        "amplitude": 5.0,
+        "frequency": 0.05,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "WaterValvePsn",
+      "display": "Water Valve Psn",
+      "uom": "%",
+      "color": "#339933",
+      "families": {
+        "flecs": {
+          "alias": "Water Valve Psn",
+          "index": 13
+        }
+      },
+      "simulation": {
+        "base": 75.0,
+        "amplitude": 5.0,
+        "frequency": 0.04,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "PSPumpRate",
+      "display": "PS Pump Rate",
+      "uom": "bpm",
+      "color": "#006699",
+      "families": {
+        "flecs": {
+          "alias": "PS Pump Rate",
+          "index": 14,
+          "wireName": "PS Pump Rate"
+        }
+      },
+      "simulation": {
+        "base": 3.5,
+        "amplitude": 0.5,
+        "frequency": 0.14,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "DSPumpRate",
+      "display": "DS Pump Rate",
+      "uom": "bpm",
+      "color": "#FF9933",
+      "families": {
+        "flecs": {
+          "alias": "DS Pump Rate",
+          "index": 15,
+          "wireName": "DS Pump Rate"
+        }
+      },
+      "simulation": {
+        "base": 3.0,
+        "amplitude": 0.4,
+        "frequency": 0.13,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "DigOut",
+      "display": "Dig out",
+      "uom": "",
+      "color": "#634B9F",
+      "families": {
+        "flecs": {
+          "alias": "Dig out",
+          "index": 16,
+          "wireName": "Dig out"
+        }
+      },
+      "simulation": {
+        "base": 0,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "int"
+      }
+    },
+    {
+      "name": "HalWinEvent",
+      "display": "HalWin Event",
+      "uom": "",
+      "color": "#FFCC05",
+      "families": {
+        "flecs": {
+          "alias": "HalWin Event",
+          "index": 17,
+          "wireName": "HalWin Event"
+        }
+      },
+      "simulation": {
+        "base": 0,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "int"
+      }
+    },
+    {
+      "name": "Temperature",
+      "display": "Temperature",
+      "uom": "degF",
+      "color": "#D86C27",
+      "families": {
+        "flecs": {
+          "alias": "Temperature",
+          "index": 18
+        }
+      },
+      "simulation": {
+        "base": 130.0,
+        "amplitude": 5,
+        "frequency": 0.02,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "rho12_hat",
+      "display": "rho12_hat",
+      "uom": "ppg",
+      "color": "#009999",
+      "families": {
+        "flecs": {
+          "alias": "rho12_hat",
+          "index": 19
+        }
+      },
+      "simulation": {
+        "base": 12.8,
+        "amplitude": 0.3,
+        "frequency": 0.07,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "h2_hat",
+      "display": "h2_hat",
+      "uom": "ft",
+      "color": "#660066",
+      "families": {
+        "flecs": {
+          "alias": "h2_hat",
+          "index": 20
+        }
+      },
+      "simulation": {
+        "base": 5000,
+        "amplitude": 100,
+        "frequency": 0.01,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "vhp_density_HP",
+      "display": "vhp_density_HP",
+      "uom": "ppg",
+      "color": "#A1A744",
+      "families": {
+        "flecs": {
+          "alias": "vhp_density_HP",
+          "index": 21
+        }
+      },
+      "simulation": {
+        "base": 14.5,
+        "amplitude": 0.4,
+        "frequency": 0.09,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "TubHeight",
+      "display": "Tub Height",
+      "uom": "ft",
+      "color": "#CC3300",
+      "families": {
+        "flecs": {
+          "alias": "Tub Height",
+          "index": 22
+        }
+      },
+      "simulation": {
+        "base": 6.5,
+        "amplitude": 0.8,
+        "frequency": 0.02,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "ExtraPress1",
+      "display": "Extra Press 1",
+      "uom": "psi",
+      "color": "#339933",
+      "families": {
+        "flecs": {
+          "alias": "Extra Press 1",
+          "index": 23,
+          "wireName": "Extra Press 1"
+        }
+      },
+      "simulation": {
+        "base": 1500,
+        "amplitude": 100,
+        "frequency": 0.04,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "ExtraPress2",
+      "display": "Extra Press 2",
+      "uom": "psi",
+      "color": "#006699",
+      "families": {
+        "flecs": {
+          "alias": "Extra Press 2",
+          "index": 24,
+          "wireName": "Extra Press 2"
+        }
+      },
+      "simulation": {
+        "base": 1200,
+        "amplitude": 80,
+        "frequency": 0.045,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "ExtraRate1",
+      "display": "Extra Rate 1",
+      "uom": "bpm",
+      "color": "#FF9933",
+      "families": {
+        "flecs": {
+          "alias": "Extra Rate 1",
+          "index": 25,
+          "wireName": "Extra Rate 1"
+        }
+      },
+      "simulation": {
+        "base": 2.0,
+        "amplitude": 0.3,
+        "frequency": 0.11,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "ExtraTotal1",
+      "display": "Extra Total 1",
+      "uom": "bbl",
+      "color": "#634B9F",
+      "families": {
+        "flecs": {
+          "alias": "Extra Total 1",
+          "index": 26,
+          "wireName": "Extra Total 1"
+        }
+      },
+      "simulation": {
+        "base": 50,
+        "amplitude": 1.0,
+        "frequency": 0.02,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "ExtraRate2",
+      "display": "Extra Rate 2",
+      "uom": "bpm",
+      "color": "#FFCC05",
+      "families": {
+        "flecs": {
+          "alias": "Extra Rate 2",
+          "index": 27,
+          "wireName": "Extra Rate 2"
+        }
+      },
+      "simulation": {
+        "base": 1.5,
+        "amplitude": 0.25,
+        "frequency": 0.1,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "ExtraTotal2",
+      "display": "Extra Total 2",
+      "uom": "bbl",
+      "color": "#D86C27",
+      "families": {
+        "flecs": {
+          "alias": "Extra Total 2",
+          "index": 28,
+          "wireName": "Extra Total 2"
+        }
+      },
+      "simulation": {
+        "base": 40,
+        "amplitude": 0.8,
+        "frequency": 0.019,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "WtrSlryRatio",
+      "display": "Wtr/slry Ratio",
+      "uom": "",
+      "color": "#009999",
+      "families": {
+        "flecs": {
+          "alias": "Wtr/slry Ratio",
+          "index": 29,
+          "wireName": "Wtr/slry Ratio"
+        }
+      },
+      "simulation": {
+        "base": 0.85,
+        "amplitude": 0.05,
+        "frequency": 0.06,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "MudCupDensity",
+      "display": "MudCup Density",
+      "uom": "ppg",
+      "color": "#660066",
+      "families": {
+        "flecs": {
+          "alias": "MudCup Density",
+          "index": 30,
+          "wireName": "MudCup Density"
+        }
+      },
+      "simulation": {
+        "base": 13.0,
+        "amplitude": 0.4,
+        "frequency": 0.08,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "PSPmpStgTot",
+      "display": "PS Pmp Stg Tot",
+      "uom": "bbl",
+      "color": "#A1A744",
+      "families": {
+        "flecs": {
+          "alias": "PS Pmp Stg Tot",
+          "index": 31,
+          "wireName": "PS Pmp Stg Tot"
+        }
+      },
+      "simulation": {
+        "base": 100,
+        "amplitude": 2,
+        "frequency": 0.017,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "DSPmpStgTot",
+      "display": "DS Pmp Stg Tot",
+      "uom": "bbl",
+      "color": "#CC3300",
+      "families": {
+        "flecs": {
+          "alias": "DS Pmp Stg Tot",
+          "index": 32,
+          "wireName": "DS Pmp Stg Tot"
+        }
+      },
+      "simulation": {
+        "base": 90,
+        "amplitude": 1.8,
+        "frequency": 0.016,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "VolumetricMeter",
+      "display": "VolumetricMeter",
+      "uom": "bpm",
+      "color": "#339933",
+      "families": {
+        "flecs": {
+          "alias": "VolumetricMeter",
+          "index": 33
+        }
+      },
+      "simulation": {
+        "base": 4.2,
+        "amplitude": 0.5,
+        "frequency": 0.08,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "PLC Timestamp",
+      "display": "PLC Timestamp",
+      "uom": "",
+      "color": "#888888",
+      "families": {
+        "plc": {
+          "alias": "PLC Timestamp",
+          "index": 0
+        }
+      },
+      "simulation": {
+        "base": 0,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "elapsed"
+      },
+      "excludeFromTelemetry": true
+    },
+    {
+      "name": "PLC Status",
+      "display": "PLC Status",
+      "uom": "",
+      "color": "#888888",
+      "families": {
+        "plc": {
+          "alias": "PLC Status",
+          "index": 1
+        }
+      },
+      "simulation": {
+        "base": 1,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "int"
+      }
+    },
+    {
+      "name": "Suction Pressure",
+      "display": "Suction Pressure",
+      "uom": "psi",
+      "color": "#CC3300",
+      "families": {
+        "plc": {
+          "alias": "Suction Pressure",
+          "index": 2
+        }
+      },
+      "simulation": {
+        "base": 120,
+        "amplitude": 8,
+        "frequency": 0.05,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Discharge Pressure",
+      "display": "Discharge Pressure",
+      "uom": "psi",
+      "color": "#339933",
+      "families": {
+        "plc": {
+          "alias": "Discharge Pressure",
+          "index": 3
+        }
+      },
+      "simulation": {
+        "base": 950,
+        "amplitude": 60,
+        "frequency": 0.04,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Pump Rate",
+      "display": "Pump Rate",
+      "uom": "bpm",
+      "color": "#006699",
+      "families": {
+        "plc": {
+          "alias": "Pump Rate",
+          "index": 4
+        }
+      },
+      "simulation": {
+        "base": 3.8,
+        "amplitude": 0.6,
+        "frequency": 0.1,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Flow Rate",
+      "display": "Flow Rate",
+      "uom": "gpm",
+      "color": "#FF9933",
+      "families": {
+        "plc": {
+          "alias": "Flow Rate",
+          "index": 5
+        }
+      },
+      "simulation": {
+        "base": 160,
+        "amplitude": 20,
+        "frequency": 0.09,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Tank Level",
+      "display": "Tank Level",
+      "uom": "ft",
+      "color": "#634B9F",
+      "families": {
+        "plc": {
+          "alias": "Tank Level",
+          "index": 6
+        }
+      },
+      "simulation": {
+        "base": 8.5,
+        "amplitude": 0.7,
+        "frequency": 0.02,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Tank Temperature",
+      "display": "Tank Temperature",
+      "uom": "degF",
+      "color": "#FFCC05",
+      "families": {
+        "plc": {
+          "alias": "Tank Temperature",
+          "index": 7
+        }
+      },
+      "simulation": {
+        "base": 95,
+        "amplitude": 4,
+        "frequency": 0.02,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Motor Speed",
+      "display": "Motor Speed",
+      "uom": "rpm",
+      "color": "#D86C27",
+      "families": {
+        "plc": {
+          "alias": "Motor Speed",
+          "index": 8
+        }
+      },
+      "simulation": {
+        "base": 1750,
+        "amplitude": 40,
+        "frequency": 0.06,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Valve Position",
+      "display": "Valve Position",
+      "uom": "%",
+      "color": "#009999",
+      "families": {
+        "plc": {
+          "alias": "Valve Position",
+          "index": 9
+        }
+      },
+      "simulation": {
+        "base": 62,
+        "amplitude": 6,
+        "frequency": 0.03,
+        "format": "f2"
+      }
+    },
+    {
+      "name": "Lan/RecircDensity",
+      "display": "Recirc Density",
+      "uom": "lb/gal",
+      "color": "#E65100",
+      "families": {
+        "lan": {
+          "alias": "Recirc Density",
+          "index": 0,
+          "wireName": "Recirc Density"
+        }
+      },
+      "simulation": {
+        "base": 15.8,
+        "amplitude": 0.4,
+        "frequency": 0.02,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/RecircFlowRate",
+      "display": "Recirc Flow Rate",
+      "uom": "bbl/min",
+      "color": "#00796B",
+      "families": {
+        "lan": {
+          "alias": "Recirc Flow Rate",
+          "index": 1,
+          "wireName": "Recirc Flow Rate"
+        }
+      },
+      "simulation": {
+        "base": 1.5,
+        "amplitude": 0.3,
+        "frequency": 0.05,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/RecircFlowVlvCmd",
+      "display": "Recirc Flow Vlv Cmd",
+      "uom": "%",
+      "color": "#283593",
+      "families": {
+        "lan": {
+          "alias": "Recirc Flow Vlv Cmd",
+          "index": 2,
+          "wireName": "Recirc Flow Vlv Cmd"
+        }
+      },
+      "simulation": {
+        "base": 60,
+        "amplitude": 10,
+        "frequency": 0.01,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/DownholeDensity",
+      "display": "Downhole Density",
+      "uom": "lb/gal",
+      "color": "#558B2F",
+      "families": {
+        "lan": {
+          "alias": "Downhole Density",
+          "index": 3,
+          "wireName": "Downhole Density"
+        }
+      },
+      "simulation": {
+        "base": 16.1,
+        "amplitude": 0.2,
+        "frequency": 0.015,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/MixWaterRate",
+      "display": "Mix Water Rate",
+      "uom": "bbl/min",
+      "color": "#BF360C",
+      "families": {
+        "lan": {
+          "alias": "Mix Water Rate",
+          "index": 4,
+          "wireName": "Mix Water Rate"
+        }
+      },
+      "simulation": {
+        "base": 35,
+        "amplitude": 5,
+        "frequency": 0.03,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/MixWaterStageTotal",
+      "display": "Mix Water Stage Total",
+      "uom": "bbl",
+      "color": "#4A148C",
+      "families": {
+        "lan": {
+          "alias": "Mix Water Stage Total",
+          "index": 5,
+          "wireName": "Mix Water Stage Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/MixWaterJobTotal",
+      "display": "Mix Water Job Total",
+      "uom": "bbl",
+      "color": "#004D40",
+      "families": {
+        "lan": {
+          "alias": "Mix Water Job Total",
+          "index": 6,
+          "wireName": "Mix Water Job Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/DownholeTubLevel",
+      "display": "Downhole Tub Level",
+      "uom": "ft",
+      "color": "#880E4F",
+      "families": {
+        "lan": {
+          "alias": "Downhole Tub Level",
+          "index": 7,
+          "wireName": "Downhole Tub Level"
+        }
+      },
+      "simulation": {
+        "base": 0,
+        "amplitude": 50,
+        "frequency": 0.005,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/MixPumpPress",
+      "display": "Mix Pump Press",
+      "uom": "psi",
+      "color": "#1A237E",
+      "families": {
+        "lan": {
+          "alias": "Mix Pump Press",
+          "index": 8,
+          "wireName": "Mix Pump Press"
+        }
+      },
+      "simulation": {
+        "base": 2500,
+        "amplitude": 800,
+        "frequency": 0.04,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/MixWaterMnfldPress",
+      "display": "Mix Water Mnfld Press",
+      "uom": "psi",
+      "color": "#33691E",
+      "families": {
+        "lan": {
+          "alias": "Mix Water Mnfld Press",
+          "index": 9,
+          "wireName": "Mix Water Mnfld Press"
+        }
+      },
+      "simulation": {
+        "base": 1800,
+        "amplitude": 500,
+        "frequency": 0.03,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AutoOrManualMix",
+      "display": "Auto or Manual Mix",
+      "uom": "hex",
+      "color": "#B71C1C",
+      "families": {
+        "lan": {
+          "alias": "Auto or Manual Mix",
+          "index": 10,
+          "wireName": "Auto or Manual Mix"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/WaterPot",
+      "display": "Water Pot",
+      "uom": "%",
+      "color": "#311B92",
+      "families": {
+        "lan": {
+          "alias": "Water Pot",
+          "index": 11,
+          "wireName": "Water Pot"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CementPot",
+      "display": "Cement Pot",
+      "uom": "%",
+      "color": "#00695C",
+      "families": {
+        "lan": {
+          "alias": "Cement Pot",
+          "index": 12,
+          "wireName": "Cement Pot"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CementVlvCmd",
+      "display": "Cement Vlv Cmd",
+      "uom": "%",
+      "color": "#827717",
+      "families": {
+        "lan": {
+          "alias": "Cement Vlv Cmd",
+          "index": 13,
+          "wireName": "Cement Vlv Cmd"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/WaterVlvCmd",
+      "display": "Water Vlv Cmd",
+      "uom": "%",
+      "color": "#3E2723",
+      "families": {
+        "lan": {
+          "alias": "Water Vlv Cmd",
+          "index": 14,
+          "wireName": "Water Vlv Cmd"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/VolWaterPercent",
+      "display": "Vol Water Percent",
+      "uom": "%",
+      "color": "#0D47A1",
+      "families": {
+        "lan": {
+          "alias": "Vol Water Percent",
+          "index": 15,
+          "wireName": "Vol Water Percent"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/VolMeterRate",
+      "display": "Vol Meter Rate",
+      "uom": "bbl/min",
+      "color": "#1B5E20",
+      "families": {
+        "lan": {
+          "alias": "Vol Meter Rate",
+          "index": 16,
+          "wireName": "Vol Meter Rate"
+        }
+      },
+      "simulation": {
+        "base": 4,
+        "amplitude": 0.5,
+        "frequency": 0.05,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/VolMeterStageTotal",
+      "display": "Vol Meter Stage Total",
+      "uom": "bbl",
+      "color": "#F57F17",
+      "families": {
+        "lan": {
+          "alias": "Vol Meter Stage Total",
+          "index": 17,
+          "wireName": "Vol Meter Stage Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/VolMeterJobTotal",
+      "display": "Vol Meter Job Total",
+      "uom": "bbl",
+      "color": "#212121",
+      "families": {
+        "lan": {
+          "alias": "Vol Meter Job Total",
+          "index": 18,
+          "wireName": "Vol Meter Job Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/StageSacksOfCement",
+      "display": "Stage Sacks of Cement",
+      "uom": "sacks",
+      "color": "#01579B",
+      "families": {
+        "lan": {
+          "alias": "Stage Sacks of Cement",
+          "index": 19,
+          "wireName": "Stage Sacks of Cement"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/JobSacksOfCement",
+      "display": "Job Sacks of Cement",
+      "uom": "sacks",
+      "color": "#E65100",
+      "families": {
+        "lan": {
+          "alias": "Job Sacks of Cement",
+          "index": 20,
+          "wireName": "Job Sacks of Cement"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/MudCupDensity",
+      "display": "Mud Cup Density",
+      "uom": "lb/gal",
+      "color": "#00796B",
+      "families": {
+        "lan": {
+          "alias": "Mud Cup Density",
+          "index": 21,
+          "wireName": "Mud Cup Density"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CurrentBlendDensity",
+      "display": "Current Blend Density",
+      "uom": "lb/gal",
+      "color": "#283593",
+      "families": {
+        "lan": {
+          "alias": "Current Blend Density",
+          "index": 22,
+          "wireName": "Current Blend Density"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CurrentBlendYield",
+      "display": "Current Blend Yield",
+      "uom": "f3/sack",
+      "color": "#558B2F",
+      "families": {
+        "lan": {
+          "alias": "Current Blend Yield",
+          "index": 23,
+          "wireName": "Current Blend Yield"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CurrentBlendWtrReq",
+      "display": "Current Blend Wtr Req",
+      "uom": "gal/sack",
+      "color": "#BF360C",
+      "families": {
+        "lan": {
+          "alias": "Current Blend Wtr Req",
+          "index": 24,
+          "wireName": "Current Blend Wtr Req"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CurrentBlendMixRate",
+      "display": "Current Blend Mix Rate",
+      "uom": "bbl/min",
+      "color": "#4A148C",
+      "families": {
+        "lan": {
+          "alias": "Current Blend Mix Rate",
+          "index": 25,
+          "wireName": "Current Blend Mix Rate"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/EventNumber",
+      "display": "Event Number",
+      "uom": "",
+      "color": "#004D40",
+      "families": {
+        "lan": {
+          "alias": "Event Number",
+          "index": 26,
+          "wireName": "Event Number"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/UnitNumber",
+      "display": "Unit Number",
+      "uom": "",
+      "color": "#880E4F",
+      "families": {
+        "lan": {
+          "alias": "Unit Number",
+          "index": 27,
+          "wireName": "Unit Number"
+        }
+      },
+      "simulation": {
+        "base": 11067257,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/ControlMode",
+      "display": "Control Mode",
+      "uom": "",
+      "color": "#1A237E",
+      "families": {
+        "lan": {
+          "alias": "Control Mode",
+          "index": 28,
+          "wireName": "Control Mode"
+        }
+      },
+      "simulation": {
+        "base": 1,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/MixMode",
+      "display": "Mix Mode",
+      "uom": "",
+      "color": "#B71C1C",
+      "families": {
+        "lan": {
+          "alias": "Mix Mode",
+          "index": 29,
+          "wireName": "Mix Mode"
+        }
+      },
+      "simulation": {
+        "base": 2,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/Rho12_hat",
+      "display": "rho12_hat",
+      "uom": "lb/gal",
+      "color": "#B71C1C",
+      "families": {
+        "lan": {
+          "alias": "rho12_hat",
+          "index": 30,
+          "wireName": "rho12_hat"
+        }
+      },
+      "simulation": {
+        "base": 12.8,
+        "amplitude": 0.3,
+        "frequency": 0.07,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/H2_hat",
+      "display": "h2_hat",
+      "uom": "ft",
+      "color": "#311B92",
+      "families": {
+        "lan": {
+          "alias": "h2_hat",
+          "index": 31,
+          "wireName": "h2_hat"
+        }
+      },
+      "simulation": {
+        "base": 5000,
+        "amplitude": 100,
+        "frequency": 0.01,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/Vhp_density_hp",
+      "display": "vhp_density_HP",
+      "uom": "lb/gal",
+      "color": "#00695C",
+      "families": {
+        "lan": {
+          "alias": "vhp_density_HP",
+          "index": 32,
+          "wireName": "vhp_density_HP"
+        }
+      },
+      "simulation": {
+        "base": 14.5,
+        "amplitude": 0.4,
+        "frequency": 0.09,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpAPressure",
+      "display": "Pump A Pressure",
+      "uom": "psi",
+      "color": "#827717",
+      "families": {
+        "lan": {
+          "alias": "Pump A Pressure",
+          "index": 33,
+          "wireName": "Pump A Pressure"
+        }
+      },
+      "simulation": {
+        "base": 2500,
+        "amplitude": 1000,
+        "frequency": 0.04,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/RawPmpAPressure",
+      "display": "Raw Pmp A Pressure",
+      "uom": "psi",
+      "color": "#3E2723",
+      "families": {
+        "lan": {
+          "alias": "Raw Pmp A Pressure",
+          "index": 34,
+          "wireName": "Raw Pmp A Pressure"
+        }
+      },
+      "simulation": {
+        "base": 2480,
+        "amplitude": 980,
+        "frequency": 0.04,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/OpkoASetting",
+      "display": "OPKO A Setting",
+      "uom": "psi",
+      "color": "#0D47A1",
+      "families": {
+        "lan": {
+          "alias": "OPKO A Setting",
+          "index": 35,
+          "wireName": "OPKO A Setting"
+        }
+      },
+      "simulation": {
+        "base": 4500,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SideAPressureAtKo",
+      "display": "Side A Pressure At KO",
+      "uom": "psi",
+      "color": "#1B5E20",
+      "families": {
+        "lan": {
+          "alias": "Side A Pressure At KO",
+          "index": 36,
+          "wireName": "Side A Pressure At KO"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SideAKickedOut",
+      "display": "Side A Kicked Out?",
+      "uom": "hex",
+      "color": "#F57F17",
+      "families": {
+        "lan": {
+          "alias": "Side A Kicked Out?",
+          "index": 37,
+          "wireName": "Side A Kicked Out?"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpARate",
+      "display": "Pump A Rate",
+      "uom": "bbl/min",
+      "color": "#212121",
+      "families": {
+        "lan": {
+          "alias": "Pump A Rate",
+          "index": 38,
+          "wireName": "Pump A Rate"
+        }
+      },
+      "simulation": {
+        "base": 4,
+        "amplitude": 1.5,
+        "frequency": 0.05,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpAStageTotal",
+      "display": "Pump A Stage Total",
+      "uom": "bbl",
+      "color": "#01579B",
+      "families": {
+        "lan": {
+          "alias": "Pump A Stage Total",
+          "index": 39,
+          "wireName": "Pump A Stage Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpAJobTotal",
+      "display": "Pump A Job Total",
+      "uom": "bbl",
+      "color": "#E65100",
+      "families": {
+        "lan": {
+          "alias": "Pump A Job Total",
+          "index": 40,
+          "wireName": "Pump A Job Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpBPressure",
+      "display": "Pump B Pressure",
+      "uom": "psi",
+      "color": "#00796B",
+      "families": {
+        "lan": {
+          "alias": "Pump B Pressure",
+          "index": 41,
+          "wireName": "Pump B Pressure"
+        }
+      },
+      "simulation": {
+        "base": 200,
+        "amplitude": 80,
+        "frequency": 0.03,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/RawPmpBPressure",
+      "display": "Raw Pmp B Pressure",
+      "uom": "psi",
+      "color": "#283593",
+      "families": {
+        "lan": {
+          "alias": "Raw Pmp B Pressure",
+          "index": 42,
+          "wireName": "Raw Pmp B Pressure"
+        }
+      },
+      "simulation": {
+        "base": 190,
+        "amplitude": 75,
+        "frequency": 0.03,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/OpkoBSetting",
+      "display": "OPKO B Setting",
+      "uom": "psi",
+      "color": "#558B2F",
+      "families": {
+        "lan": {
+          "alias": "OPKO B Setting",
+          "index": 43,
+          "wireName": "OPKO B Setting"
+        }
+      },
+      "simulation": {
+        "base": 4500,
+        "amplitude": 0,
+        "frequency": 0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SideBPressureAtKo",
+      "display": "Side B Pressure At KO",
+      "uom": "psi",
+      "color": "#BF360C",
+      "families": {
+        "lan": {
+          "alias": "Side B Pressure At KO",
+          "index": 44,
+          "wireName": "Side B Pressure At KO"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SideBKickedOut",
+      "display": "Side B Kicked Out?",
+      "uom": "hex",
+      "color": "#4A148C",
+      "families": {
+        "lan": {
+          "alias": "Side B Kicked Out?",
+          "index": 45,
+          "wireName": "Side B Kicked Out?"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpBRate",
+      "display": "Pump B Rate",
+      "uom": "bbl/min",
+      "color": "#004D40",
+      "families": {
+        "lan": {
+          "alias": "Pump B Rate",
+          "index": 46,
+          "wireName": "Pump B Rate"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpBStageTotal",
+      "display": "Pump B Stage Total",
+      "uom": "bbl",
+      "color": "#880E4F",
+      "families": {
+        "lan": {
+          "alias": "Pump B Stage Total",
+          "index": 47,
+          "wireName": "Pump B Stage Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/PumpBJobTotal",
+      "display": "Pump B Job Total",
+      "uom": "bbl",
+      "color": "#1A237E",
+      "families": {
+        "lan": {
+          "alias": "Pump B Job Total",
+          "index": 48,
+          "wireName": "Pump B Job Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CombinedPumpRate",
+      "display": "Combined Pump Rate",
+      "uom": "bbl/min",
+      "color": "#33691E",
+      "families": {
+        "lan": {
+          "alias": "Combined Pump Rate",
+          "index": 49,
+          "wireName": "Combined Pump Rate"
+        }
+      },
+      "simulation": {
+        "base": 4,
+        "amplitude": 1.5,
+        "frequency": 0.05,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CombinedStageTotal",
+      "display": "Combined Stage Total",
+      "uom": "bbl",
+      "color": "#B71C1C",
+      "families": {
+        "lan": {
+          "alias": "Combined Stage Total",
+          "index": 50,
+          "wireName": "Combined Stage Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CombinedJobTotal",
+      "display": "Combined Job Total",
+      "uom": "bbl",
+      "color": "#311B92",
+      "families": {
+        "lan": {
+          "alias": "Combined Job Total",
+          "index": 51,
+          "wireName": "Combined Job Total"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/HighestPumpPressure",
+      "display": "Highest Pump Pressure",
+      "uom": "psi",
+      "color": "#00695C",
+      "families": {
+        "lan": {
+          "alias": "Highest Pump Pressure",
+          "index": 52,
+          "wireName": "Highest Pump Pressure"
+        }
+      },
+      "simulation": {
+        "base": 3200,
+        "amplitude": 200,
+        "frequency": 0.02,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/RelayOut",
+      "display": "Relay Out",
+      "uom": "",
+      "color": "#827717",
+      "families": {
+        "lan": {
+          "alias": "Relay Out",
+          "index": 53,
+          "wireName": "Relay Out"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/DigitalInputs",
+      "display": "Digital Inputs",
+      "uom": "",
+      "color": "#3E2723",
+      "families": {
+        "lan": {
+          "alias": "Digital Inputs",
+          "index": 54,
+          "wireName": "Digital Inputs"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/DigitalOutputs",
+      "display": "Digital Outputs",
+      "uom": "",
+      "color": "#0D47A1",
+      "families": {
+        "lan": {
+          "alias": "Digital Outputs",
+          "index": 55,
+          "wireName": "Digital Outputs"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/DisplayTemperature",
+      "display": "Display Temperature",
+      "uom": "f",
+      "color": "#1B5E20",
+      "families": {
+        "lan": {
+          "alias": "Display Temperature",
+          "index": 56,
+          "wireName": "Display Temperature"
+        }
+      },
+      "simulation": {
+        "base": 130,
+        "amplitude": 5,
+        "frequency": 0.02,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/ControllerTemperature",
+      "display": "Controller Temperature",
+      "uom": "f",
+      "color": "#F57F17",
+      "families": {
+        "lan": {
+          "alias": "Controller Temperature",
+          "index": 57,
+          "wireName": "Controller Temperature"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput1",
+      "display": "Analog Input 1",
+      "uom": "",
+      "color": "#212121",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 1",
+          "index": 58,
+          "wireName": "Analog Input 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput2",
+      "display": "Analog Input 2",
+      "uom": "",
+      "color": "#01579B",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 2",
+          "index": 59,
+          "wireName": "Analog Input 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput3",
+      "display": "Analog Input 3",
+      "uom": "",
+      "color": "#E65100",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 3",
+          "index": 60,
+          "wireName": "Analog Input 3"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput4",
+      "display": "Analog Input 4",
+      "uom": "",
+      "color": "#00796B",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 4",
+          "index": 61,
+          "wireName": "Analog Input 4"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput5",
+      "display": "Analog Input 5",
+      "uom": "",
+      "color": "#283593",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 5",
+          "index": 62,
+          "wireName": "Analog Input 5"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput6",
+      "display": "Analog Input 6",
+      "uom": "",
+      "color": "#558B2F",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 6",
+          "index": 63,
+          "wireName": "Analog Input 6"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput7",
+      "display": "Analog Input 7",
+      "uom": "",
+      "color": "#BF360C",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 7",
+          "index": 64,
+          "wireName": "Analog Input 7"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogInput8",
+      "display": "Analog Input 8",
+      "uom": "",
+      "color": "#4A148C",
+      "families": {
+        "lan": {
+          "alias": "Analog Input 8",
+          "index": 65,
+          "wireName": "Analog Input 8"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogOutput1",
+      "display": "Analog Output 1",
+      "uom": "",
+      "color": "#004D40",
+      "families": {
+        "lan": {
+          "alias": "Analog Output 1",
+          "index": 66,
+          "wireName": "Analog Output 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogOutput2",
+      "display": "Analog Output 2",
+      "uom": "",
+      "color": "#880E4F",
+      "families": {
+        "lan": {
+          "alias": "Analog Output 2",
+          "index": 67,
+          "wireName": "Analog Output 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogOutput3",
+      "display": "Analog Output 3",
+      "uom": "",
+      "color": "#1A237E",
+      "families": {
+        "lan": {
+          "alias": "Analog Output 3",
+          "index": 68,
+          "wireName": "Analog Output 3"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/AnalogOutput4",
+      "display": "Analog Output 4",
+      "uom": "",
+      "color": "#33691E",
+      "families": {
+        "lan": {
+          "alias": "Analog Output 4",
+          "index": 69,
+          "wireName": "Analog Output 4"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CountInput1",
+      "display": "Count Input 1",
+      "uom": "",
+      "color": "#B71C1C",
+      "families": {
+        "lan": {
+          "alias": "Count Input 1",
+          "index": 70,
+          "wireName": "Count Input 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CountInput2",
+      "display": "Count Input 2",
+      "uom": "",
+      "color": "#311B92",
+      "families": {
+        "lan": {
+          "alias": "Count Input 2",
+          "index": 71,
+          "wireName": "Count Input 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CountInput3",
+      "display": "Count Input 3",
+      "uom": "",
+      "color": "#00695C",
+      "families": {
+        "lan": {
+          "alias": "Count Input 3",
+          "index": 72,
+          "wireName": "Count Input 3"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CountInput4",
+      "display": "Count Input 4",
+      "uom": "",
+      "color": "#827717",
+      "families": {
+        "lan": {
+          "alias": "Count Input 4",
+          "index": 73,
+          "wireName": "Count Input 4"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CountInput5",
+      "display": "Count Input 5",
+      "uom": "",
+      "color": "#3E2723",
+      "families": {
+        "lan": {
+          "alias": "Count Input 5",
+          "index": 74,
+          "wireName": "Count Input 5"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CountInput6",
+      "display": "Count Input 6",
+      "uom": "",
+      "color": "#0D47A1",
+      "families": {
+        "lan": {
+          "alias": "Count Input 6",
+          "index": 75,
+          "wireName": "Count Input 6"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareAnalogIn1",
+      "display": "Spare Analog In 1",
+      "uom": "",
+      "color": "#1B5E20",
+      "families": {
+        "lan": {
+          "alias": "Spare Analog In 1",
+          "index": 76,
+          "wireName": "Spare Analog In 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareAnalogIn2",
+      "display": "Spare Analog In 2",
+      "uom": "",
+      "color": "#F57F17",
+      "families": {
+        "lan": {
+          "alias": "Spare Analog In 2",
+          "index": 77,
+          "wireName": "Spare Analog In 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareAnalogIn3",
+      "display": "Spare Analog In 3",
+      "uom": "",
+      "color": "#212121",
+      "families": {
+        "lan": {
+          "alias": "Spare Analog In 3",
+          "index": 78,
+          "wireName": "Spare Analog In 3"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareAnalogIn4",
+      "display": "Spare Analog In 4",
+      "uom": "",
+      "color": "#01579B",
+      "families": {
+        "lan": {
+          "alias": "Spare Analog In 4",
+          "index": 79,
+          "wireName": "Spare Analog In 4"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareCounterInput1",
+      "display": "Spare Counter Input 1",
+      "uom": "",
+      "color": "#E65100",
+      "families": {
+        "lan": {
+          "alias": "Spare Counter Input 1",
+          "index": 80,
+          "wireName": "Spare Counter Input 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareStageTotal1",
+      "display": "Spare Stage Total 1",
+      "uom": "",
+      "color": "#00796B",
+      "families": {
+        "lan": {
+          "alias": "Spare Stage Total 1",
+          "index": 81,
+          "wireName": "Spare Stage Total 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareJobTotal1",
+      "display": "Spare Job Total 1",
+      "uom": "",
+      "color": "#283593",
+      "families": {
+        "lan": {
+          "alias": "Spare Job Total 1",
+          "index": 82,
+          "wireName": "Spare Job Total 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareCounterInput2",
+      "display": "Spare Counter Input 2",
+      "uom": "",
+      "color": "#558B2F",
+      "families": {
+        "lan": {
+          "alias": "Spare Counter Input 2",
+          "index": 83,
+          "wireName": "Spare Counter Input 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareStageTotal2",
+      "display": "Spare Stage Total 2",
+      "uom": "",
+      "color": "#BF360C",
+      "families": {
+        "lan": {
+          "alias": "Spare Stage Total 2",
+          "index": 84,
+          "wireName": "Spare Stage Total 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareJobTotal2",
+      "display": "Spare Job Total 2",
+      "uom": "",
+      "color": "#4A148C",
+      "families": {
+        "lan": {
+          "alias": "Spare Job Total 2",
+          "index": 85,
+          "wireName": "Spare Job Total 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareCounterInput3",
+      "display": "Spare Counter Input 3",
+      "uom": "",
+      "color": "#004D40",
+      "families": {
+        "lan": {
+          "alias": "Spare Counter Input 3",
+          "index": 86,
+          "wireName": "Spare Counter Input 3"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareStageTotal3",
+      "display": "Spare Stage Total 3",
+      "uom": "",
+      "color": "#880E4F",
+      "families": {
+        "lan": {
+          "alias": "Spare Stage Total 3",
+          "index": 87,
+          "wireName": "Spare Stage Total 3"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareJobTotal3",
+      "display": "Spare Job Total 3",
+      "uom": "",
+      "color": "#1A237E",
+      "families": {
+        "lan": {
+          "alias": "Spare Job Total 3",
+          "index": 88,
+          "wireName": "Spare Job Total 3"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareCounterInput4",
+      "display": "Spare Counter Input 4",
+      "uom": "",
+      "color": "#33691E",
+      "families": {
+        "lan": {
+          "alias": "Spare Counter Input 4",
+          "index": 89,
+          "wireName": "Spare Counter Input 4"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareStageTotal4",
+      "display": "Spare Stage Total 4",
+      "uom": "",
+      "color": "#B71C1C",
+      "families": {
+        "lan": {
+          "alias": "Spare Stage Total 4",
+          "index": 90,
+          "wireName": "Spare Stage Total 4"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareJobTotal4",
+      "display": "Spare Job Total 4",
+      "uom": "",
+      "color": "#311B92",
+      "families": {
+        "lan": {
+          "alias": "Spare Job Total 4",
+          "index": 91,
+          "wireName": "Spare Job Total 4"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareCombined1",
+      "display": "Spare Combined 1",
+      "uom": "",
+      "color": "#00695C",
+      "families": {
+        "lan": {
+          "alias": "Spare Combined 1",
+          "index": 92,
+          "wireName": "Spare Combined 1"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/SpareCombined2",
+      "display": "Spare Combined 2",
+      "uom": "",
+      "color": "#827717",
+      "families": {
+        "lan": {
+          "alias": "Spare Combined 2",
+          "index": 93,
+          "wireName": "Spare Combined 2"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CmntOpsTrackIdnum",
+      "display": "Cmnt Ops Track IDNum",
+      "uom": "",
+      "color": "#3E2723",
+      "families": {
+        "lan": {
+          "alias": "Cmnt Ops Track IDNum",
+          "index": 94,
+          "wireName": "Cmnt Ops Track IDNum"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    },
+    {
+      "name": "Lan/CmntOpsTrackDescript",
+      "display": "Cmnt Ops Track Descript",
+      "uom": "",
+      "color": "#0D47A1",
+      "families": {
+        "lan": {
+          "alias": "Cmnt Ops Track Descript",
+          "index": 95,
+          "wireName": "Cmnt Ops Track Descript"
+        }
+      },
+      "simulation": {
+        "base": 0.0,
+        "amplitude": 0.0,
+        "frequency": 0.0,
+        "format": "f2"
+      },
+      "excludeFromTelemetry": false
+    }
+  ]
+}

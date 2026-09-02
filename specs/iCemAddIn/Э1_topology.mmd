@@ -1,0 +1,43 @@
+﻿flowchart LR
+    subgraph ICEM["iCem.exe process boundary (vendor net48 — source C:\\Users\\HALLIBURTON\\iCemPOC\\Burservis.iCem.DataMonitor)"]
+        VARS["iCem tap API<br/>VariableProviderFactory (serial-equipment sources → com map;<br/>LAN-equipment SourceComPort==17 → lan map)"]
+        CASE["CementCase.RealtimeCase.RealtimeState → reg1 passthrough"]
+        LAN["LANManager.LANStatus (ComPortStates) → reg2 passthrough"]
+        RAW["IPort.DataStream (ComPortPropertyChanged) → raw_com_line float32 CDAB positional fields"]
+        ADDIN["AddIn dll in-proc<br/>DUMB TRANSLATOR: verbatim byte-exact copy<br/>D1 latch on first feeding COM device"]
+        CFG["user.config<br/>ComPort entries / DataInterval / String Configuration"]
+        VARS -->|"in-proc poll 1 Hz"| ADDIN
+        CASE -->|"enum passthrough"| ADDIN
+        LAN -->|"enum passthrough"| ADDIN
+        RAW -->|"line event (latched device only)"| ADDIN
+        CFG -.->|"FLECS connector IGNORES String Configuration (separator ',' hardcoded)"| ICEM
+    end
+
+    subgraph MMF["C:\\ProgramData\\Halliburton\\iCem\\DataMonitoring\\Data.dat — MMF Global\\iCemDataMonitorBus_v1 (10001 regs, layoutVer 5)"]
+        HDR["header state regs 0..3<br/>reg0 comPortActive (D1 latch) / reg1 caseState / reg2 caseLanState<br/>reg3 heartbeat +1/s ALWAYS, wrap 32000→0"]
+        COMZ["com_stream regs 4..199<br/>98 float32 CDAB, addr=4+idx*2"]
+        LANZ["lan_stream_crio regs 200..399<br/>100 float32 CDAB, addr=200+idx*2 (96 cRIO signals)<br/>FULL 4-byte CDAB — byte-width casts BANNED; D4: owns Lan liveness block 19/27/41"]
+        RAWZ["raw_com_line regs 400..599<br/>float32 CDAB positional CSV fields (≤100, field i → 400+i*2)"]
+        ACEZ["ace_full RESERVE regs 600..10000 — NOBODY (DEFERRED)<br/>AddIn NEVER writes; POC NEVER writes"]
+    end
+
+    subgraph HOST["iCemDataMonitor.Host.exe process boundary (headless, USER process, SAME session as iCem.exe — W18 BD-topology; service path rejected by UAC)"]
+        BR["BusReader"]
+        MOD["ModbusTcpPublisher :502"]
+        HEALTH["BusHealthMonitor 1Hz"]
+        GRPC["gRPC TelemetryService<br/>pipe iCemDataMonitor.Host + TCP :8090"]
+    end
+
+    CLI["iCemDataMonitor-cli (separate user process)"]
+
+    ADDIN -->|"single-writer: regs 0..3"| HDR
+    ADDIN -->|"single-writer: com floats"| COMZ
+    ADDIN -->|"crio floats + Lan liveness (D4)"| LANZ
+    POCSNK["POC LanBusSink V6<br/>(1.6.1 dual-writer: decoded cRIO signals)"] -->|"per-frame writes + liveness"| LANZ
+    ADDIN -->|"single-writer: raw positional floats"| RAWZ
+    ADDIN -.->|"forbidden (writer guard)"| ACEZ
+    MMF -->|"snapshot under Global\\iCemDataMonitorBusMutex_v1"| BR
+    MMF -->|"snapshot under Global\\iCemDataMonitorBusMutex_v1"| CLI
+    BR --> MOD
+    BR --> HEALTH
+    BR --> GRPC

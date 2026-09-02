@@ -1,0 +1,36 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+1,Gen Analog 1,Generic Analog 1,0,0
+1,Gen Analog 2,Generic Analog 2,0,0
+1,HalWin Event,HalWin Event Number,0,0
+1,Gen Freq 2,Generic Frequency 2,0,0
+1,Gen Analog 3,Generic Analog 3,0,0
+1,Gen Analog 6,Generic Analog 6,0,0
+1,Trns Equip Type,Transmission Equip Type,0,0
+0,Depth,Tubing Depth,21,122
+1,h2_hat,h2_hat,21,122
+0,CT Depth,CT Depth,21,122
+1,CT Stretch,CT Stretch,21,122
+0,DH Density,Downhole Density,178,57
+0,Pump Rate,Pump Rate,130,75
+0,Rig Pump Pr,Rig Pump Pressure,71,185
+0,Gel Viscosity,Gel Viscosity,101,256
+0,Extra Press 1,Extra Press 1,71,187
+0,Circ Hole Pr,Circ Hole Pressure,71,185
+0,Calc WH Pr,Calc'd Wellhead Pressure,71,185
+0,Annulus Pr @WH,Annulus Pressure,71,185
+0,Calc Pumping Pr,Calc'd Pumping Pressure,71,185
+1,Dsch Pressure,Discharge Pressure,71,185
+1,Extra Press 2,Extra Press 2,71,185
+1,Water Valve Psn,Water Valve Position,63,154
+1,Requested Gear,Requested Gear,0,0
+1,Lock-up Status,Lock-up Status,0,0
+1,Lock-up Inhibit,Lock-up Inhibit,0,0
+1,Gel pH,Gel pH,0,0
+1,Eng Equip Type,Engine Equipment Type,0,0
+1,Dig out,Digital Out,0,0
+0,BtmHole ECD,Bottomhole ECD,178,57
+0,Frac Zone ECD,Fracture Zone ECD,178,57
+0,Res Zone ECD,Reservoir Zone ECD,178,57
+0,Hydr Power,Hydraulic Power,45,160
+0,Pump Efficiency,Pump Efficiency,63,154

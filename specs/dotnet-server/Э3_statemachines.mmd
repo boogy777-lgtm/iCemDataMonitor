@@ -1,0 +1,51 @@
+stateDiagram-v2
+    [*] --> SINGLE_INSTANCE_CHECK
+    SINGLE_INSTANCE_CHECK --> INI_LOAD: acquired Global\iCemDataMonitorTray_v1
+    SINGLE_INSTANCE_CHECK --> [*]: mutex exists
+    INI_LOAD --> HOST_BUILD: station.ini valid
+    INI_LOAD --> FATAL_EXIT: invalid ini (fail-fast)
+    HOST_BUILD --> BUS_OPEN: register BusReader singleton
+    BUS_OPEN --> REGISTRY_LOAD: bus shape OK
+    BUS_OPEN --> FATAL_EXIT: unsupported shape / BusAccessDeniedException
+    REGISTRY_LOAD --> WIRE_LAN_SINK: lansniffer_on=1 and registry present
+    REGISTRY_LOAD --> SKIP_LAN_SINK: lansniffer_on=0 or registry missing
+    WIRE_LAN_SINK --> MODBUS_START: layers.Modbus
+    SKIP_LAN_SINK --> MODBUS_START: layers.Modbus
+    MODBUS_START --> HOST_RUN: bind :502 success
+    MODBUS_START --> MODBUS_RETRY: SocketException AddressAlreadyInUse
+    MODBUS_RETRY --> MODBUS_START: attempt < 5
+    MODBUS_RETRY --> FATAL_EXIT: 5x5s exhausted
+    HOST_RUN --> TRAY_ICON: web/headless started
+    TRAY_ICON --> RUNNING: Application.Run()
+    RUNNING --> [*]: tray Exit / fatal
+
+    state MODBUS_RETRY {
+        [*] --> WAIT_5S
+        WAIT_5S --> [*]
+    }
+
+    state AceSnifferService {
+        [*] --> STOPPED
+        STOPPED --> STARTING: BackgroundService.StartAsync
+        STARTING --> ADAPTER_MISSING: configured adapter absent
+        STARTING --> RUNNING: adapter opened (Npcap)
+        ADAPTER_MISSING --> STARTING: manual reconfiguration / watchdog
+        RUNNING --> CAPTURING: capture command
+        CAPTURING --> RUNNING: capture stop
+        RUNNING --> STOPPED: cancellation / exception
+        STOPPED --> [*]: dispose
+    }
+
+    state BusZoneWriter {
+        [*] --> CLOSED
+        CLOSED --> OPENING: TryOpen (deferred machinery — v5 has no production caller)
+        OPENING --> OPEN: file created or shape valid
+        OPENING --> DISABLED: BusAccessDeniedException / unsupported shape
+        OPENING --> UPGRADE: smaller v2/v3 shape detected
+        UPGRADE --> OPEN: layoutVer->5 regCount->10001 under mutex
+        OPEN --> WRITE_PAIR: WriteFloat(addr, value) (machinery pinned by tests)
+        WRITE_PAIR --> OPEN: mutex acquired + 4 bytes written
+        OPEN --> MARK_LAN: MarkZoneActive(Lan) (machinery; Lan block = AddIn-owned in production)
+        MARK_LAN --> OPEN: tick/flag/counter updated
+        DISABLED --> [*]: process exits or stays silent
+    }

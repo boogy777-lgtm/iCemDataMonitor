@@ -1,0 +1,40 @@
+# 2026-09-01 (owner request «человек должен собирать проект из IDE»):
+# the repo was LLM-authored via scripts — this file pins the ACTUAL existing
+# conventions so a human's IDE does not reformat the world on first save.
+# Reality check that day: sources are UTF-8, LF line endings, 4-space C#.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,md,wxs,props,targets,ini,xml,csproj}]
+indent_size = 2
+
+[*.{ps1,psm1,psd1}]
+end_of_line = crlf
+charset = utf-8-bom
+
+[*.csv]
+charset = unset
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
+
+[*.cs]
+# C# conventions observed in the codebase (pinned, not aspirational).
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = none
+csharp_prefer_braces = true:silent
+csharp_style_var_for_built_in_types = true:silent
+csharp_style_var_when_type_is_apparent = true:silent
+csharp_style_expression_bodied_methods = true:silent
+dotnet_style_qualification_for_field = false:silent
+dotnet_style_qualification_for_property = false:silent
+dotnet_style_qualification_for_method = false:silent

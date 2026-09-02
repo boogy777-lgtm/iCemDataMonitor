@@ -1,0 +1,92 @@
+﻿# TZ: LLM-only Documentation System (ESKD-style Э0-Э7) for the iCem POC stand
+# consumer: LLM agents ONLY (¬human). Formats allowed: yaml/csv/mermaid/boolean-DSL.
+# BANNED: ascii-art diagrams, prose walls, marketing adjectives. docs-as-code:
+# every fact queryable, greppable, diffable; doc lives next to code; doc-update
+# is part of the DoD of every change.
+# DOCTRINE: specs = CURRENT STATE ONLY. Process artifacts (incident logs, change
+# history, migration narration) are archived OUT of the docs system, never linked.
+
+meta:
+  id: TZ-DOCSYS-001
+  status: Accepted
+  date: 2026-08-17
+  scope_software: [iCemEmule, iCemAddIn_dll, dotnet_server]   # stand = 3 software units
+  language_of_content: "RU+EN mixed; headings EN; values terse"
+  root: specs/                      # per-software subtree: specs/<unit>/Э<n>_<name>.<yaml|csv|md-with-mermaid>
+
+# ─────────────────────────────────────────────────────────────
+mission:
+  problem: "agents loop: root causes rediscovered repeatedly because architecture ∃ only in code ∧ chat history"
+  goal: "∀ fresh LLM chat: given ONLY specs/ tree ⇒ answers ANY architecture/wire/ownership question WITHOUT reading code"
+  anti_goal: "¬ duplicate code text; doc = concentrated FACTS about code (addresses, offsets, owners, invariants), ¬ paraphrase"
+  acceptance_test: "fresh agent + specs/ ⇒ resolves a 'why is register X static' question in ≤5 tool calls, zero code reads"
+
+# ─────────────────────────────────────────────────────────────
+# PRESENT — ground truth state per software unit
+present_state:
+  topology_mermaid: |
+    flowchart LR
+      EMU[iCemEmule<br/>COM2 serial + LAN ACE 82574L] -->|com0com pair| COM1[COM1]
+      COM1 --> ICEM[iCem.exe<br/>FLECS CMT v4.53 parser]
+      EMU -->|ACE frames wire| SNIFF[POC AceSnifferService]
+      ICEM --> ADDIN[AddIn dll in-proc]
+      ADDIN -->|"v5: writes regs 0..3 + com_stream 4..199 + lan_stream_crio 200..399 + raw_com_line 400..599"| BUS[(Data.dat<br/>Global\iCemDataMonitorBus_v1 10001 regs)]
+      SNIFF -.->|"bus redirect REMOVED 2026-08-27 (producer-only: only the AddIn writes)"| X[POC read-only]
+      BUS --> READER[BusReader→ModbusTcpPublisher]
+      READER -->|:502 FC03| OPERATOR[SCADA/master]
+  units:
+    iCemEmule:
+      path: iCemEmule/
+      kind: "WinForms stand emulator (ACE LAN injector + FLECS COM serial)"
+      contracts: [specs/CONTRACT_iCemEmule.yaml, PROTOCOL.md]
+      known_facts: "payload_offset=0x18; sv u32 overwrites payload bytes 0..3; com line = 32 CSV fields (excludeFromTelemetry dropped); 6 sv superframe; 1 Hz"
+    iCemAddIn_dll:
+      path: "C:\\Users\\HALLIBURTON\\iCemPOC\\Burservis.iCem.DataMonitor (own code)"
+      kind: "dll inside iCem.exe; writes bus via MMF (net48 producer)"
+      known_facts: "v5 writer: regs 0..3 {comPortActive D1 latch, caseState tap-only, caseLanState tap-only, heartbeat reg3 +1/s ALWAYS while loaded wrap 32000→0 D2}; com_stream 4..199 addr=4+idx*2 (34 flecs); lan_stream_crio 200..399 addr=200+idx*2 (96 cRIO per PROTOCOL.md); raw_com_line 400..599 u16/char stale-hold; AddIn NEVER writes 600+ (ace_full reserve); lan path writes full 4-byte CDAB; D4: AddIn marks Lan liveness block (19/27/41) for lan_stream_crio"
+    dotnet_server:
+      path: server-dotnet/
+      kind: "POC: Tray host + Sdk + Data(MMF bus) + Transport(sniffer/modbus/tee) + Plugins.Icem(registry)"
+      known_facts: "bus v5 10001 regs/20066 B (D3); header 0..3 live {comPortActive, caseState, caseLanState, heartbeat}; com_stream 4..199 / lan_stream_crio 200..399 / raw_com_line 400..599 (all AddIn); ace_full reserve 600..10000 DEFERRED nobody writes; POC = strict READER of Data.dat (host read-only open, ¬ create/¬ migrate/¬ write; LanBusSink/BusZoneWriter REMOVED 2026-08-27); stale-hold law (no zero-on-stop); single-instance mutex; fail-fast startup; DACL fix; capacity probe; legacy bus files (v3/v4-full 8404/16872) are EXPANDED to 10001/20066 BY THE PRODUCER (AddIn) on first open (never final shapes)"
+  future_work:
+    - item: "ace_full 600..10000 implementation — DEFERRED reserve; nobody writes in v5"
+      trigger: "user decree; layout designed LATER from measured ACE composition (specs/dotnet-server/Э2b_ace_full_measurement.csv) — never invent the layout now"
+    - item: "100% named COM/LAN coverage (stage: design-only)"
+      stage_ladder_pos: "FUTURE / promotion-candidate (§15.2) — after Э8 design, before implementation"
+      artifacts: ["specs/iCemAddIn/Э8_design_variableid.yaml (machine design v2)", "specs/iCemAddIn/FUTURE_full_coverage_spec.md (human long-form, user-decreed md)"]
+      trigger: "explicit user decree (Э8 triggers: zone decree D-T2 / SCADA need / template change with named requirement)"
+      note: "implementation touches ONLY C:\\Users\\HALLIBURTON\\iCemPOC\\Burservis.iCem.DataMonitor + specs; capacity lives in the POC-deferred ace_full reserve — see capacity chapter of the md"
+
+# ─────────────────────────────────────────────────────────────
+# SYSTEM RULES — how the doc system is built and maintained
+system_rules:
+  principle: |
+    ∀ fact ∈ specs/ ⇔ fact ∉ derivable-in-one-grep from code ∧ fact NEEDED to reason across process boundaries.
+    Doc answers: WHO writes/reads WHAT bytes WHERE with WHICH invariant and WHAT failure mode.
+    Doc ¬ answers: how the code is written line-by-line.
+    specs record STATE, ¬ process: no incident logs, no change history, no migration narration.
+  stage_ladder:   # Э0-Э7 per unit; one file per stage; csv/yaml/mermaid only
+    Э0_mission:   "yaml: why the unit exists; inputs/outputs; kill-criteria"
+    Э1_topology:  "mermaid flowchart ONLY: processes, ports, MMF sections, files, adapters; every edge = protocol name"
+    Э2_contracts: "csv tables: every wire/register/field row = (name,address/offset,type,byte_order,owner_writer,readers,units,scale)"
+    Э3_statemachines: "mermaid stateDiagram: supervision FSM, acquisition FSM, case FSM; transitions carry guards"
+    Э4_invariants: "boolean algebra lines: ∀/∃/¬ laws (single-writer, ordered-restart, fail-fast, stale-hold); each law ⇒ falsifiable check (test name)"
+    Э5_seams_config: "csv: every config key/ini/settings.xml field = (key,default,scope,effect,restart_required)"
+    Э6_failures: "csv failure-pattern table: (symptom_signature,likely_cause,probe_command,remediation) — current-state diagnostic rows"
+    Э7_verification: "csv: test_name → proves_invariant → surface (unit/contract/live-gate); Category=Live marked"
+  per_unit_tree: |
+    specs/iCemEmule/{Э0..Э7}
+    specs/iCemAddIn/{Э0..Э7 + Э8}
+    specs/dotnet-server/{Э0..Э7}
+    specs/stand_topology.mmd        # the one cross-unit mermaid
+  density_rules:
+    - "one fact = one row/line; ¬ sentences"
+    - "mermaid allowed ONLY where parent→child or state→state edges exist"
+    - "byte offsets in hex ∧ decimal both: 0x18(24)"
+    - "every Э4 law ⇒ ∃ test name in Э7 (¬ orphan law)"
+    - "every Э6 row ⇒ probe command copy-pastable (PowerShell or icemdatamonitor-cli)"
+  update_law: "Δcode touching contract/topology/invariant ⇒ Δspecs in SAME commit (the Δ records the NEW STATE, ¬ the change narrative); CI-gate = grep-check (banned: ascii boxes; required: Э2 row per public register)"
+  quality_gate: "5-DIM (agent-dna.md): min(dim)≥6 ∧ sum≥35 per file"
+
+ownership:
+  specs_law: "unit owner writes its Э-files; cross-unit edges (topology) = architect"

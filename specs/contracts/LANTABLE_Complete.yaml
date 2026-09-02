@@ -1,0 +1,423 @@
+# LantableNT — Complete Decode Specification (12 ValueTypes, 100% Fidelity)
+# Date: 2026-08-10
+# Authority: lantable_extracted.xml (from Halliburton.iCem.CementingData.Units.dll embedded resource)
+# Verified against: AceFrameParser.cs regression harness (33 PASS / 0 FAIL on iCemCrio.pcapng.bin)
+
+meta:
+  total_signals: 4386
+  unique_value_types: 12
+  xml_source: "tools/ace_replay/lantable_extracted.xml"
+  embedded_resource: "Halliburton.iCem.CementingData.Units.dll / LantableNT.xml"
+  regression_harness: "tools/ace_replay/ (AceFrameParser + Program.cs, 33 tests)"
+  signal_base_offset: 24  # frame[24] = byte 0 of signal area (after Equipment + SV)
+  frame_length: 152
+  payload_length: 124     # frame[28:152] = signal area
+  sentinel_value: -9999.0 # "no data" marker — applies to ALL numeric types
+  endianness: BIG_ENDIAN  # all multi-byte types (NI cRIO LabVIEW convention)
+
+# ── ValueType Distribution ──
+
+distribution:
+  FF:  1767  # float32 BE — handled ✓
+  UL:  1029  # uint32 BE — handled ✓
+  SL:   718  # int32 BE signed — UNHANDLED
+  HX:   286  # hex display — handled ✓
+  SI:   224  # int32 BE signed — UNHANDLED
+  FD:   162  # float64 BE — UNHANDLED
+  UC:   127  # ASCII string — handled ✓
+  UI:    35  # uint32 BE unsigned — UNHANDLED
+  US:    17  # uint16 BE unsigned — UNHANDLED
+  SS:    13  # int16 BE signed — UNHANDLED
+  SC:     8  # int8 BE signed — UNHANDLED
+  total: 4386
+  handled: 3209  # (FF+UL+HX+UC) = 1767+1029+286+127
+  unhandled: 1177 # (SL+SI+FD+UI+US+SS+SC) = 718+224+162+35+17+13+8
+  coverage: "73.2% currently → 100% with this spec"
+
+# ── Complete ValueType Encoding Table ──
+
+value_types:
+
+  FF:  # ✓ HANDLED
+    name: "Float"
+    c_type: float (IEEE 754 single-precision)
+    byte_width: 4
+    endian: big
+    signed: true
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor applied)
+    decode: "BinaryPrimitives.ReadSingleBigEndian(span) * sig.DasFactor"
+    signal_count: 1767
+    typical_das_factor: "1.0 (raw float), or custom"
+    typical_uom: "psi, f, none, bbl/min, rpm, %"
+    notes: "Most common type. Used for pressures, temperatures, frequencies, flags."
+
+  UL:  # ✓ HANDLED
+    name: "Unsigned Long"
+    c_type: uint32
+    byte_width: 4
+    endian: big
+    signed: false
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor)
+    decode: "BinaryPrimitives.ReadUInt32BigEndian(span) * sig.DasFactor"
+    signal_count: 1029
+    typical_das_factor: "1.0 (raw counts), or custom"
+    typical_uom: "none (error counts, counters, status flags)"
+    notes: "Second most common. Used for error counters, equipment IDs, status words."
+
+  SL:  # UNHANDLED → IMPLEMENT
+    name: "Signed Long"
+    c_type: int32
+    byte_width: 4  # verified: ALL SL signals in XML have Size=4
+    endian: big
+    signed: true
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor applied to decoded value)
+    decode: "(double)BinaryPrimitives.ReadInt32BigEndian(span) * sig.DasFactor"
+    signal_count: 718
+    size_values_observed: [4]  # uniform — no Size=2 or Size=8 SL signals exist
+    das_factor_examples:
+      - "1.00000000000000e+000  (none, hp, krev — raw integer counts)"
+      - "2.77777777777778e-004  (hr — converts seconds to hours: 1/3600)"
+      - "1.04359925788497e-002  (bbl/min — 1/95.85, flow rate scale)"
+    typical_uom: "hp, krev, hr, bbl/min, hp-hr"
+    typical_signals: "Engine HP, Engine krev, Engine hours, Total revolutions, flow rates"
+    notes: >
+      SL vs SI distinction: both are int32 BE with dasFactor. The difference is
+      semantic (LabVIEW type tag). SL = "signed long integer", SI = "signed integer".
+      In practice, both decode identically. The XML uses SL for engine/mechanical
+      counters and SI for process measurements. Sentinel check applies equally.
+
+  SI:  # UNHANDLED → IMPLEMENT
+    name: "Signed Int"
+    c_type: int32
+    byte_width: 4  # verified: ALL SI signals in XML have Size=4
+    endian: big
+    signed: true
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor applied)
+    decode: "(double)BinaryPrimitives.ReadInt32BigEndian(span) * sig.DasFactor"
+    signal_count: 224
+    size_values_observed: [4]  # uniform
+    das_factor_examples:
+      - "8.88888888888889e-001  (psi — 1/1.125, LabVIEW ADC scaling)"
+      - "2.50000000000000e-001  (0.25, various)"
+      - "1.01913990027829e-005  (very small scale, precision measurement)"
+      - "1.49207759148655e-001  (~1/6.7, rpm scale)"
+      - "6.94444444444444e-003  (1/144, LabVIEW ADC)"
+      - "1.95312500000000e-003  (1/512)"
+      - "1.04359925788497e-002  (bbl/min)"
+      - "5.56586270871985e-003  (1/179.67)"
+    typical_uom: "psi, psia, f (temperature), rpm, bbl/min, gal/min, ft/sec, %, bbl, gal, lb/gal, in, ft"
+    typical_signals: "Pressures, temperatures, flow rates, densities, RPM, levels"
+    notes: >
+      Large variety of dasFactor values. The specific fractions (1/144, 1/512, 1/1.125)
+      suggest LabVIEW ADC integer scaling, where raw integer = ADC counts * gain.
+
+  FD:  # UNHANDLED → IMPLEMENT
+    name: "Float Double"
+    c_type: double (IEEE 754 double-precision)
+    byte_width: 8  # verified: ALL FD signals in XML have Size=8
+    endian: big
+    signed: true
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor)
+    decode: "BinaryPrimitives.ReadDoubleBigEndian(span) * sig.DasFactor"
+    signal_count: 162
+    size_values_observed: [8]  # uniform
+    das_factor_examples:
+      - "1.00000000000000e+000  (raw float64 — most common for FD)"
+    typical_uom: "bbl/min, bbl, lb/gal, lb/min, gal/min"
+    typical_signals: "Flow rates, volumes, densities — high-precision measurements"
+    notes: >
+      FD is used where float32 precision is insufficient (cumulative volumes,
+      density with 4+ significant digits). dasFactor is almost always 1.0 because
+      float64 directly encodes the scaled engineering value.
+      Sentinel -9999.0: check raw double value (before dasFactor, since dasFactor=1.0
+      for most FD signals).
+
+  UI:  # UNHANDLED → IMPLEMENT
+    name: "Unsigned Int"
+    c_type: uint32
+    byte_width: 4  # verified: ALL UI signals in XML have Size=4
+    endian: big
+    signed: false
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor)
+    decode: "(double)BinaryPrimitives.ReadUInt32BigEndian(span) * sig.DasFactor"
+    signal_count: 35
+    size_values_observed: [4]  # uniform
+    das_factor_examples:
+      - "1.04359925788497e-002  (bbl/min — 1/95.85)"
+      - "1.00000000000000e+000  (raw counts)"
+      - "2.44200244200244e-002  (1/40.95)"
+    typical_uom: "bbl/min, none"
+    typical_signals: "Discharge rate, flow rates, counter values"
+    notes: >
+      UI vs UL distinction: both are uint32 BE. In LabVIEW, UL = unsigned long
+      (32-bit), UI = unsigned int (also 32-bit in LabVIEW). The XML seems to use
+      UL for error/status counters and UI for scaled measurement values.
+      Decode identically. Sentinel check applies.
+
+  US:  # UNHANDLED → IMPLEMENT
+    name: "Unsigned Short"
+    c_type: uint16
+    byte_width: 2  # verified: ALL US signals in XML have Size=2
+    endian: big
+    signed: false
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor — though unlikely to trigger on uint16 max range)
+    decode: "(double)BinaryPrimitives.ReadUInt16BigEndian(span) * sig.DasFactor"
+    signal_count: 17
+    size_values_observed: [2]  # uniform
+    das_factor_examples:
+      - "2.50000000000000e-001  (rpm — 0.25)"
+      - "2.60416666666667e-004  (gal/min — 1/3840)"
+      - "1.49207759148655e-001  (rpm — ~1/6.7)"
+      - "4.28038758116883e-004  (gal/min)"
+      - "1.00000000000000e-001  (% — 0.1)"
+      - "1.00000000000000e+000  (raw counts)"
+    typical_uom: "rpm, gal/min, %, none (counts), hex"
+    typical_signals: "RPM sensors, flow rates, percentage levels, status codes"
+    notes: >
+      16-bit ADC values from sensors. The small dasFactor values suggest these
+      are raw ADC counts (0-65535) scaled to engineering units.
+
+  SS:  # UNHANDLED → IMPLEMENT
+    name: "Signed Short"
+    c_type: int16
+    byte_width: 2  # verified: ALL SS signals in XML have Size=2
+    endian: big
+    signed: true
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor)
+    decode: "(double)BinaryPrimitives.ReadInt16BigEndian(span) * sig.DasFactor"
+    signal_count: 13
+    size_values_observed: [2]  # uniform
+    das_factor_examples:
+      - "6.94444444444444e-003  (psi — 1/144)"
+      - "2.50000000000000e-001  (f — 0.25 degF)"
+      - "3.90625000000000e-003  (volt — 1/256)"
+      - "1.00000000000000e+000  (hp — raw count)"
+    typical_uom: "psi, psia, f, volt, hp"
+    typical_signals: "Pressure sensors, temperature, voltage, power"
+    notes: >
+      Signed 16-bit ADC values. Negative raw values are valid (e.g. -10°F = raw -40
+      at dasFactor=0.25). Sentinel at -9999.0 cannot be represented by int16
+      (-9999/0.0039 ≈ -2.56M > int16.MinValue). Sentinel is post-dasFactor applied
+      — raw int16 sentinel would need to be -32768 (int16.MinValue) mapped to -9999.0
+      after dasFactor. Per legacy iCem, sentinel is post-scale check only.
+
+  SC:  # UNHANDLED → IMPLEMENT
+    name: "Signed Char"
+    c_type: int8 (sbyte)
+    byte_width: 1  # verified: ALL SC signals in XML have Size=1
+    endian: N/A (single byte)
+    signed: true
+    das_factor: yes (multiply after read)
+    sentinel: yes (-9999.0 after dasFactor — likely triggers on value=-128 (sbyte.MinValue) at certain dasFactors; -9999/0.125 = -79992 > int8.MinValue, so sentinel never triggers; -9999/0.5 = -19998 > int8.MinValue; only -9999/1.0 = -9999 out of range)
+    decode: "(double)(sbyte)span[0] * sig.DasFactor"
+    signal_count: 8
+    size_values_observed: [1]  # uniform
+    das_factor_examples:
+      - "1.25000000000000e-001  (psi — 0.125, i.e. raw byte / 8)"
+      - "6.25000000000000e-002  (psi — 0.0625, i.e. raw byte / 16)"
+      - "5.00000000000000e-001  (psi — 0.5, i.e. raw byte / 2)"
+      - "1.00000000000000e+000  (degC — raw byte = degC)"
+    typical_uom: "psi, degC"
+    typical_signals: "Low-precision pressure sensors, temperature sensors (1-byte ADC)"
+    notes: >
+      Single-byte signed values from very low-resolution ADCs or status registers.
+      Range: -128 to 127 raw, scaled to engineering units by dasFactor.
+      Sentinel check: sbyte.MinValue (-128) cannot reach -9999.0 at typical
+      dasFactors; sentinel effectively never triggers for SC. This is acceptable
+      — the check is harmless and consistent with other types.
+
+  HX:  # ✓ HANDLED
+    name: "Hex"
+    c_type: uint32 (display as hex string)
+    byte_width: 4
+    endian: big
+    das_factor: not applied (display only)
+    sentinel: no (hex display values cannot be sentinel)
+    decode: "string.Format($\"0x{raw:X8}\"), raw = ReadUInt32BigEndian"
+    signal_count: 286
+    notes: "Hex display for status words, bit fields, diagnostic codes."
+
+  UC:  # ✓ HANDLED
+    name: "Unsigned Char (string)"
+    c_type: ASCII null-terminated string
+    byte_width: variable (Size field = max length)
+    endian: N/A
+    das_factor: not applied
+    sentinel: no
+    decode: "ASCII.GetString(span.Slice(0, nulIndex)); nulIndex = span.IndexOf((byte)0)"
+    signal_count: 127
+    notes: "ASCII text fields: version strings, software names, descriptors."
+
+# ── DecodeSignals Switch Expansion ──
+
+decode_switch_spec:
+  description: "Complete switch statement for LantableRegistry.DecodeSignals (C# implementation reference)"
+  existing_cases: [FF, UL, HX, UC]
+  new_cases:
+    SL:
+      code: |
+        case "SL":
+        {
+            int raw = BinaryPrimitives.ReadInt32BigEndian(frame.Slice(abs, 4));
+            double v = (double)raw * sig.DasFactor;
+            bool isSentinel = Math.Abs(v - Sentinel) < 0.001;
+            result.Add(new DecodedLanValue(sig.Name,
+                isSentinel ? null : v, null, sig.Uom, isSentinel));
+            break;
+        }
+    SI:
+      code: |
+        case "SI":
+        {
+            int raw = BinaryPrimitives.ReadInt32BigEndian(frame.Slice(abs, 4));
+            double v = (double)raw * sig.DasFactor;
+            bool isSentinel = Math.Abs(v - Sentinel) < 0.001;
+            result.Add(new DecodedLanValue(sig.Name,
+                isSentinel ? null : v, null, sig.Uom, isSentinel));
+            break;
+        }
+    FD:
+      code: |
+        case "FD":
+        {
+            double v = BinaryPrimitives.ReadDoubleBigEndian(frame.Slice(abs, 8)) * sig.DasFactor;
+            bool isSentinel = Math.Abs(v - Sentinel) < 0.001;
+            result.Add(new DecodedLanValue(sig.Name,
+                isSentinel ? null : v, null, sig.Uom, isSentinel));
+            break;
+        }
+    UI:
+      code: |
+        case "UI":
+        {
+            uint raw = BinaryPrimitives.ReadUInt32BigEndian(frame.Slice(abs, 4));
+            double v = (double)raw * sig.DasFactor;
+            bool isSentinel = Math.Abs(v - Sentinel) < 0.001;
+            result.Add(new DecodedLanValue(sig.Name,
+                isSentinel ? null : v, null, sig.Uom, isSentinel));
+            break;
+        }
+    US:
+      code: |
+        case "US":
+        {
+            ushort raw = BinaryPrimitives.ReadUInt16BigEndian(frame.Slice(abs, 2));
+            double v = (double)raw * sig.DasFactor;
+            bool isSentinel = Math.Abs(v - Sentinel) < 0.001;
+            result.Add(new DecodedLanValue(sig.Name,
+                isSentinel ? null : v, null, sig.Uom, isSentinel));
+            break;
+        }
+    SS:
+      code: |
+        case "SS":
+        {
+            short raw = BinaryPrimitives.ReadInt16BigEndian(frame.Slice(abs, 2));
+            double v = (double)raw * sig.DasFactor;
+            bool isSentinel = Math.Abs(v - Sentinel) < 0.001;
+            result.Add(new DecodedLanValue(sig.Name,
+                isSentinel ? null : v, null, sig.Uom, isSentinel));
+            break;
+        }
+    SC:
+      code: |
+        case "SC":
+        {
+            sbyte raw = (sbyte)frame[abs];
+            double v = (double)raw * sig.DasFactor;
+            bool isSentinel = Math.Abs(v - Sentinel) < 0.001;
+            result.Add(new DecodedLanValue(sig.Name,
+                isSentinel ? null : v, null, sig.Uom, isSentinel));
+            break;
+        }
+
+# ── OOB Guard ──
+
+oob_guard:
+  description: "Already implemented in the loop preamble: if (abs < 0 || abs + sig.Size > frame.Length) → null value. No changes needed."
+  current: |
+    int abs = SignalBaseOffset + sig.ByteOffset;
+    if (abs < 0 || abs + sig.Size > frame.Length)
+    {
+        result.Add(new DecodedLanValue(sig.Name, null, null, sig.Uom, false));
+        continue;
+    }
+
+# ── Sentinel Semantics ──
+
+sentinel:
+  value: -9999.0
+  representation: "double-precision sentinel value post-dasFactor multiplication"
+  applies_to: [FF, UL, SL, SI, FD, UI, US, SS, SC]  # all numeric types
+  not_applies_to: [HX, UC]  # display/string types
+  check_tolerance: 0.001  # Math.Abs(v - Sentinel) < 0.001
+  is_sentinel_property: true  # DecodedLanValue.IsSentinel flag
+  null_value_property: true   # DecodedLanValue.Value = null when sentinel
+  legacy_behavior: >
+    In the iCem GUI, sentinel channels display as blank/empty.
+    In the regression harness (AceFrameParser.cs), sentinel is checked
+    with v == SentinelValue (exact equality on double) — this works because
+    the raw value × dasFactor is exactly -9999.0 for UL sentinel (uint.MaxValue × 1.0),
+    but may have floating-point drift for other types. The tolerance approach
+    (|v - Sentinel| < 0.001) is safer.
+
+# ── Verification Against Regression Harness ──
+
+verification:
+  harness: "tools/ace_replay/ (AceFrameParser.cs + Program.cs)"
+  test_count: 33
+  pass_count: 33
+  fail_count: 0
+  golden_file: "tools/ace_replay/golden/summary.json"
+  relevant_tests:
+    T8: "Pump A Pressure ~126 psi (SI type?) -> handled by existing FF type"
+    T8b: "OPKO A Setting 150.0 psi (FF type) -> PASS"
+    T9a: "Sentinel -9999.0 channels flagged -> PASS"
+    T9b: "Downhole Tub Level -2.5 ft (FF type) -> PASS"
+    T12: "Golden file first 10 superframes -> PASS"
+  # Note: the 6 SV types in the capture (0x13120200/03/06/09/0C/0F)
+  # use FF, UL, HX, UC types exclusively — no SL/SI/FD/UI/US/SS/SC
+  # appear in the captured data. These types would appear in other
+  # equipment vectors (pumps, blenders, instruments) not present in
+  # the test capture.
+
+# ── Size Field Validation ──
+
+size_validation:
+  description: "Cross-check: for each ValueType, is Size always the same width?"
+  results:
+    FF:  { width: 4, consistent: true,  violations: 0 }
+    UL:  { width: 4, consistent: true,  violations: 0 }
+    SL:  { width: 4, consistent: true,  violations: 0 }
+    SI:  { width: 4, consistent: true,  violations: 0 }
+    FD:  { width: 8, consistent: true,  violations: 0 }
+    UI:  { width: 4, consistent: true,  violations: 0 }
+    US:  { width: 2, consistent: true,  violations: 0 }
+    SS:  { width: 2, consistent: true,  violations: 0 }
+    SC:  { width: 1, consistent: true,  violations: 0 }
+    HX:  { width: 4, consistent: true,  violations: 0 }
+    UC:  { width: "variable (1-120)", consistent: true, violations: 0 }
+  conclusion: "NO Size violations found. Every ValueType has a single canonical byte width. This validates the type-based dispatch approach — Size is informative but redundant for numeric types."
+
+# ── Implementation Checklist ──
+
+implementation:
+  files_to_modify:
+    - "server-dotnet/iCemDataMonitor.Plugins.Icem/LantableRegistry.cs"
+    - "tools/ace_replay/AceFrameParser.cs"
+  changes:
+    - "Add 7 new case blocks to DecodeSignals switch: SL, SI, FD, UI, US, SS, SC"
+    - "Remove or update the default case that returns null — all 12 types now handled"
+    - "Run ace_replay regression harness to verify no regressions (33/33 expected)"
+    - "Run iCemDataMonitor.Plugins.Icem tests (100/100 expected)"
+  code_locations:
+    LantableRegistry_cs: "lines 114-151 (switch statement)"
+    AceFrameParser_cs: "lines 39-71 (switch statement)"

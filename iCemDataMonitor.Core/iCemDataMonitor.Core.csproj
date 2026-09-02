@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>iCemDataMonitor.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\iCemDataMonitor.Sdk\iCemDataMonitor.Sdk.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Data\iCemDataMonitor.Data.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Transport\iCemDataMonitor.Transport.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Plugins.Icem\iCemDataMonitor.Plugins.Icem.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="iCemDataMonitor.Core.Tests" />
+    <InternalsVisibleTo Include="iCemDataMonitor.Data.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 2026-09-01 (owner decree «Блок 2 п.5/6»): all Microsoft.* packages on
+         the 10.0.0 train — same wave as the net10.0 runtime, no 8.0 drift. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

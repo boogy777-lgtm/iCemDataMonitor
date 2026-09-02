@@ -1,0 +1,37 @@
+flowchart LR
+    subgraph TRAY["iCemDataMonitor.Tray (WinForms single-instance)"]
+        HOST["GenericHost / WebApplication"]
+        MOD["ModbusTcpPublisher :502"]
+        WEB["Kestrel /api/status :8090"]
+        HEALTH["BusHealthMonitor 1Hz"]
+        RING["BusRingService 600s"]
+        SNIFF["AceSnifferService Npcap 82574L"]
+        SINK["LanBusSink"]
+        WZ["BusZoneWriter"]
+    end
+
+    subgraph BUS["Data.dat"]
+        MUTEX["Mutex Global\\iCemDataMonitorBusMutex_v1"]
+        MAP["MemoryMappedFile Global\\iCemDataMonitorBus_v1"]
+    end
+
+    subgraph EXTERNAL["external peers"]
+        ADDIN["iCem.exe AddIn (net48)"]
+        EMU["iCemEmule ACE multicast"]
+        MASTER["SCADA / master"]
+        CLI["icemdatamonitor-cli"]
+    end
+
+    ADDIN -->|"v5: writes regs 0..3 + com_stream 4..199 + lan_stream_crio 200..399 + raw_com_line 400..599"| MAP
+    EMU -->|ACE frames| SNIFF
+    SNIFF -->|AceFrameDecoded| SINK
+    SINK -.->|"v5 DEFERRED: no bus writes (ace_full 600..10000 reserve)"| WZ
+    WZ --> MUTEX
+    MUTEX --> MAP
+    MAP -->|snapshot| HOST
+    HOST --> MOD
+    MOD -->|FC03/FC04/FC06/FC16| MASTER
+    HOST --> WEB
+    HOST --> HEALTH
+    HOST --> RING
+    MAP -->|snapshot| CLI

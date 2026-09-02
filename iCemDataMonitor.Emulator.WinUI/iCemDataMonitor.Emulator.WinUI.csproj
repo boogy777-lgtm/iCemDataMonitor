@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- W11.6, repurposed 2026-08-27 (owner decree «эмулятор = отдельное
+       независимое приложение со встроенным UI + CLI»): the emulator page
+       library — ONE implementation, now hosted ONLY by the merged
+       iCemEmulator.exe (the shell no longer embeds it). The control owns the
+       view-model, the SHARED control-pipe client and the COM/LAN/Units tabs;
+       the engine runs IN-PROCESS inside the app and the page talks to it over
+       the SAME pipe the CLI uses (\\.\pipe\iCemEmule.Control). macOS tokens
+       ship inside THIS library (ms-appx resource, merged at page level). -->
+  <PropertyGroup>
+    <!-- D.5 TFM migration (owner directive: stage D = net10; spike D.1.0a GREEN). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <RootNamespace>iCemDataMonitor.Emulator.WinUI</RootNamespace>
+    <AssemblyName>iCemDataMonitor.Emulator.WinUI</AssemblyName>
+    <Platforms>x64</Platforms>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260804001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
+    <PackageReference Include="ReactiveUI" Version="19.5.41" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- P2 2026-08-26 (owner decree: the UI must use the CLI command client
+         standard of the ecosystem): the control-pipe client is SHARED with the
+         CLI — the UI talks to the IN-PROCESS engine through
+         Halliburton.iCemEmule.Control.ControlPipeClient, the same library the
+         `iCemEmulator.exe <cli flag>` mode uses. The host RPC seam
+         (iCemDataMonitor.Emulator.Core / GrpcEngineControl) is DELETED —
+         no child spawn, no host dependency. -->
+    <ProjectReference Include="..\iCemEmule.Core\iCemEmule.Core.csproj" />
+  </ItemGroup>
+
+</Project>

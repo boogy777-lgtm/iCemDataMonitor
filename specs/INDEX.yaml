@@ -1,0 +1,30 @@
+﻿# INDEX — entry point for EVERY new LLM chat working on the iCem POC stand.
+# rule: load this file FIRST; route by task type; never read code before specs.
+# doctrine: specs = CURRENT STATE ONLY. Process artifacts (incident logs, change
+# history, migration narration) are archived OUT of the docs system, never linked.
+# binding: C:\Users\HALLIBURTON\iCemPOC\.opencode\Rules\specs-workflow.md (r1-r10) governs all work below.
+
+entry:
+  root: C:\Users\HALLIBURTON\iCemPOC\specs\
+  router: specs/INDEX.yaml          # ← you are here
+  charter: specs/TZ-DOCSYS-001.yaml # mission + present state + stage ladder definition
+
+route_by_task:
+  symptom:   "specs/<unit>/Э6_failures.csv → grep symptom_signature → probe+remediation in-row"
+  change:    "specs/<unit>/Э2_contracts.csv → Э4_invariants.yaml → Э7_verification.csv"
+  new_unit:  "specs/<unit>/Э0 → Э1 → Э2 → Э4"
+  cross_unit: "specs/stand_topology.mmd"
+
+units:
+  iCemEmule:       "specs/iCemEmule/Э0..Э7 + Э2c_lan_zone_classification.csv (headless stand emulator engine: ACE LAN + FLECS COM; UI = EmulatorPage OUT-OF-PROCESS, W12 owned-overlay embed into the shell)"
+  dotnet_server:  "specs/dotnet-server/Э0..Э7 + Э2b_ace_full_measurement.csv (POC: WinUI 3 shell iCemDataMonitor.WinUI.exe + legacy tray rollback, MMF bus, modbus :502, sniffer)"
+  iCemAddIn:      "specs/iCemAddIn/Э0..Э6 + Э2b_edge_truth_tables.csv + Э8_design_variableid.yaml (dll inside iCem.exe; DUMB TRANSLATOR byte-exact; source C:\Users\HALLIBURTON\iCemPOC\Burservis.iCem.DataMonitor, v5 contract code-authoritative)"
+
+future_plans:
+  iCemAddIn_full_coverage: "specs/iCemAddIn/FUTURE_full_coverage_spec.md — 100% named COM/LAN coverage project (tiers T1/T2/T3, 3-layer VariableId design v2, capacity decrees); promotion-candidate §15.2, implementation ONLY on explicit user decree; machine source: Э8_design_variableid.yaml"
+
+global_artifacts:
+  stand_topology: "specs/stand_topology.mmd   # one cross-unit mermaid (READY)"
+  live_gate:      "run-live-gate.ps1 (repo root — scripted full-gate choreography: kill Emu, launch gate, restart iCem AFTER the emitter is live, prompt for the LAN-acquisition UI step) + LiveGateGui/ (operator console: button-per-step pipeline, quick-launch exe bar, text report live-gate-report-*.txt); stand laws: emitter opens ONLY on LanEnabled master; after an iCem restart LAN telemetry acquisition must be STARTED in the iCem UI (the one manual step)"
+
+acceptance: "fresh chat reads THIS file + one route ⇒ works without code access"

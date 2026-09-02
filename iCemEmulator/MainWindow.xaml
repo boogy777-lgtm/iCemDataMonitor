@@ -1,0 +1,33 @@
+<Window
+    x:Class="Halliburton.iCemEmulator.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:emu="using:iCemDataMonitor.Emulator.WinUI"
+    Title="iCemEmulator — эмулятор стенда">
+    <!-- W14: КАСТОМНЫЙ title bar (ExtendsContentIntoTitleBar) — системный капшн
+         на Win10 игнорирует AppWindow.TitleBar.*Color и рисует immersive-dark
+         ЧЁРНЫЙ (#000000), а фреймворк гоняется за immersive-флаг (autopsy
+         2026-08-20). Своя полоса = токены темы, гонки нет по построению. -->
+    <Grid x:Name="RootGrid"
+          Background="{ThemeResource MacWindowBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Border x:Name="AppTitleBar"
+                Background="{ThemeResource MacWindowBrush}"
+                BorderBrush="{ThemeResource MacSeparatorBrush}"
+                BorderThickness="0,0,0,0.6">
+            <TextBlock Text="iCemEmulator — эмулятор стенда"
+                       Margin="12,0,0,0" VerticalAlignment="Center"
+                       FontSize="{StaticResource MacFontSizeSecondary}"
+                       Foreground="{ThemeResource MacLabelBrush}"/>
+        </Border>
+        <!-- P3 2026-08-27: the page owns its ScrollViewer now (single scroller) —
+             the outer one here was removed to avoid nested scroll-viewers;
+             Border keeps the 20px window inset. -->
+        <Border Grid.Row="1" Padding="20">
+            <emu:EmulatorPage/>
+        </Border>
+    </Grid>
+</Window>

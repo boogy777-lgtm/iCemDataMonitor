@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- W10.2: one-shot icon generator. Renders the canonical app icon (light
+       tile + green ECG, same geometry as VectorGlyphs.CreateAppIcon) at
+       16/24/32/48/64/128/256 and packs a PNG-based multi-size .ico +
+       favicon.png. Run: dotnet run -p iCemDataMonitor.Tools.IconGen -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,73 @@
+[
+  { "Message": "HostStatus", "Field": "bus_open", "Number": 1 },
+  { "Message": "HostStatus", "Field": "addin_alive", "Number": 2 },
+  { "Message": "HostStatus", "Field": "heartbeat", "Number": 3 },
+  { "Message": "HostStatus", "Field": "com_port", "Number": 4 },
+  { "Message": "HostStatus", "Field": "case_state", "Number": 5 },
+  { "Message": "HostStatus", "Field": "case_lan_state", "Number": 6 },
+  { "Message": "HostStatus", "Field": "zones", "Number": 7 },
+  { "Message": "HostStatus", "Field": "layers", "Number": 8 },
+  { "Message": "HostStatus", "Field": "updated_at_utc", "Number": 10 },
+  { "Message": "HostStatus", "Field": "console_visible", "Number": 11 },
+  { "Message": "HostStatus", "Field": "autostart_enabled", "Number": 12 },
+
+  { "Message": "ZoneHealth", "Field": "kind", "Number": 1 },
+  { "Message": "ZoneHealth", "Field": "active", "Number": 2 },
+  { "Message": "ZoneHealth", "Field": "age_ms", "Number": 3 },
+  { "Message": "ZoneHealth", "Field": "write_count", "Number": 4 },
+
+  { "Message": "LayerState", "Field": "modbus", "Number": 1 },
+  { "Message": "LayerState", "Field": "modbus_bound", "Number": 2 },
+  { "Message": "LayerState", "Field": "modbus_port", "Number": 3 },
+  { "Message": "LayerState", "Field": "web", "Number": 4 },
+  { "Message": "LayerState", "Field": "sniffer", "Number": 5 },
+  { "Message": "LayerState", "Field": "sniffer_available", "Number": 6 },
+  { "Message": "LayerState", "Field": "opc_da", "Number": 7 },
+  { "Message": "LayerState", "Field": "set_as_default", "Number": 8 },
+  { "Message": "LayerState", "Field": "busy", "Number": 9 },
+  { "Message": "LayerState", "Field": "last_error", "Number": 10 },
+
+  { "Message": "SubscribeRequest", "Field": "interval_ms", "Number": 1 },
+
+  { "Message": "MetricsSample", "Field": "timestamp_utc", "Number": 1 },
+  { "Message": "MetricsSample", "Field": "heartbeat", "Number": 2 },
+  { "Message": "MetricsSample", "Field": "com_port_active", "Number": 3 },
+  { "Message": "MetricsSample", "Field": "case_state", "Number": 4 },
+  { "Message": "MetricsSample", "Field": "interval_clamped", "Number": 5 },
+  { "Message": "MetricsSample", "Field": "deltas", "Number": 6 },
+
+  { "Message": "RegisterDelta", "Field": "addr", "Number": 1 },
+  { "Message": "RegisterDelta", "Field": "int32_value", "Number": 2 },
+  { "Message": "RegisterDelta", "Field": "float_value", "Number": 3 },
+
+  { "Message": "LayerControlRequest", "Field": "layer", "Number": 1 },
+  { "Message": "LayerControlRequest", "Field": "desired_state", "Number": 2 },
+
+  { "Message": "RegistersRequest", "Field": "zone", "Number": 1 },
+
+  { "Message": "RegistersReply", "Field": "timestamp_utc", "Number": 1 },
+  { "Message": "RegistersReply", "Field": "heartbeat", "Number": 2 },
+  { "Message": "RegistersReply", "Field": "values", "Number": 3 },
+
+  { "Message": "RegisterValue", "Field": "addr", "Number": 1 },
+  { "Message": "RegisterValue", "Field": "int32_value", "Number": 2 },
+  { "Message": "RegisterValue", "Field": "float_value", "Number": 3 },
+
+  { "Message": "BootStage", "Field": "ordinal", "Number": 1 },
+  { "Message": "BootStage", "Field": "id", "Number": 2 },
+  { "Message": "BootStage", "Field": "title", "Number": 3 },
+  { "Message": "BootStage", "Field": "completed", "Number": 4 },
+  { "Message": "BootStage", "Field": "detail", "Number": 5 },
+
+  { "Message": "SetConsoleVisibleRequest", "Field": "visible", "Number": 1 },
+
+  { "Message": "SetAutostartRequest", "Field": "enabled", "Number": 1 },
+
+  { "Message": "NavigateUiRequest", "Field": "section", "Number": 1 },
+
+  { "Message": "NavigateUiResponse", "Field": "ui_alive", "Number": 1 },
+  { "Message": "NavigateUiResponse", "Field": "pending", "Number": 2 },
+
+  { "Message": "UiPrefs", "Field": "theme_light", "Number": 1 },
+  { "Message": "SetUiThemeRequest", "Field": "theme_light", "Number": 1 }
+]

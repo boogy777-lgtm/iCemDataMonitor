@@ -1,0 +1,39 @@
+flowchart LR
+    subgraph ICEM["iCem.exe process boundary (vendor net48 — source C:\\iCEM\\DataTap.AddIn)"]
+        VARS["iCem tap API<br/>VariableProviderFactory (serial-equipment sources → com map;<br/>LAN-equipment SourceComPort==17 → lan map)"]
+        CASE["CementCase.RealtimeCase.RealtimeState → reg1 passthrough"]
+        LAN["LANManager.LANStatus (ComPortStates) → reg2 passthrough"]
+        RAW["IPort.DataStream (ComPortPropertyChanged) → raw_com_line chars"]
+        ADDIN["AddIn dll in-proc<br/>DUMB TRANSLATOR: verbatim byte-exact copy<br/>D1 latch on first feeding COM device"]
+        CFG["user.config<br/>ComPort entries / DataInterval / String Configuration"]
+        VARS -->|"in-proc poll 1 Hz"| ADDIN
+        CASE -->|"enum passthrough"| ADDIN
+        LAN -->|"enum passthrough"| ADDIN
+        RAW -->|"line event (latched device only)"| ADDIN
+        CFG -.->|"FLECS connector IGNORES String Configuration (IL-verified INC-05)"| ICEM
+    end
+
+    subgraph MMF["station_bus.dat — MMF Global\\StationBus_v1 (10001 regs, layoutVer 5)"]
+        HDR["header state regs 0..3<br/>reg0 comPortActive (D1 latch) / reg1 caseState / reg2 caseLanState<br/>reg3 heartbeat +1/s ALWAYS, wrap 32000→0"]
+        COMZ["com_stream regs 4..199<br/>98 float32 CDAB, addr=4+idx*2"]
+        LANZ["lan_stream_crio regs 200..399<br/>100 float32 CDAB, addr=200+idx*2 (96 cRIO signals)<br/>FULL 4-byte CDAB — INC-06 fixed; D4: owns Lan liveness block 19/27/41"]
+        RAWZ["raw_com_line regs 400..599<br/>u16 per char — last COM line as-is"]
+        ACEZ["ace_full RESERVE regs 600..10000 — NOBODY (DEFERRED)<br/>AddIn NEVER writes; POC NEVER writes"]
+    end
+
+    subgraph POC["POC readers (dotnet-server)"]
+        BR["BusReader"]
+        MOD["ModbusTcpPublisher :502"]
+        HEALTH["BusHealthMonitor 1Hz"]
+        CLI["station-cli"]
+    end
+
+    ADDIN -->|"single-writer: regs 0..3"| HDR
+    ADDIN -->|"single-writer: com floats"| COMZ
+    ADDIN -->|"single-writer: crio floats + Lan liveness block (D4)"| LANZ
+    ADDIN -->|"single-writer: raw chars"| RAWZ
+    ADDIN -.->|"forbidden (writer guard)"| ACEZ
+    MMF -->|"snapshot under Global\\StationBusMutex_v1"| BR
+    BR --> MOD
+    BR --> HEALTH
+    BR --> CLI

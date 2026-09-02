@@ -1,0 +1,45 @@
+{
+  // 2026-09-01 (owner request «человек должен собирать проект из IDE»):
+  // one-click parity with the CLI contract from docs/development.md.
+  // Terminal > Run Task... / Run Build Task (Ctrl+Shift+B).
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build: solution",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "iCemDataMonitor.sln", "-c", "Debug"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: solution",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["test", "iCemDataMonitor.sln", "-c", "Debug"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      // 2026-09-02: no version prompt anymore — the script reads the VERSION
+      // file at the repo root itself; -NoPause because the task terminal
+      // stays open anyway.
+      "label": "msi: build",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/installer/build-msi.ps1",
+        "-NoPause"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "installer: conflict-gate harness",
+      "type": "shell",
+      "command": "cscript",
+      "args": ["//nologo", "${workspaceFolder}/installer/assets/CheckConflicts.harness.js"],
+      "problemMatcher": []
+    }
+  ]
+}

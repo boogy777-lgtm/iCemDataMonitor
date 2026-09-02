@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    2026-08-30 (owner decree: Chrome/AV flag the unsigned installer, no
+    code-signing cert available): every published exe/dll MUST carry
+    version metadata. A bare binary with no Company/Product/
+    FileDescription scores higher on AV heuristics and Chrome Safe
+    Browsing; metadata is the strongest cert-free mitigation.
+    These are DEFAULTS only — a project may override any value in its
+    own csproj (e.g. iCemDataMonitor.Host already sets Product).
+    SDK defaults Company/Product to MSBuildProjectName, so that state
+    counts as "unset" and is replaced here.
+  -->
+  <PropertyGroup>
+    <Company Condition="'$(Company)' == '' or '$(Company)' == '$(MSBuildProjectName)'">Burservis</Company>
+    <Product Condition="'$(Product)' == '' or '$(Product)' == '$(MSBuildProjectName)'">iCem Data Monitor</Product>
+    <AssemblyTitle Condition="'$(AssemblyTitle)' == '' or '$(AssemblyTitle)' == '$(MSBuildProjectName)' or '$(AssemblyTitle)' == '$(AssemblyName)'">$(MSBuildProjectName) - iCem Data Monitor</AssemblyTitle>
+    <Description Condition="'$(Description)' == '' or '$(Description)' == '$(MSBuildProjectName)' or '$(Description)' == '$(AssemblyName)'">$(MSBuildProjectName) - iCem Data Monitor</Description>
+    <FileDescription Condition="'$(FileDescription)' == '' or '$(FileDescription)' == '$(AssemblyName)'">$(MSBuildProjectName) - iCem Data Monitor</FileDescription>
+    <Copyright Condition="'$(Copyright)' == ''">Copyright (c) Burservis 2026</Copyright>
+  </PropertyGroup>
+</Project>

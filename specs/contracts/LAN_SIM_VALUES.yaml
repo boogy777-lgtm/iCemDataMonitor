@@ -1,0 +1,381 @@
+# LAN Family Simulation Values — Plausible Cementing Job Parameters
+# Date: 2026-08-10
+# Purpose: Replace flat-zero simulation values for 96 Lan/... variables
+#          with realistic non-zero values that produce convincing ACE frame payloads.
+# Source: variable_registry.json (templates/variable_registry.json)
+# Equipment: Land Cementer (LanDeviceTypeId=3), NI cRIO
+
+meta:
+  family: lan
+  modbus_base: 400
+  total_variables: 96
+  currently_zero: 96  # all lan variables have base=0, amplitude=0, frequency=0
+  design_principle: >
+    Simulation produces deterministic floating-point values per tick:
+      value = base + amplitude * sin(2π * frequency * t + phase)
+    where t = elapsed seconds from job start.
+    Base = mean operating value. Amplitude = realistic variation range.
+    Frequency = oscillation rate in Hz. Phase = random seed offset.
+    Constant signals (IDs, modes): amplitude=0, frequency=0.
+    Accumulating signals (totals): base + index*amplitude ramp.
+
+# ── Simulation Scenarios ──
+
+scenarios:
+  idle_pressurized:
+    description: "Equipment online, under static pressure, not pumping. Matches iCemCrio.pcapng.bin capture."
+    pump_pressure: "120-130 psi (static line pressure, no pumping)"
+    density: "15.8 ppg (cement slurry in mixing tub)"
+    rates: "0 bpm (not pumping)"
+    tub_level: "-2.5 ft (static)"
+    valves: "closed (0%)"
+    duration: "indefinite"
+
+  mixing_and_pumping:
+    description: "Active cementing job: mixing slurry, pumping downhole."
+    pump_pressure: "500-3500 psi (fluctuating with flow)"
+    density: "15.5-16.5 ppg (cement slurry)"
+    rates: "2-8 bpm (pumping)"
+    tub_level: "-50 to +100 ft (tub filling/draining)"
+    valves: "modulating 30-80%"
+    totals: "monotonically increasing"
+
+  pressure_test:
+    description: "Pressure test: pump to test pressure, hold."
+    pump_pressure: "4500-5000 psi (test pressure)"
+    density: "8.34 ppg (water)"
+    rates: "0 bpm (holding)"
+    tub_level: "static"
+
+# ── Key Variable Simulation Values (15 selected from 96) ──
+
+simulation_values:
+
+  # ── Lnd Mix Section (SV 0x13120200, 27 signals) ──
+
+  - name: "Lan/RecircDensity"
+    alias: "Recirc Density"
+    index: 0
+    uom: "lb/gal"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 15.8
+    amplitude: 0.4
+    frequency: 0.05
+    rationale: "Cement slurry density ~15.8 ppg, ±0.4 ppg variation from mixing transients. Slow 0.05 Hz oscillation representing tub turnover."
+
+  - name: "Lan/RecircFlowRate"
+    alias: "Recirc Flow Rate"
+    index: 1
+    uom: "bbl/min"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 0.5
+    amplitude: 0.3
+    frequency: 0.1
+    rationale: "Low recirculation flow in mixing tub, 0.2-0.8 bpm range. Gentle oscillation."
+
+  - name: "Lan/DownholeDensity"
+    alias: "Downhole Density"
+    index: 3
+    uom: "lb/gal"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 15.9
+    amplitude: 0.2
+    frequency: 0.03
+    rationale: "Downhole density slightly higher than recirc (compression effects). Slower variation."
+
+  - name: "Lan/MixWaterRate"
+    alias: "Mix Water Rate"
+    index: 4
+    uom: "bbl/min"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 6.0
+    amplitude: 1.0
+    frequency: 0.08
+    rationale: "Mix water injection ~6 bpm, ±1 bpm variation from pump governor response."
+
+  - name: "Lan/DownholeTubLevel"
+    alias: "Downhole Tub Level"
+    index: 7
+    uom: "ft"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 0.0
+    amplitude: 50.0
+    frequency: 0.005
+    rationale: "Tub level oscillates slowly ±50 ft as mixing tub fills and drains. Very low frequency."
+
+  - name: "Lan/MixPumpPress"
+    alias: "Mix Pump Press"
+    index: 8
+    uom: "psi"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 1500.0
+    amplitude: 500.0
+    frequency: 0.15
+    rationale: "Mix pump discharge pressure ~1500 psi, ±500 psi variation. 0.15 Hz = 9 cycles/min — realistic for triplex pump pulsation."
+
+  - name: "Lan/MixWaterMnfldPress"
+    alias: "Mix Water Mnfld Press"
+    index: 9
+    uom: "psi"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 800.0
+    amplitude: 200.0
+    frequency: 0.1
+    rationale: "Water manifold pressure lower than pump discharge, ~800 psi."
+
+  - name: "Lan/StageSacksOfCement"
+    alias: "Stage Sacks of Cement"
+    index: 19
+    uom: "sacks"
+    type: "uint32 (UL) × 1.0"
+    scenario: mixing_and_pumping
+    base: 0.0      # starts at zero
+    amplitude: 1.0  # increments ~1 sack per second
+    frequency: 0.0
+    format_override: "ramp"
+    rationale: "Monotonically increasing counter. Stage total for current cement stage."
+
+  # ── Lnd Pump Sect (SV 0x13120206, 20 signals) ──
+
+  - name: "Lan/PumpAPressure"
+    alias: "Pump A Pressure"
+    index: 32
+    uom: "psi"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 2500.0
+    amplitude: 800.0
+    frequency: 0.12
+    rationale: "Pump A discharge pressure ~2500 psi during cementing, ±800 psi. Matches common HT-400 pump operating range."
+
+  - name: "Lan/PumpARate"
+    alias: "Pump A Rate"
+    index: 37
+    uom: "bbl/min"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 4.0
+    amplitude: 1.5
+    frequency: 0.06
+    rationale: "Pump A rate ~4 bpm ±1.5 bpm. Variations from transmission gear shifts and throttle adjustments."
+
+  - name: "Lan/PumpBPressure"
+    alias: "Pump B Pressure"
+    index: 40
+    uom: "psi"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 1800.0
+    amplitude: 600.0
+    frequency: 0.12
+    rationale: "Pump B (secondary pump) at lower pressure ~1800 psi. Slightly out of phase with Pump A."
+
+  - name: "Lan/OpkoASetting"
+    alias: "OPKO A Setting"
+    index: 34
+    uom: "psi"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 4500.0
+    amplitude: 0.0
+    frequency: 0.0
+    rationale: "Over-pressure kickout setpoint — operator-set constant. 4500 psi for a 5000 psi-rated system with 10% margin. Static (amplitude=0)."
+
+  - name: "Lan/CombinedPumpRate"
+    alias: "Combined Pump Rate"
+    index: 48
+    uom: "bbl/min"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 8.0
+    amplitude: 2.0
+    frequency: 0.06
+    rationale: "Combined rate of both pumps ~8 bpm."
+
+  - name: "Lan/HighestPumpPressure"
+    alias: "Highest Pump Pressure"
+    index: 51
+    uom: "psi"
+    type: "float32 (FF) × 1.0"
+    scenario: mixing_and_pumping
+    base: 2800.0
+    amplitude: 100.0
+    frequency: 0.01
+    rationale: "Maximum of all pump pressures — tracks the highest reading, slowly changing."
+
+  # ── Lnd Automation (SV 0x13120203, 6 signals) ──
+
+  - name: "Lan/UnitNumber"
+    alias: "Unit Number"
+    index: 27
+    uom: "none"
+    type: "uint32 (UL) × 1.0"
+    scenario: constant
+    base: 11038534.0
+    amplitude: 0.0
+    frequency: 0.0
+    rationale: "Equipment serial number — constant. 0x00A86F46 = 11038534 matches iCemCrio.pcapng.bin capture."
+
+  - name: "Lan/ControlMode"
+    alias: "Control Mode"
+    index: 28
+    uom: "none"
+    type: "uint32 (UL) × 1.0"
+    scenario: constant
+    base: 1.0
+    amplitude: 0.0
+    frequency: 0.0
+    rationale: "Control mode = 1 (automatic). Static during operation."
+
+  - name: "Lan/MixMode"
+    alias: "Mix Mode"
+    index: 29
+    uom: "none"
+    type: "uint32 (UL) × 1.0"
+    scenario: constant
+    base: 2.0
+    amplitude: 0.0
+    frequency: 0.0
+    rationale: "Mix mode = 2 (density control). Static."
+
+  # ── Additional Notable Variables ──
+
+  - name: "Lan/WaterPot"
+    alias: "Water Pot"
+    index: 11
+    uom: "%"
+    type: "int32 (SI) × 0.25"
+    scenario: mixing_and_pumping
+    base: 55.0
+    amplitude: 10.0
+    frequency: 0.04
+    rationale: "Water potentiometer ~55% open, modulating ±10% for density control."
+
+  - name: "Lan/CementPot"
+    alias: "Cement Pot"
+    index: 12
+    uom: "%"
+    type: "int32 (SI) × 0.25"
+    scenario: mixing_and_pumping
+    base: 45.0
+    amplitude: 10.0
+    frequency: 0.04
+    rationale: "Cement potentiometer ~45%, complementary to water pot."
+
+  - name: "Lan/PumpAStageTotal"
+    alias: "Pump A Stage Total"
+    index: 38
+    uom: "bbl"
+    type: "float64 (FD) × 1.0"
+    scenario: mixing_and_pumping
+    base: 0.0
+    amplitude: 4.0    # accumulates ~4 bbl per tick (at 1 Hz = 4 bbl/s = 240 bbl/min... too high)
+    amplitude: 0.067  # 4 bpm / 60 = 0.067 bbl per second per tick
+    frequency: 0.0
+    format_override: "ramp"
+    rationale: "Monotonically increasing stage total volume."
+
+  - name: "Lan/PumpBJobTotal"
+    alias: "Pump B Job Total"
+    index: 43
+    uom: "bbl"
+    type: "float64 (FD) × 1.0"
+    scenario: mixing_and_pumping
+    base: 0.0
+    amplitude: 0.05   # 3 bpm / 60 = 0.05 bbl/s
+    frequency: 0.0
+    format_override: "ramp"
+    rationale: "Monotonically increasing job total."
+
+  # ── Lnd Ops Track (SV 0x1312020F, 2 signals) ──
+
+  - name: "Lan/CmntOpsTrackIdnum"
+    alias: "Cmnt Ops Track IDNum"
+    index: 94
+    uom: "none"
+    type: "uint32 (UL) × 1.0"
+    scenario: constant
+    base: 100.0
+    amplitude: 0.0
+    frequency: 0.0
+    rationale: "Operations track identifier — constant for the job."
+
+  - name: "Lan/CmntOpsTrackDescript"
+    alias: "Cmnt Ops Track Descript"
+    index: 95
+    uom: "char"
+    type: "ASCII string (UC)"
+    scenario: constant
+    base: 0.0   # not numeric — string value
+    amplitude: 0.0
+    frequency: 0.0
+    format_override: "string"
+    string_value: "Initialize"
+    rationale: "Description string 'Initialize' — matches wire-verified Ops Track data (T10 ace_replay)."
+
+# ── Remaining Variables (Brief) ──
+
+remaining_zero_summary:
+  description: >
+    The remaining 81 lan variables are assigned to one of these categories.
+    Not every variable needs active simulation — many are spare/unused channels
+    (analog inputs 5-8, spare counters, spare totals) that legitimately read
+    zero/sentinel when no sensor is connected.
+  categories:
+    spare_channels:
+      count: 16
+      variables: [Lan/SpareAnalogIn1-4, Lan/SpareCounterInput1-4, Lan/SpareStageTotal1-4, Lan/SpareJobTotal1-4, Lan/SpareCombined1-2]
+      base: 0.0
+      amplitude: 0.0
+      rationale: "Unused spare channels — legacy zero or sentinel (-9999)."
+    digital_io:
+      count: 4
+      variables: [Lan/RelayOut, Lan/DigitalInputs, Lan/DigitalOutputs, Lan/AutoOrManualMix]
+      base: 0.0 (discrete bit fields)
+      rationale: "Digital I/O status words — can simulate bit patterns but zero is valid for inactive states."
+    low_priority_process:
+      count: ~30
+      variables: [Lan/CurrentBlendDensity, Lan/CurrentBlendYield, Lan/CurrentBlendWtrReq, Lan/CurrentBlendMixRate, Lan/MudCupDensity, Lan/VolWaterPercent, Lan/VolMeterRate, Lan/VolMeterStageTotal, Lan/VolMeterJobTotal, Lan/EventNumber, Lan/RawPmpAPressure, Lan/RawPmpBPressure, Lan/SideAPressureAtKo, Lan/SideAKickedOut, Lan/SideBPressureAtKo, Lan/SideBKickedOut, Lan/WaterVlvCmd, Lan/CementVlvCmd, Lan/RecircFlowVlvCmd, Lan/DisplayTemperature, Lan/ControllerTemperature, Lan/AnalogInput1-8, Lan/AnalogOutput1-4, Lan/CountInput1-6, Lan/Rho12_hat, Lan/H2_hat, Lan/Vhp_density_hp]
+      recommendation: "Can remain zero or use small plausible values. These are secondary variables that a basic simulation need not exercise fully."
+
+# ── Implementation Notes ──
+
+implementation:
+  file_to_modify: "templates/variable_registry.json"
+  change_type: "Update simulation.base, simulation.amplitude, simulation.frequency for lan-family variables"
+  ramp_handling: >
+    Variables marked format_override='ramp' (totals, accumulating counters) require
+    special handling in the simulation engine: value = base + (tick_index * amplitude)
+    rather than the sinusoidal formula. The variable_registry.json schema may need
+    a new format value (e.g. 'ramp' or 'accum') to support this.
+    Alternatively, totals can use the sinusoidal formula with very low frequency
+    and large amplitude, but this produces unrealistic oscillation.
+  string_handling: >
+    Lan/CmntOpsTrackDescript is a UC (ASCII string) type — simulation must emit
+    the string "Initialize" rather than a numeric value. The simulation engine
+    may need to distinguish string-valued variables from numeric ones.
+  sentinel_channels: >
+    Unused analog inputs (e.g. Analog Input 5-8 when only 4 sensors connected)
+    should emit -9999.0 (sentinel) rather than 0.0. This matches legacy iCem
+    behavior where disconnected channels show blank. For simulation, 0.0 is
+    acceptable for simplicity; sentinel is more accurate to legacy.
+
+# ── Validation ──
+
+validation:
+  - "Generated values must be within realistic ranges for cementing operations"
+  - "Pump pressures: 0-5000 psi (max rated for HT-400 pump)"
+  - "Densities: 8.34 (water) to 22.0 (heavy cement) ppg"
+  - "Flow rates: 0-15 bpm (typical cementing pump range)"
+  - "Tub level: -100 to +200 ft (tub geometry dependent)"
+  - "Totals: monotonically non-decreasing"
+  - "String signals: exact match to expected values ('Initialize', version strings)"
+  - "Sentinel: -9999.0 for disconnected channels, not 0.0"
+  - "Cross-check against ace_replay golden file for the 6 captured SVs"

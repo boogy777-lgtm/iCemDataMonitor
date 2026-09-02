@@ -1,0 +1,42 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+1,Gen Analog 1,Generic Analog 1,0,0
+1,Gen Analog 2,Generic Analog 2,0,0
+1,HalWin Event,HalWin Event Number,0,0
+1,Gen Freq 2,Generic Frequency 2,0,0
+1,Gen Analog 3,Generic Analog 3,0,0
+1,Gen Analog 6,Generic Analog 6,0,0
+1,Trns Equip Type,Transmission Equip Type,0,0
+1,CT Depth,CT Depth,21,122
+1,CT Stretch,CT Stretch,21,122
+0,Depth,Tubing Depth,21,122
+1,h2_hat,h2_hat,21,122
+1,Tub Height,Tub Height,21,122
+0,CT Run Speed,CT Running Speed,100,246
+0,Hookload,Hookload,32,96
+1,Pipe Weight,Pipe Weight,32,104
+1,Pipe Light,Pipe Light,32,104
+1,Pipe Heavy,Pipe Heavy,32,104
+1,T/D Activity,T/D Activity,0,0
+1,Torque Inhibit,Torque Inhibit,0,0
+0,Base Eng RPM,Base Engine RPM,79,13
+0,Rig Pump Pr,Rig Pump Pressure,71,185
+0,Wellhead Pres,Wellhead Pressure,71,185
+1,SS1 DAC count,Sand Screw 1 DAC Counts,0,0
+1,SS2 DAC count,Sand Screw 2 DAC Counts,0,0
+1,Gen Analog 7,Generic Analog 7,0,0
+0,Cement Pump Tot,Cement Pumped Total,202,285
+0,Comb Pump Total,Combined Pump Total,202,285
+0,Pump Efficiency,Pump Efficiency,63,154
+0,Return Rt,Return Rate,130,75
+0,Pump Rate,Pump Rate,130,75
+0,Recirc Density,Recirc Density,178,57
+0,Rig Pump Dens,Rig Pump Density,178,57
+0,Temperature,Temperature,88,213
+0,Slurry Temp,Slurry Temperature,88,213
+1,Dig out,Dig out,0,0
+1,Lock-up Inhibit,Lock-up Inhibit,0,0
+1,Pump Con State,Pump Controller State,0,0
+1,Curr Act Gear,Current Active Gear,0,0
+1,Freefall Ht,Freefall Height,21,122
+1,Slds/Slry Ratio,Solids/Slurry Ratio,63,154

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- D.3' tests for the headless host. 2026-09-01 (owner decree «Блок 2 п.4»):
+       back to PLAIN net10.0 — the host dropped net10.0-windows together with
+       UseWindowsForms (the tray is H.NotifyIcon.Core now, pure Win32). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>iCemDataMonitor.Host.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\iCemDataMonitor.Host\iCemDataMonitor.Host.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Host.Core\iCemDataMonitor.Host.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- 2026-08-27 RESTORED: the browser-equivalent client handler for the
+         gRPC-Web channel variants (same 2.71.0 train as the server's
+         Grpc.AspNetCore.Web). -->
+    <PackageReference Include="Grpc.Net.Client.Web" Version="2.71.0" />
+  </ItemGroup>
+
+</Project>

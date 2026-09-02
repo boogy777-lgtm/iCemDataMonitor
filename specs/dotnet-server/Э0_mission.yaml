@@ -1,0 +1,51 @@
+# Э0_mission — dotnet-server POC unit (iCemPOC)
+# TZ-DOCSYS-001 §future_system stage_ladder.Э0
+
+unit: dotnet-server
+path: server-dotnet/
+kind: "WinUI 3 shell (iCemDataMonitor.WinUI.exe, macOS style) + .NET 8 hosted services + persisted MMF bus + Modbus TCP publisher + ACE LAN sniffer; legacy WinForms tray (iCemDataMonitor.Tray.exe) kept as rollback only"
+
+why_exists:
+  problem: "stand needs a vendor-neutral bus + transport surface between iCem.exe AddIn (net48, COM/LAN data producer) and operator SCADA/web consumers"
+  goal: "POC reads AddIn-written state (regs 0..3 + com_stream + lan_stream_crio + raw_com_line), mirrors everything on Modbus TCP :502 and a peer CLI; ace_full 600..10000 = DEFERRED reserve (no POC writer in v5)"
+  anti_goal: "NOT a replacement for iCem; NOT an in-process iCem component; NOT a control system — read/publish only"
+
+inputs:
+  - name: Data.dat
+    type: persisted memory-mapped file
+    producer: iCem.exe AddIn ONLY (v5: header 0..3 + com_stream 4..199 + lan_stream_crio 200..399 + raw_com_line 400..599; ace_full reserve 600..10000 = nobody)
+  - name: ACE LAN frames
+    type: raw Ethernet multicast (82574L NIC)
+    producer: iCemEmulator or real ACE equipment
+    note: "AceSnifferService stays as a wire READER (runtime-toggleable); its bus redirect (LanBusSink) is REMOVED 2026-08-27 — producer-only decree, no POC bus writes in v5+"
+  - name: config.ini
+    type: local config (fail-fast validation)
+    note: "CANONICAL name config.ini (2026-08-28 owner decree: MSI migrates to %ProgramData%\\Halliburton\\iCem\\DataMonitoring — the file lives next to the binary/Data.dat; legacy station.ini candidates are auto-COPIED to canonical on load, copy failure is never fatal). emule_on is a RETIRED key (2026-08-27: accepted-and-ignored — the host NEVER spawns the emulator; iCemEmulator is an independent app in its own folder). web_on/web_remote_on are restored OPTIONAL keys (2026-08-27 коррекция декрета: «удали контрол sim» ≠ «удали страницу»); web_on default 1 — dashboard включён из коробки (decree 2026-08-28): absent ⇒ 1 — old files GAIN the dashboard, never lose it; web_remote_on absent ⇒ 0 (loopback fail-safe)"
+
+outputs:
+  - surface: Modbus TCP
+    port: 502
+    content: holding registers 0..runtime_regCount, FC03/FC04/FC06/FC16
+  - surface: REST ops surface + web dashboard
+    port: 8090 (always on; loopback by default, web_remote_on=1 ⇒ ListenAnyIp — remote browser, closed contour, no IP guards)
+    content: "/api/status + /api/status/summary + /api/regs live ALWAYS (frozen ops surface); web_on=1 (default 1 из коробки, decree 2026-08-28) additionally serves the SPA dashboard (wwwroot: index.html/main.css/main.js — БЕЗ контрола sim: карточка «Движок»/fatal-баннер/ControlEngine удалены декретом 2026-08-27, остальная страница нетронута) + gRPC-Web middleware + /api/regs/history (600 s @ 1 Hz addr-keyed ring 4..599; web_on=0 ⇒ 503)"
+  - surface: host tray (E.2, the ONLY tray)
+    kind: WinForms NotifyIcon on a dedicated STA pump thread inside iCemDataMonitor.Host.exe
+    content: Открыть панель | Открыть Web | Показать/Скрыть консоль | Перезапуск | Закрыть (additive; «Статус» удалён 2026-08-27; «Открыть Web» возвращён 2026-08-27 — коррекция толкования декрета); tooltip = bus/heartbeat/web-port 1 Гц
+  - surface: shell window (iCemDataMonitor.WinUI.exe)
+    kind: WinUI 3 client of the headless host (gRPC over named pipe), NO tray of its own (P1), close = exit of the shell process
+    content: "Состояние = reactive StatusViewModel (truth-probed lamps, Modbus/sniffer ToggleSwitches, «Показывать консоль host'а» checkbox, «Автозагрузка host'а» checkbox = SetAutostart RPC over HKCU Run-key truth); «Панель» = WebView2 embedded browser of the host SPA dashboard (web_on=0 ⇒ честная надпись «выключена»); «Эмулятор» tab remains REMOVED — the emulator is an independent app with its own UI"
+  - surface: icemdatamonitor-cli
+    command: "snapshot|header|get main|lan|raw + --start"
+    content: pure JSON stdout, thin gRPC-pipe forwarder (zero bus/MMF logic)
+
+kill_criteria:
+  - "second host instance is rejected by the Global\iCemDataMonitorHost_v1 mutex (no zombie)"
+  - "invalid config.ini (or legacy station.ini) => fail-fast with startup.log violations, no silent default"
+  - "bus file missing/corrupt/foreign shape => clean error; Modbus layer answers stale-hold/zeros but keeps serving"
+  - "bus access denied => typed BusAccessDeniedException with remediation, writer disabled"
+  - "Modbus port busy after 5x5s retry => fatal, process exits"
+  - "a status lamp not backed by a truth probe (publisher.IsBound / sniffer.IsRunning / zone age<5s) => regression"
+  - "host spawns or supervises the emulator => policy breach (iCemEmulator is an independent app)"
+  - "sim control present on the web dashboard (engine card / fatal banner / ControlEngine RPC usage) => regression («Web - удали (контрол sim)»: контрол удалён, страница осталась — коррекция толкования 2026-08-27)"
+  - "X on the host console stops the process => regression (must hide-to-tray, ConsoleCloseGuard dispatch-head law)"

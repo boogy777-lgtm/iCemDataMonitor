@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    D.5.1 (BD-hybrid): neutral WinUI-client library for the headless host.
+    Placement rationale:
+      - NOT iCemDataMonitor.Emulator.Core — that is the emulator domain;
+      - NOT Shell.WinUI — the client is consumed by THREE processes
+        (shell, iCemEmule.WinUI embed child) and by net8 unit tests
+        (UI.Tests), so it must be a plain net8.0 assembly with no UI
+        framework dependencies.
+    Contents: gRPC pipe channel (D.5.1), reconnect FSM wrapper over
+    Transport.ReconnectBackoff (D.2.4), ensure-host decision table (B.2.1),
+    host process launcher, tooltip formatter and the reactive status VM.
+  -->
+  <PropertyGroup>
+    <!-- D.5 TFM migration (owner directive: stage D = net10). Single-target
+         net10.0 is safe: every consumer (Cli, Cli.Tests, UI.Tests, Shell.WinUI,
+         iCemEmule.WinUI) is net10 after this wave. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>iCemDataMonitor.HostClient</RootNamespace>
+    <AssemblyName>iCemDataMonitor.HostClient</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="ReactiveUI" Version="19.5.41" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\iCemDataMonitor.Contracts\iCemDataMonitor.Contracts.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Transport\iCemDataMonitor.Transport.csproj" />
+    <!-- TOMBSTONE (2026-08-27): the Emulator.Core ProjectReference is REMOVED
+         together with GrpcEngineControl (IEngineControlChannel gRPC adapter) —
+         the emulator is now a separate independent app, the shell has no
+         engine control channel over the host pipe. -->
+  </ItemGroup>
+
+</Project>

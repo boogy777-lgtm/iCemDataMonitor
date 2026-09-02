@@ -1,0 +1,97 @@
+fact;idx;reg;lanmap_key;vendor_name_observed;emu_animation_when_streaming;classification;note
+lan_zone_idx_classification;0;200;Recirc Density;Rcrc Density;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;1;202;Recirc Flow Rate;Recirc Fl Rte;static-1.31;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;2;204;Recirc Flow Vlv Cmd;Rec Vlv Cmd;static-60;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;3;206;Downhole Density;Dwnhole Density;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;4;208;Mix Water Rate;Mix Water Rate;static-1.26;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;5;210;Mix Water Stage Total;Mix Wtr Stg Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;6;212;Mix Water Job Total;Mix Wtr Job Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;7;214;Downhole Tub Level;Dwnhole Tub Lvl;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;8;216;Mix Pump Press;Mix Pump Pres;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;9;218;Mix Water Mnfld Press;Mix Water Pres;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;10;220;Auto or Manual Mix;Auto or Man Mix;static-1;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;11;222;Water Pot;Water Pot;static-60;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;12;224;Cement Pot;Cement Pot;static-55;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;13;226;Cement Vlv Cmd;Cmnt Vlv Cmd;static-55;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;14;228;Water Vlv Cmd;Water Vlv Cmd;static-60;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;15;230;Vol Water Percent;Vol Water %;static-60;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;16;232;Vol Meter Rate;Vol Mtr Rate;static-1.26;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;17;234;Vol Meter Stage Total;Vol Mtr Stg Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;18;236;Vol Meter Job Total;Vol Mtr Job Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;19;238;Stage Sacks of Cement;Stage Sacks Cmt;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;20;240;Job Sacks of Cement;Job Sacks Cmt;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;21;242;Mud Cup Density;Mud Cup Dens;static-16.0;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;22;244;Current Blend Density;CurBld Density;static-15.8;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;23;246;Current Blend Yield;CurBld Yield;static-1;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;24;248;Current Blend Wtr Req;CurBld Wtr Req;static-5;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;25;250;Current Blend Mix Rate;CurBld Mix Rate;static-1.26;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;26;252;Event Number;Event Number;static-1;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;27;254;Unit Number;Unit Num;static-1;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;28;256;Control Mode;Control Mode;static-1;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;29;258;Mix Mode;Mix Mode;static-2;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;30;260;rho12_hat;rho12_hat;static-15.9;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;31;262;h2_hat;h2_hat;animated-noise;ANIMATED-BY-EMULATOR;
+lan_zone_idx_classification;32;264;vhp_density_HP;vhp_density_HP;static-16.1;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;33;266;Pump A Pressure;Pump A Pressure;animated-noise;ANIMATED-BY-EMULATOR;
+lan_zone_idx_classification;34;268;Raw Pmp A Pressure;Raw Pmp A Press;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;35;270;OPKO A Setting;OPKO A Setting;static-3000;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;36;272;Side A Pressure At KO;SideA Pr At KO;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;37;274;Side A Kicked Out?;SideA KO?;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;38;276;Pump A Rate;Pump A Rate;static-3;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;39;278;Pump A Stage Total;Pump A Stg Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;40;280;Pump A Job Total;Pump A Job Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;41;282;Pump B Pressure;Pump B Pressure;animated-noise;ANIMATED-BY-EMULATOR;
+lan_zone_idx_classification;42;284;Raw Pmp B Pressure;Raw Pmp B Press;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;43;286;OPKO B Setting;OPKO B Setting;static-3000;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;44;288;Side B Pressure At KO;SideB Pr At KO;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;45;290;Side B Kicked Out?;SideB KO?;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;46;292;Pump B Rate;Pump B Rate;static-3;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;47;294;Pump B Stage Total;Pump B Stg Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;48;296;Pump B Job Total;Pump B Job Tot;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;49;298;Combined Pump Rate;Cmb Pump Rate;static-6;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;50;300;Combined Stage Total;Cmb Stg Total;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;51;302;Combined Job Total;Cmb Job Total;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;52;304;Highest Pump Pressure;Highest Pmp P;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;53;306;Relay Out;Relay Out;static-0;STATIC-BY-TEMPLATE;
+lan_zone_idx_classification;54;308;Digital Inputs;Digital In;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;55;310;Digital Outputs;Digital Out;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;56;312;Display Temperature;Display Temp;animated-drift;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;57;314;Controller Temperature;Controller Temp;animated-drift;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;58;316;Analog Input 1;Analog In 1;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;59;318;Analog Input 2;Analog In 2;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;60;320;Analog Input 3;Analog In 3;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;61;322;Analog Input 4;Analog In 4;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;62;324;Analog Input 5;Analog In 5;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;63;326;Analog Input 6;Analog In 6;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;64;328;Analog Input 7;Analog In 7;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;65;330;Analog Input 8;Analog In 8;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;66;332;Analog Output 1;Analog Out 1;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;67;334;Analog Output 2;Analog Out 2;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;68;336;Analog Output 3;Analog Out 3;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;69;338;Analog Output 4;Analog Out 4;animated-noise;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;70;340;Count Input 1;Count In 1;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;71;342;Count Input 2;Count In 2;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;72;344;Count Input 3;Count In 3;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;73;346;Count Input 4;Count In 4;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;74;348;Count Input 5;Count In 5;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;75;350;Count Input 6;Count In 6;animated-ramp;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;76;352;Spare Analog In 1;Spare AnalogIn1;static-0;STATIC-BY-TEMPLATE;"resolved via normalized-name fallback (space-insensitive match)"
+lan_zone_idx_classification;77;354;Spare Analog In 2;Spare AnalogIn2;static-0;STATIC-BY-TEMPLATE;"resolved via normalized-name fallback (space-insensitive match)"
+lan_zone_idx_classification;78;356;Spare Analog In 3;Spare AnalogIn3;static-0;STATIC-BY-TEMPLATE;"resolved via normalized-name fallback (space-insensitive match)"
+lan_zone_idx_classification;79;358;Spare Analog In 4;Spare AnalogIn4;static-0;STATIC-BY-TEMPLATE;"resolved via normalized-name fallback (space-insensitive match)"
+lan_zone_idx_classification;80;360;Spare Counter Input 1;Spare Count 1;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;81;362;Spare Stage Total 1;Spare StgTot1;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;82;364;Spare Job Total 1;Spare JobTot1;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;83;366;Spare Counter Input 2;Spare Count 2;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;84;368;Spare Stage Total 2;Spare StgTot2;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;85;370;Spare Job Total 2;Spare JobTot2;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;86;372;Spare Counter Input 3;Spare Count 3;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;87;374;Spare Stage Total 3;Spare StgTot3;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;88;376;Spare Job Total 3;Spare JobTot3;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;89;378;Spare Counter Input 4;Spare Count 4;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;90;380;Spare Stage Total 4;Spare StgTot4;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;91;382;Spare Job Total 4;Spare JobTot4;static-0;NOT-RESOLVED-BY-ADDIN;"name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;92;384;Spare Combined 1;Spare Combined1;static-0;STATIC-BY-TEMPLATE;"resolved via normalized-name fallback (space-insensitive match)"
+lan_zone_idx_classification;93;386;Spare Combined 2;Spare Combined2;static-0;STATIC-BY-TEMPLATE;"resolved via normalized-name fallback (space-insensitive match)"
+lan_zone_idx_classification;94;388;Cmnt Ops Track IDNum;Op Track IDNum;static-38534;NOT-RESOLVED-BY-ADDIN;"value not written by AddIn; name resolved via lan_vendor_aliases.csv alias map"
+lan_zone_idx_classification;95;390;Cmnt Ops Track Descript;Cmnt Ops Track;static-string-badtype;NOT-RESOLVED-BY-ADDIN;"UC string; name resolved via lan_vendor_aliases.csv alias map; strict numeric convert BadType-skips (value not written)"

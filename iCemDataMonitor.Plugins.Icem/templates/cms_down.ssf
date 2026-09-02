@@ -1,0 +1,23 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Controller Time,Controller Loc Time,42,215
+0,UNIPRO Event,UNIPRO Event Number,0,0
+0,Water Rate,Water Rate,130,80
+0,Mix Water Total,Mix Water Total,202,285
+0,Tubing Pr,Pressure,71,185
+0,LA1 Rate,LA 1 Rate,130,80
+0,LA1 Job Tot,LA 1 Job Total,Additive 202,285
+0,LA2 Rate,LA 2 Rate,130,80
+0,LA2 Job Tot,LA 2 Job Total,Additive 202,285
+0,LA3 Rate,LA 3 Rate,130,80
+0,LA3 Job Tot,LA 3 Job Total,Additive 202,285
+0,LA4 Rate,LA 4 Rate,130,80
+0,LA4 Job Tot,LA 4 Job Total,Additive 202,285
+0,PS Pump Rate,Pass-Side Pump Rate,130,80
+0,PS Pump Total,Pass-Side Pump Total,202,285
+0,DS Pump Rate,Driv-Side Pump Rate,130,80
+0,DS Pump Total,Driv-Side Pump Total,202,285
+0,Gen Analog 3,Generic Analog 3,0,0
+0,Gen Analog 6,Generic Analog 6,0,0
+0,Comb Pump Rate,Combined Pump Rate,130,80
+

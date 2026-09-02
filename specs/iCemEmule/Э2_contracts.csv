@@ -1,0 +1,70 @@
+category,name,address_or_key,type,byte_order_or_format,owner_writer,readers,note
+ACE,FrameTotalBytes,0x98(152),uint16,,AceFrameBuilder,AceLanEmitter,14 Eth + 3 LLC + 3 Magic + 4 Equipment + 128 signal area
+ACE,DstMAC,0x00..0x05,MAC,BE,AceFrameBuilder,wire/iCem,03:00:01:00:00:20
+ACE,SrcMAC,0x06..0x0B,MAC,BE,AceLanEmitter,wire,engine always passes srcMac="" ⇒ auto-MAC of the opened adapter (no srcMac setting/textbox since W11.4)
+ACE,Ieee8023Length,0x0C(12),uint16,BE,AceFrameBuilder,wire,0x008A=138 (NOT EtherType)
+ACE,LLC,0x0E(14)..0x10(16),bytes,,AceFrameBuilder,wire,[DSAP=0x03 SSAP=0x03 Control=0x08]
+ACE,Magic,0x11(17)..0x13(19),bytes,,AceFrameBuilder,wire,[0x00 0xD0 0x0D]
+ACE,EquipmentNumber,0x14(20),uint32,BE,AceFrameBuilder,wire/iCem,default 0x00A86F46 configurable via ctl setequipment / EmulatorPage; W14: setequipment also writes DFB JobSequencerBlock.UnitNumber (unit number = equipment)
+ACE,ServiceVector,0x18(24),uint32,BE,AceFrameBuilder,wire/iCem,written at frame 24..27; occupies signal-area slots 0..3 (all lantable signals ByteOffset>=4)
+ACE,PayloadBase,0x1C(28),byte[124],BE,AceFrameBuilder,wire,payload[0..123]=frame 28..151; offset law payload_index=ByteOffset-4; signal O at frame 0x18+O
+ACE,SuperframeSV_0x13120203,sv_id,uint32,BE,AcePayloadProvider,wire,Lnd Automation
+ACE,SuperframeSV_0x13120206,sv_id,uint32,BE,AcePayloadProvider,wire,Lnd Pump Sect
+ACE,SuperframeSV_0x13120200,sv_id,uint32,BE,AcePayloadProvider,wire,Lnd Mix Section
+ACE,SuperframeSV_0x13120209,sv_id,uint32,BE,AcePayloadProvider,wire,Lnd RAWIO Data
+ACE,SuperframeSV_0x1312020C,sv_id,uint32,BE,AcePayloadProvider,wire,Land Addon IO
+ACE,SuperframeSV_0x1312020F,sv_id,uint32,BE,AcePayloadProvider,wire,Lnd Ops Track
+ACE,FirmwareSV_0x13120212..39,sv_id,uint32,BE,AcePayloadProvider,wire,14 Beartooth RT tables (RT Data A..Spare AI/FI); only when LanFirmwareSvEnabled=true; merged from firmware_registry.json (legacy priority on sv collision)
+ACE,SignalEncoding_FF,per signal,float32,BE,AcePayloadProvider,wire,IEEE754; sentinel -9999.0f
+ACE,SignalEncoding_UL,per signal,uint32,BE,AcePayloadProvider,wire,round(sim * dasFactor)
+ACE,SignalEncoding_SI,per signal,int32,BE,AcePayloadProvider,wire,round(sim * dasFactor)
+ACE,SignalEncoding_HX,per signal,uint32,BE,AcePayloadProvider,wire,round(value) displayed as hex
+ACE,SignalEncoding_UC,per signal,ASCII,NUL-pad,AcePayloadProvider,wire,NUL-padded to signal Size; overflow guard (ByteOffset-4)+Size<=124 (Cmnt Ops Track Descript 4+120=124 transmittable)
+UNIT,PresetDefault,LanNative=1,enum,,UnitSettings,UnitConvertingPayloadProvider,wire identity: native units as real cRIO dump; FirmwareDefault=0 converts legacy bbl/min->gpm x42 and degF->degC affine only
+UNIT,GroupFactors,flow/volume/density/level/pressure,double,,UnitConversion,wire,bbl/min->gpm 42.0; bbl/min->m3/min 0.158987; ppg->g/cc 0.119826; ft->m 0.3048; psi->bar 0.0689476; bbl->gal 42.0
+UNIT,NonConvertible,composite/mA/%/Hz/bpm/char/sacks,string,,UnitConversion,wire,GroupOf->None->identity; bpm deliberately NOT an alias (protects PS/DS Rate)
+COM,LineFormat,positional CSV,string,,SignalWireCodec.FormatLine,iCem FLECS parser,32 fields for flecs_4.53; 9 for plc_basic
+COM,FieldSeparator,,char,,SignalWireCodec.FormatLine,iCem,comma ',' hardcoded (iCem parser splits on ',')
+COM,LineTerminator,,string,,ComSerialEmitter,iCem,emitter appends CRLF
+COM,BaudRate,9600,int,,ComSerialEmitter,iCem,9600
+COM,Parity,None,enum,,ComSerialEmitter,iCem,Parity.None
+COM,DataBits,8,int,,ComSerialEmitter,iCem,8
+COM,StopBits,One,enum,,ComSerialEmitter,iCem,StopBits.One
+COM,Rate,1,Hz,EmuEngineHost.Timer,iCem,1 line/sec
+COM,ExcludeFromTelemetryRule,structural,bool,,SignalWireCodec.FormatLine,iCem,variables with ExcludeFromTelemetry=true are omitted from wire
+COM,Format_F1,elapsed,double,F1,SignalWireCodec.FormatLine,iCem,seconds since stream start
+COM,Format_F2,default,double,F2,SignalWireCodec.FormatLine,iCem,two decimal places
+COM,Format_int,int,double,integer,SignalWireCodec.FormatLine,iCem,Math.Round to int then InvariantCulture
+SETTINGS,LanEnabled,iCemEmule/LanEnabled,bool,false,EmuSettings,EmuEngineHost,auto-start guard for LAN stream
+SETTINGS,LanAdapter,iCemEmule/LanAdapter,string,empty,EmuSettings,EmuEngineHost,adapter substring match
+SETTINGS,LanEquipment,iCemEmule/LanEquipment,uint32,0x00A86F46,EmuSettings,EmulatorPage(LAN),equipment number written to frame offset 0x14(20)
+SETTINGS,LanEmuleEnabled,iCemEmule/LanEmuleEnabled,bool,true,EmuSettings,EmuEngineHost,W14 LAN emulation gate: ON=автогенерация payload (DFB live), OFF=freeze (последний superframe + живые override/units декораторы); read at startup, saved on setemulate lan
+SETTINGS,LanFirmwareSvEnabled,iCemEmule/LanFirmwareSvEnabled,bool,false,EmuSettings,EmulatorPage(LAN),adds 14 firmware SV to superframe (20 sv total); read every tick
+SETTINGS,UnitPreset,iCemEmule/UnitPreset,int,1,EmuSettings,EmulatorPage(Units),1=LanNative (default, wire-identical to real cRIO); 0=FirmwareDefault; 2=Metric; 3=Imperial
+SETTINGS,UnitFlowOverride,iCemEmule/UnitFlowOverride,string,empty,EmuSettings,EmulatorPage(Units),per-group target unit override; empty=follow preset
+SETTINGS,UnitTemperatureOverride,iCemEmule/UnitTemperatureOverride,string,empty,EmuSettings,EmulatorPage(Units),per-group target unit override; empty=follow preset
+SETTINGS,UnitDensityOverride,iCemEmule/UnitDensityOverride,string,empty,EmuSettings,EmulatorPage(Units),per-group target unit override; empty=follow preset
+SETTINGS,UnitVolumeOverride,iCemEmule/UnitVolumeOverride,string,empty,EmuSettings,EmulatorPage(Units),per-group target unit override; empty=follow preset
+SETTINGS,UnitLevelOverride,iCemEmule/UnitLevelOverride,string,empty,EmuSettings,EmulatorPage(Units),per-group target unit override; empty=follow preset
+SETTINGS,UnitPressureOverride,iCemEmule/UnitPressureOverride,string,empty,EmuSettings,EmulatorPage(Units),per-group target unit override; empty=follow preset
+SETTINGS,ComEnabled,iCemEmule/ComEnabled,bool,false,EmuSettings,EmuEngineHost,auto-start guard for COM stream
+SETTINGS,ComEmuleEnabled,iCemEmule/ComEmuleEnabled,bool,true,EmuSettings,EmuEngineHost,W14 COM emulation gate: ON=waveform-генерация, OFF=freeze (последние значения + актуальные ручные override'ы); read at startup, saved on setemulate com
+SETTINGS,ComPort,iCemEmule/ComPort,string,empty,EmuSettings,EmuEngineHost,COM port name passed to ComSerialEmitter.Open
+SETTINGS,ComDeviceType,iCemEmule/ComDeviceType,string,empty,EmuSettings,EmulatorPage(COM),filter for TemplateCatalog
+SETTINGS,ComTemplateName,iCemEmule/ComTemplateName,string,empty,EmuSettings,EmulatorPage(COM),selected DeviceTemplate passed to SimulationEngine
+SETTINGS,WindowX,iCemEmule/WindowX,int,-1,EmuSettings,EmuSettings(legacy,headless-unused),-1 means not saved
+SETTINGS,WindowY,iCemEmule/WindowY,int,-1,EmuSettings,EmuSettings(legacy,headless-unused),-1 means not saved
+SETTINGS,WindowWidth,iCemEmule/WindowWidth,int,0,EmuSettings,EmuSettings(legacy,headless-unused),legacy field, unused by headless engine
+SETTINGS,WindowHeight,iCemEmule/WindowHeight,int,0,EmuSettings,EmuSettings(legacy,headless-unused),legacy field, unused by headless engine
+CTL,PipeName,\\.\pipe\iCemEmule.Control,named pipe,,ControlPipeServer,iCemEmule.exe --ctl,JSON-lines: one command line in -> one JSON reply line out; multiple clients allowed
+CTL,ReplyShape,per reply,JSON,UTF-8 one line,CommandProcessor,ctl client,"{""ok"":bool,""cmd"":string,""data"":obj} or {""ok"":false,""cmd"":string,""error"":string}"
+CTL,CommandGrammar,per line,text|JSON,,CommandProcessor,IEmuControl,"text: status|start|stop|set|get|clear|profiles|profile|vars|watch|quit|help|ports|adapters|setport|setadapter|setequipment|setfirmware|setemulate|setpreset|setunit (quotes group names; setemulate <com|lan> 0|1); JSON: {""cmd"":...,""channel""|""name""|""value""|""sv""|""deviceType""}; UI client (EmulatorPage) sends 17 of 21: ¬ get/watch/quit/help"
+CTL,WatchTicks,1 Hz,JSON lines,,ControlPipeServer,ctl client,after watch ACK the server streams status JSON every 1 s until client disconnect
+CTL,CliMode,--cli,args,,Program.cs,operator shell,runs BEFORE single-instance mutex; exit 0 ok / 1 error / 2 usage; no args + redirected stdin => REPL; no running instance => «эмулятор не запущен» (schema delta 2026-08-27: exe+flag rename iCemEmule.exe --ctl → iCemEmulator.exe --cli, owner decree; wire grammar UNCHANGED)
+CTL,DispatchThreading,engine gate lock,,,EmuEngineHost,IEmuControl,headless: pipe worker threads marshal via EmuEngineHost._gate lock (no UI thread); emitters stay lock-guarded
+CTL,ComOverride,per variable,double,,SimulationEngine.SetOverride,EmuEngineHost.Tick,applied in Tick AFTER waveform (native units); ClearOverride reverts; survives until cleared or template swap
+CTL,LanOverrideUnits,per signal,double native,,ManualOverridePayloadProvider,UnitConvertingPayloadProvider,set values are pre-unit-conversion (native UoM); wire value follows Units preset
+DELTA,ExeRename_2026_08_27,iCemEmule.exe->iCemEmulator.exe,file,,owner decree,iCemEmulator/transport live gate,headless engine exe + iCemEmule.WinUI.exe wrapper merged into ONE app (UI+CLI, engine in-proc); dev output bin\x64\<Config>\net10.0-windows10.0.19041.0\iCemEmulator.exe; process name iCemEmulator
+DELTA,DeployFolder_2026_08_27,iCemEmulator,,folder,,owner decree,installer,C:\Program Files\Halliburton\iCemMonitor\iCemEmulator\ (own folder); installer does placement — layout expectations pinned in iCemEmulator/iCemEmulator.csproj + EmulatorAppContract
+DELTA,MutexRename_2026_08_27,Local\Halliburton_iCem_iCemEmule->Global\iCemEmulator_v1,mutex,,owner decree,iCemEmulator UI instance,UI mode only; --cli never takes the mutex
+DELTA,HostRpcSeamRemoved_2026_08_27,iCemDataMonitor.Emulator.Core,assembly,,owner decree,none,EmuleSupervisor + IEngineControlChannel (host ControlEngine RPC seam) DELETED; UI and CLI reach the in-proc engine over the SAME control pipe

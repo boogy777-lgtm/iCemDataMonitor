@@ -1,0 +1,41 @@
+stateDiagram-v2
+    [*] --> SettingsLoad : iCemEmule.exe starts (mutex Local\Halliburton_iCem_iCemEmule)
+    SettingsLoad --> Idle : EmuSettings.Load() complete
+    note right of SettingsLoad
+        settings-load-at-startup law:
+        Load() runs before AutoStartStreams()
+        in EmuEngineHost.Run()
+    end note
+
+    Idle --> ComOpenRequest : ctl "start com" or ComEnabled=true (autostart)
+    Idle --> LanOpenRequest : ctl "start lan" or LanEnabled=true (autostart)
+
+    ComOpenRequest --> ComStreaming : ComSerialEmitter.Open(port) returns ""
+    LanOpenRequest --> LanStreaming : AceLanEmitter.Open(adapter) returns ""
+
+    ComOpenRequest --> Idle : Open() returns error
+    LanOpenRequest --> Idle : Open() returns error
+
+    ComStreaming --> Idle : ctl "stop com" or Close()
+    LanStreaming --> Idle : ctl "stop lan" or Close()
+
+    Idle --> [*] : Shutdown saves emule_config.xml (ctl "quit" or process kill)
+    ComStreaming --> [*] : Shutdown
+    LanStreaming --> [*] : Shutdown
+
+    note left of Idle
+        AutoStartStreams() applies saved
+        ComEnabled/LanEnabled once
+        immediately after the 1 Hz timer starts
+    end note
+
+    note right of Idle
+        ctl = operator command channel:
+        ControlPipeServer (\\.\pipe\iCemEmule.Control,
+        JSON-lines) started before the timer;
+        commands dispatch through EmuEngineHost
+        (IEmuControl, thread-safe gate);
+        ctl "quit" sets the quit event -> Shutdown.
+        UI (EmulatorPage in the shell) is a pure
+        ctl client — no state lives in the page.
+    end note

@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{7A3F5E21-9C1D-4B6A-8E52-1D4F0B9C2A67}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Burservis.iCem.DataMonitor</RootNamespace>
+    <AssemblyName>Burservis.iCem.DataMonitor</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <!-- 2026-09-01 (owner decree «Блок 2 п.6», audit result): net48 is FINAL BY LAW —
+         this DLL is injected into iCem.exe, a .NET FRAMEWORK process; a net10
+         assembly can never load there. Every project that CAN be net10 IS net10
+         (verified this round); the AddIn stays the sole, documented exception. -->
+    <!-- No v4.8 targeting pack installed (only 3.5/4.0/4.7.2). Compile against the
+         installed .NET Framework 4.8 RUNTIME assemblies instead (host iCem.exe runs
+         on the 4.8 runtime, so surface is guaranteed present at load time). -->
+    <FrameworkPathOverride>C:\Windows\Microsoft.NET\Framework64\v4.0.30319</FrameworkPathOverride>
+    <!-- LangVersion 8 for C# convenience features; bus code is 7.3-style by convention. -->
+    <LangVersion>8.0</LangVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="PresentationFramework">
+      <HintPath>C:\Windows\Microsoft.NET\Framework64\v4.0.30319\WPF\PresentationFramework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PresentationCore">
+      <HintPath>C:\Windows\Microsoft.NET\Framework64\v4.0.30319\WPF\PresentationCore.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="WindowsBase">
+      <HintPath>C:\Windows\Microsoft.NET\Framework64\v4.0.30319\WPF\WindowsBase.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Composite">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Microsoft.Practices.Composite.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Composite.Presentation">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Microsoft.Practices.Composite.Presentation.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.CementingData">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.CementingData.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.Realtime.DataStreamer.Common">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.Realtime.DataStreamer.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.CementingServices">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.CementingServices.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.CementingData.Interfaces">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.CementingData.Interfaces.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.Interfaces">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.Interfaces.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.RealTime">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.RealTime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.RealTime.SerialDataSetup">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.RealTime.SerialDataSetup.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Halliburton.iCem.Realtime.VariableSelector">
+      <HintPath>C:\Program Files\Halliburton\iCem\Bin\Halliburton.iCem.Realtime.VariableSelector.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="BusAccessDeniedException.cs" />
+    <Compile Include="BusLayout.cs" />
+    <Compile Include="BusWriter.cs" />
+    <Compile Include="BusWriteQueue.cs" />
+    <Compile Include="ComFeedLatch.cs" />
+    <Compile Include="ZoneStaleness.cs" />
+    <Compile Include="ZoneLiveness.cs" />
+    <Compile Include="TapLog.cs" />
+    <Compile Include="NameNormalizer.cs" />
+    <Compile Include="PollResolution.cs" />
+    <Compile Include="LanSourceTracker.cs" />
+    <Compile Include="RawCsvFields.cs" />
+    <Compile Include="UnixTimestamp.cs" />
+    <Compile Include="DataMonitorAddressMap.cs" />
+    <Compile Include="DataMonitorModule.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
+

@@ -1,0 +1,23 @@
+flowchart LR
+    EMU["FlecsEmu<br/>COM2 serial + LAN ACE 82574L<br/>PROTOCOL-UPDATE-PENDING: firmware decompiled, new emulator coming"]
+    C0C["com0com pair"]
+    COM1["COM1"]
+    ICEM["iCem.exe<br/>FLECS CMT v4.53 parser"]
+    ADDIN["AddIn dll in-proc<br/>DUMB TRANSLATOR byte-exact"]
+    BUS[("station_bus.dat<br/>Global\\StationBus_v1 10001 regs")]
+    SNIFF["POC AceSnifferService<br/>direct from wire"]
+    SINK["LanBusSink to BusZoneWriter<br/>v5 DEFERRAL-GATED"]
+    READER["BusReader to ModbusTcpPublisher"]
+    OPERATOR["SCADA / operator master"]
+
+    EMU -->|"FLECS CSV 32 fields 1 Hz"| C0C
+    C0C --> COM1
+    COM1 --> ICEM
+    EMU -->|"ACE raw 802.3 frames 1 Hz"| ICEM
+    EMU -->|"ACE raw 802.3 frames 1 Hz"| SNIFF
+    ICEM --> ADDIN
+    ADDIN -->|"v5: regs 0..3 + com_stream 4..199 + lan_stream_crio 200..399 + raw_com_line 400..599"| BUS
+    SNIFF --> SINK
+    SINK -.->|"v5 DEFERRED: ace_full 600..10000 reserve — nobody writes"| BUS
+    BUS --> READER
+    READER -->|"Modbus TCP :502 FC03/FC04"| OPERATOR

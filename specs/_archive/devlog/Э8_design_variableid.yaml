@@ -1,0 +1,114 @@
+meta:
+  id: iCemAddIn-E8
+  unit: iCemAddIn
+  date: 2026-08-18
+  status: PROMOTION-CANDIDATE (per RULES §15.2) — design-only artifact; implementation ONLY on explicit user decree
+  topic: "3-layer VariableId design for FUTURE named coverage of COM/LAN sources (adversarial review v2 — survived-version)"
+  long_form: "specs/iCemAddIn/FUTURE_full_coverage_spec.md (user-decreed md, 2026-08-18) — human-readable spec; THIS yaml = machine-readable source of the same facts"
+  inputs_verified:
+    - "specs/dotnet-server/Э2b_ace_full_measurement.csv rows 42-50 (capacity math, authoritative)"
+    - "specs/FlecsEmu/Э2c_lan_zone_classification.csv (73 abbreviated-name evidence)"
+    - "templates/variable_registry.json (7 families: flecs mb4 / plc mb2004 / unipro mb4004 / compupac mb6004 / +2; 3507 vars / 3463 lan entries idx 0..3462)"
+    - "C:\\iCEM\\...\\CementingData.Units\\LantableNT.xml (4386 rows / 3296 distinct names / 3929 unique signals on 194 unique SV; SHA256 DA633E2C…)"
+    - "FlecsEmu/templates/firmware_registry.json (14 SV, 267 signals)"
+    - "C:\\iCEM\\TapOut.log live SKIPTOP MISS/POLLUNIV (2026-08-18, computed case vars evidence)"
+    - "C:\\iCEM\\DataTap.AddIn (gen_datatap_map.ps1, DataTapAddressMap.cs, NameNormalizer, PollResolution)"
+  unverifiable_from_repo:
+    - "ReferenceEquipmentVariable (247, COM) + ReferenceLanEquipmentVariable (LAN DB) + postdeploy.sql/model.sql — vendor DB not present in repo ⇒ ID stability and ID-range overlap claims are UNVERIFIABLE here; design is deliberately immune to them (identity = name, not DB ID)"
+
+attacks:
+  A1:
+    id: multiple-authorities-id-collision
+    verdict: SURVIVED-by-immunity
+    evidence: "registry already namespaces by family (7 families × modbusBase); LantableNT 4386 rows include duplicate-sv rows (Э2b row 18: 4386→3929 unique); firmware 267 separate"
+    mitigation: "identity NEVER = DB ID; identity = (authority, normalized-ascii-name); one enum per authority (ComNamed, LanNamed, FirmwareNamed) — zone discriminator lives in the address law, so flat-ID collisions are structurally impossible"
+  A2:
+    id: vendor-reseed-id-instability
+    verdict: SURVIVED-by-immunity
+    evidence: "postdeploy.sql NOT in repo — reseed behavior unverifiable; cannot assume IDENTITY columns stable across iCem upgrades"
+    mitigation: "no DB identity anywhere in the generated artifacts; enum members carry the name-identity, ordinals carry NO semantics; build-time contract test (when DB access exists in the deploy env): names(book) == names(master) — ID columns never read"
+  A3:
+    id: capacity-kills-100percent
+    verdict: ATTACK KILLED the naive design — v2 redesigned around it
+    evidence: "com: 247 vars × 2 = 494 regs > com_stream 196 regs ⇒ com 100% CANNOT live in 4..199; lan: merged catalog 4196 values = 8392 regs fits ONLY the ace_full reserve 600..10000 (9401 regs) which is POC-DEFERRED (Э2b rows 42/50) and blocked by AddInMaxReg=599 guard; wire-reality subset (legacy6+firmware 363 values) = 726 regs; Cementer scope 846 values = 1692 regs"
+    resolution: "capacity answer (below): 100% lives ONLY in the ace_full reserve under a NEW zone decree; tiered coverage is the design"
+  A4:
+    id: dynamic-universe-uncoverable
+    verdict: ATTACK KILLED literal '100%' — goal redefined
+    evidence: "live SKIPTOP MISS 2026-08-18: Measured Depth, Hydrostatic Gradient, Fluid Density, Hookload, … — case-computed/EquipmentVariable/CustomResultVariable names, NOT in any master list; a static enum can never contain them"
+    resolution: "coverage goal = 100% of the STATIC MASTER UNIVERSE per decreed tier; dynamic lane = raw_com_line (universal positional, v5.1) + MISS feedback loop; dynamic names are NEVER enum members"
+  A5:
+    id: wire-contract-renumbering
+    verdict: SURVIVED-by-design
+    evidence: "SCADA consumers read published addresses; current generator is deterministic but regenerates from scratch — a registry reorder reorders the .cs"
+    mitigation: "append-only ADDRESS BOOK with tombstones (generated, like DataTapAddressMap.cs); contract test: book(vNext) ⊇ book(vCurrent) ∧ ¬∃ moved entry ∧ all addrs inside decreed zones; regeneration NEVER renumbers a published address"
+  A6:
+    id: alias-harvest-feedback-loop-absence
+    verdict: SURVIVED-by-formalization
+    evidence: "current sidecar (lan_vendor_aliases.csv) is a hand-maintained snapshot; no pipeline from live MISS evidence"
+    mitigation: "formal loop: unknown name → raw lane + SKIPTOP MISS log (already exists) → ops runbook review → alias sidecar row → generator Assert-Resolves lint → regenerate → deploy; loop latency = deploy cadence (documented as best-effort, raw lane is the freshness guarantee)"
+  A7:
+    id: cross-zone-name-collision
+    verdict: SURVIVED-by-design
+    evidence: "'Unit Num' COM(6) ∧ LAN(254) live-verified; 'Recirc Density' precedent in both maps"
+    mitigation: "alias key = (family, normalizedAsciiName) → VariableId; per-family ambiguity lint at generation (BuildNormMap precedent) — within-family normalized collision = generation-time REPORT (never silent drop); cross-family same-name is legal via source affinity"
+  A8:
+    id: compiled-enum-lag-vs-template-rot
+    verdict: SURVIVED-by-accepted-limitation
+    evidence: "enum compiles into the signed exe; iCem templates/DB mutate at runtime without AddIn redeploy (Э2b Domain A template-change rows; single-named-source decree)"
+    mitigation: "named coverage is best-effort and deploy-bounded; the raw lane is the always-fresh channel; document that NEW names are raw-positional until the next deploy (accepted latency, NOT a defect)"
+  A9:
+    id: display-name-harvest-drift
+    verdict: SURVIVED-by-lint
+    evidence: "POLLUNIV harvest carries DISPLAY names (English on this stand); registry keeps canonical names (name/tapName/wireName split already exists); localized UI names would break a display-keyed sidecar"
+    mitigation: "identity = canonical registry name; sidecar rows map observed display name → canonical identity; generator Assert-Resolves lint: every sidecar name must resolve to exactly ONE (family, canonical) in the current master or generation FAILS (no silent dead aliases)"
+  A10:
+    id: ordinal-derived-address-law
+    verdict: SURVIVED-by-explicit-book
+    evidence: "if addr = 4+idx*2 were generalized as addr = f(enumOrdinal), any future insertion renumbers the whole contract"
+    mitigation: "address law = generated closed TABLE (VariableId → addr), never ordinal arithmetic; the current 200+idx*2 law is SEVERED for extended sets — it stays only as the T1 curated-96 seed of the book"
+  A11:
+    id: lan-catalog-already-shipped
+    verdict: OPPORTUNITY (informs design, not a kill)
+    evidence: "registry ships 3463 lan entries idx 0..3462 — the full catalog already exists in the repo; only the curated 96 are wired today (LanMaxIndex=95)"
+    mitigation: "T2 implementation = extend the book from the SAME registry (no new data acquisition), but addresses come from the book, NOT from 200+idx*2"
+
+coverage_goal:
+  definition: "'100%' = 100% of the STATIC MASTER UNIVERSE for the DECREED zone tiers; dynamic case-scoped variables are structurally out of any static enum (A4) and flow raw-positionally forever"
+  tiers:
+    T1_observed_wire: "96 lan (legacy6 SV) + 34 com (flecs) — DONE today; addrs 4..199 / 200..399; the book's immutable seed"
+    T2_static_catalog: "Cementer scope (846 values = 1692 regs) or merged catalog (4196 values = 8392 regs) — ONLY by explicit zone decree (A3); addresses from the append-only book; fits ONLY the ace_full reserve"
+    T3_dynamic: "never named — raw_com_line 400..599 positional lane + SKIPTOP MISS feedback (A6)"
+  capacity_answer: "100% named coverage LIVES in the ace_full reserve 600..10000 (9401 regs): merged catalog needs 8392 regs as float pairs (verified, Э2b rows 45-50); it CANNOT live while the reserve is POC-deferred and AddInMaxReg=599 stands (A3). Practical decrees: wire-reality 363 values (726 regs) or Cementer 846 values (1692 regs). Any implementation = first decree a new AddIn-owned named-lan zone from the reserve + revise AddInMaxReg + re-scope the POC sniffer to the remainder"
+
+design_v2:
+  layer1_identity:
+    - "identity = (authority, normalizedAsciiName); authority ∈ {ComFlecs, LanLantable, LanFirmware}; normalizedAsciiName = NameNormalizer rule (alnum, lower)"
+    - "per-authority enums: ComNamed (flecs family only — single-named-source decree holds), LanNamed, FirmwareNamed; member names embed the identity; ordinals carry NO semantics (A10)"
+    - "source of truth = existing masters: registry flecs family (com), lantable_registry.json + firmware_registry.json (lan/firmware) — no new data acquisition (A11)"
+  layer2_alias:
+    - "sidecar rows: (authority, observedDisplayName) → canonical identity; generator Assert-Resolves lint: unresolvable row = generation FAILURE (A9)"
+    - "per-authority normalized-collision lint: two identities sharing one normalized name in one authority = generation-time REPORT (A7)"
+    - "harvest pipeline: raw lane + SKIPTOP MISS → ops review → sidecar row (A6)"
+  layer3_address_book:
+    - "generated closed table (VariableId → addr), append-only with tombstones; the generator stays the source of truth (extension of gen_datatap_map.ps1)"
+    - "contract tests (to be implemented with the feature): book(vNext) ⊇ book(vCurrent) ∧ no moved entries ∧ all addrs inside decreed zones (A5)"
+    - "seed: book v1 = current ComMap 34 + LanMap 96 + 73 vendor aliases, pinned verbatim; `200+idx*2` remains law ONLY for the T1 curated set"
+  migration_path:
+    - "no code change now; implementation (on decree) = extend generator with enum+book emission; existing TryGetComAddress/TryGetLanAddress become thin lookups over the book; ComMap/LanMap static dictionaries retire"
+  falsifiers:
+    - "book append-only contract test (A5)"
+    - "identity-stability test: renaming a registry entry must NOT move its address (identity pinned, name is key)"
+    - "Assert-Resolves lint failure on a stale alias row (A9)"
+    - "zone-bounds test: no book address outside decreed zones (A3/A5)"
+    - "ordinal-agnostic test: inserting a new enum member must leave all existing addresses unchanged (A10)"
+
+rejected_alternatives:
+  - alt: "flat single enum over vendor DB IDs (the original 3-layer sketch)"
+    kill: "multi-authority ID ranges overlap (A1) + reseed instability (A2) — unverifiable, structurally fragile"
+  - alt: "implicit 100% named coverage inside current zones (com 4..199 + lan 200..399)"
+    kill: "capacity math: com needs 494 regs > 196 available; lan catalog needs 8392 regs — only the POC-deferred reserve fits (A3)"
+  - alt: "named coverage of dynamic case-computed variables"
+    kill: "structurally impossible — they are not in any master list (A4, live MISS evidence)"
+  - alt: "address = arithmetic function of enum ordinal"
+    kill: "any regeneration insertion renumbers the published SCADA contract (A10)"

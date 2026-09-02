@@ -1,0 +1,8 @@
+{
+  // 2026-09-01 (owner request «человек должен собирать проект из IDE»):
+  // only extensions whose marketplace IDs are certain.
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.csharp"
+  ]
+}

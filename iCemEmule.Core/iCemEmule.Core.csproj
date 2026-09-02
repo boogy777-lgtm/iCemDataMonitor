@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- W11.2: pure emulator core — simulation engines, DFB blocks, wire
+       emitters, control pipe, selftests. NO UI. Shared by the WinForms exe
+       (legacy surface) and the WinUI 3 exe (migration target). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Halliburton.iCemEmule</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpPcap" Version="6.0.0" />
+    <PackageReference Include="PacketDotNet" Version="1.4.7" />
+    <!-- 2026-09-01 (owner decree «Блок 2 п.5/6»): Microsoft.* on the 10.0.0 train. -->
+    <PackageReference Include="System.IO.Ports" Version="10.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CrashLog test hooks (PathOverride/TruncateIfNeeded/DeleteOldLogs) mirror
+         the canonical TapLog InternalsVisibleTo pattern (AddIn AssemblyInfo.cs). -->
+    <InternalsVisibleTo Include="iCemEmule.Tests" />
+  </ItemGroup>
+
+</Project>

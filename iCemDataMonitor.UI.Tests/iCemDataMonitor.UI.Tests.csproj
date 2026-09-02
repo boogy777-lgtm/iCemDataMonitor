@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>iCemDataMonitor.UI.Tests</RootNamespace>
+    <AssemblyName>iCemDataMonitor.UI.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- W22: TestHost must match the ASP.NET Core major version — 8.0.0
+         against the net10 shared framework fails with "PipeWriter
+         ResponseBodyPipeWriter does not implement PipeWriter.UnflushedBytes". -->
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.11" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- W20 F.2: iCemDataMonitor.Tray removed from the solution (legacy backend
+         is dead as an entity) — the ProjectReference is gone with it. The
+         Sdk/Transport/Host.Core references it used to provide TRANSITIVELY
+         are now declared explicitly (tests exercise those layers directly). -->
+    <ProjectReference Include="..\iCemDataMonitor.Sdk\iCemDataMonitor.Sdk.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Transport\iCemDataMonitor.Transport.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.Host.Core\iCemDataMonitor.Host.Core.csproj" />
+    <ProjectReference Include="..\iCemDataMonitor.HostClient\iCemDataMonitor.HostClient.csproj" />
+  </ItemGroup>
+
+</Project>

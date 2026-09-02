@@ -1,0 +1,24 @@
+meta:
+  id: iCemAddIn-GAP
+  unit: iCemAddIn
+  date: 2026-08-17
+  status: RESOLVED
+resolution:
+  sources: "C:\\iCEM\\DataTap.AddIn (Halliburton.iCem.DataTap.AddIn, net48 x64 Prism AddIn — operator-confirmed self-written dll)"
+  tests: "C:\\iCEM\\DataTap.AddIn.Tests (xunit net48, 171 tests green 2026-08-17)"
+  self_test: "BusSelfTest.exe (csc-compiled console harness, all assertions green)"
+  build: "dotnet msbuild Halliburton.iCem.DataTap.AddIn.csproj -p:Configuration=Release → bin\\Release\\Halliburton.iCem.DataTap.AddIn.dll"
+  contract_version: "v5 (bus register map v5, user decree 2026-08-17) — Э2/Э4 now code-authoritative"
+gap:
+  subject: "AddIn dll SOURCE not located (OPEN until 2026-08-17)"
+  history: "locate task aborted ×2 by operator decision; sources delivered under C:\\iCEM\\DataTap.AddIn (user confirmation 2026-08-17)"
+  decision: "GAP CLOSED — the source IS the deliverable; Э2 provenance flipped live-observation → code"
+formerly_unknown_now_known:
+  - "exact source path: C:\\iCEM\\DataTap.AddIn"
+  - "write map completeness: com 34 registry flecs entries idx 0..33 → regs 4..70; lan 96 registry entries idx 0..95 → regs 200..391 (v5)"
+  - "INC-06 truncation defect: 8-bit truncation of CDAB words (word&0xFF) in the lost stand-revision lan write path — byte-math proven in Э6; v5 lan path = full 4-byte CDAB, pinned by tests"
+  - "v4 heartbeat: the observed streaming-link was a lost-revision artifact; v5 heartbeat (reg3) = always-tick while loaded, wrap 32000→0 (D2)"
+reopen_condition:
+  - truncation recurs live after the protocol update
+  - NEW emulator lands (firmware decompiled by operator ⇒ protocol update pending)
+mitigation: "none needed — code + tests + self-test pin the contract; falsifiers LanStreamCrio full-CDAB test + BusSelfTest ownership pins stand in for black-box observation"

@@ -1,0 +1,21 @@
+# 2026-09-01 (owner request «человек должен собирать проект из IDE»):
+# normalize line endings on commit so IDE/CLI/git stop fighting. The code is
+# LF (LLM-authored) — text files check out as-is on Windows via core.autocrlf
+# conventions of the human's git client.
+* text=auto
+
+# Explicitly binary: never touch bytes.
+*.ico binary
+*.png binary
+*.bmp binary
+*.msi binary
+*.dat binary
+*.dll binary
+*.exe binary
+*.pcapng binary
+*.bin binary
+
+# PowerShell 5.1 legacy: scripts with Cyrillic MUST be UTF-8 with BOM and the
+# console toolchain expects CRLF (see .editorconfig note).
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf

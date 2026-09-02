@@ -1,0 +1,58 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Recirc Density,Recirc Density,178,53
+0,DH Density,Downhole Density,178,53
+0,Mix Water Rate,Mix Water Rate,130,79
+0,Comb Pump Rate,Combined Pump Rate,130,79
+0,PS Pump Press,Pass-Side Pump Pressure,71,367
+0,DS Pump Press,Driv-Side Pump Pressure,71,367
+0,Water Stg Tot,Mix Water Stg Total,202,287
+0,Mix Water Total,Mix Water Total,202,287
+0,Pump Stg Tot,Pump Stage Total,202,287
+0,Comb Pump Total,Combined Pump Total,202,287
+0,Cmnt Valve Psn,Cement Valve Position,63,154
+0,Water Valve Psn,Water Valve Position,63,154
+0,PS Pump Rate,Pass-Side Pump Rate,130,79
+0,DS Pump Rate,Driv-Side Pump Rate,130,79
+0,Dig out,Digital Out,0,0
+0,HalWin Event,HalWin Event Number,0,0
+0,Spare1,Spare1,0,0
+0,rho12_hat,rho12_hat,178,53
+0,h2_hat,h2_hat,21,121
+0,vhp_density_HP,vhp_density_HP,178,53
+0,Tub Height,Tub Height,21,121
+0,Recirc Press,Recirc Pressure,71,367
+0,Spare2,Spare2,0,0
+0,Recirc FlowRate,Recirc Flow Rate,130,79
+0,Spare3,Spare3,0,0
+0,Belly MagMeter,Belly MagMeter Flow Rate,130,79
+0,Mag Meter Total,Mag Meter Total,202,287
+0,Wtr/slry Ratio,Water/Slurry Ratio,63,154
+0,MudCup Density,MudCup Density,178,53
+0,PS Pmp Stg Tot,PS Pump Stage Total,202,287
+0,DS Pmp Stg Tot,DS Pump Stage Total,202,287
+0,mD1dot_hat,mD1dot_hat,0,0
+0,mD1dot_hat_P,mD1dot_hat_P,0,0
+0,h2_star,h2_star,0,0
+0,h2_hat2,h2_hat2,0,0
+0,h2_star_new,h2_star_new,0,0
+0,VDdot_hat_P,VDdot_hat_P,0,0
+0,VDdot_hat,VDdot_hat,0,0
+0,Control Mode,Control Mode,0,0
+0,Mix Mode,Mix Mode,0,0
+0,Raw PS Press,Raw PS Pressure,71,367
+0,Raw DS Press,Raw DS Pressure,71,367
+0,PS Press At KO,PS Pressure At KO,71,367
+0,DS Press At KO,DS Pressure At KO,71,367
+0,Highest Press,Highest Pressure,71,367
+0,Auto Cmt Cmd,Auto Cmt Cmd,0,0
+0,Auto Wtr Cmd,Auto Wtr Cmd,0,0
+0,Man Cmt Cmd,Man Cmt Cmd,0,0
+0,Man Wtr Cmd,Man Wtr Cmd,0,0
+0,Cmt Out,Cmt Out,0,0
+0,Wtr Out,Wtr Out,0,0
+0,Extra Press 1,Extra Pressure 1,71,367
+0,Extra Press 2,Extra Pressure 2,71,367
+0,TLMS Spare Vlv,TLMS Valve AO,0,0
+0,TLMS Tub Level,TLMS Tub Level,63,154
+0,TLMS Fdbk Pot,TLMS Fdbk Pot,63,154

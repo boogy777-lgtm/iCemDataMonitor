@@ -1,0 +1,51 @@
+test_name,proves_invariant,surface,category
+FrameRoundTrip.Test1_RoundTrip,ACE build/parse equivalence + sv extraction,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test2_RejectInvalid,ACE frame filter rejects wrong magic/dst/short frames,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test3_HeaderConformance,golden header bytes 0..27 byte-exact (sv @ 0x18(24), payload base 0x1C(28)),iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test4_ComGracefulError,COM Open on nonexistent port returns error and IsOpen=false,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test5_ManualEditReachesWire,ManualOverridePayloadProvider embeds edits at payload[ByteOffset-4] with correct encoding; UC-120 transmittable,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test6_FirmwareRegistryLoads,14 firmware SV tables merged (legacy priority), all signals (O-4)+Size<=124,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test7_UnitConversion,factors 42 / (v-32)*5/9 / 0.119826 / 0.3048 / 0.0689476 + GroupOf classification,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test8_SuperframeFirmwareSvs,default 6-sv superframe; 20-sv order with firmware; wire conversion bbl/min->gpm / bbl/min->m3/min on payload bytes,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test9_UnitSettingsOverrides,preset + per-group override TargetUnit; bpm/mA/char non-convertible,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test10_ComConversion,global UnitsTab settings reach COM values before FormatLine,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test11_ConvertMatrix,full conversion matrix linear groups + affine temperature,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test12_AliasAndCase,gpm/ppg/psia/degF aliases + case-insensitivity + trim,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test13_NonConvertible,composite/X-Y/mA/%/Hz/bpm/sacks -> identity,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test14_RoundTrip,native->target->native all groups x 4 presets; -40°F exact,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test15_PresetMatrix,4x6 preset matrix + UnitsOf self-consistency,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test16_FirmwareOneToOne,267 firmware signals NeedsConversion=false under FirmwareDefault,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test17_ProviderByteLevel,byte-level decorator: O=8->payload[4] x42 under FirmwareDefault; UC untouched,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test18_CrossGroupIdentity,cross-group conversion = identity for all groups,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test19_FirmwareNativeGccRegression,MB_DensHPVT g/cc stays 1:1 under FirmwareDefault,iCemEmule.exe --selftest,Contract
+FrameRoundTrip.Test20_OffsetLaw,payload_index = ByteOffset-4 on bytes (Pump A Pressure payload[0], Unit Number 0x00A86F46 payload[0], UC-120 CanTransmit),iCemEmule.exe --selftest,Contract
+CommandChannelTests.Test21_Parse,text/JSON/quoted-name parse; malformed input -> JSON error without throwing,iCemEmule.exe --selftest,Contract
+CommandChannelTests.Test22_ErrorHandling,unknown cmd/channel/variable + bad value/sv all yield ok:false JSON,iCemEmule.exe --selftest,Contract
+CommandChannelTests.Test23_SetGetRoundtrip,set/get/clear roundtrip; SimulationEngine override lands in Tick and reverts,iCemEmule.exe --selftest,Contract
+CommandChannelTests.Test24_StartStopIdempotence,start/stop per channel are idempotent (single underlying transition),iCemEmule.exe --selftest,Contract
+CommandChannelTests.Test25_StatusJsonShape,status reply parses and carries uptime/com/lan/units/overrides keys,iCemEmule.exe --selftest,Contract
+CommandChannelTests.Test26_PipeEndToEnd,named-pipe roundtrip: status; malformed line keeps connection alive; watch emits 1 Hz tick,iCemEmule.exe --selftest,Contract
+WireFormatTests.Flecs453_GoldenLine_32CommaSeparatedFields_NoTimeNoUnit,excludeFromTelemetry structural rule yields exactly 32 CSV fields,iCemEmule.Tests,Unit
+WireFormatTests.Flecs453_FromCatalog_Emits32Fields,real catalog template emits 32 fields and excludes Time&Date/UnitNum,iCemEmule.Tests,Unit
+WireFormatTests.TemplateWithoutExclusions_EmitsAllFields,format rules F2/int/F1 applied by FormatLine,iCemEmule.Tests,Unit
+WireFormatTests.PlcBasic_FromCatalog_OmitsPlcTimestamp,excludeFromTelemetry also works for PLC Timestamp (9 fields),iCemEmule.Tests,Unit
+PayloadSmokeTests.Superframe_has_live_pump_pressure_and_density_after_warmup,DFB network drives live values into ACE payload after warmup,iCemEmule.Tests,Unit
+PayloadSmokeTests.Kickout_trip_is_visible_in_payload_bytes,kickout latch state appears in SV 0x13120206 bytes,iCemEmule.Tests,Unit
+PayloadSmokeTests.Fallback_keeps_payload_identical_when_dfb_silent,DfbAcePayloadProvider fallback preserves base bytes when DFB silent,iCemEmule.Tests,Unit
+PumpSideTests.Steady_rate_pressure_below_opko_no_trip,pump physics: rate*resistance pressure below OPKO threshold,iCemEmule.Tests,Unit
+PumpSideTests.Overload_trips_kickout_and_captures_pressure,kickout trip captures pressure-at-ko,iCemEmule.Tests,Unit
+PumpSideTests.Reset_after_trip_clears_kickout_and_stage,reset clears latch and stage total,iCemEmule.Tests,Unit
+KickoutLatchTests.Below_threshold_no_trip,OPKO latch stays untripped below setting,iCemEmule.Tests,Unit
+KickoutLatchTests.Trip_captures_pressure_at_ko,latch captures pressure at trip instant,iCemEmule.Tests,Unit
+KickoutLatchTests.Latch_holds_after_pressure_drops,latch holds after pressure drops,iCemEmule.Tests,Unit
+KickoutLatchTests.Reset_clears_latch_and_capture,reset clears tripped latch and capture,iCemEmule.Tests,Unit
+SignalSourceTests.Known_wire_names_resolve,DfbSignalSource maps known lantable wireNames to network signals,iCemEmule.Tests,Unit
+SignalSourceTests.Unknown_wire_name_falls_back,unknown wireName returns 0.0 without exception,iCemEmule.Tests,Unit
+SignalSourceTests.Kicked_out_is_bool_like_value,kickout boolean encoded as 0/1 double,iCemEmule.Tests,Unit
+SignalSourceTests.Combined_and_highest_are_composed,composed signals (Combined Pump Rate/Highest Pump Pressure) computed from A+B,iCemEmule.Tests,Unit
+DeterminismTests.Two_networks_same_elapsed_sequence_identical_outputs,identical seed and elapsed produce deterministic outputs,iCemEmule.Tests,Unit
+DeterminismTests.Same_seed_same_noise_sequence,System.Random seed 7 reproducibility,iCemEmule.Tests,Unit
+TotalizerTests.Stage_total_monotonic_and_resets,stage totalizer integrates rate and resets on flag; job total stays cumulative,iCemEmule.Tests,Unit
+TotalizerTests.Zero_rate_no_growth,zero rate yields zero stage total,iCemEmule.Tests,Unit
+LiveGate_Mutex_SecondInstance,single-instance mutex prevents duplicate iCemEmule.exe,manual launch,Live
+LiveGate_AutoStartStreams,emule_config.xml loaded before AutoStartStreams,manual restart with deleted emule_config.xml,Live

@@ -1,0 +1,91 @@
+meta:
+  id: iCemEmule-E4
+  unit: iCemEmulator
+  date: 2026-08-27
+invariants:
+  - law: "∀ UI instance: ¬∃ second iCemEmulator.exe UI instance ⇔ Mutex(\"Global\\\\iCemEmulator_v1\") acquired at startup; --cli NEVER takes the mutex (it must reach the RUNNING instance)"
+    classification: structural
+    source: iCemEmulator/Program.cs + iCemEmule.Core/Control/EmulatorAppContract.cs
+    falsifier: EmulatorAppTests.SingleInstanceMutex_SecondAcquireFails_WhileFirstIsHeld + AppContract_PinsTheCrossZoneIdentity
+    probe: "launch second iCemEmulator.exe ⇒ 'already running' + exit; iCemEmulator.exe --cli status works WHILE the UI instance runs"
+    note: mutex name is OWN (Global\iCemEmulator_v1); the old Local\Halliburton_iCem_iCemEmule died with the headless exe
+
+  - law: "emule_config.xml loaded and honored BEFORE the engine starts streaming ⇔ EmuEngineHost.Start() → ApplySettingsAtStartup() (emulation gates + auto-start of explicitly enabled streams) runs before the pipe bind and the 1 Hz timer"
+    classification: behavioral
+    source: iCemEmule.Core/Core/EmuEngineHost.cs (Start/ApplySettingsAtStartup)
+    falsifier: EmulatorAppTests.SettingsHonoredAtStartup_ExplicitEnables_AutoStartBothChannelsAndEmulation + UnpatchedSettings_StayFullyPassive_EvenAfterStart
+    probe: "unpatched emule_config.xml ⇒ nothing streams, nothing ever opened; patched emule_config.xml (LanEnabled+LanAdapter / ComEnabled+ComPort / *EmuleEnabled) ⇒ streams+emulation auto-start — the transport live gate patches emule_config.xml pre-launch and relies on this"
+    note: passive-start DEFAULTS are preserved (all OFF unless emule_config.xml explicitly enables); missing/corrupt file ⇒ defaults; additive schema; 2026-08-31 owner decree — path moved to %ProgramData%\Halliburton\iCem\DataMonitoring\emule_config.xml (legacy %LOCALAPPDATA% settings.xml copy-migrated, never deleted), root element <iCemEmule> UNCHANGED
+
+  - law: "sv u32 occupies frame[0x18(24)..0x1B(27)] ⇔ BuildFrame writes sv BE at 24..27 and payload[0..123] at frame[0x1C(28)..0xA0(151)]; signal with registry ByteOffset O lands at frame 0x18+O (offset law payload_index = O−4)"
+    classification: wire
+    source: iCemEmule.Core/Emitters/AceLanEmitter (BuildFrame) + DfbAcePayloadProvider.cs:49
+    falsifier: FrameRoundTrip.Test3_HeaderConformance + Test20_OffsetLaw
+    probe: "iCemEmulator.exe --selftest (T3 golden header bytes 0..27; T20 Unit Number O=4 -> payload[0] = 0x00A86F46)"
+    note: proven against iCemCrio.pcapng.bin (6978 frames: Unit Number @28, Control Mode=1 @32, Mix Mode=2 @36); PayloadSmokeTests read payloads by the same law
+
+  - law: "Cmnt Ops Track Descript (UC, O=8, Size=120) transmittable ⇔ overflow guard is (O−4)+Size ≤ 124 ⇒ 4+120=124 passes; provider writes it at payload[4..123] = frame[32..151]"
+    classification: wire
+    source: iCemEmule.Core/Core/AcePayloadProvider.cs:103 + ManualOverridePayloadProvider.cs:104
+    falsifier: FrameRoundTrip.Test5_ManualEditReachesWire + Test20_OffsetLaw
+    probe: "iCemEmulator.exe --selftest (T5c CanTransmit == true; ASCII '1' NUL-padded at payload[4])"
+    note: guard (O)+Size ≤ 124 would drop it (8+120=128>124) — real cRIO sends it (PROTOCOL.md §8.4)
+
+  - law: "firmware_registry.json merged additively with legacy priority ⇔ 14 Beartooth SV (0x13120212..39) present and legacy 6 SV unchanged in LantableRegistry"
+    classification: structural
+    source: iCemEmule.Core/Core/LantableRegistry.cs:97-155
+    falsifier: FrameRoundTrip.Test6_FirmwareRegistryLoads
+    probe: "iCemEmulator.exe --selftest (T6: 14 tables loaded, every signal (O−4)+Size ≤ 124, legacy intact)"
+
+  - law: "default wire carries LAN-native units ⇔ UnitSettings.Preset default = LanNative and NeedsConversion returns false for every firmware SV signal under FirmwareDefault"
+    classification: behavioral
+    source: iCemEmule.Core/Core/UnitConversion.cs:30,353-363
+    falsifier: FrameRoundTrip.Test16_FirmwareOneToOne + Test19_FirmwareNativeGccRegression
+    probe: "iCemEmulator.exe --selftest (T16/T19); changing preset (UI Units tab or --cli setpreset) converts payload bytes — operator action, not default"
+
+  - law: "COM wire omits ExcludeFromTelemetry variables ⇔ Flecs_4.53 line has exactly 32 comma-separated telemetry fields"
+    classification: wire
+    source: iCemEmule.Core/Core/SignalWireCodec.FormatLine
+    falsifier: WireFormatTests.Flecs453_GoldenLine_32CommaSeparatedFields_NoTimeNoUnit
+    probe: "dotnet test iCemEmule.Tests --filter FullyQualifiedName~Flecs453_GoldenLine"
+    note: Time & Date (elapsed) and Unit Num (int) are excluded; iCem parser skips them structurally
+
+  - law: "control channel failure isolation ⇔ every pipe command is dispatched inside try/catch under the engine gate; malformed input yields {\"ok\":false} JSON and emitter loops keep running"
+    classification: behavioral
+    source: iCemEmule.Core/Control/CommandProcessor.cs:24,170-175 + Control/ControlPipeServer.cs
+    falsifier: CommandChannelTests.Test21_Parse + Test22_ErrorHandling + Test26_PipeEndToEnd
+    probe: "iCemEmulator.exe --selftest (T21 garbage inputs, T26 broken JSON over the live pipe); stand probe: send garbage to \\.\pipe\iCemEmule.Control while streams run"
+    note: emitters stay lock-guarded; ManualOverridePayloadProvider._overrides and SimulationEngine._overrides are lock-protected dictionaries
+
+  - law: "in-proc app law ⇔ iCemEmulator.exe runs the engine IN-PROCESS (EmuEngineHost hosted by App, Start() at launch, Stop() on window close); NO child spawn, NO EmuleSupervisor, NO IEngineControlChannel/GrpcEngineControl host-RPC seam; the UI (EmulatorPage) and the CLI (--cli) reach the engine ONLY over the control pipe \\\\.\\pipe\\iCemEmule.Control"
+    classification: structural
+    source: iCemEmulator/App.xaml.cs + server-dotnet/iCemDataMonitor.Emulator.WinUI/EmulatorViewModel.cs
+    falsifier: build error on any Process.Start(spawn)/host-RPC reference in iCemEmulator + Emulator.WinUI; grep for iCemDataMonitor.Emulator.Core
+    probe: "dotnet build iCemEmulator; iCemDataMonitor.Emulator.Core does not exist on disk; window close stops the process; --cli quit closes the app"
+    note: REPLACES the old headless law (W11.4): the headless exe iCemEmule.exe and the embed wrapper iCemEmule.WinUI.exe are DELETED; EmulatorPage is hosted only by iCemEmulator.exe
+
+  - law: "CLI mode law ⇔ `iCemEmulator.exe --cli <command>` is a one-shot console command to the RUNNING instance over the control pipe (same JSON grammar and exit-code discipline as the old --ctl: 0 ok / 1 error / 2 usage); when no instance runs it honestly errors «эмулятор не запущен»; default (no args / unknown args) = UI mode"
+    classification: behavioral
+    source: iCemEmulator/Program.cs + iCemEmule.Core/Control/ControlClient.cs + EmulatorAppArgs.cs
+    falsifier: EmulatorAppTests (mode parsing + CliCommandTable_AgainstInProcEngine_RoundTripsOnThePipe)
+    probe: "no instance: iCemEmulator.exe --cli status ⇒ {\"ok\":false,...,\"error\":\"эмулятор не запущен...\"} exit 1; running app: --cli status prints status exit 0; --cli quit closes the app"
+    note: exe/flag rename iCemEmule.exe --ctl → iCemEmulator.exe --cli is a SCHEMA DELTA by owner decree (2026-08-27); the pipe WIRE GRAMMAR is unchanged (CommandProcessorParityTests stay green)
+
+  - law: "deployment contract ⇔ the app deploys into its OWN folder C:\\Program Files\\Halliburton\\iCemMonitor\\iCemEmulator\\ (installer does placement); process name iCemEmulator; dev output bin\\x64\\<Config>\\net10.0-windows10.0.19041.0\\iCemEmulator.exe — transport live gates probe by process name and this path"
+    classification: structural
+    source: iCemEmulator/iCemEmulator.csproj + iCemEmule.Core/Control/EmulatorAppContract.cs
+    falsifier: EmulatorAppTests.AppContract_PinsTheCrossZoneIdentity
+    probe: "Get-Process iCemEmulator after launch; exe exists at the pinned dev path"
+    note: settings file MOVED 2026-08-31 (owner decree) to %ProgramData%\Halliburton\iCem\DataMonitoring\emule_config.xml — the app folder holds only the exe and its libraries/templates
+
+  - law: "engine enablement is explicit ⇔ streams/emulation start ONLY when the operator enables them via UI/CLI (start com|lan / setemulate) or when emule_config.xml explicitly enables them (transport gate patching); ¬∃ autostart from unpatched defaults, ¬∃ Status toggle, ¬∃ web surface"
+    classification: behavioral
+    source: iCemEmule.Core/Core/EmuEngineHost.cs (ApplySettingsAtStartup, StartChannel) + EmulatorAppTests.UnpatchedSettings_StayFullyPassive_EvenAfterStart
+    falsifier: EngineDefaultStateTests + EngineStreamToggleTests + EmulatorAppTests
+    probe: "fresh emule_config.xml ⇒ app starts fully passive; kill criteria of Э0 apply"
+
+  - law: "control protocol version ⇔ every status reply carries proto (int, current 1); UI warns on mismatch"
+    classification: behavioral
+    source: iCemEmule.Core/Control/CommandProcessor.cs (ProtoVersion)
+    falsifier: status reply without proto
+    probe: "--cli status shows proto:1"

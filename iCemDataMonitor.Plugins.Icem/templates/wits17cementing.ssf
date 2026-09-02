@@ -1,0 +1,41 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+1,Gen Analog 1,Generic Analog 1,0,0
+1,Gen Analog 2,Generic Analog 2,0,0
+1,HalWin Event,HalWin Event Number,0,0
+1,Gen Freq 2,Generic Frequency 2,0,0
+1,Gen Analog 3,Generic Analog 3,0,0
+1,Gen Analog 6,Generic Analog 6,0,0
+1,Trns Equip Type,Transmission Equip Type,0,0
+0,Depth,Tubing Depth,21,122
+1,h2_hat,h2_hat,21,122
+1,CT Depth,CT Depth,21,122
+1,CT Stretch,CT Stretch,21,122
+0,DS Pump Press,Driv-Side Pump Pressure,71,185
+0,Hookload,Hookload,32,96
+1,Tub Height,Tub Height,21,122
+0,DS Pump Rate,Driv-Side Pump Rate,130,80
+0,Comb Pump Rate,Combined Pump Rate,130,80
+0,Return Rt,Return Rate,130,80
+0,Wtr/slry Ratio,Water/Slurry Ratio,63,154
+0,DH Density,Downhole Density,178,57
+0,Recirc Density,Recirc Density,178,57
+0,BtmHole ECD,Bottomhole ECD,178,57
+0,Slurry Temp,Slurry Temperature,88,213
+0,Temperature,Temperature,88,213
+0,Stage Num,Stage Number,0,0
+1,Freefall Ht,Freefall Height,21,122
+1,Eng Equip Type,Engine Equipment Type,0,0
+0,Job Return Vol,Job Return Vol,202,285
+0,DS Pmp Stg Tot,DS Pmp Stg Tot,202,285
+0,Cement Pump Tot,Cement Pumped Total,202,285
+0,Comb Pump Total,Combined Pump Total,202,285
+0,Vol to Displace,Volume To Displace Cement,202,285
+1,Lock-up Inhibit,Lock-up Inhibit,0,0
+1,Curr Act Gear,Current Active Gear,0,0
+1,SPARE1,SPARE 1,0,0
+1,SPARE2,SPARE 2,0,0
+1,SPARE3,SPARE 3,0,0
+1,SPARE4,SPARE 4,0,0
+1,SPARE5,SPARE 5,0,0
+

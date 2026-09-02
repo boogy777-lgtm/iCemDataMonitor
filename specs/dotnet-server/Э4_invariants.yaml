@@ -1,0 +1,222 @@
+unit: dotnet-server
+source_of_truth:
+  - iCemDataMonitor.Shell.WinUI/App.xaml.cs
+  - iCemDataMonitor.Shell.WinUI/ShellHost.cs
+  - iCemDataMonitor.Shell.WinUI/StatusViewModel.cs
+  - iCemDataMonitor.Shell.WinUI/MainWindow.xaml.cs
+  - iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml.cs
+  - iCemDataMonitor.Emulator.WinUI/EmulatorViewModel.cs
+  - iCemDataMonitor.Host.Core/LayerRuntimeController.cs
+  - iCemDataMonitor.Host.Core/TrayToggleRules.cs
+  - iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs
+  - iCemDataMonitor.Tray/Program.cs           # legacy rollback host
+  - iCemDataMonitor.Data/Bus/BusLayout.cs
+  - iCemDataMonitor.Data/Bus/BusMapping.cs
+  - iCemDataMonitor.Data/Bus/BusReader.cs
+  - iCemDataMonitor.Data/Bus/RingHistory.cs
+  - iCemDataMonitor.Data/Bus/BusAddrRingService.cs
+  - iCemDataMonitor.Transport/ModbusTcpPublisher.cs
+  - iCemDataMonitor.Transport/AceSnifferService.cs
+  - iCemDataMonitor.Cli/Program.cs
+  - iCemDataMonitor.Core/Config/IniConfig.cs
+  - iCemDataMonitor.Sdk/Bus/IniSchema.cs
+
+invariants:
+  - id: INV-01
+    law: "∀ register R ∈ [0..regCount−1] ⇒ ∃ exactly one writer at any time"
+    scope: bus file Data.dat
+    note: "single-writer-per-register; v5 (2026-08-27 producer-only decree): the AddIn is the ONLY Data.dat writer — 0..3 (state block) + com_stream 4..199 + lan_stream_crio 200..399 + raw_com_line 400..599 (the DUAL directive 2026-08-25 REVOKED: POC LanBusSink writer REMOVED); ace_full reserve 600..10000 = NOBODY (DEFERRED); the emulator (iCemEmule) is an INDEPENDENT n+1 stream source, ¬ a Data.dat writer"
+    falsifying_test: BusWriteTruthTableTests
+
+  - id: INV-02
+    law: "header bytes 0x00(0)..0x3F(63) LITTLE-endian; body words BIG-endian u16"
+    scope: BusLayout / BusReader.CopyAndParse
+    falsifying_test: BusWriteTruthTableTests
+
+  - id: INV-03
+    law: "float32 = CDAB pair: reg[N]=low word, reg[N+1]=high word; bytes inside each word BE"
+    scope: CdabCodec, ModbusTcpPublisher.CopyZoneIfActive
+    example: "1.0f → (0x0000, 0x3F80); file bytes 00 00 3F 80"
+    falsifying_test: CdabCodecTests
+
+  - id: INV-04
+    law: "v5 shape law: FINAL shape valid ⇔ magic=='STNB' ∧ version==1 ∧ layoutVer==5 ∧ 650 ≤ regCount ≤ 65535 ∧ fileLength == 64 + regCount×2; layoutVer<5 = UPGRADE-SOURCE layouts, never final shapes (only the exact IsUpgradeable legacy shapes are recognized; everything else legacy = fail-safe)"
+    scope: BusLayout.IsValidShape, producer BusWriter (AddIn)
+    note: "v5 current default 10001/20066; v3/v4-full 8404/16872 = upgrade source (expands to 10001/20066), NOT a valid final shape; migration is PRODUCER-OWNED (AddIn at open under the bus mutex, INV-39) — consumers only VALIDATE and fail honestly"
+    falsifying_test: BusLayoutTests
+
+  - id: INV-05
+    law: "legacy-shape expansions execute ONCE under Global\iCemDataMonitorBusMutex_v1: v2 650/1364, v3-small 1650/3364 AND v3-full/v4-full 8404/16872 each ⇒ 10001/20066 (layoutVer=5, regCount=10001); old body preserved byte-exact (64..1363 / 64..3363 / 64..16871); new tail zeroed to byte 20065; v2 additionally zeroes header 49..63; v3/v4-full 49..63 are already reserved-zero — NOT re-zeroed"
+    scope: producer BusWriter.UpgradeToV5FullInPlace (AddIn)
+    falsifying_test: BusLayoutTests
+
+  - id: INV-06
+    law: "live named-section capacity frozen until ALL handles close ⇒ oversized view reports ACCESS DENIED; fix = ordered restart (producer AddIn FIRST, consumers next)"
+    scope: BusMapping.OpenReadOnly sized READ probe
+    falsifying_test: BusAccessDeniedTests
+
+  - id: INV-07
+    law: "creator of a NEW bus file (producer AddIn ONLY — host creation path REMOVED 2026-08-27) MUST install BUILTIN\\Users:Modify DACL on the FILE before first mapping open (the SECTION receives the token-default DACL, ¬ the file DACL — the file ACL governs write views, which is why INC-02 denied only writes)"
+    scope: producer BusWriter.PrepareBackingFileLocked / InstallUsersModifyDacl (AddIn)
+    falsifying_test: BusWriterDaclTests (AddIn suite)
+
+  - id: INV-08
+    law: "A4 active-mirror: zone activeFlag=1 ⇒ publisher overwrites zone from bus every tick; A5 stale-hold: activeFlag=0 ∨ snapshot stale ⇒ zone untouched ⇒ external FC06/FC16 writes persist"
+    scope: ModbusTcpPublisher.TickOnce / CopyZoneIfActive
+    falsifying_test: ModbusContractTests
+
+  - id: INV-09
+    law: "header state block 0..3 ALWAYS mirrored from bus each tick; external writes into 0..3 survive ≤ one tick (modbus_tick_ms)"
+    scope: ModbusTcpPublisher.TickOnce
+    falsifying_test: ModbusContractTests
+
+  - id: INV-10
+    law: "state regs 0..3 = CURRENT state only; ¬ timeout-derived values; live set = {0,1,2,3} = {comPortActive, caseState, caseLanState, heartbeat}; regs 4..15 are com_stream float pairs in v5, NOT a state block"
+    scope: BusLayout v5 trim
+    falsifying_test: CliSmokeTests
+
+  - id: INV-11
+    law: "lan_stream_crio liveness block = tick@0x13(19), flag@0x1B(27), counter@0x29(41); writer = AddIn (the Lan block governs lan_stream_crio; v5 has no POC zone writer)"
+    scope: BusLayout.ZoneLastWriteTickOffset, ModbusTcpPublisher.IsZoneActive
+    falsifying_test: LanFullCoverageTests
+
+  - id: INV-12
+    law: "v5 zone addressing: com_stream addr=4+idx×2 (98 pairs); lan_stream_crio addr=200+idx×2 (100 pairs, cRIO per Wireshark/PROTOCOL.md only); raw_com_line 400..599 = float32 CDAB positional fields of the last CSV line (field i → 400+i*2, up to 100 fields)"
+    scope: BusLayout v5 zone consts, UnifiedVariableRegistry.AddressFor
+    falsifying_test: LanExtensionAddressingTests
+
+  - id: INV-13
+    law: "ace_full reserve 600..10000 DEFERRED: ¬∃ writer in v5 (host write machinery incl. LanBusSink REMOVED 2026-08-27, producer-only decree); reads as never-written; the exhaustive ACE dump layout is designed LATER from measured ACE composition; no registry mapping into 600..10000 until then"
+    scope: BusLayout.AceFullBaseReg/AceFullEndReg, UnifiedVariableRegistry.AddressFor guard
+    falsifying_test: BusReaderReadOnlyTests.AceFullReserve_NoHostWriter_NoWrites
+
+  - id: INV-14
+    law: "v5 com_stream starts at reg 4 with NO skip rule (the state block is 0..3 only)"
+    scope: UnifiedVariableRegistry.AddressFor
+    falsifying_test: UnifiedVariableRegistryTests
+
+  - id: INV-15
+    law: "single live tray host via Global\iCemDataMonitorTray_v1: the WinUI shell (iCemDataMonitor.WinUI.exe) and the legacy WinForms tray (iCemDataMonitor.Tray.exe) SHARE the mutex ⇒ ¬∃ simultaneous run; second instance ⇒ immediate exit; mutex held for process lifetime, never disposed; shell --viewer mode (window only, no mutex/services) MAY run alongside the legacy tray for migration debugging"
+    scope: iCemDataMonitor.Shell.WinUI/Program.cs (App.xaml.cs), iCemDataMonitor.Tray/Program.cs:70
+    falsifying_test: LiveModbusEmulatorTests
+
+  - id: INV-16
+    law: "startup fail-fast: invalid station.ini ∨ fatal bind error ⇒ process exits; ¬ zombie Application.Run() without tray icon"
+    scope: iCemDataMonitor.Tray/Program.cs catch block, IniConfig.Load
+    falsifying_test: IniConfigTests
+
+  - id: INV-17
+    law: "Modbus port bind = 5 attempts × 5 s; non-retryable ∨ exhausted ⇒ fatal"
+    scope: iCemDataMonitor.Tray/Program.cs StartModbusWithPortRetry
+    falsifying_test: ModbusContractTests
+
+  - id: INV-18
+    law: "AceSnifferService loop exception ⇒ log + watchdog restart in 5 s; ¬ silent death"
+    scope: AceSnifferService ExecuteAsync
+    falsifying_test: AceSnifferServiceTests
+
+  - id: INV-19
+    law: "BusReader.Snapshot mutex timeout (500 ms) ⇒ last-good snapshot with Stale=true; server keeps answering (stale-hold) | 2026-08-29 AMENDMENT (STALE-DECAY LAW): a stale/last-good snapshot freezes register VALUES ∧ heartbeat-derived verdicts (movement needs fresh samples) but zone liveness verdicts REMAIN RECOMPUTED from the frozen ticks — the ONE predicate BusZoneInfo.IsActive = Active ∧ AgeMs() < MaxZoneAgeMs(5000) measures against UtcNow, so a dead producer's zones decay to inactive ~5 s after the last fresh tick even while the snapshot is stale; the raw activeFlag is a producer CLAIM (diagnostic only, surfaced as producerFlag), never a consumer verdict"
+    scope: BusReader.Snapshot
+    falsifying_test: BusReaderTests + BusOpenTruthTableTests.StaleDecay_* + BusHealthMonitorTests
+
+  - id: INV-20
+    law: "BusReader access denied ⇒ _accessDeniedFatal=true; typed exception thrown ONCE; no per-tick re-throw"
+    scope: BusReader.TryOpen
+    falsifying_test: BusAccessDeniedTests
+
+  - id: INV-21
+    law: "icemdatamonitor-cli = peer reader; ¬ reads station.ini; spec defaults only; works with POC fully stopped (file survives)"
+    scope: iCemDataMonitor.Cli/Program.cs
+    falsifying_test: CliSmokeTests
+
+  - id: INV-22
+    law: "excludeFromTelemetry=true removes variable from FLECS COM telemetry stream; ¬ removes it from bus/registry address map"
+    scope: RegistryVariableDto.ExcludeFromTelemetry
+    falsifying_test: UnifiedVariableRegistryTests.Registry_ExcludeFromTelemetry_FlecsIdx01
+
+  - id: INV-23
+    law: "STALE-HOLD LAW (global, v5): the ONLY writer path = AddIn BusWriter {header state, com_stream, lan_stream_crio, raw_com_line} ⇒ ¬∃ zero-on-stop / clear-on-disconnect; channel loss/stop ⇒ last values persist byte-exact in cells; disabling a channel freezes its zone; heartbeat keeps ticking; the READ-ONLY host never modifies a byte (readers never zero, never reshape — consumer-side pin)"
+    scope: producer BusWriter (AddIn), BusReader read-only pin (BusReaderReadOnlyTests)
+    note: "zero zeroing sites remain; activeFlag=0 lowers the liveness flag only (A5 hold signal), never a cell"
+    falsifying_test: BusDecodeTruthTableTests.StaleHold_SeededCellsSurviveReaderLifecycle_ByteExact
+
+  - id: INV-24
+    law: "heartbeat reg 3 (u16): +1/s ALWAYS while the AddIn is loaded (pipeline-alive = iCem up ∧ POC reading ∧ Modbus publishing); wraps 32000→0; frozen ⇔ iCem/AddIn dead (NOT ⇔ ¬Streaming); POC never writes reg 3"
+    scope: BusLayout.RegHeartbeat/HeartbeatWrap, AddIn BusWriter writer floor
+    falsifying_test: BusDecodeTruthTableTests.ReaderLifecycle_NeverTouchesAddInHeartbeatCell
+
+  - id: INV-25
+    law: "ace_full DEFERRED: 600..10000 reserved in schema, NO writers in v5; the former LanBusSink (sv, wireName) mapping machinery is REMOVED (2026-08-27 producer-only decree — the DUAL directive revoked); the future ace_full writer will be designed afresh ONLY on an explicit owner decree"
+    scope: BusLayout.AceFullEndReg=10000
+    falsifying_test: BusReaderReadOnlyTests.AceFullReserve_NoHostWriter_NoWrites
+
+  - id: INV-26
+    law: "upgrade ordering: MMF section capacity frozen at creation until ALL handles close ⇒ in-place expansion requires the upgrader to be the FIRST/ONLY opener; expansion blocked by a live small-capacity section ⇒ fail fast with the typed section-capacity access-denied error carrying the ordered-restart runbook (stop consumers, then producer; start producer/upgrader FIRST, then consumers) | 2026-08-28 AMENDMENT (owner-confirmed stand incident «host started before iCem» — the old reader created the named section READ-ONLY and the producer's later ReadWrite attach died forever with ERROR_INVALID_PARAMETER «The parameter is incorrect» ⇒ BusWriter disabled, «RETRY bus still disabled» in TapOut.log): the READER-side ordered-START clause is LIFTED — startup order NO LONGER matters. Replacing reader-side law = SECTION-CREATION LAW (BusMapping.OpenReadOnly): the reader NEVER creates the named section — (1) TryAttachToProducerSection = OpenExisting(mapName, Read rights), false when the section does not exist yet (FileNotFoundException); (2) fallback = UNNAMED file mapping (mapName: null) — the section name is NEVER claimed by a reader, so the producer's ReadWrite attach always succeeds whenever it starts. The producer-side capacity law (upgrader FIRST/ONLY opener, typed capacity-skew fail) is UNCHANGED; the full reader-side BUS-LIFECYCLE TRUTH TABLE (12 rows) is the BusReader class doc-comment"
+    scope: producer BusWriter (AddIn), BusMapping.OpenReadOnly sized READ probe + TryAttachToProducerSection
+    falsifying_test: BusAccessDeniedTests + BusOpenTruthTableTests
+
+  - id: INV-27
+    law: "VariableUnitGuesser TWO-PHASE: Phase 1 = 114-entry exact-name table (34 flecs canonical keys + 29 flecs SSF display names + 10 plc_basic emulator names + 41 common PLC SSF names), case-insensitive, evaluated FIRST; Phase 2 = substring heuristics ordered: density/dens/concent → ppg; rate/flow/spm/rpm → bpm (BEFORE total/volume/vol/tot/level → bbl); temp → degF; press/pr → psi; valve/psn/position → %; height/depth/stretch/tub → ft; weight/hookload → klb; else ''"
+    scope: VariableUnitGuesser.GuessUom + catalog GuessUom delegates (FlecsVariableCatalog, PlcVariableCatalog, LanVariableCatalog, FallbackCatalog)
+    falsifying_test: VariableUnitGuesserTests
+
+  - id: INV-28
+    law: "lantable sentinel law: decoded numeric value with |v − (−9999.0)| < 0.001 ⇒ Value=null ∧ IsSentinel=true, never a measurement; applies to FF/UL/SL/SI/FD/UI/US/SS/SC; HX ⇒ hex text and UC ⇒ ASCII text, both with Value=null ∧ IsSentinel=false"
+    scope: LantableRegistry.DecodeSignals (Sentinel const = -9999.0)
+    falsifying_test: LantableRegistryTests
+
+  - id: INV-29
+    law: "layer toggles live in the STATUS PAGE only (shell tray menu = launcher Status/Dashboard/Exit): Modbus/sniffer = RUNTIME start/stop; Web = persist-only to station.ini (applies after restart — stopping Kestrel in-process would kill the whole host); OPC DA = external stub (switch disabled); every toggle persists the flag via IniConfig.Save and NEVER throws out of the handler (failure ⇒ note, state rolled back); W11.1 race-gate: VM command source = CombineLatest(...IsExecuting).Where(!exec) + view-side _syncing flag ⇒ no toggle ping-pong against the 500 ms status tick"
+    scope: iCemDataMonitor.Host.Core/LayerRuntimeController.cs, iCemDataMonitor.Shell.WinUI/StatusViewModel.cs, iCemDataMonitor.Shell.WinUI/MainWindow.xaml.cs, iCemDataMonitor.Host.Core/TrayToggleRules.cs
+    falsifying_test: TrayToggleRulesTests, LayerRuntimeControllerTests
+
+  - id: INV-30
+    law: "IniConfig.Save is fail-safe: validate ⇒ line-rewrite ONLY schema keys (comments, ordering, unrelated lines preserved verbatim) ⇒ strict re-parse of the RESULT (must equal the requested options) ⇒ temp file + atomic File.Replace; any failure throws BEFORE the original file is touched; strict parse semantics unchanged"
+    scope: iCemDataMonitor.Core/Config/IniConfig.cs Save/Rewrite
+    falsifying_test: IniConfigTests.Save_*
+
+  - id: INV-31
+    law: "web register mirror is READ-ONLY: /api/regs and /api/regs/history only READ the bus snapshot and the ring; regs 0..3 = u16 scalars, 4..5 = int32 raw unix bits (kind=unix), everything else 6..599 = float32 via CdabCodec (single decode implementation); raw zone labels = 'field N' (no names); per-zone liveness comes from BusSnapshot header blocks (no re-parsing of the header)"
+    scope: iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs, iCemDataMonitor.Data/Bus/RingHistory.cs
+    falsifying_test: RegisterMirrorTests
+
+  - id: INV-32
+    law: "bus_pair_ring: every float pair in 4..599 has a 600-entry (600 s @ 1 Hz) history keyed by ABSOLUTE addr — registry-independent; the sampler (BusAddrRingService) runs when web_on=1; memory bounded (< 3 MB for the 300 pairs of 4..599)"
+    scope: iCemDataMonitor.Data/Bus/RingHistory.cs AppendAddr/QueryAddr, BusAddrRingService.cs
+    falsifying_test: RingHistoryTests.AppendAddr_*, RegisterMirrorTests.GetHistory_*
+
+  - id: INV-33
+    law: "splash abort: CLOSE during startup cancels the sequence (observed between EVERY step and inside port-retry waits at 50 ms), tears down in reverse start order (host => modbus => sniffer), exits the process — no zombie, no held :502; a startup FAILURE shows the error and waits for the operator to press CLOSE (Thread.Sleep freezes BANNED); MINIMIZE always works"
+    scope: iCemDataMonitor.Tray/SplashForm.cs, Program.cs StartupPump/TeardownPartial
+    falsifying_test: manual (visual) — note in report
+
+  - id: INV-34
+    law: "ui_set_as_default: the OPTIONAL ini key (absent => 1) is the 'Set as default' checkbox; ON = every layer toggle persists flags to station.ini, OFF = toggles are session-only (ini untouched); the checkbox state itself is ALWAYS persisted; the writer always emits the key; strict parse for every other key unchanged"
+    scope: iCemDataMonitor.Core/Config/IniConfig.cs OptionalKeys, iCemDataMonitor.Tray/LayerRuntimeController.cs
+    falsifying_test: IniConfigTests.Parse_FileWithoutUiSetAsDefault_DefaultsToOne, Save_RoundTripsUiSetAsDefault_AndEmitsTheKey, LayerRuntimeControllerTests.SetSetAsDefault_*
+
+  - id: INV-35
+    law: "vector iconography + system theme + human-readable captions: no bitmap/emoji-as-image assets — app icons are generated multi-size .ico (iCemDataMonitor.Tools.IconGen: shell = ECG tile, engine = sine tile, 16..256); shell surfaces use macOS ThemeDictionaries (Mac*Brush tokens, Dark/Light/HighContrast) + H.NotifyIcon tray; web dashboard = inline SVG + CSS vector lamps + --mac-* CSS vars + dark/light THEME TOGGLE (persisted, contrast sun/moon glyphs); the Status page is the ONLY toggle view (tray = launcher Status/Dashboard/Exit); ALL operator captions RUSSIAN; legacy WinForms tray keeps its W8 vector/MDL2 rules as the rollback path"
+    scope: iCemDataMonitor.Shell.WinUI/ThemeResources.xaml, iCemDataMonitor.Shell.WinUI/IconFactory.cs, iCemDataMonitor.Tools.IconGen/Program.cs, wwwroot/index.html, iCemDataMonitor.Tray/VectorGlyphs.cs
+    falsifying_test: manual (visual) — note in report
+
+  - id: INV-36
+    law: "TRUTH-LAMP LAW (W10): every status lamp/fact is backed by a live truth probe, never by an ini flag or a stale flag: Modbus lamp ⇔ IModbusPublisher.IsBound; sniffer lamp ⇔ AceSnifferService.IsRunning; zone lamp ⇔ zone.Active ∧ AgeMs < 5000; AddIn lamp separate from heartbeat (heartbeat may tick while the liveness register is frozen); probes live in LayerRuntimeController (ModbusBoundProbe/SnifferRunningProbe/ActualModbusRunning/ActualLanSnifferRunning)"
+    scope: iCemDataMonitor.Host.Core/LayerRuntimeController.cs, iCemDataMonitor.Host.Core/Health/BusHealthMonitor.cs, iCemDataMonitor.Shell.WinUI/StatusViewModel.cs
+    falsifying_test: LayerRuntimeControllerTests, StationHealthStateTests
+
+  - id: INV-37
+    law: "shell = full service host (W9–W11): Kestrel :8090 (/api/status + /api/status/summary + /api/regs + rings) + Modbus :502 + AceSnifferService + 1 Hz health + LayerRuntimeController all run IN-PROCESS inside iCemDataMonitor.WinUI.exe (ShellHost.cs, port-retry policy preserved); iCemDataMonitor.Host.Core is the neutral shared library; the legacy WinForms tray is rollback only"
+    scope: iCemDataMonitor.Shell.WinUI/ShellHost.cs, iCemDataMonitor.Host.Core/*
+    falsifying_test: iCemDataMonitor.UI.Tests, iCemDataMonitor.Core.Tests
+
+  - id: INV-38
+    law: "emulator enablement law: iCemEmule.exe runs ONLY when (a) launched manually by an engineer, or (b) ini emule_on=1 at shell startup (optional key, default 0, startup-only — ¬∃ Status toggle, ¬∃ web surface); the shell reuses an already-running engine and on exit kills only its OWN child; the engine UI is the EMBEDDED EmulatorPage (iCemDataMonitor.Emulator.WinUI) — one UserControl dropped into the shell, ¬ copy-paste; the page reaches the engine ONLY over \\.\pipe\iCemEmule.Control (EmuPipeClient, JSON-lines); engine dead ⇒ launch stub; W11.7 surface: ports/adapters/equipment/firmware/preset/6 unit groups + set/clear value editors"
+    scope: iCemDataMonitor.Shell.WinUI/ShellHost.cs StartEmuleProcess, iCemDataMonitor.Sdk/Bus/IniSchema.cs EmuleOn, iCemDataMonitor.Emulator.WinUI/*
+    falsifying_test: IniConfigTests, manual live (engine kill ⇒ stub; relaunch ⇒ tabs)
+
+  - id: INV-39
+    law: "PRODUCER-OWNED BUS (owner decree 2026-08-27): the DLL AddIn is the ONLY source of the data stream — ALL other participants READ, none redirect. iCemDataMonitor.Host.exe opens Data.dat strictly READ-ONLY: FileAccess.Read + Read views (CreateFromFile(Read) / OpenExisting(mapName, Read rights)); the host NEVER creates the backing file, NEVER migrates layouts, NEVER writes a byte (BusZoneWriter / LanBusSink / host UpgradeIfNeeded paths REMOVED); absent file ⇒ honest no-bus ('producer AddIn has not created it yet'); legacy layout (v2/v3/v4) ⇒ honest error ('producer migration required — start iCem once'), file NOT touched. Format evolution v2–v4 → v5 is PRODUCER-OWNED: AddIn BusWriter.Open performs the upgrade under Global\\iCemDataMonitorBusMutex_v1 before first write. The emulator (iCemEmule) is an INDEPENDENT n+1 stream source and is NOT governed by this law (it does not touch Data.dat). Ordered-restart caveat: a named section FIRST created by the reader is born READ-ONLY ⇒ the producer must open FIRST after any full stop (INV-26 ordered-restart runbook covers it — stop consumers, start iCem first, then the host) | 2026-08-28 AMENDMENT: (1) SECTION-CREATION LAW — the reader NEVER creates the named section: OpenExisting(Read) first, fallback to an UNNAMED file mapping (mapName: null) while no producer section exists; the ordered-restart caveat above is SUPERSEDED on the reader side (startup order no longer matters — see the INV-26 amendment); a reader-born section would poison the name READ-ONLY and kill the producer's ReadWrite attach with ERROR_INVALID_PARAMETER (owner-confirmed stand incident 2026-08-28); (2) FILE-ABSENT DEGRADE (truth-table rows #11/#12): a cheap 1 Hz File.Exists probe in BusReader.Snapshot (while open) closes the mapping+mutex when Data.dat vanishes mid-life — reading ORPHANED file-backed pages forever is forbidden; the last-good copy stale-holds (surfaced Stale=true), _accessDeniedFatal is NOT reset, and when the producer creates a NEW file the regular re-open probe adopts ALREADY THE NEW file — no restart; (3) the full 12-row BUS-LIFECYCLE TRUTH TABLE is the BusReader class doc-comment (normative reader law)"
+    scope: BusMapping.OpenReadOnly, BusReader.TryOpen + Snapshot (file-absent degrade), Burservis.iCem.DataMonitor/BusWriter.Open
+    falsifying_test: BusReaderReadOnlyTests + BusDecodeTruthTableTests + BusOpenTruthTableTests

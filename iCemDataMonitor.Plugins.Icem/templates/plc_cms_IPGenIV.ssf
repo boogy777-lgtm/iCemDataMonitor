@@ -1,0 +1,59 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Mix Fluid Rate,Mix Fluid Rate,130,80
+0,Mix Fluid FM Tot,Mix Fluid FM Total,202,285
+0,Mix Fluid Stg Tot,Mix Fluid Stage Total,202,285
+0,Mix Fluid Job Total,Mix Fluid Job Total,202,285
+0,Base Fluid Rate,Base Fluid Rate,130,80
+0,Base Fluid FM Tot,Base Fluid FM Total,202,285
+0,Base Fluid Stage Tot,Base Fluid Stage Total,202,285
+0,Base Fluid Job Tot,Base Fluid Job Total,202,285
+0,Slurry Rate,Slurry Rate,130,80
+0,Slurry FM Tot,Slurry FM Total,202,285
+0,Slurry Stage Tot,Slurry Stage Total,202,285
+0,Slurry Job Tot,Slurry Job Total,202,285
+0,PS Pump Rate,Pass-Side Pump Rate,130,80
+0,PS Pmp FM Tot,PS Pump FM Total,202,285
+0,PS Pmp Stg Tot,PS Pump Stage Total,202,285
+0,PS Pump Job Total,Pass-Side Pump Job Total,202,285
+0,DS Pump Rate,Driv-Side Pump Rate,130,80
+0,DS Pmp FM Tot,DS Pump FM Total,202,285
+0,DS Pmp Stg Tot,DS Pump Stage Total,202,285
+0,DS Pump Job Total,Driv-Side Pump Job Total,202,285
+0,User1 Rate,User1 Rate,130,80
+0,User1 FM Tot,User1 FM Total,202,285
+0,User1 Stage Tot,User1 Stage Total,202,285
+0,User1 Job Tot,User1 Job Total,202,285
+0,User2 Rate,User2 Rate,130,80
+0,User2 FM Tot,User2 FM Total,202,285
+0,User2 Stage Tot,User2 Stage Total,202,285
+0,User2 Job Tot,User2 Job Total,202,285
+0,User3 Rate,User3 Rate,130,80
+0,User3 FM Tot,User3 FM Total,202,285
+0,User3 Stage Tot,User3 Stage Total,202,285
+0,User3 Job Tot,User3 Job Total,202,285
+0,AI1 Pressure,AI1 Pressure,71,185
+0,AI2 Pressure,AI2 Pressure,71,185
+0,AI3 Pressure,AI3 Pressure,71,185
+0,AI4 Pressure,AI4 Pressure,71,185
+0,LA1 Rate,LA1 Rate,130,75
+0,LA1 FM Total,LA1 FM Total,202,286
+0,LA1 Conc,LA1 Concentration,129,324
+0,LA1 Stg Tot,LA1 Stage Total,202,286
+0,LA1 Job Tot,LA1 Job Total,202,286
+0,LA2 Rate,LA2 Rate,130,75
+0,LA2 FM Total,LA2 FM Total,202,286
+0,LA2 Conc,LA2 Concentration,129,324
+0,LA2 Stg Tot,LA2 Stage Total,202,286
+0,LA2 Job Tot,LA2 Job Total,202,286
+0,LA3 Rate,LA3 Rate,130,75
+0,LA3 FM Total,LA3 FM Total,202,286
+0,LA3 Conc,LA3 Concentration,129,324
+0,LA3 Stg Tot,LA3 Stage Total,202,286
+0,LA3 Job Tot,LA3 Job Total,202,286
+0,LA4 Rate,LA4 Rate,130,75
+0,LA4 FM Total,LA4 FM Total,202,286
+0,LA4 Conc,LA4 Concentration,129,324
+0,LA4 Stg Tot,LA4 Stage Total,202,286
+0,LA4 Job Tot,LA4 Job Total,202,286
+

@@ -1,0 +1,22 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Controller Time,U2 UNIPRO Local Time,42,215
+0,UNIPRO Event,U2 UNIPRO Event Number,0,0
+0,N2 Pump Press,N2 Pump Pressure,71,185
+0,N2 Act Temp,N2 Actual Temperature,88,213
+0,N2 FM Gas Rt,N2 Flowmeter Gas Rate,130,80
+0,N2 FM Gas Tot,N2 Flowmeter Gas Total,202,285
+0,N2 FM Std Rt,N2 Flowmeter Std Rate,256,862
+0,N2 FM Std Tot,N2 Flowmeter Std Total,187,715
+0,N2 P1 Std Rt,N2 Pump 1 Std Rate,256,862
+0,N2 P1 Std Tot,N2 Pump 1 Std Total,187,715
+0,N2 P2 Std Rt,N2 Pump 2 Std Rate,256,862
+0,N2 P2 Std Tot,N2 Pump 2 Std Total,187,715
+0,Cement Rt 1,Cement Rate 1,130,80
+0,Cement Tot 1,Cement Total 1,202,285
+0,Cement Rt 2,Cement Rate 2,130,80
+0,Cement Tot 2,Cement Total 2,202,285
+0,N2 Calcs Temp,N2 Temp Used In Calcs,88,213
+0,N2 Pump Std Rt,N2 Pump Std Rate,256,859
+0,N2 Pump Std Tot,N2 Pump Std Total,187,325
+0,Cement Pump Tot,Cement Pumped Total,202,285

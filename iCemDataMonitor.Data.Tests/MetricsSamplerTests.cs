@@ -1,0 +1,360 @@
+﻿using System.Diagnostics;
+using System.IO;
+using System.IO.MemoryMappedFiles;
+using iCemDataMonitor.Contracts;
+using iCemDataMonitor.Data.Bus;
+using iCemDataMonitor.Data.Telemetry;
+using iCemDataMonitor.Sdk.Bus;
+using Xunit;
+
+namespace iCemDataMonitor.Data.Tests;
+
+/// <summary>
+/// D.4 MetricsSampler contract tests: freshness (sensor-at-send), drop-oldest
+/// backpressure, delta correctness (first sample full, then only changed),
+/// interval clamp, bus-closed fail-fast.
+///
+/// TEST SEAM (§15.7 whitelist (a) — data seam, ¬ code seam): the register
+/// source is a REAL BusReader over a temp persisted MMF driven by the test-side
+/// PRODUCER SURROGATE — BusTestFactory raw-byte seeding + a LIVE SectionWriter
+/// (the AddIn stand-in, created BEFORE the reader so the named section is born
+/// ReadWrite — producer-first order, INV-26) — plus direct mutex-guarded MMF
+/// word writes for the AddIn-owned header state regs 0..3. MetricsSampler
+/// itself carries NO production seam: only the physical carrier is substituted
+/// (temp file + session-local map/mutex names instead of the live Global\ bus),
+/// which makes the tests fully deterministic and isolated from the running
+/// iCem.exe station.
+/// Precedent: BusReaderTests / BusDecodeTruthTableTests use the same pattern.
+/// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")] // bus MMF + mutexes are Windows-only by contract
+public sealed class MetricsSamplerTests : IDisposable
+{
+    private readonly string _dir;
+    private readonly string _mmfPath;
+    private readonly string _mapName;
+    private readonly string _mutexName;
+
+    public MetricsSamplerTests()
+    {
+        _dir = Path.Combine(Path.GetTempPath(), "metrics_sampler_test", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_dir);
+        _mmfPath = Path.Combine(_dir, "bus.dat");
+        _mapName = $"MetricsSamplerTestMap_{Guid.NewGuid():N}";
+        _mutexName = $"MetricsSamplerTestMutex_{Guid.NewGuid():N}";
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_dir, recursive: true); } catch { /* best-effort */ }
+    }
+
+    // ── test-source helpers (the §15.7(a) seam) ─────────────────────────────
+
+    /// <summary>Writes raw u16 words at absolute body addresses under the bus mutex.</summary>
+    private void WriteRawWords(params (int Addr, ushort Value)[] writes)
+    {
+        using var mmf = MemoryMappedFile.OpenExisting(_mapName, MemoryMappedFileRights.ReadWrite);
+        using var mutex = new Mutex(false, _mutexName);
+        bool acquired;
+        try { acquired = mutex.WaitOne(TimeSpan.FromSeconds(5)); }
+        catch (AbandonedMutexException) { acquired = true; }
+        try
+        {
+            long len = new FileInfo(_mmfPath).Length;
+            using var acc = mmf.CreateViewAccessor(0, len, MemoryMappedFileAccess.ReadWrite);
+            foreach (var (addr, value) in writes)
+            {
+                int off = BusLayout.BodyOffset + addr * 2;
+                acc.Write(off, (byte)(value >> 8));     // body words are BIG-endian
+                acc.Write(off + 1, (byte)(value & 0xFF));
+            }
+        }
+        finally
+        {
+            if (acquired) mutex.ReleaseMutex();
+        }
+    }
+
+    /// <summary>Writes the four AddIn-owned header state regs (v5 map).</summary>
+    private void WriteHeader(short comPort, short caseState, short caseLanState, short heartbeat) =>
+        WriteRawWords(
+            (BusLayout.RegComPort, unchecked((ushort)comPort)),
+            (BusLayout.RegCaseState, unchecked((ushort)caseState)),
+            (BusLayout.RegCaseLanState, unchecked((ushort)caseLanState)),
+            (BusLayout.RegHeartbeat, unchecked((ushort)heartbeat)));
+
+    /// <summary>Creates the bus file + a LIVE producer section (producer-first
+    /// order) and opens a reader against it. The returned SectionWriter is the
+    /// test-side AddIn stand-in — the caller keeps it alive for the test and
+    /// drives it with WriteFloat.</summary>
+    private BusReader CreateOpenBus(out SectionWriter writer)
+    {
+        BusTestFactory.CreateFile(_mmfPath);
+        writer = new SectionWriter(_mmfPath, _mapName, _mutexName); // born ReadWrite, before the reader
+        var reader = new BusReader(_mmfPath, _mapName, _mutexName);
+        Assert.True(reader.TryOpen(out var rerr), rerr);
+        return reader;
+    }
+
+    // ═══ (а) freshness: значение меняется между сэмплами ═══
+
+    [Fact]
+    public async Task Freshness_ValueChangesBetweenSamples_HeaderAndZone()
+    {
+        using var reader = CreateOpenBus(out var writer);
+        writer.WriteFloat(200, 1.0f);
+        WriteHeader(comPort: 1, caseState: 2, caseLanState: 0, heartbeat: 100);
+
+        var sampler = new MetricsSampler(reader);
+        var subscription = sampler.Subscribe(intervalMs: 200);
+
+        var samples = new List<MetricsSample>();
+        await foreach (var sample in subscription)
+        {
+            samples.Add(sample);
+            if (samples.Count == 1)
+            {
+                // Mutate BETWEEN samples: happens ms after sample 1, far before tick 2.
+                writer.WriteFloat(200, 2.0f);
+                WriteHeader(comPort: 1, caseState: 2, caseLanState: 0, heartbeat: 101);
+            }
+            else break;
+        }
+
+        Assert.Equal(2, samples.Count);
+
+        // Zone float freshness: same address, different values across samples.
+        var v1 = samples[0].Deltas.First(d => d.Addr == 200);
+        var v2 = samples[1].Deltas.First(d => d.Addr == 200);
+        Assert.Equal(RegisterDelta.ValueOneofCase.FloatValue, v1.ValueCase);
+        Assert.Equal(1.0f, v1.FloatValue, 3);
+        Assert.Equal(2.0f, v2.FloatValue, 3);
+
+        // Header freshness surfaces through the proto header fields (sensor-at-send,
+        // NOT a cached first read): heartbeat advanced 100 → 101 between samples.
+        Assert.Equal(100, samples[0].Heartbeat);
+        Assert.Equal(101, samples[1].Heartbeat);
+    }
+
+    // ═══ (б) drop-oldest: медленный consumer теряет сэмплы, очередь не копится ═══
+
+    [Fact]
+    public async Task DropOldest_SlowConsumerLosesSamples_BacklogNeverAccumulates()
+    {
+        using var reader = CreateOpenBus(out var writer);
+        writer.WriteFloat(200, 1.0f);
+        WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 1);
+
+        var sampler = new MetricsSampler(reader);
+        var subscription = sampler.Subscribe(intervalMs: 200); // producer ticks ~5/s
+
+        // Consume exactly one sample, then go SILENT for ~700 ms while the
+        // producer keeps ticking into the capacity-1 channel.
+        MetricsSample first = await FirstSampleAsync(subscription);
+        Assert.Equal(1.0f, first.Deltas.First(d => d.Addr == 200).FloatValue, 3);
+
+        await Task.Delay(700);
+
+        // Resume: the FIRST delivered sample must be FRESH (drop-oldest evicted
+        // everything stale) — its timestamp age must be well below the silence
+        // window. A queueing channel would deliver a ~700 ms old sample here.
+        var sw = Stopwatch.StartNew();
+        MetricsSample resumed = await FirstSampleAsync(subscription);
+        sw.Stop();
+
+        var ageMs = (DateTime.UtcNow - resumed.TimestampUtc.ToDateTime()).TotalMilliseconds;
+        Assert.True(ageMs < 500,
+            $"drop-oldest must deliver a fresh sample after a slow-consumer gap; got age {ageMs:F0} ms");
+
+        // The drop counter observed the overflow (≥ 2 ticks were evicted).
+        Assert.True(subscription.DroppedCount >= 1,
+            $"DroppedCount must grow on overflow; got {subscription.DroppedCount}");
+
+        // Queue never accumulates: the NEXT sample arrives no earlier than one
+        // producer interval later (nothing was buffered during the pause).
+        sw.Restart();
+        int seen = 0;
+        await foreach (var s in subscription)
+        {
+            seen++;
+            if (seen == 2) break;
+        }
+        sw.Stop();
+        Assert.True(sw.ElapsedMilliseconds >= 140,
+            $"second post-gap sample arrived after {sw.ElapsedMilliseconds} ms — backlog would arrive instantly");
+    }
+
+    private static async Task<MetricsSample> FirstSampleAsync(
+        MetricsSubscription subscription, CancellationToken ct = default)
+    {
+        await foreach (var s in subscription.WithCancellation(ct))
+            return s;
+        throw new InvalidOperationException("stream ended before a sample arrived");
+    }
+
+    // ═══ (в) delta-корректность: первый полный, второй только изменённые ═══
+
+    [Fact]
+    public async Task Deltas_FirstSampleCarriesAllLiveRegisters_SecondOnlyChanged()
+    {
+        using var reader = CreateOpenBus(out var writer);
+        writer.WriteFloat(6, 6.0f);
+        writer.WriteFloat(202, 10.0f);
+        writer.WriteFloat(598, 598.0f);
+
+        // addr 4..5 = Unix timestamp int32 RAW BITS (CDAB word order:
+        // reg[4] = low word, reg[5] = high word). Words are computed from the
+        // value — no hand-rolled hex.
+        const int TimestampValue = 1700000000;
+        WriteRawWords(
+            (4, unchecked((ushort)(TimestampValue & 0xFFFF))),
+            (5, unchecked((ushort)(TimestampValue >> 16))));
+
+        WriteHeader(comPort: 2, caseState: 7, caseLanState: 0, heartbeat: 7);
+
+        var sampler = new MetricsSampler(reader);
+        var subscription = sampler.Subscribe(intervalMs: 200);
+
+        var samples = new List<MetricsSample>();
+        await foreach (var sample in subscription)
+        {
+            samples.Add(sample);
+            if (samples.Count == 1)
+            {
+                writer.WriteFloat(202, 20.0f);                       // ONE zone pair changed
+                WriteHeader(comPort: 2, caseState: 7, caseLanState: 0, heartbeat: 8); // ONE header reg changed
+            }
+            else break;
+        }
+
+        Assert.Equal(2, samples.Count);
+        var full = samples[0];
+        var delta = samples[1];
+
+        // ── Sample 1: FULL — header regs 0..3 + every CDAB pair 4..598 ──
+        var addrs = full.Deltas.Select(d => d.Addr).ToArray();
+        Assert.Equal(302, addrs.Length); // 4 single words + (598-4)/2+1 = 298 pairs
+        Assert.Equal(addrs.Length, addrs.Distinct().Count());
+
+        foreach (var addr in new uint[] { 0, 1, 2, 3 })
+        {
+            var d = full.Deltas.Single(x => x.Addr == addr);
+            Assert.Equal(RegisterDelta.ValueOneofCase.Int32Value, d.ValueCase);
+        }
+
+        // addr 4..5 surface as a SINGLE int32 delta carrying the raw bits.
+        var ts = full.Deltas.Single(x => x.Addr == 4);
+        Assert.Equal(RegisterDelta.ValueOneofCase.Int32Value, ts.ValueCase);
+        Assert.Equal(TimestampValue, ts.Int32Value);
+
+        // All other pairs decode as float CDAB.
+        Assert.Equal(6.0f, full.Deltas.Single(x => x.Addr == 6).FloatValue, 3);
+        Assert.Equal(10.0f, full.Deltas.Single(x => x.Addr == 202).FloatValue, 3);
+        Assert.Equal(598.0f, full.Deltas.Single(x => x.Addr == 598).FloatValue, 3);
+
+        // ── Sample 2: ONLY the two changed addresses ──
+        Assert.Equal(2, delta.Deltas.Count);
+        var hb = delta.Deltas.Single(x => x.Addr == 3);
+        Assert.Equal(RegisterDelta.ValueOneofCase.Int32Value, hb.ValueCase);
+        Assert.Equal(8, hb.Int32Value);
+        var f = delta.Deltas.Single(x => x.Addr == 202);
+        Assert.Equal(RegisterDelta.ValueOneofCase.FloatValue, f.ValueCase);
+        Assert.Equal(20.0f, f.FloatValue, 3);
+
+        // Unchanged registers (incl. untouched timestamp pair) are ABSENT.
+        Assert.DoesNotContain(delta.Deltas, d => d.Addr == 4);
+        Assert.DoesNotContain(delta.Deltas, d => d.Addr == 200);
+        Assert.DoesNotContain(delta.Deltas, d => d.Addr == 6);
+    }
+
+    // ═══ (г) clamp min 200 + флаг ═══
+
+    [Fact]
+    public async Task Clamp_RequestBelowMinimum_RunsAt200AndSetsFlag()
+    {
+        using var reader = CreateOpenBus(out var writer);
+        writer.WriteFloat(200, 1.0f);
+        WriteHeader(comPort: 0, caseState: 0, caseLanState: 0, heartbeat: 1);
+
+        var sampler = new MetricsSampler(reader);
+        var subscription = sampler.Subscribe(intervalMs: 50); // below minimum
+
+        var sw = Stopwatch.StartNew();
+        int count = 0;
+        await foreach (var sample in subscription)
+        {
+            Assert.True(sample.IntervalClamped, "interval_clamped must be set when the request was below 200 ms");
+            count++;
+            if (count == 2) break;
+        }
+        sw.Stop();
+
+        // Two ticks at the effective 200 ms cadence — not at the requested 50 ms.
+        Assert.True(sw.ElapsedMilliseconds >= 180,
+            $"two clamped ticks took {sw.ElapsedMilliseconds} ms; clamp to 200 ms is not enforced");
+    }
+
+    [Fact]
+    public async Task NoClamp_RequestAtOrAboveMinimum_FlagClear()
+    {
+        using var reader = CreateOpenBus(out var writer);
+        writer.WriteFloat(200, 1.0f);
+        WriteHeader(comPort: 0, caseState: 0, caseLanState: 0, heartbeat: 1);
+
+        var sampler = new MetricsSampler(reader);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var subscription = sampler.Subscribe(intervalMs: 1000, cts.Token);
+
+        MetricsSample first = await FirstSampleAsync(subscription, cts.Token);
+        Assert.False(first.IntervalClamped, "no clamp flag when interval_ms >= 200");
+    }
+
+    // ═══ (д) bus-closed → fail-fast IOException (¬молчаливые фейки) ═══
+
+    [Fact]
+    public async Task BusClosed_StreamFailsFastWithIOException_NoSilentFakeSamples()
+    {
+        // Reader against a path where NO bus file exists — never opened.
+        var missingPath = Path.Combine(_dir, "absent", "bus.dat");
+        using var reader = new BusReader(missingPath, _mapName, _mutexName);
+
+        var sampler = new MetricsSampler(reader);
+        var subscription = sampler.Subscribe(intervalMs: 200);
+
+        var ex = await Assert.ThrowsAsync<IOException>(async () =>
+        {
+            await foreach (var _ in subscription) { /* no sample ever arrives */ }
+        });
+
+        // Honest, actionable message — not a silent fake sample with heartbeat=-1.
+        Assert.Contains("bus is not open", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(missingPath, ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Subscribe_RejectsNullReader() =>
+        Assert.Throws<ArgumentNullException>(() => new MetricsSampler(null!));
+
+    // ═══ (е) termination law: pre-cancelled токен ⇒ стрим ЗАВЕРШАЕТСЯ пустым
+    //        (¬ вечное ожидание первого сэмпла из-за незапущенного producer'а). ═══
+
+    [Fact]
+    public async Task Subscribe_PreCancelledToken_StreamCompletesEmpty_NoHang()
+    {
+        using var reader = CreateOpenBus(out var writer);
+        writer.WriteFloat(200, 1.0f);
+        WriteHeader(comPort: 0, caseState: 0, caseLanState: 0, heartbeat: 1);
+
+        var sampler = new MetricsSampler(reader);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel(); // cancelled BEFORE Subscribe — producer must still complete the channel
+
+        var subscription = sampler.Subscribe(intervalMs: 200, cts.Token);
+
+        int samples = 0;
+        await foreach (var _ in subscription)
+            samples++;
+
+        Assert.Equal(0, samples); // completed (empty), not hung
+    }
+}

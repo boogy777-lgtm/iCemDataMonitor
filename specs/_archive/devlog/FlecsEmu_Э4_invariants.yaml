@@ -1,0 +1,51 @@
+meta:
+  id: FlecsEmu-E4
+  unit: FlecsEmu
+  date: 2026-08-17
+invariants:
+  - law: "∀ process instance: ¬∃ second FlecsEmu.exe ⇔ Mutex(\"Local\\\\Halliburton_iCem_FlecsEmu\") acquired at startup"
+    classification: structural
+    source: Program.cs:23
+    falsifier: LiveGate_Mutex_SecondInstance
+    probe: "try launching second FlecsEmu.exe; expected MessageBox + exit"
+    note: createdNew=false ⇒ MessageBox then return; no Application.Run
+
+  - law: "settings.xml loaded before any emitter.Open() ⇔ AutoStartStreams() runs after EmuSettings.Load() in TrayApp constructor"
+    classification: behavioral
+    source: TrayApp.cs:44,108
+    falsifier: LiveGate_AutoStartStreams
+    probe: "delete settings.xml; restart; COM/LAN auto-start must stay disabled (all defaults false/empty)"
+    note: missing/corrupt file ⇒ defaults; additive schema
+
+  - law: "sv u32 occupies frame[0x18(24)..0x1B(27)] ⇔ BuildFrame writes sv BE at 24..27 and payload[0..123] at frame[0x1C(28)..0xA0(151)]; signal with registry ByteOffset O lands at frame 0x18+O (offset law payload_index = O−4)"
+    classification: wire
+    source: AceFrameBuilder.cs:13,62-77
+    falsifier: FrameRoundTrip.Test3_HeaderConformance + Test20_OffsetLaw
+    probe: "FlecsEmu.exe --selftest (T3 golden header bytes 0..27; T20 Unit Number O=4 -> payload[0] = 0x00A86F46)"
+    note: proven against iCemCrio.pcapng.bin (6978 frames: Unit Number @28, Control Mode=1 @32, Mix Mode=2 @36). INC-04 was PayloadOffset 0x1C without the O−4 law — sv written 4 bytes too late
+
+  - law: "Cmnt Ops Track Descript (UC, O=8, Size=120) transmittable ⇔ overflow guard is (O−4)+Size ≤ 124 ⇒ 4+120=124 passes; provider writes it at payload[4..123] = frame[32..151]"
+    classification: wire
+    source: AcePayloadProvider.cs:103 + ManualOverridePayloadProvider.cs:104
+    falsifier: FrameRoundTrip.Test5_ManualEditReachesWire + Test20_OffsetLaw
+    probe: "FlecsEmu.exe --selftest (T5c CanTransmit == true; ASCII '1' NUL-padded at payload[4])"
+    note: guard (O)+Size ≤ 124 would drop it (8+120=128>124) — real cRIO sends it (PROTOCOL.md §8.4)
+
+  - law: "firmware_registry.json merged additively with legacy priority ⇔ 14 Beartooth SV (0x13120212..39) present and legacy 6 SV unchanged in LantableRegistry"
+    classification: structural
+    source: LantableRegistry.cs:97-155
+    falsifier: FrameRoundTrip.Test6_FirmwareRegistryLoads
+    probe: "FlecsEmu.exe --selftest (T6: 14 tables loaded, every signal (O−4)+Size ≤ 124, legacy intact)"
+
+  - law: "default wire carries LAN-native units ⇔ UnitSettings.Preset default = LanNative and NeedsConversion returns false for every firmware SV signal under FirmwareDefault"
+    classification: behavioral
+    source: UnitConversion.cs:30,353-363
+    falsifier: FrameRoundTrip.Test16_FirmwareOneToOne + Test19_FirmwareNativeGccRegression
+    probe: "FlecsEmu.exe --selftest (T16/T19); changing Units tab preset converts payload bytes — operator action, not default"
+
+  - law: "COM wire omits ExcludeFromTelemetry variables ⇔ Flecs_4.53 line has exactly 32 comma-separated telemetry fields"
+    classification: wire
+    source: TrayApp.FormatLine.cs:306-307
+    falsifier: WireFormatTests.Flecs453_GoldenLine_32CommaSeparatedFields_NoTimeNoUnit
+    probe: "dotnet test FlecsEmu.Tests --filter FullyQualifiedName~Flecs453_GoldenLine"
+    note: Time & Date (elapsed) and Unit Num (int) are excluded; iCem parser skips them structurally

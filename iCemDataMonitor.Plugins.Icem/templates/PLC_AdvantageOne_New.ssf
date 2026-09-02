@@ -1,0 +1,71 @@
+0,Time & Date,Main Time & Date,42,215
+0,Unit Num,Unit Number,0,0
+0,Recirc Density,Recirc Density,178,57
+0,DH Density,Downhole Density,178,57
+0,Mix Water Rate,Mix Water Rate,130,75
+0,Comb Pump Rate,Combined Pump Rate,130,80
+0,HT400 PressureB,HT400 Pressure B,71,185
+0,HT400 PressureA,HT400 Pressure A,71,185
+0,Water Stg Tot,Water Stg Tot,202,285
+0,Water Total,Water Total,202,285
+0,Cmb Stg Total,Combined Stage Total,202,285
+0,Cmb Job Total,Combined Pump Total,202,285
+0,Cmnt Fdbk Pot,Cement Fdbk Pot,63,154
+0,Water Fdbk Pot,Water Fdbk Pot,63,154
+0,HT400 Rate B,HT400 Rate B,130,80
+0,HT400 Rate A,HT400 Rate A,130,80
+0,Dig out,Digital Out,0,0
+0,HalWin Event,HalWin Event Number,0,0
+0,Tub Level,Tub Level,63,154
+0,Recirc Press,Recirc Pressure,71,185
+0,Recirc FlowRate,Recirc Flow Rate,130,75
+0,Belly MagMeter,Belly MagMeter,130,80
+0,Mag Meter Total,Mag Meter Total,202,285
+0,Control Mode,Control Mode,0,0
+0,Mix Mode,Mix Mode,0,0
+0,Raw Side B Pr,Raw Side B Pressure,71,185
+0,Raw Side A Pr,Raw Side A Pressure,71,185
+0,SideB Pr At KO,Side B Pressure At KO,71,185
+0,SideA Pr At KO,Side A Pressure At KO,71,185
+0,Highest Press,Highest Pressure,71,185
+0,Auto Cmt Cmd,Auto Cmt Cmd,0,0
+0,Auto Wtr Cmd,Auto Wtr Cmd,0,0
+0,Man Cmt Cmd,Man Cmt Cmd,0,0
+0,Man Wtr Cmd,Man Wtr Cmd,0,0
+0,Cmt Out,Cmt Out,0,0
+0,Wtr Out,Wtr Out,0,0
+0,TLMS Spare Vlv,TLMS Valve AO,0,0
+0,TLMS Tub Level,TLMS Tub Level,63,154
+0,TLMS Fdbk Pot,TLMS Fdbk Pot,63,154
+0,LA1 Status,LA1 Status,0,0
+0,LA1 FM Rate,LA1 FM Rate,159,75
+0,LA1 Conc,LA 1 Concentration,129,324
+0,LA1 Stage Total,LA1 Stage Total,202,286
+0,LA1 Job Total,LA1 Job Total,202,286
+0,LA2 Status,LA2 Status,0,0
+0,LA2 FM Rate,LA2 FM Rate,159,75
+0,LA2 Conc,LA 2 Concentration,129,324
+0,LA2 Stage Total,LA2 Stage Total,202,286
+0,LA2 Job Total,LA2 Job Total,202,286
+0,LA3 Status,LA3 Status,0,0
+0,LA3 FM Rate,LA3 FM Rate,159,75
+0,LA3 Conc,LA 3 Concentration,129,324
+0,LA3 Stage Total,LA3 Stage Total,202,286
+0,LA3 Job Total,LA3 Job Total,202,286
+0,LA4 Status,LA4 Status,0,0
+0,LA4 FM Rate,LA4 FM Rate,159,75
+0,LA4 Conc,LA 4 Concentration,129,324
+0,LA4 Stage Total,LA4 Stage Total,202,286
+0,LA4 Job Total,LA4 Job Total,202,286
+0,LA5 Status,LA5 Status,0,0
+0,LA5 FM Rate,LA5 FM Rate,159,75
+0,LA5 Conc,LA 5 Concentration,129,324
+0,LA5 Stage Total,LA5 Stage Total,202,286
+0,LA5 Job Total,LA5 Job Total,202,286
+0,LA6 Status,LA6 Status,0,0
+0,LA6 FM Rate,LA6 FM Rate,159,75
+0,LA6 Conc,LA 6 Concentration,129,324
+0,LA6 Stage Total,LA6 Stage Total,202,286
+0,LA6 Job Total,LA6 Job Total,202,286
+0,L Displ Vol,L Displ Tank Vol,202,285
+0,R Displ Vol,R Displ Tank Vol,202,285

@@ -1,0 +1,11 @@
+# ARCHIVED process artifact — past_incidents block of TZ-DOCSYS-001 (removed 2026-08-18 per decree: specs = current state only)
+# csv: id,symptom,root_cause,fix_locus,lesson
+past_incidents: |
+  id,symptom,root_cause,fix_locus,lesson
+  INC-01,tray starts invisible zombie,no single-instance guard; catch fell into Application.Run() without tray icon,Station.Tray/Program.cs,fail-fast exit ∧ mutex Global\StationTray_v1
+  INC-02,modbus all zeros on :502,bus MMF file DACL Users=ReadAndExecute (created by elevated/foreign context),Station.Data/BusZoneWriter+BusAccessDeniedException,cross-process file ⇒ creator MUST install operator DACL
+  INC-03,writer loop restart every 5s silently,live section capacity 1364 (v2) < required 16872 (v4); Windows reports ACCESS DENIED for oversized views,Station.Data/BusMapping probe=requiredBytes,probe size = real requirement; section capacity frozen until ALL handles close ⇒ ordered restart law
+  INC-04,lan zone floats = denormal garbage (1.4e-45 = int 1),FlecsEmu AceFrameBuilder PayloadOffset 0x1C vs real-wire 0x18 (proven on golden pcap),FlecsEmu/Emitters/AceFrameBuilder.cs,decoder was correct ⇒ golden-pcap contract tests before touching decoder
+  INC-05,iCem never enters Streaming; heartbeat frozen,Emu sent 34 CSV columns; iCem FLECS parser skips Time&Date+UnitNum structurally (IL-verified) ⇒ real device = 32 columns,FlecsEmu/Ui/TrayApp.FormatLine,comma is hardcoded in iCem parser; 'Space Separated' setting applies to Generic connector only
+  INC-06,lan zone alternates correct [AE 14 3F A7] ↔ truncated [00 14 00 A7],TWO writers on one zone: POC sniffer (correct) ∧ iCem AddIn dll (truncates high bytes),AddIn dll (source under locate),single-writer-per-register law violated ⇒ truth-table tests (BusWriteTruthTableTests.cs 39 cases) now pin POC writer clean
+  INC-07,agents loop on rediscovery,architecture ∃ only in code + chat,THIS TZ + specs/ tree,doc-update ∈ DoD
