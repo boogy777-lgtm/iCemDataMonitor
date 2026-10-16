@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "code_commit": "db968757fe86f43951c4a8bd1536775e990b6565",
+  "toolchain": "1.99.1",
+  "edition": "2024",
+  "workflow_run": 38941562186,
+  "workflow_url": "https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38941562186",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 117110206717,
+      "os": "windows-latest",
+      "tests": 40,
+      "compile_fail_doctests": 1,
+      "conclusion": "success"
+    },
+    {
+      "id": 117110206337,
+      "os": "ubuntu-latest",
+      "tests": 32,
+      "node_theme_regression": "PASS D16/D17",
+      "chrome_scenario": "PASS",
+      "conclusion": "success"
+    }
+  ],
+  "original_dotnet_blobs_verified": 513,
+  "original_dotnet_changes": 0,
+  "dashboard_changes": [
+    "D16 actual visual theme bool",
+    "D17 valid grpc-status colon spacing"
+  ],
+  "browser_checks": [
+    "CSS/JS/icons and reviewed HTML identity",
+    "298 register pairs",
+    "selection and chart/history",
+    "302 protobuf metrics",
+    "Status page",
+    "dark/light persistence",
+    "independent second-page theme"
+  ],
+  "artifact_id": 12062734952,
+  "screenshots_inspected": [
+    "dashboard-dark.png",
+    "status-light.png"
+  ],
+  "desktop_ui_inventory": {
+    "source_xaml_files": 5,
+    "named_controls": 176,
+    "scoped_resources": 624,
+    "backend": "GPUI",
+    "implemented": false
+  },
+  "remaining": [
+    "local Windows gRPC named pipe",
+    "lifecycle/layer/console/autostart/boot/navigation RPC",
+    "D18 disconnect/reconnect characterization",
+    "real AddIn and load/differential acceptance",
+    "GPUI desktop UI and independent emulator",
+    "tray",
+    "MSI and full size comparison"
+  ]
+}

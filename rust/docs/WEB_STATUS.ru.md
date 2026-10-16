@@ -76,3 +76,6 @@ D17: inline GetUiPrefs принимал только ASCII trailer с colon+spac
 Для следующего GPUI этапа сохранён `migration/desktop-ui-inventory.json`:
 5 XAML screens/dictionaries, 176 named controls и 624 scoped resource definitions.
 Это inventory для сохранения Mac/Apple tokens, layout и control states, не готовый GPUI UI.
+
+Проверенный code commit: db968757fe86f43951c4a8bd1536775e990b6565, Actions 38941562186
+success (Windows/Linux + Chrome). Подробности и ограничения — VALIDATION.ru.md.

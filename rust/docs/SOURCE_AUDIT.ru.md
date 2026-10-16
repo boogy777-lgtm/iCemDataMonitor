@@ -48,8 +48,14 @@ D14/D15 — новые явные safety/resource deltas Rust transport: [implem
 D16 — baseline index.html inline SetUiTheme вычисляет data-theme !== light после того,
 как main.js уже выполнил визуальный toggle. Node VM trace: visual light, RPC false.
 В Rust-копии HTML исправлено на === light; внешний вид не меняется. Проверка baseline
-допускает только эту одну замену. Оригинальные .NET assets остаются неизменными.
+допускает только две правки HTML: D16 и D17. Оригинальные .NET assets остаются неизменными.
 
 D17 — inline GetUiPrefs требует literal "grpc-status: 0", отвергая валидный trailer
 "grpc-status:0" из tonic-web. Добавлен строгий line-based parser с optional SP/HTAB,
 без изменения внешнего вида или proto. Original .NET HTML не меняется.
+
+D18 (open characterization): main.js parseTrailerStatus ожидает protobuf-like пары
+с first byte 0x0a, тогда как gRPC-Web trailer body содержит ASCII headers. Для ASCII
+он возвращает пустой status, а SubscribeMetrics client возвращается без немедленного
+onError/onEnd; watchdog остаётся отдельным путём reconnect. Bundle не менялся ради
+миграции. Нужен исходный .NET vs Rust browser disconnect/reconnect trace перед полным P10 PASS.

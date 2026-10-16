@@ -74,3 +74,22 @@ Windows cross-target check PASS; runtime integration и browser scenario про�
 
 D16 regression: Node VM воспроизводит исходную инверсию light→false,
 перенесённый inline script проверяется для light→true и dark→false.
+
+### Подтверждённый web CI
+
+Код commit `db968757fe86f43951c4a8bd1536775e990b6565`:
+[Actions run 38941562186](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38941562186)
+— **success**. Windows job 117110206717: 40 tests + 1 compile-fail doctest PASS;
+Linux job 117110206337: 32 tests PASS, Node D16/D17 regression PASS и Chrome scenario PASS.
+На обеих ОС fmt/check/build/test/clippy и baseline 513/513 PASS.
+
+Chrome: unchanged CSS/JS/icons + reviewed HTML predicates, 298 pairs, selection/chart/history,
+302 metrics, Status page, dark/light persistence и theme truth второй независимой страницы.
+[Снимки dashboard-dark/status-light](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38941562186/artifacts/12062734952)
+получены из CI и просмотрены. Это functional/render smoke test, не полное pixel-diff
+сравнение всех состояний исходного WinUI/будущего GPUI.
+
+Первый browser run выявил исходную инверсию bool (D16), повторный — несовместимость
+strict trailer whitespace (D17). Обе исправлены в Rust-копии HTML с regression tests;
+остальные UI bytes и все original .NET files сохранены. Полных parity PASS нет.
+Точные результаты и remaining gates: migration/validation-web.json.
