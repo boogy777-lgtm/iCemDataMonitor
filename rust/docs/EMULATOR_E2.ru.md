@@ -85,8 +85,13 @@ signed zero/Infinity exact, NaN classification. Windows report:
 Cross-platform tests отдельно проверяют latch/totals/reset/seq, factory wiring,
 case lookup, spare retention, clone/replay и реальный dev EXE/exit codes.
 
-До результата exact Windows CI это подготовленные проверки, не заявленный PASS.
-E1 oracle и web/Modbus/MMF regressions остаются в общем workspace CI.
+Проверен code commit `e0b320d29a8eda9fb3ea23d7378325efde9e3376`:
+[Actions 38964177178](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38964177178)
+— **success**. Windows: 57 tests + compile-fail doctest; Linux: 47 tests + Chrome
+regression. Original C# oracle .NET 10.0.12: все перечисленные случаи PASS.
+Получен и прочитан artifact emulator-differential (12074601536), оба отчёта PASS.
+Baseline 513/513 на обеих ОС, original .NET изменений 0. E1, web/Modbus/MMF regressions
+сохранены. Машиночитаемые результаты: migration/validation-emulator-e2.json.
 
 ## Остаток emulator
 

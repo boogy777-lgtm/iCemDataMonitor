@@ -77,7 +77,7 @@ saturating float→int conversions. Отчёт сохраняется как CI 
 ## Следующие работы
 
 1. E2: DFB cement composition, signal map и seeded RNG реализованы; отдельный
-   [контракт и проверки E2](EMULATOR_E2.ru.md). Exact Windows CI фиксируется по результату.
+   [контракт и проверки E2](EMULATOR_E2.ru.md). Windows/Linux CI 38964177178 PASS (см. VALIDATION.ru.md).
 2. LAN payload providers: registry/firmware SV composition, freeze → overrides → units,
    endian/format scaling; no auto-stream default. COM freeze gate тоже отдельно.
 3. Actual serial 9600/8N1 и Npcap raw ACE emitters, pacing/reconnect/counters.
@@ -103,3 +103,11 @@ Windows 51 tests + doctest, Linux 42 tests + Chrome regression. C# oracle .NET 1
 9 801 unit cases, 132 settings, 32 DFB steps/24 edges, 39 formatter cases, 5 ACE frames,
 180 signal decodes и оба source templates. Подробности: VALIDATION.ru.md и
 migration/validation-emulator-e1.json. Полных P19/P23/P24/P25/P26 PASS по-прежнему нет.
+
+## Проверенный результат E2
+
+Полная фиксированная cement factory, 245 ports / 18 parameters / 325 wire names:
+[контракт E2](EMULATOR_E2.ru.md). Code e0b320d, Windows 57 tests + doctest,
+Linux 47 tests + Chrome; original C# factory/RNG/map oracle .NET 10.0.12 PASS.
+Подтверждённые данные: migration/validation-emulator-e2.json. Следующая работа —
+LAN provider/freeze/override/units composition; M5 в целом ещё открыт.

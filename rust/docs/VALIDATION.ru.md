@@ -119,8 +119,23 @@ Original C# oracle реально выполнен на .NET 10.0.12: 2 template
 Проверены реальные EXE FLECS/CRLF/override и usage/input exits. Физические COM/LAN,
 full DFB composition и GPUI/tray не проверялись и не объявляются реализованными.
 
-## Emulator E2 — подготовленные проверки
+## Emulator E2 — подтверждённый результат
 
 Полная фиксированная цементировочная фабрика: [контракт E2](EMULATOR_E2.ru.md).
 Добавлены full-network C# oracle, inventory/RNG/sentinel checks и dev EXE tests.
-Результат exact CI будет записан после завершения; Linux не доказывает C# execution.
+Code commit `e0b320d29a8eda9fb3ea23d7378325efde9e3376`,
+[Actions 38964177178](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38964177178)
+— **success**. Windows job 117186408548: 57 tests + compile-fail doctest;
+Linux job 117186408910: 47 tests + preserved dashboard Chrome regression.
+fmt/check/build/test/clippy и baseline 513/513 PASS на обеих ОС.
+
+Original C# oracle .NET 10.0.12: 245 registered ports, 18 parameters, 325 wire names;
+6 720 exact RNG draws, 231 trajectory frames (224 ticks), 40 edge frames, bitfield
+probe и post-network RNG sentinels — PASS. E1 oracle также PASS без уменьшения
+его покрытия. Artifact emulator-differential 12074601536 получен и прочитан:
+оба JSON report имеют result=PASS. Данные: migration/validation-emulator-e2.json.
+
+Local Linux: 47 tests, workspace fmt/build/test/clippy; Windows cross-target
+check/clippy всех emulator targets PASS. C# и Windows MMF integration выполнены
+именно в Windows CI, не приписаны локальному Linux. GPUI/hardware/tray и full-size
+comparison этим инкрементом не подтверждаются.

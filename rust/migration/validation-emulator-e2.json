@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "code_commit": "e0b320d29a8eda9fb3ea23d7378325efde9e3376",
+  "rust": "1.99.1",
+  "edition": "2024",
+  "workflow_run": 38964177178,
+  "workflow_url": "https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38964177178",
+  "conclusion": "success",
+  "windows": {
+    "job": 117186408548,
+    "tests": 57,
+    "compile_fail_doctests": 1,
+    "original_csharp_oracle": {
+      "bit_probe": true,
+      "blocks": [
+        "PumpA",
+        "PumpB",
+        "Mixer",
+        "F300Hpvt",
+        "RawIo",
+        "Temp",
+        "Sequencer"
+      ],
+      "edge_frames": 40,
+      "network_ticks": 224,
+      "numeric_tolerance": "1e-12 relative/absolute floor1; zero sign/Infinity exact; NaN classification",
+      "parameters": 18,
+      "registered_ports": 245,
+      "result": "PASS",
+      "rng_draws_exact": 6720,
+      "rng_equality": "exact bits, including post-network sentinel",
+      "runtime": "10.0.12",
+      "trajectory_frames": 231,
+      "wire_names": 325
+    },
+    "e1_oracle": {
+      "ace_frames": 5,
+      "dfb_edge_cases": 24,
+      "dfb_steps": 32,
+      "formatter_cases": 39,
+      "numeric_tolerance": "1e-12 relative/absolute floor1; zero sign/Infinity exact; NaN classification",
+      "result": "PASS",
+      "runtime": "10.0.12",
+      "settings_cases": 132,
+      "signal_decodes": 180,
+      "templates": 2,
+      "unit_cases": 9801,
+      "wire_equality": "exact FLECS strings and ACE bytes"
+    }
+  },
+  "linux": {
+    "job": 117186408910,
+    "tests": 47,
+    "chrome_regression": "PASS",
+    "dashboard_artifact": 12073458929
+  },
+  "artifact_id": 12074601536,
+  "artifact_files": [
+    "dfb-differential-report.json",
+    "emu-differential-report.json"
+  ],
+  "original_dotnet_files_verified": 513,
+  "original_dotnet_changes": 0,
+  "new_dependencies": 0,
+  "scope": "Fixed CementUnitNetworkFactory, DfbSignalSource and dev trace; not full M5",
+  "pending": [
+    "LAN payload providers, firmware SV, freeze/overrides/units chain",
+    "physical serial/Npcap emitters",
+    "XML/catalog, 21 commands, control pipe",
+    "GPUI UI preserving original Mac controls",
+    "tray/lifecycle and full distribution size"
+  ]
+}
