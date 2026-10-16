@@ -82,22 +82,7 @@ impl Snapshot {
     /// Decode layout 5 only. Legacy migration belongs to the unchanged AddIn.
     pub fn decode(bytes: &[u8]) -> Result<Self, DecodeError> {
         let header = bytes.get(..HEADER_BYTES).ok_or(DecodeError::Truncated)?;
-        if header.get(..4) != Some(b"STNB".as_slice()) {
-            return Err(DecodeError::Magic);
-        }
-        if u16::from_le_bytes(read(header, 4)?) != 1 {
-            return Err(DecodeError::ProtocolVersion);
-        }
-        if u16::from_le_bytes(read(header, 6)?) != 5 {
-            return Err(DecodeError::LayoutVersion);
-        }
-        let count = u16::from_le_bytes(read(header, 8)?);
-        if count < MIN_REG_COUNT {
-            return Err(DecodeError::RegisterCount);
-        }
-        if bytes.len() != HEADER_BYTES + usize::from(count) * 2 {
-            return Err(DecodeError::FileLength);
-        }
+        let count = validate_shape(header, bytes.len())?;
         let zone = |index: usize| -> Result<ZoneMetadata, DecodeError> {
             Ok(ZoneMetadata {
                 last_write_utc_ticks: i64::from_le_bytes(read(header, 10 + index * 9)?),
@@ -142,6 +127,29 @@ impl Snapshot {
     pub fn unix_seconds(&self) -> Result<i32, DecodeError> {
         self.pair_bits(4).map(u32::cast_signed)
     }
+}
+
+/// Shape-only gate for opening a persisted producer file; requires its first 10 bytes.
+/// The full owned snapshot is validated again after a synchronized mapping copy.
+pub fn validate_shape(header: &[u8], file_length: usize) -> Result<u16, DecodeError> {
+    let header = header.get(..10).ok_or(DecodeError::Truncated)?;
+    if header.get(..4) != Some(b"STNB".as_slice()) {
+        return Err(DecodeError::Magic);
+    }
+    if u16::from_le_bytes(read(header, 4)?) != 1 {
+        return Err(DecodeError::ProtocolVersion);
+    }
+    if u16::from_le_bytes(read(header, 6)?) != 5 {
+        return Err(DecodeError::LayoutVersion);
+    }
+    let count = u16::from_le_bytes(read(header, 8)?);
+    if count < MIN_REG_COUNT {
+        return Err(DecodeError::RegisterCount);
+    }
+    if file_length != HEADER_BYTES + usize::from(count) * 2 {
+        return Err(DecodeError::FileLength);
+    }
+    Ok(count)
 }
 
 fn read<const N: usize>(bytes: &[u8], offset: usize) -> Result<[u8; N], DecodeError> {

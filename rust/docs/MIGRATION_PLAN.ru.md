@@ -2,7 +2,8 @@
 
 План Б: разработка в `rust/` существующего приватного `boogy777-lgtm/iCemDataMonitor`.
 .NET-проекты и AddIn в корне сохраняются. M0 — каркас и контракты; M1–M8 — этапы приёмки.
-Реализован первый Modbus-инкремент M4 (codec/mirror/TCP/dev host), без живой MMF.
+Реализованы Modbus-инкремент M4 (codec/mirror/TCP/dev host) и часть M2:
+Windows MMF → Modbus, строгий read-once INI parser. [Статус M2](M2_STATUS.ru.md).
 Его [границы](IMPLEMENTATION_STATUS.ru.md) не означают прохождение полного gate M4.
 
 | Этап | Результат и границы | Зависит от | Доказательство завершения |

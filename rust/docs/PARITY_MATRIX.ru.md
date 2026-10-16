@@ -33,12 +33,13 @@
 | P26 | Unit conversion | 4 presets,per-group overrides,LAN conversion order | iCemEmule.Core/Core/UnitConversion.cs | M5 | Units cross product golden vectors |
 | P27 | Logs/diagnostics | existing paths,rotation cap,startup errors,selftest/landiag | iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs | M3/M5 | Failure evidence and capped file tests |
 | P28 | Installer | icons/shortcuts/paths/upgrade/uninstall/rollback/offline | installer/Product.wxs | M7 | Clean VM install matrix |
-| P29 | Size/safe code | no .NET10/WinAppSDK in rewritten payload,first-party unsafe forbid | ../Cargo.toml | M7/M8 | Full payload measurements + cargo gates |
+| P29 | Size/safe code | no .NET10/WinAppSDK in rewritten payload,application unsafe forbid + native ADR 0001 | ../Cargo.toml | M7/M8 | Full payload measurements + cargo gates |
 | P30 | Dormant surfaces | COM tee/com0com/old REST handlers preserved in baseline; active wiring absent | iCemDataMonitor.Host.Core/Endpoints | M1 | Call graph evidence; revive only explicit scope decision |
 
 COM tee/com0com код сохранён как исходная база. В действующей host-композиции он не подключён;
 если целевой установленный релиз имеет отличающуюся ветку, M1 обязан заменить baseline
 до заявления об идентичности. OPC DA сейчас stub, не реализованный OPC server.
 
-Частично реализованы P03/P04/P05: pure decoder, FC03/04/06/16, mirror policy и TCP.
+Частично реализованы P02/P03/P04/P05/P18: Windows MMF reader, pure decoder,
+FC03/04/06/16, mirror/TCP и строгий INI parser. [Границы M2](M2_STATUS.ru.md).
 Тесты и намеренные отклонения D05/D10/D14/D15: [implementation status](IMPLEMENTATION_STATUS.ru.md).

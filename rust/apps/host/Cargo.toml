@@ -17,3 +17,5 @@ icem-transport = { path = "../../crates/icem-transport" }
 icem-platform-windows = { path = "../../crates/icem-platform-windows" }
 icem-protocols = { path = "../../crates/icem-protocols" }
 icem-bus = { path = "../../crates/icem-bus" }
+icem-config = { path = "../../crates/icem-config" }
+icem-core = { path = "../../crates/icem-core" }

@@ -38,6 +38,8 @@ name = "icem-host-app"
 version = "0.1.0"
 dependencies = [
  "icem-bus",
+ "icem-config",
+ "icem-core",
  "icem-platform-windows",
  "icem-protocols",
  "icem-transport",
@@ -47,7 +49,9 @@ dependencies = [
 name = "icem-platform-windows"
 version = "0.1.0"
 dependencies = [
+ "icem-bus",
  "icem-core",
+ "icem-windows-native",
 ]
 
 [[package]]
@@ -71,4 +75,26 @@ version = "0.1.0"
 dependencies = [
  "icem-core",
  "icem-protocols",
+]
+
+[[package]]
+name = "icem-windows-native"
+version = "0.1.0"
+dependencies = [
+ "windows-sys",
+]
+
+[[package]]
+name = "windows-link"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[package]]
+name = "windows-sys"
+version = "0.61.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
+dependencies = [
+ "windows-link",
 ]

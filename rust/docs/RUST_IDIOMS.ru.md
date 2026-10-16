@@ -30,7 +30,7 @@ N+1: следующий fixed-width decoder использует safe typed chun
 Новый Clippy 1.99 сам обнаружил `chunks_exact_to_as_chunks` и `manual_repeat_n`.
 Предупреждения исправлены в коде; CI по-прежнему выполняет `-D warnings`, без allow для обхода новых проверок.
 Rustfmt выбирает стиль по Edition 2024; ручного параллельного formatting-механизма нет.
-Resolver 3 учитывает rust-version при выборе dependencies; сторонних crates в текущем workspace ещё нет.
+Resolver 3 учитывает rust-version при выборе dependencies; Windows-only bindings фиксируются Cargo.lock; resolver не заменяет review dependencies.
 
 Изменение `cast_signed` дополнительно проверено независимыми wire cases:
 0, i32::MAX, i32::MIN, -1. Существующие NaN payload/-0/CDAB, truncated writes,
@@ -40,7 +40,8 @@ Let-chain не содержит mutex guard в условии: время уде
 ## Правила для следующих модулей
 
 - Новую стандартную API применять по подтверждённой задаче и checked invariant, а не ради даты релиза.
-- Использовать safe stable API; `forbid(unsafe_code)` сохраняется во всех first-party crates.
+- Использовать safe stable API; `forbid(unsafe_code)` сохраняется в прикладных/shared crates.
+  Единственное native исключение описано в [ADR 0001](adr/0001-win32-read-boundary.ru.md).
 - IEEE arithmetic и wire bytes остаются контрактом. Новые algebraic float APIs/fast math
   нельзя применять к DFB без отдельного доказательства числовой совместимости.
 - Новые low-level/FFI возможности 1.99 не требуют внедрения в этот проект; MMF остаётся отдельным

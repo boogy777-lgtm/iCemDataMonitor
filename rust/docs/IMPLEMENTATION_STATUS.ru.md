@@ -1,4 +1,9 @@
-# Реализованный инкремент: Modbus
+# Реализованные инкременты
+
+Текущий этап: [Windows MMF + INI + live dev host](M2_STATUS.ru.md).
+Ниже сохранены сведения о предыдущем Modbus-инкременте.
+
+## Modbus
 
 2026-10-16. Разработка ведётся в `rust/` существующего приватного репозитория.
 Первый коммит каркаса: `a76e81f054a18809ef8e466071bcc0f908efe0ac`.
@@ -39,8 +44,9 @@ N+1: следующий source-файл проверяется тем же manif
 cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixtures/bus-v5-minimal.bin --bind 127.0.0.1:1502 --duration-ms 30000
 ```
 
-Это синтетический стенд. Он не читает живую MMF, не запускает tray/web/shell/emulator.
-Без `--modbus-fixture` возвращается usage exit 2; ошибка bind/decode — exit 1.
+Это fixture-режим. Для живой MMF добавлены `--bus-live` и `--station-config`:
+см. M2 status. Tray/web/shell/emulator пока не запускаются.
+Без выбранного input возвращается usage exit 2; ошибка bind/decode — exit 1.
 Полный legacy CLI остаётся задачей M3/M4. Приложение не заменяет production host.
 
 ## Намеренные отклонения и нерешённые вопросы
@@ -55,7 +61,8 @@ cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixture
   Ограничения явные, есть rejection/failure/request counters; это ещё не production policy.
   M1 должен измерить нагрузку/latency и утвердить пределы до полной parity-приёмки.
 - Пропускная способность polling и поведение реальных PLC на Windows ещё не доказаны.
-- Нет Windows MMF adapter, INI/XML parser, REST/gRPC/history, tray, shell, DFB/COM/ACE emulator и MSI.
+- Windows MMF adapter и INI parser добавлены следующим инкрементом M2; XML,
+  REST/gRPC/history, tray, shell, DFB/COM/ACE emulator и MSI ещё отсутствуют.
 - Не выполнено сравнение полного размера с .NET и сквозной differential test старого server vs Rust.
 
 ## CI и регрессии

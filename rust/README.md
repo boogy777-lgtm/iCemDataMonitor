@@ -10,7 +10,8 @@ Workspace в папке `rust/` существующего приватного 
 
 Рабочий Modbus codec FC03/04/06/16, динамическое зеркало, bounded TCP server
 и диагностический host на синтетическом Bus fixture. [Статус, ограничения и запуск](docs/IMPLEMENTATION_STATUS.ru.md).
-Живое подключение DLL/MMF, трей, web server и emulator ещё не реализованы.
+Добавлены Windows MMF reader, строгий INI parser и подключение живой шины к dev host.
+[Границы M2-инкремента](docs/M2_STATUS.ru.md). Трей, web server и emulator ещё не реализованы.
 
 ## Документы
 
@@ -35,10 +36,11 @@ Workspace в папке `rust/` существующего приватного 
 | `apps/emulator/` | Будущий самостоятельный эмулятор + UI/CLI + собственный трей |
 | `crates/icem-bus/` | Побайтовый контракт шины и владеющий данными снимок |
 | `crates/icem-core/` | Общие прикладные команды и порты чтения снимков |
-| `crates/icem-config/` | Канон config.ini / XML; парсеры запланированы |
+| `crates/icem-config/` | Строгий read-once INI parser; XML запланирован |
 | `crates/icem-protocols/` | Чистые codecs Modbus / ACE / FLECS |
 | `crates/icem-emulation/` | Движок DFB, генерация, ручные значения, единицы |
-| `crates/icem-platform-windows/` | MMF, mutex, events, трей, COM, Npcap, запуск процессов |
+| `crates/icem-platform-windows/` | Реализованный MMF reader; events/трей/COM/Npcap запланированы |
+| `crates/icem-windows-native/` | Минимальная Win32 FFI-граница, отдельное исключение ADR 0001 |
 | `crates/icem-transport/` | gRPC / gRPC-Web / REST, клиенты; контракт отдельно от I/O |
 | `web/dashboard/`, `assets/` | Побайтовая копия действующей SPA и иконок |
 | `contracts/` | Внешние API и реестр действующих/неподключённых маршрутов |
@@ -51,6 +53,7 @@ Workspace в папке `rust/` существующего приватного 
 Из папки `rust/`, Rust 1.99.1 (Edition 2024), C++ Build Tools на Windows:
 
 ```powershell
+cargo fetch --locked
 cargo fmt --all --check
 cargo check --workspace --all-targets --locked --offline
 cargo test --workspace --locked --offline
@@ -60,6 +63,9 @@ cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 Или `pwsh -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline`.
 Версия задаётся в `rust-toolchain.toml`; Cargo rust-version = 1.99.1, resolver = 3.
 CI читает тот же pin и проверяет edition/MSRV всех участников workspace.
-Никаких сторонних Rust dependencies в начальном workspace нет.
+11 workspace packages; Windows-only dependencies: windows-sys 0.61.2 и windows-link,
+зафиксированные Cargo.lock. После fetch проверки работают offline.
+Все прикладные crates запрещают unsafe; явное исключение —
+[Win32-граница](docs/adr/0001-win32-read-boundary.ru.md).
 EXE имеют имена skeleton/dev до полной приёмки; они не заменяют production.
 Исходная лицензия — TBD; новая лицензия не назначена.

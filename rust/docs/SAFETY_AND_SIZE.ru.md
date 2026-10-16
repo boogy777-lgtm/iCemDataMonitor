@@ -6,18 +6,21 @@
 
 ## Политика безопасности памяти
 
-- Все first-party crates используют `#![forbid(unsafe_code)]` и workspace lint.
+- Все 10 прикладных/shared crates используют `#![forbid(unsafe_code)]` и workspace lint.
+  Единственное исключение — `icem-windows-native`: [ADR 0001](adr/0001-win32-read-boundary.ru.md),
+  локальные Win32 FFI blocks с SAFETY-обоснованиями и собственным deny lint table.
 - Во внешних data paths нет unwrap/expect/todo/unimplemented. Input errors — Result.
 - Decoder работает с owned copy, проверяет header/count/length до индексов;
   разрядность суммы адрес+количество расширена, CDAB не использует transmute.
-- OS adapters не реализованы. Rust std/dependencies/Windows/Npcap могут содержать
+- Windows MMF adapter реализован через owned handles и thread-bound mutex guard.
+  Rust std/dependencies/Windows/Npcap могут содержать
   unsafe/native code: запрет в нашем crate не доказывает безопасность всего стека.
 - MMF: внешний .NET writer может менять память. Создание `&[u8]` по raw mapping
   без доказанной синхронизации не становится safe от одной Rust-обёртки.
-- Нужен safe dependency API с доказанным RAII-lock/copy/ownership. Если его нет,
-  blocked integration оформляется отдельным ADR для минимального audited native shim;
-  текущий запрет unsafe автоматически не снимается. Никакого немого Data.dat polling
-  вместо MMF: его совместимость также требует доказательства.
+- Native API не создаёт Rust references в MMF: bounded ReadProcessMemory копирует в owned Vec.
+  Guard !Send/!Sync, decode выполняется после release. Чтение файла используется только
+  для исходной геометрии, не как замена MMF. Это не формальное доказательство или
+  независимый аудит; real AddIn/DACL/stress/review остаются release gates.
 - Fuzz/property tests нужны для MMF bytes, MBAP/PDU, ACE/FLECS и emulator command parser.
   Лимиты buffers/clients/queues выбираются после baseline и становятся явным контрактом.
 - Новый listener по умолчанию сохраняет loopback; не включать remote exposure ради теста.

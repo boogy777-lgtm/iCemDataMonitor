@@ -226,7 +226,8 @@ required keys — явная ошибка; retired keys принимаются, 
 
 Реальные стартовые контракты: `icem-bus::Snapshot::decode(&[u8])`, `Snapshot::words`,
 `Snapshot::pair_bits/float_pair/unix_seconds`, `icem-core::SnapshotSource::snapshot`,
-`SnapshotRead {snapshot,freshness}`, `HostCommands::execute(HostCommand)`.
-Они не являются заявлением о готовом MMF/HTTP backend. Сети и Windows adapters
-реализуются следующими этапами. Отдельные application services эмулятора не входят
+`SnapshotRead {snapshot,freshness,origin}`, `SnapshotSource::last_error`, `HostCommands::execute(HostCommand)`.
+Windows MMF reader и Modbus TCP реализованы в development-инкременте.
+`origin` различает Captured/Retained, не меняя legacy Stale semantics D09.
+HTTP/gRPC и полная Windows-приёмка остаются следующими этапами. Отдельные application services эмулятора не входят
 в HostCommands; общий runtime не должен знать управление cement DFB.

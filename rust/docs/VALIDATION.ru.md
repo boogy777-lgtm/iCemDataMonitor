@@ -40,3 +40,12 @@ CI устанавливает toolchain/components из rust-toolchain.toml; Ver
 Детали применения новых APIs: [Rust idioms](RUST_IDIOMS.ru.md).
 Результат нового Windows/Linux CI подтверждается по exact commit/run, без переноса старого PASS на новый compiler.
 Это обновление toolchain и идиом; полная функциональная миграция остаётся незавершённой.
+
+## M2 development-инкремент: локальная проверка
+
+Добавлены 6 INI unit tests (24 pure/TCP tests суммарно на Linux), 7 Windows/.NET MMF
+integration tests, 1 Windows live host → Modbus e2e и compile-fail !Send guard doctest.
+Windows x86_64-pc-windows-msvc: cargo check и clippy --all-targets --locked --offline
+с -D warnings проходят cross-compilation. Это не запуск Windows tests.
+Точный результат Windows/Linux CI фиксируется по опубликованному commit/run отдельно.
+Native exception и остающиеся release gates описаны в ADR 0001 и M2_STATUS.ru.md.

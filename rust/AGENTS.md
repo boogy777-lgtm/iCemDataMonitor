@@ -18,7 +18,9 @@ not an invented reproduction of the full original directive:
   conditionals in core. Protocol-specific behavior stays in its module.
 - A defect beyond current scope must be recorded with evidence; do not silently claim parity.
 
-Rust: forbid unsafe in every first-party crate; no unwrap/expect/todo/unimplemented in production.
+Rust: forbid unsafe in all application/shared crates; no unwrap/expect/todo/unimplemented in production.
+The sole native exception is icem-windows-native, scoped by docs/adr/0001-win32-read-boundary.ru.md;
+its separate deny policy permits only the reviewed Win32 module. Workspace forbid stays unchanged.
 Native integration must prove its safe interface before adoption. An unsafe exception needs
 a distinct design decision; do not weaken the policy as an implementation shortcut.
 Use owned snapshots, bounded resources, deterministic codecs and injected clocks.
@@ -31,7 +33,8 @@ Never publish publicly. The user authorized publishing rust/ in boogy777-lgtm/iC
 Do not change original .NET behavior or overwrite source files.
 
 Compiler policy: exact stable Rust from rust-toolchain.toml, currently 1.99.1; Edition 2024,
-resolver 3. New workspace members inherit package edition/rust-version and workspace lints.
+resolver 3. New workspace members inherit package edition/rust-version and workspace lints, except the
+explicit native lint table required by ADR 0001.
 Verify-Scaffold.ps1 checks every member against the toolchain pin; do not add a second CI pin.
 Use stable safe APIs where they strengthen invariants; preserve IEEE/wire semantics and errors.
 Use as_chunks::<N> for fixed-width byte groups and reject remainder before mutation.

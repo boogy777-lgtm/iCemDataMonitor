@@ -32,6 +32,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Fetch locked Rust dependencies
+        shell: pwsh
+        run: |
+          cargo fetch --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify source and skeleton
         shell: pwsh
         run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline

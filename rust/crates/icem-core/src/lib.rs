@@ -8,16 +8,25 @@ pub enum Freshness {
     LastGood,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SnapshotOrigin {
+    Captured,
+    Retained,
+}
+
 #[derive(Debug, Clone)]
 pub struct SnapshotRead {
     pub snapshot: Snapshot,
+    /// Compatibility with legacy Stale flag; D09 may retain data with Stale=false.
     pub freshness: Freshness,
+    pub origin: SnapshotOrigin,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceError {
     Unavailable,
     AccessDenied,
+    SectionCapacity,
     InvalidLayout,
     LockTimeout,
     Io,
@@ -27,6 +36,9 @@ pub enum SourceError {
 /// A failed read may return LastGood, never fabricate live measurements.
 pub trait SnapshotSource {
     fn snapshot(&mut self) -> Result<SnapshotRead, SourceError>;
+    fn last_error(&self) -> Option<SourceError> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
