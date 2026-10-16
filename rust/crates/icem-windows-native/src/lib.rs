@@ -4,4 +4,4 @@
 #[allow(unsafe_code)]
 mod windows;
 #[cfg(windows)]
-pub use windows::{Mapping, NamedMutex, NamedMutexGuard, NativeError};
+pub use windows::{Mapping, NamedMutex, NamedMutexGuard, NativeError, signal_existing_event};

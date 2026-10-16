@@ -40,6 +40,7 @@ COM tee/com0com код сохранён как исходная база. В д�
 если целевой установленный релиз имеет отличающуюся ветку, M1 обязан заменить baseline
 до заявления об идентичности. OPC DA сейчас stub, не реализованный OPC server.
 
-Частично реализованы P02/P03/P04/P05/P18: Windows MMF reader, pure decoder,
-FC03/04/06/16, mirror/TCP и строгий INI parser. [Границы M2](M2_STATUS.ru.md).
+Частично реализованы P02/P03/P04/P05/P06/P07/P08/P09/P10/P18: Windows MMF reader, pure decoder,
+FC03/04/06/16, mirror/TCP, строгий INI parser, web REST/history и SPA RPC subset.
+[Web-инкремент](WEB_STATUS.ru.md); GPUI и desktop visual acceptance ещё не выполнены. [Границы M2](M2_STATUS.ru.md).
 Тесты и намеренные отклонения D05/D10/D14/D15: [implementation status](IMPLEMENTATION_STATUS.ru.md).

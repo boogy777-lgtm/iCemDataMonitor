@@ -36,6 +36,9 @@ pub enum SourceError {
 /// A failed read may return LastGood, never fabricate live measurements.
 pub trait SnapshotSource {
     fn snapshot(&mut self) -> Result<SnapshotRead, SourceError>;
+    fn is_open(&self) -> bool {
+        true
+    }
     fn last_error(&self) -> Option<SourceError> {
         None
     }

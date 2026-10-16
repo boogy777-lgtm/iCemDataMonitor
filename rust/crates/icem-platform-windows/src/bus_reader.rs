@@ -96,6 +96,9 @@ impl WindowsBusReader {
     }
 }
 impl SnapshotSource for WindowsBusReader {
+    fn is_open(&self) -> bool {
+        WindowsBusReader::is_open(self)
+    }
     fn last_error(&self) -> Option<SourceError> {
         self.last_error
     }

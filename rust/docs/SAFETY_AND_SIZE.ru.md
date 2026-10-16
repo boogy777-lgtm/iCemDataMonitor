@@ -6,7 +6,7 @@
 
 ## Политика безопасности памяти
 
-- Все 10 прикладных/shared crates используют `#![forbid(unsafe_code)]` и workspace lint.
+- Все прикладные/shared crates используют `#![forbid(unsafe_code)]` и workspace lint.
   Единственное исключение — `icem-windows-native`: [ADR 0001](adr/0001-win32-read-boundary.ru.md),
   локальные Win32 FFI blocks с SAFETY-обоснованиями и собственным deny lint table.
 - Во внешних data paths нет unwrap/expect/todo/unimplemented. Input errors — Result.

@@ -242,3 +242,27 @@ impl Drop for View {
         }
     }
 }
+
+/// Signal an existing shell-owned event; never create a second owner.
+pub fn signal_existing_event(name: &str) -> Result<bool, NativeError> {
+    use windows_sys::Win32::System::Threading::{EVENT_MODIFY_STATE, OpenEventW, SetEvent};
+    let name = wide_name(name)?;
+    // SAFETY: NUL-terminated name lives through call; request only signal rights,
+    // inheritance disabled. OpenExisting preserves shell ownership and DACL.
+    let raw = unsafe { OpenEventW(EVENT_MODIFY_STATE, 0, name.as_ptr()) };
+    if raw.is_null() {
+        let error = NativeError::last("open_event");
+        return if error.code == 2 {
+            Ok(false)
+        } else {
+            Err(error)
+        };
+    }
+    let handle = OwnedHandle(raw);
+    // SAFETY: successful OpenEventW yielded this live owned event handle;
+    // SetEvent retains no references and handle closes once on function exit.
+    if unsafe { SetEvent(handle.0) } == 0 {
+        return Err(NativeError::last("signal_event"));
+    }
+    Ok(true)
+}

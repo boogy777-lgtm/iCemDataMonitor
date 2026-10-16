@@ -19,3 +19,5 @@ icem-protocols = { path = "../../crates/icem-protocols" }
 icem-bus = { path = "../../crates/icem-bus" }
 icem-config = { path = "../../crates/icem-config" }
 icem-core = { path = "../../crates/icem-core" }
+
+icem-web = { path = "../../crates/icem-web" }

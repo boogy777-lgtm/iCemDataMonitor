@@ -79,13 +79,16 @@ Modbus-зеркало необходимо по контракту FC06/16, эт
 
 ## Выбор UI и библиотек
 
-Кандидат: `tray-icon` + Windows message loop для host; `wry`/WebView2 для shell,
-с переносом состояния окна в Rust и сохранением UI-функций. Это проектное предложение,
-а не доказанная идентичность WinUI. Прототип M1 обязан проверить фокус, DPI, скрытие,
-повторный запуск, восстановление Explorer и время запуска. Если выбранный backend
-не воспроизводит требования, его меняют до переноса бизнес-логики.
+Решение пользователя 2026-10-16: **GPUI** для desktop shell/emulator, с полным
+воспроизведением исходных custom controls, включая Apple-style appearance. GPUI не
+подключается к web host и не увеличивает его dependencies. До desktop реализации
+обязательны точный pin GPUI, Windows/DPI/focus/IME/accessibility и size spike; UI
+не получает PASS по факту выбора библиотеки. Web SPA сохраняется HTML/CSS/JS.
+Как показывать SPA в desktop-вкладке «Панель» (GPUI-native rendering или совместимая
+web-view integration) — отдельный design gate: нельзя молча выбросить эту вкладку.
+Tray выполняется после emulator; общий lifecycle не дублируется в UI handlers.
 
-Сеть: кандидат tokio + tonic/prost + tonic-web и HTTP router на совместимом HTTP stack.
+Сеть: реализован development backend Axum + Tokio + tonic/prost + tonic-web.
 Нужен именно HTTP/2 gRPC поверх именованного pipe, а не самодельный JSON вместо gRPC.
-В M0 эти зависимости ещё не подключены и версии не объявлены проверенными.
+Зависимости web backend подключены и фиксируются Cargo.lock; [границы](WEB_STATUS.ru.md).
 WebView2 и Npcap/com0com учитываются отдельно при измерении установки.

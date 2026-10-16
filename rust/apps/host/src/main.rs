@@ -5,6 +5,7 @@ use icem_config::IniOptions;
 use icem_core::{Freshness, SnapshotOrigin, SnapshotRead, SnapshotSource, SourceError};
 use icem_protocols::modbus::{MirrorInput, RegisterBank};
 use icem_transport::modbus_tcp::{ModbusServer, ServerOptions};
+use icem_web::{BusReply, HostLayers, WebServer, WebState};
 use std::io::Read;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -27,6 +28,12 @@ struct Options {
     tick: Duration,
     total: u16,
     modbus_on: bool,
+    web: Option<SocketAddr>,
+    web_on: bool,
+    opc_da: bool,
+    set_as_default: bool,
+    theme: PathBuf,
+    registry: Option<PathBuf>,
 }
 fn options() -> Result<Options, String> {
     let mut args = std::env::args().skip(1);
@@ -37,6 +44,9 @@ fn options() -> Result<Options, String> {
     let mut mutex = None;
     let mut bind = None;
     let mut duration = 10_000;
+    let mut web_bind = None;
+    let mut theme = None;
+    let mut registry = None;
     while let Some(key) = args.next() {
         let value = args.next().ok_or("each option requires a value")?;
         match key.as_str() {
@@ -52,6 +62,15 @@ fn options() -> Result<Options, String> {
                         .map_err(|_| "invalid socket address")?,
                 )
             }
+            "--web-bind" => {
+                web_bind = Some(
+                    value
+                        .parse::<SocketAddr>()
+                        .map_err(|_| "invalid web address")?,
+                )
+            }
+            "--theme-file" => theme = Some(PathBuf::from(value)),
+            "--registry" => registry = Some(PathBuf::from(value)),
             "--duration-ms" => duration = value.parse().map_err(|_| "invalid duration")?,
             _ => return Err(format!("unknown option: {key}")),
         }
@@ -66,6 +85,25 @@ fn options() -> Result<Options, String> {
         None => IniOptions::default(),
     };
     let has_config = config.is_some();
+    let web = web_bind.or_else(|| {
+        has_config.then(|| {
+            SocketAddr::from((
+                if settings.web_remote_on == 1 {
+                    [0, 0, 0, 0]
+                } else {
+                    [127, 0, 0, 1]
+                },
+                settings.web_port as u16,
+            ))
+        })
+    });
+    if web.is_some_and(|x| !x.ip().is_loopback()) && settings.web_remote_on != 1 {
+        return Err("non-loopback web binding requires web_remote_on=1 in station config".into());
+    }
+    let theme = theme.unwrap_or_else(|| {
+        PathBuf::from(std::env::var_os("PROGRAMDATA").unwrap_or_else(|| r"C:\ProgramData".into()))
+            .join("Halliburton/iCem/DataMonitoring/ui-theme")
+    });
     let input = if let Some(path) = fixture {
         if map.is_some() || mutex.is_some() {
             return Err("bus names require a live source".into());
@@ -96,6 +134,12 @@ fn options() -> Result<Options, String> {
         ),
         total: u16::try_from(settings.total).map_err(|_| "invalid config total")?,
         modbus_on: settings.modbus_on == 1,
+        web,
+        web_on: settings.web_on == 1,
+        opc_da: settings.opcda_on == 1,
+        set_as_default: settings.ui_set_as_default == 1,
+        theme,
+        registry,
     })
 }
 struct Fixture(Snapshot);
@@ -145,7 +189,7 @@ fn refresh(
     source: &mut dyn SnapshotSource,
     bank: &Mutex<RegisterBank>,
     previous: &mut Option<SourceError>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<BusReply, Box<dyn std::error::Error>> {
     let read = source.snapshot();
     let error = source.last_error().or_else(|| read.as_ref().err().copied());
     if *previous != error {
@@ -164,7 +208,10 @@ fn refresh(
         Ok(read) => MirrorInput::LastGood(&read.snapshot),
         Err(_) => MirrorInput::Unavailable,
     });
-    Ok(())
+    Ok(BusReply {
+        read: read.ok(),
+        is_open: source.is_open(),
+    })
 }
 fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
     let mut source = source(options.input)?;
@@ -172,7 +219,7 @@ fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
         RegisterBank::new(options.total).map_err(|error| format!("{error:?}"))?,
     ));
     let mut last_error = None;
-    refresh(&mut *source, &bank, &mut last_error)?;
+    let first = refresh(&mut *source, &bank, &mut last_error)?;
     let server = if options.modbus_on {
         Some(ModbusServer::bind(
             options.bind,
@@ -183,20 +230,86 @@ fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
         None
     };
     eprintln!(
-        "DEVELOPMENT HOST; tray/web/emulator/lifecycle pending. Modbus {}",
+        "DEVELOPMENT HOST; tray/emulator/lifecycle pending. Modbus {}",
         server
             .as_ref()
             .map(|server| server.local_addr().to_string())
             .unwrap_or_else(|| "disabled by config".into())
     );
+    let names = match options.registry {
+        Some(path) => icem_web::registry::load_names(&path)?,
+        None => {
+            let path = std::env::current_exe()?
+                .parent()
+                .ok_or("missing exe directory")?
+                .join("templates/variable_registry.json");
+            match icem_web::registry::load_names(&path) {
+                Ok(names) => names,
+                Err(error) => {
+                    if options.web.is_some() {
+                        eprintln!("registry unavailable: {error}; sensor names remain null");
+                    }
+                    Default::default()
+                }
+            }
+        }
+    };
+    let (web, requests) = WebState::new(
+        HostLayers {
+            modbus_bound: server.is_some(),
+            modbus_port: options.bind.port(),
+            web: options.web_on,
+            opc_da: options.opc_da,
+            set_as_default: options.set_as_default,
+        },
+        options.theme,
+        names,
+    );
+    web.observe(&first);
+    let web_server = options
+        .web
+        .map(|address| WebServer::bind(address, web.clone()))
+        .transpose()?;
+    if let Some(server) = &web_server {
+        eprintln!("Web http://{}", server.local_addr());
+    }
     let started = Instant::now();
+    let mut mirror_due = started + options.tick;
+    let mut health_due = started;
     while started.elapsed() < options.duration {
-        std::thread::sleep(
-            options
-                .tick
-                .min(options.duration.saturating_sub(started.elapsed())),
-        );
-        refresh(&mut *source, &bank, &mut last_error)?;
+        let now = Instant::now();
+        if now >= mirror_due {
+            let reply = refresh(&mut *source, &bank, &mut last_error)?;
+            web.observe(&reply);
+            mirror_due = Instant::now() + options.tick;
+        }
+        if web_server.is_some() && now >= health_due {
+            let reply = BusReply {
+                read: source.snapshot().ok(),
+                is_open: source.is_open(),
+            };
+            web.probe(&reply, icem_web::utc_now_ms())?;
+            health_due = Instant::now() + Duration::from_secs(1);
+        }
+        let mut wake = mirror_due.min(started + options.duration);
+        if web_server.is_some() {
+            wake = wake.min(health_due);
+        }
+        match requests.recv_timeout(wake.saturating_duration_since(Instant::now())) {
+            Ok(request) if !request.response.is_closed() => {
+                let reply = BusReply {
+                    read: source.snapshot().ok(),
+                    is_open: source.is_open(),
+                };
+                web.observe(&reply);
+                let _ = request.response.send(reply);
+            }
+            Ok(_) | Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    if let Some(web) = web_server {
+        web.stop()?;
     }
     if let Some(server) = server {
         eprintln!("Stopped: {:?}", server.stop()?);
@@ -208,7 +321,7 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000]"
+                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH]"
             );
             return ExitCode::from(2);
         }

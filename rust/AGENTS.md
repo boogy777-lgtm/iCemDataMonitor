@@ -29,6 +29,10 @@ Do not silently fix SetLayer's legacy toggle semantics or activate dormant REST 
 No new dependency until it has a role, selected features, license/unsafe review and lockfile.
 Windows is the production target. Tests on Linux do not prove Windows integration or UI parity.
 No release/package must label the M0 binaries as functional replacements.
+User priority (2026-10-16): web server, then independent emulator, then tray.
+Desktop UI must use GPUI and preserve the existing custom controls/appearance.
+Web frontend preserves frozen HTML/CSS/JS; do not replace it with a generic control kit.
+The dependency graph is locked; generator-only lint allowances stay scoped to generated proto output.
 Never publish publicly. The user authorized publishing rust/ in boogy777-lgtm/iCemDataMonitor.
 Do not change original .NET behavior or overwrite source files.
 

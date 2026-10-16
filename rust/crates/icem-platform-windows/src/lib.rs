@@ -16,3 +16,8 @@ pub const THEME_CHANGED: &str = r"Local\iCemDataMonitorTray_v1_UiTheme";
 mod bus_reader;
 #[cfg(windows)]
 pub use bus_reader::WindowsBusReader;
+
+#[cfg(windows)]
+pub fn signal_theme_changed() -> Result<bool, icem_windows_native::NativeError> {
+    icem_windows_native::signal_existing_event(THEME_CHANGED)
+}

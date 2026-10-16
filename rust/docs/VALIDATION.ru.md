@@ -64,3 +64,10 @@ metadata pin/edition gate и сравнение 513/513 исходных blobs; 
 завершение по сроку, отсутствие stdout, usage/input/unsupported live mode exit codes.
 Реальная legacy AddIn, UI и полный payload этим результатом не проверены.
 Машиночитаемый результат: `migration/validation-m2.json`.
+
+## Web development-инкремент
+
+Локально Rust 1.99.1: 32 tests PASS, fmt/check/build/clippy PASS.
+Windows cross-target check PASS; runtime integration и browser scenario проверяются
+новым exact-commit CI. Исходная SPA сохраняется, ограниченные control RPC — UNIMPLEMENTED.
+Полная visual/GPUI acceptance этим этапом не объявляется.

@@ -18,6 +18,18 @@ Windows MMF → Modbus, строгий read-once INI parser. [Статус M2](M
 | M7 | Rust MSI, upgrade/rollback, logs, portable diagnostics, measurement | M4/M5/M6 | Чистая Windows VM: install/upgrade/uninstall/offline; полный размер меньше .NET baseline |
 | M8 | Итоговая функциональная и нагрузочная приёмка, release candidate | M1–M7 | Все строки parity matrix PASS; CI на exact commit; нет непроверенных safety deltas |
 
+## Порядок реализации пользователя — 2026-10-16
+
+1. Web server: сохранённая SPA, REST/history, gRPC-Web и тема; затем оставшиеся API/приёмка.
+2. Независимый emulator: engine/COM/ACE/CLI и GPUI UI с сохранением всех контролов.
+3. Tray: независимые host/emulator icons, меню, console/lifecycle/autostart.
+
+Milestone IDs выше остаются идентификаторами критериев, не прежним порядком задач.
+GPUI — обязательный desktop backend. Web — прежние HTML/CSS/JS поверх Rust Axum/tonic.
+Apple-style custom controls, light/dark, геометрия, typography, состояния/hover/focus,
+keyboard/DPI и поведение сохраняются; generic UI kit не подменяет существующий дизайн.
+[Текущий web-инкремент](WEB_STATUS.ru.md). Полного UI PASS до визуальной приёмки нет.
+
 ## Работа каждой задачи LLM
 
 Входы: milestone, source-файлы, contract IDs, разрешённые Rust-модули.

@@ -40,3 +40,18 @@ jobs:
       - name: Verify source and skeleton
         shell: pwsh
         run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
+      - name: Check preserved dashboard in Chrome
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          ICEM_UI_ARTIFACTS: ${{ runner.temp }}/icem-ui
+        run: |
+          npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund
+          node tools/browser/dashboard.cjs
+      - name: Upload dashboard evidence
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: preserved-dashboard
+          path: ${{ runner.temp }}/icem-ui
+          if-no-files-found: ignore
