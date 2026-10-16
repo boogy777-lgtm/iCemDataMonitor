@@ -1,8 +1,8 @@
 # Web development-инкремент
 
 Порядок пользователя: **web server → emulator → tray**. Desktop backend — GPUI.
-Web frontend выбран прежний HTML/CSS/JS: все 5 dashboard assets неизменны и embedded
-в Rust EXE. Ни controls, ни CSS, ни chart renderer, ни SVG иконки не перерисовываются.
+Web frontend выбран прежний HTML/CSS/JS: 4 dashboard assets неизменны; в index.html
+исправлена только инверсия темы D16. Assets embedded в Rust EXE. Ни controls, ни CSS, ни chart renderer, ни SVG иконки не перерисовываются.
 
 ## Реализовано
 
@@ -61,3 +61,9 @@ Host/emulator GPUI UI и оба tray не реализованы; внешний
 64 metrics streams, 64 KiB protobuf request / 128 KiB response; source reads держат тот
 же mutex ≤500 ms. UTC projection сейчас имеет millisecond clock granularity.
 Полного parity PASS и полного size comparison этот этап не присваивает.
+
+D16: единственное изменение SPA — исправлена инверсия bool в inline SetUiTheme:
+после bundle click визуальный light отправлял false. Теперь отправляется фактический
+visual state. main.js/CSS/icons и внешний вид не меняются; original .NET index.html
+не меняется. Verify-Baseline допускает ровно эту замену и проверяет остальной HTML
+целиком; Node VM regression и browser scenario проверяют обе темы.

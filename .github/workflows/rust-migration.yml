@@ -47,6 +47,7 @@ jobs:
           ICEM_UI_ARTIFACTS: ${{ runner.temp }}/icem-ui
         run: |
           npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund
+          node tools/browser/theme-contract.cjs
           node tools/browser/dashboard.cjs
       - name: Upload dashboard evidence
         if: always() && runner.os == 'Linux'

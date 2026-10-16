@@ -12,7 +12,7 @@ Workspace в папке `rust/` существующего приватного 
 и диагностический host на синтетическом Bus fixture. [Статус, ограничения и запуск](docs/IMPLEMENTATION_STATUS.ru.md).
 Добавлены Windows MMF reader, строгий INI parser и подключение живой шины к dev host.
 [Границы M2-инкремента](docs/M2_STATUS.ru.md). Добавлен web backend:
-неизменённая SPA, REST/history, gRPC-Web status/registers/metrics/theme.
+сохранённая SPA (единственная логическая правка D16), REST/history, gRPC-Web status/registers/metrics/theme.
 [Запуск и ограничения](docs/WEB_STATUS.ru.md). Порядок: web → emulator → tray.
 Desktop UI — GPUI с сохранением существующих custom controls; emulator/tray ещё не перенесены.
 

@@ -237,7 +237,7 @@
 
   var btn = document.getElementById("themeToggle");
   if (btn) btn.addEventListener("click", function () {
-    var light = document.documentElement.getAttribute("data-theme") !== "light";
+    var light = document.documentElement.getAttribute("data-theme") === "light";
     rpcUnary("SetUiTheme", light ? SET_LIGHT : SET_DARK)
       .catch(function () { /* host unreachable — the visual flip already happened */ });
   });

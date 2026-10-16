@@ -44,3 +44,8 @@
 Полный список файлов и точные хеши — `migration/source-manifest.json`.
 
 D14/D15 — новые явные safety/resource deltas Rust transport: [implementation status](IMPLEMENTATION_STATUS.ru.md).
+
+D16 — baseline index.html inline SetUiTheme вычисляет data-theme !== light после того,
+как main.js уже выполнил визуальный toggle. Node VM trace: visual light, RPC false.
+В Rust-копии HTML исправлено на === light; внешний вид не меняется. Проверка baseline
+допускает только эту одну замену. Оригинальные .NET assets остаются неизменными.

@@ -71,3 +71,6 @@ metadata pin/edition gate и сравнение 513/513 исходных blobs; 
 Windows cross-target check PASS; runtime integration и browser scenario проверяются
 новым exact-commit CI. Исходная SPA сохраняется, ограниченные control RPC — UNIMPLEMENTED.
 Полная visual/GPUI acceptance этим этапом не объявляется.
+
+D16 regression: Node VM воспроизводит исходную инверсию light→false,
+перенесённый inline script проверяется для light→true и dark→false.

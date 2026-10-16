@@ -45,7 +45,20 @@ Get-ChildItem -File -Recurse $Dashboard | ForEach-Object {
     # Compare canonical Git bytes; Windows checkout newline conversion is not a source change.
     $RustRelative = 'rust/web/dashboard/' + $Relative.Replace('\', '/')
     $SourceRelative = 'iCemDataMonitor.Host/wwwroot/' + $Relative.Replace('\', '/')
-    if ((Get-CanonicalHash $_.FullName $RustRelative) -ne (Get-CanonicalHash $Source $SourceRelative)) {
+    if ($Relative -eq 'index.html') {
+        # D16: the ONLY allowed SPA change is the inverted SetUiTheme predicate.
+        # Source hash was checked above; compare the complete transformed text.
+        $Legacy = 'var light = document.documentElement.getAttribute("data-theme") !== "light";'
+        $Fixed = 'var light = document.documentElement.getAttribute("data-theme") === "light";'
+        $OriginalHtml = [IO.File]::ReadAllText($Source).Replace("`r`n", "`n")
+        if ([regex]::Matches($OriginalHtml, [regex]::Escape($Legacy)).Count -ne 1) {
+            throw 'D16 source predicate drift'
+        }
+        $ExpectedHtml = $OriginalHtml.Replace($Legacy, $Fixed)
+        if ($ExpectedHtml -cne [IO.File]::ReadAllText($_.FullName).Replace("`r`n", "`n")) {
+            throw 'SPA index.html changed beyond the single D16 predicate'
+        }
+    } elseif ((Get-CanonicalHash $_.FullName $RustRelative) -ne (Get-CanonicalHash $Source $SourceRelative)) {
         throw "Original SPA changed: $Relative"
     }
 }
@@ -58,4 +71,4 @@ if ($Missing.Count -gt 0) {
     Write-Warning ("Missing {0} baseline file(s): {1}" -f $Missing.Count, ($Missing -join ', '))
     if ($RequireComplete) { throw 'Full source copy is required before publication' }
 }
-Write-Host "Baseline: $Verified verified of $($Manifest.files.Count); frozen proto/assets and REST inventory OK."
+Write-Host "Baseline: $Verified verified of $($Manifest.files.Count); frozen proto/assets, sole D16 theme predicate and REST inventory OK."

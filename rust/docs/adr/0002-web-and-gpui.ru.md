@@ -2,7 +2,8 @@
 
 Решение пользователя: web server → независимый emulator → tray. Desktop UI — GPUI;
 Apple-style custom controls и вся функциональность должны сохраниться. Web frontend
-остаётся исходной HTML/CSS/JS SPA, побайтово: сохранение вида не требует React/Vue.
+остаётся исходной HTML/CSS/JS SPA с единственной логической правкой D16:
+сохранение вида не требует React/Vue.
 Backend — Axum 0.8.9 + Tokio + tonic/tonic-web/tonic-prost 0.14.6, prost 0.14.4,
 serde_json/serde_urlencoded и chrono 0.4.45 (std only, без timezone DB).
 Generated server строится из неизменённого telemetry.proto; build-only
@@ -33,3 +34,9 @@ Browser harness использует playwright-core 1.62.1 (Apache-2.0), pinned
 GPUI будет подключён при desktop этапе с отдельным lock/dependency/Windows acceptance;
 библиотека не добавляется в headless host заранее. Стандартные GPUI components не
 считаются заменой исходных custom controls. Число мегабайт полного приложения пока не измерено.
+
+D16: единственное изменение SPA — исправлена инверсия bool в inline SetUiTheme:
+после bundle click визуальный light отправлял false. Теперь отправляется фактический
+visual state. main.js/CSS/icons и внешний вид не меняются; original .NET index.html
+не меняется. Verify-Baseline допускает ровно эту замену и проверяет остальной HTML
+целиком; Node VM regression и browser scenario проверяют обе темы.
