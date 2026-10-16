@@ -232,3 +232,9 @@ Windows MMF reader и Modbus TCP реализованы в development-инкр�
 HTTP/history и необходимые SPA gRPC-Web методы перенесены: см. WEB_STATUS.ru.md.
 Local gRPC pipe, оставшиеся control RPC и полная Windows/UI-приёмка ещё впереди. Отдельные application services эмулятора не входят
 в HostCommands; общий runtime не должен знать управление cement DFB.
+
+## Development DFB trace (E2)
+
+Отдельный icem-dfb-dev исполняет фиксированную цементировочную сеть без I/O.
+[Опции, JSON snapshot и границы](EMULATOR_E2.ru.md). Production emulator API выше
+остаётся отдельной задачей. Исходный proto и 21 command не изменены.

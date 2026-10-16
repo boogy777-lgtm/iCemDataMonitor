@@ -67,8 +67,9 @@ Rust codec сохраняет этот фактический predicate, вкл�
 D20 (open, full DFB network): DfbNetwork.Add инициализирует insertAt=_blocks.Count,
 потом проверяет producer position≥insertAt; у существующих blocks position<count,
 поэтому Add фактически append-only, несмотря на комментарий о topological insertion.
-Execute выполняет блоки вне lock после создания копии списка. Пока перенесены только
-три primitive blocks; будущий network port требует factory-order characterization.
+Execute выполняет блоки вне lock после создания копии списка. E2 сохраняет фиксированную
+factory composition; C# oracle проверяет block order и полную signal/wire inventory.
+Произвольный DfbNetwork.Add runtime не является реализованным Rust API.
 
 D21 — SignalWireCodec.TryDecodeNative в исходнике складывает signed int offset/size
 до проверки; overflow может дойти до исключения AsSpan. Rust codec использует

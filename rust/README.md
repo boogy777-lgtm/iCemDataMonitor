@@ -15,7 +15,8 @@ Workspace в папке `rust/` существующего приватного 
 сохранённая SPA (две логические правки D16/D17), REST/history, gRPC-Web status/registers/metrics/theme.
 [Запуск и ограничения](docs/WEB_STATUS.ru.md). Порядок: web → emulator → tray.
 Desktop UI — GPUI с сохранением существующих custom controls. Начат emulator:
-[генератор FLECS, единицы, ACE codec и DFB-примитивы](docs/EMULATOR_STATUS.ru.md).
+[генератор FLECS, единицы и ACE codec](docs/EMULATOR_STATUS.ru.md);
+[полная фиксированная DFB-фабрика и dev trace](docs/EMULATOR_E2.ru.md).
 GPUI UI, hardware emitters и tray ещё не реализованы.
 
 ## Документы

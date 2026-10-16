@@ -118,3 +118,9 @@ Original C# oracle реально выполнен на .NET 10.0.12: 2 template
 
 Проверены реальные EXE FLECS/CRLF/override и usage/input exits. Физические COM/LAN,
 full DFB composition и GPUI/tray не проверялись и не объявляются реализованными.
+
+## Emulator E2 — подготовленные проверки
+
+Полная фиксированная цементировочная фабрика: [контракт E2](EMULATOR_E2.ru.md).
+Добавлены full-network C# oracle, inventory/RNG/sentinel checks и dev EXE tests.
+Результат exact CI будет записан после завершения; Linux не доказывает C# execution.

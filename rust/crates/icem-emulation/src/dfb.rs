@@ -7,11 +7,7 @@ pub struct FirstOrderLag {
 impl FirstOrderLag {
     pub fn execute(&mut self, target: f64, dt: f64, tau: f64) -> f64 {
         // Math.Max propagates NaN and selects +0 over -0; f64::max differs for NaN.
-        let divisor = if dt.is_nan() || dt > tau || (dt == tau && tau.is_sign_negative()) {
-            dt
-        } else {
-            tau
-        };
+        let divisor = dotnet_max(dt, tau);
         self.value += (target - self.value) * (dt / divisor);
         self.value
     }
@@ -46,5 +42,14 @@ impl Totalizer {
             self.stage = 0.0;
         }
         (self.stage, self.job)
+    }
+}
+
+/// System.Math.Max: propagate NaN and prefer positive zero.
+pub(crate) fn dotnet_max(a: f64, b: f64) -> f64 {
+    if a.is_nan() || a > b || (a == b && b.is_sign_negative()) {
+        a
+    } else {
+        b
     }
 }

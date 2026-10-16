@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
-//! Independent emulator domain: pure simulation, unit conversion and primitive DFB.
-//! Hardware emitters, full DFB composition and GPUI are separate migration gates.
+//! Independent emulator domain: pure simulation, unit conversion and cement DFB.
+//! Hardware emitters, LAN providers and GPUI are separate migration gates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Channel {
     Com,
@@ -42,3 +42,5 @@ pub const COMMANDS: &[&str] = &[
 pub mod dfb;
 pub mod simulation;
 pub mod units;
+
+pub mod cement;

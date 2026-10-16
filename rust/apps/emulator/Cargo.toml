@@ -17,3 +17,7 @@ icem-emulation = { path = "../../crates/icem-emulation" }
 icem-platform-windows = { path = "../../crates/icem-platform-windows" }
 
 serde_json = "1"
+
+[[bin]]
+name = "icem-dfb-dev"
+path = "src/dfb.rs"

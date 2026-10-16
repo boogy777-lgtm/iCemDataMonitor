@@ -1,4 +1,4 @@
-# Эмулятор E1 — вычислительная основа и dev preview
+# Эмулятор — вычислительная основа и dev preview
 
 Rust 1.99.1 / Edition 2024. Первый рабочий инкремент этапа emulator; не полный M5.
 Порядок пользователя остаётся web → emulator → tray. Desktop UI должен быть GPUI
@@ -76,8 +76,8 @@ saturating float→int conversions. Отчёт сохраняется как CI 
 
 ## Следующие работы
 
-1. Полная DFB cement composition: Pump/Mixer/Temperature/RawIO/Sequencer/F300 и
-   source→signal map; seeded Random и factory execution order проверить по source.
+1. E2: DFB cement composition, signal map и seeded RNG реализованы; отдельный
+   [контракт и проверки E2](EMULATOR_E2.ru.md). Exact Windows CI фиксируется по результату.
 2. LAN payload providers: registry/firmware SV composition, freeze → overrides → units,
    endian/format scaling; no auto-stream default. COM freeze gate тоже отдельно.
 3. Actual serial 9600/8N1 и Npcap raw ACE emitters, pacing/reconnect/counters.
@@ -87,7 +87,7 @@ saturating float→int conversions. Отчёт сохраняется как CI 
 
 Ограничения E1: нет XML/full catalog discovery/fallback logging, произвольная Unicode
 OrdinalIgnoreCase и malformed DTO cases ещё не differential-characterized; duplicate
-index ordering не заявлен идентичным. Нет полного engine, freeze/emitter/IPC/GPUI/tray.
+index ordering не заявлен идентичным. Полная фиксированная DFB-фабрика добавлена в E2; нет полного engine, freeze/emitter/IPC/GPUI/tray.
 Полных parity PASS и сравнения полного размера этот этап не присваивает.
 
 Dependency review: добавлен только прямой доступ к уже зафиксированному serde_json

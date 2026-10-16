@@ -61,5 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: emulator-differential
-          path: rust/target/emu-differential-report.json
+          path: |
+            rust/target/emu-differential-report.json
+            rust/target/dfb-differential-report.json
           if-no-files-found: ignore
