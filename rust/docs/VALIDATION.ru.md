@@ -140,7 +140,26 @@ check/clippy всех emulator targets PASS. C# и Windows MMF integration вы�
 именно в Windows CI, не приписаны локальному Linux. GPUI/hardware/tray и full-size
 comparison этим инкрементом не подтверждаются.
 
-## Emulator E3 — подготовленные проверки
+## Emulator E3 — подтверждённый результат
 
 [Контракт LAN E3](EMULATOR_E3.ru.md). Добавлены byte-exact original C# providers/codecs
-oracle и реальные ACE dev EXE проверки. Результат exact CI фиксируется по завершении.
+oracle и реальные ACE dev EXE проверки.
+
+Code `441de1ac8329781263abeb875f73718c1c81257b`:
+[Actions 38968834214](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38968834214)
+— **success**. Windows job 117201908300: 72 tests + compile-fail doctest;
+Linux job 117201908720: 61 tests + preserved dashboard Chrome regression.
+fmt/check/build/test/clippy и baseline 513/513 PASS на обеих ОС.
+
+Original C# .NET 10.0.12: 208 SV/4196 fields metadata, 10 base superframes,
+16 provider transitions, 8394 CanTransmit cases, 3600 codec cases с тремя original
+encoders, 35 ASCII/UTF16 cases и 4800 raw unit-payload cases — exact byte PASS.
+E1/E2 оригинальные C# проверки также PASS. Artifact emulator-differential
+12075828390 получен и прочитан, все три reports PASS. Данные:
+migration/validation-emulator-e3.json.
+
+Локально: 61 Linux workspace tests, Windows cross-target check/clippy, а также
+C# LAN oracle .NET 10.0.13 (Rust test body собран с cfg(windows) только для этого
+проверочного target) PASS. Это не подмена Windows integration: та выполнена в CI.
+JSON loader error/discovery, production clock/COM freeze/hardware/GPUI/tray остаются
+явными непроверенными частями M5.

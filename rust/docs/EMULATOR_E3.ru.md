@@ -86,8 +86,16 @@ frame на строку. Diagnostics только stderr; usage=2, input/write f
   Реальный dev EXE отдельно проверяет emulation gate и первый tick=0.
 - Новые данные не ослабляют E1/E2, Modbus/MMF/web regression tests.
 
-Exact Windows/Linux CI и artifact `lan-differential-report.json` фиксируются по
-фактическому результату. До выполнения original C# это подготовленная проверка.
+Проверен code commit `441de1ac8329781263abeb875f73718c1c81257b`:
+[Actions 38968834214](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38968834214)
+— **success**. Windows 72 tests + compile-fail doctest, Linux 61 tests + Chrome
+regression. Original C# LAN oracle .NET 10.0.12: все перечисленные cases PASS,
+включая полный metadata catalog и 8 394 CanTransmit checks. E1/E2 reports также PASS.
+Artifact emulator-differential 12075828390 получен и прочитан: все три JSON reports PASS.
+Baseline 513/513 на обеих ОС, original .NET изменений 0.
+Локально также выполнен тот же C# LAN oracle на .NET 10.0.13 — PASS; Windows
+cross-target check/clippy и Linux workspace проверки проходят.
+Данные: migration/validation-emulator-e3.json.
 
 Открытые границы: Rust читает UTF-8 (BOM разрешён), C# File.ReadAllText также умеет
 UTF-16/32; Rust возвращает Err для повреждённого JSON, исходник подавляет ошибки и

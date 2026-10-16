@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "code_commit": "441de1ac8329781263abeb875f73718c1c81257b",
+  "rust": "1.99.1",
+  "edition": "2024",
+  "workflow_name": "rust-migration",
+  "workflow_run": 38968834214,
+  "workflow_url": "https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38968834214",
+  "conclusion": "success",
+  "windows": {
+    "job": 117201908300,
+    "tests": 72,
+    "compile_fail_doctests": 1,
+    "original_csharp_lan_oracle": {
+      "ascii_cases": 35,
+      "base_superframes": 10,
+      "can_transmit_cases": 8394,
+      "codec_cases": 3600,
+      "comparison": "exact full payload bytes",
+      "oracle_runtime": "10.0.12",
+      "pipeline_transitions": 16,
+      "source_signals": 4196,
+      "source_vectors": 208,
+      "status": "PASS",
+      "unit_payload_cases": 4800
+    },
+    "e1_oracle": {
+      "ace_frames": 5,
+      "dfb_edge_cases": 24,
+      "dfb_steps": 32,
+      "formatter_cases": 39,
+      "numeric_tolerance": "1e-12 relative/absolute floor1; zero sign/Infinity exact; NaN classification",
+      "result": "PASS",
+      "runtime": "10.0.12",
+      "settings_cases": 132,
+      "signal_decodes": 180,
+      "templates": 2,
+      "unit_cases": 9801,
+      "wire_equality": "exact FLECS strings and ACE bytes"
+    },
+    "e2_oracle": {
+      "bit_probe": true,
+      "blocks": [
+        "PumpA",
+        "PumpB",
+        "Mixer",
+        "F300Hpvt",
+        "RawIo",
+        "Temp",
+        "Sequencer"
+      ],
+      "edge_frames": 40,
+      "network_ticks": 224,
+      "numeric_tolerance": "1e-12 relative/absolute floor1; zero sign/Infinity exact; NaN classification",
+      "parameters": 18,
+      "registered_ports": 245,
+      "result": "PASS",
+      "rng_draws_exact": 6720,
+      "rng_equality": "exact bits, including post-network sentinel",
+      "runtime": "10.0.12",
+      "trajectory_frames": 231,
+      "wire_names": 325
+    }
+  },
+  "linux": {
+    "job": 117201908720,
+    "tests": 61,
+    "chrome_regression": "PASS",
+    "dashboard_artifact": 12075512906
+  },
+  "local": {
+    "linux_workspace_tests": 61,
+    "original_csharp_lan_oracle_runtime": "10.0.13",
+    "original_csharp_lan_oracle": "PASS",
+    "windows_cross_target_check_clippy": "PASS"
+  },
+  "artifact_id": 12075828390,
+  "artifact_files": [
+    "lan-differential-report.json",
+    "dfb-differential-report.json",
+    "emu-differential-report.json"
+  ],
+  "agents": {
+    "implementation": "LAN catalog/base codec",
+    "provider_chain": "DFB/freeze/overrides/units",
+    "oracle": "original C# byte comparisons",
+    "audit": "independent source and oracle review"
+  },
+  "original_dotnet_files_verified": 513,
+  "original_dotnet_changes": 0,
+  "new_external_dependencies": 0,
+  "scope": "LAN providers and development ACE preview; not production engine or full M5",
+  "not_proven": [
+    "best-effort malformed/Unicode registry loading",
+    "COM freeze and production clock/lifecycle",
+    "physical serial/Npcap transmission",
+    "XML/full catalog discovery, 21 commands, control pipe",
+    "GPUI desktop UI preserving original Mac controls",
+    "tray/lifecycle and full distribution size"
+  ]
+}

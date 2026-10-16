@@ -116,5 +116,7 @@ LAN provider/freeze/override/units composition; M5 в целом ещё откр
 
 Добавлены base/catalog/codec и полная LAN provider composition с frozen cache,
 manual native overrides и units; [контракт E3](EMULATOR_E3.ru.md).
-Windows C# oracle и exact CI фиксируются после выполнения; hardware/IPC/GPUI/tray
-остаются отдельными этапами.
+Code 441de1a, Windows/Linux CI 38968834214 PASS: 72 Windows tests + doctest,
+61 Linux tests + Chrome. Original C# LAN oracle .NET 10.0.12 сравнил полные payload
+побайтово, все cases PASS. Artifact получен; данные migration/validation-emulator-e3.json.
+Hardware/IPC/GPUI/tray остаются отдельными этапами.
