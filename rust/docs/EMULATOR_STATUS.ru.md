@@ -95,3 +95,11 @@ Dependency review: добавлен только прямой доступ к у
 external versions/native bindings нет. Handwritten modules сохраняют forbid(unsafe_code).
 External serde implementation остаётся частью dependency trust boundary, не formal audit.
 D21 — checked reject malformed signal spans вместо возможного C# overflow exception.
+
+## Проверенный результат E1
+
+Code commit e43ff8314e7c7f48cfbdc9389d90655986049a05, Actions 38946224137 success:
+Windows 51 tests + doctest, Linux 42 tests + Chrome regression. C# oracle .NET 10.0.12:
+9 801 unit cases, 132 settings, 32 DFB steps/24 edges, 39 formatter cases, 5 ACE frames,
+180 signal decodes и оба source templates. Подробности: VALIDATION.ru.md и
+migration/validation-emulator-e1.json. Полных P19/P23/P24/P25/P26 PASS по-прежнему нет.

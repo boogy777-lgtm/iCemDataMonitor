@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "code_commit": "e43ff8314e7c7f48cfbdc9389d90655986049a05",
+  "rust": "1.99.1",
+  "edition": "2024",
+  "workflow_run": 38946224137,
+  "workflow_url": "https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38946224137",
+  "conclusion": "success",
+  "windows": {
+    "job": 117125894186,
+    "tests": 51,
+    "compile_fail_doctests": 1,
+    "original_csharp_oracle": {
+      "ace_frames": 5,
+      "dfb_edge_cases": 24,
+      "dfb_steps": 32,
+      "formatter_cases": 39,
+      "numeric_tolerance": "1e-12 relative/absolute floor1; zero sign/Infinity exact; NaN classification",
+      "result": "PASS",
+      "runtime": "10.0.12",
+      "settings_cases": 132,
+      "signal_decodes": 180,
+      "templates": 2,
+      "unit_cases": 9801,
+      "wire_equality": "exact FLECS strings and ACE bytes"
+    }
+  },
+  "linux": {
+    "job": 117125893854,
+    "tests": 42,
+    "chrome_regression": "PASS"
+  },
+  "artifact_id": 12067450576,
+  "original_dotnet_files_verified": 513,
+  "original_dotnet_changes": 0,
+  "scope": "Emulator E1 domain and dev preview, not full M5",
+  "pending": [
+    "full cement DFB network and seeded RNG",
+    "LAN payload providers, freeze and override chain",
+    "serial/Npcap hardware emitters",
+    "XML/catalog/21 commands/control pipe",
+    "GPUI UI with original Mac controls",
+    "tray/lifecycle and full payload size"
+  ]
+}

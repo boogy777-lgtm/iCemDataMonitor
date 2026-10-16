@@ -100,3 +100,21 @@ strict trailer whitespace (D17). Обе исправлены в Rust-копии 
 test включён в workspace. Локальные/cross-target результаты и exact CI фиксируются по
 фактическому run; Linux не считается выполнением C# oracle или Windows/GPU проверки.
 Границы описаны в EMULATOR_STATUS.ru.md.
+
+### Подтверждённый emulator E1 CI
+
+Код commit `e43ff8314e7c7f48cfbdc9389d90655986049a05`:
+[Actions run 38946224137](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38946224137)
+— **success**. Windows job 117125894186: 51 tests + 1 compile-fail doctest PASS;
+Linux job 117125893854: 42 tests и Chrome regression PASS. fmt/check/build/test/clippy,
+pin/edition gate и baseline 513/513 проходят на обеих ОС.
+
+Original C# oracle реально выполнен на .NET 10.0.12: 2 templates, 9 801 unit cases,
+132 settings cases, 32 DFB steps + 24 edges, 39 formatter cases, 5 exact ACE frames
+и 180 signal decodes — PASS. FLECS strings/ACE bytes exact; numerical tolerance
+1e-12 relative/absolute floor1, zero sign/Infinity exact, NaN classification.
+[CI artifact emulator-differential](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38946224137/artifacts/12067450576)
+получен и проверен. Машиночитаемый отчёт: migration/validation-emulator-e1.json.
+
+Проверены реальные EXE FLECS/CRLF/override и usage/input exits. Физические COM/LAN,
+full DFB composition и GPUI/tray не проверялись и не объявляются реализованными.
