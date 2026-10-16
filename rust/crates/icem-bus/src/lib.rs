@@ -106,10 +106,10 @@ impl Snapshot {
             })
         };
         let body = bytes.get(HEADER_BYTES..).ok_or(DecodeError::Truncated)?;
-        let words = body
-            .chunks_exact(2)
-            .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
-            .collect();
+        let (pairs, []) = body.as_chunks::<2>() else {
+            return Err(DecodeError::FileLength);
+        };
+        let words = pairs.iter().copied().map(u16::from_be_bytes).collect();
         Ok(Self {
             words,
             count,
@@ -126,7 +126,7 @@ impl Snapshot {
         self.zones[zone.index()]
     }
     pub fn pair_bits(&self, address: u16) -> Result<u32, DecodeError> {
-        if address < 4 || address % 2 != 0 {
+        if address < 4 || !address.is_multiple_of(2) {
             return Err(DecodeError::Address);
         }
         let pair = self
@@ -140,8 +140,7 @@ impl Snapshot {
         self.pair_bits(address).map(f32::from_bits)
     }
     pub fn unix_seconds(&self) -> Result<i32, DecodeError> {
-        self.pair_bits(4)
-            .map(|bits| i32::from_ne_bytes(bits.to_ne_bytes()))
+        self.pair_bits(4).map(u32::cast_signed)
     }
 }
 
@@ -170,6 +169,22 @@ mod tests {
         assert_eq!(snap.pair_bits(10)?, 0x7fc0_1234); // preserve NaN payload
         assert_eq!(snap.zone(Zone::Com).write_count, 42);
         assert!(!snap.zone(Zone::Lan).producer_active);
+        Ok(())
+    }
+    #[test]
+    fn signed_unix_timestamp_preserves_high_bit_and_boundaries() -> Result<(), DecodeError> {
+        for (bits, expected) in [
+            (0_u32, 0_i32),
+            (0x7fff_ffff, i32::MAX),
+            (0x8000_0000, i32::MIN),
+            (0xffff_ffff, -1),
+        ] {
+            let mut bytes = FIXTURE.to_vec();
+            // Independent wire encoding: low CDAB word followed by high word, each BE.
+            bytes[72..74].copy_from_slice(&(bits as u16).to_be_bytes());
+            bytes[74..76].copy_from_slice(&((bits >> 16) as u16).to_be_bytes());
+            assert_eq!(Snapshot::decode(&bytes)?.unix_seconds()?, expected);
+        }
         Ok(())
     }
     #[test]

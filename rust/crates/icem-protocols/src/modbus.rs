@@ -183,10 +183,13 @@ impl RegisterBank {
                     return Err(Exception::IllegalValue);
                 }
                 let data = body.get(7..7 + byte_count).ok_or(Exception::IllegalValue)?;
+                let (pairs, []) = data.as_chunks::<2>() else {
+                    return Err(Exception::IllegalValue);
+                };
                 let range =
                     RegisterRange::validate(address, quantity, self.count, function)?.as_range();
-                for (slot, pair) in self.words[range].iter_mut().zip(data.chunks_exact(2)) {
-                    *slot = u16::from_be_bytes([pair[0], pair[1]]);
+                for (slot, pair) in self.words[range].iter_mut().zip(pairs.iter().copied()) {
+                    *slot = u16::from_be_bytes(pair);
                 }
                 Ok(vec![unit, 16, body[2], body[3], body[4], body[5]])
             }

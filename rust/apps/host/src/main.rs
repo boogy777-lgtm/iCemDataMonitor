@@ -77,7 +77,9 @@ fn main() -> ExitCode {
     let options = match options() {
         Ok(options) => options,
         Err(error) => {
-            eprintln!("{error}\nUsage: icem-host-dev --modbus-fixture PATH [--bind 127.0.0.1:1502] [--duration-ms 10000]");
+            eprintln!(
+                "{error}\nUsage: icem-host-dev --modbus-fixture PATH [--bind 127.0.0.1:1502] [--duration-ms 10000]"
+            );
             return ExitCode::from(2);
         }
     };

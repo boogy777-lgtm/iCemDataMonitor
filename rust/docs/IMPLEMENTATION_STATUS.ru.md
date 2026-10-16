@@ -64,3 +64,5 @@ cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixture
 не читает dot-prefixed baseline на Linux; raw hash SPA сравнивал Windows CRLF checkout
 с frozen LF. Исправлены чтение metadata и canonical Git hash comparison; исходные .NET файлы не менялись.
 Ни одна полная строка parity matrix не получает PASS до Windows/AddIn/operator acceptance.
+
+Текущий toolchain — Rust 1.99.1 / Edition 2024: [политика и идиомы](RUST_IDIOMS.ru.md).

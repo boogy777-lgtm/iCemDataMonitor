@@ -25,7 +25,12 @@ jobs:
       - name: Install pinned Rust toolchain
         shell: pwsh
         run: |
-          rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy
+          # rustup installs the toolchain/components from rust/rust-toolchain.toml.
+          rustup show
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustc --version --verbose
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify source and skeleton
         shell: pwsh

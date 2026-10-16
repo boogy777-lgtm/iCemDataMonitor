@@ -8,7 +8,10 @@ fn snapshot(count: u16, active: [u8; 3]) -> Result<Snapshot, DecodeError> {
     for (index, flag) in active.into_iter().enumerate() {
         bytes[18 + 9 * index] = flag;
     }
-    for (index, pair) in bytes[64..].chunks_exact_mut(2).enumerate() {
+    let (pairs, []) = bytes[64..].as_chunks_mut::<2>() else {
+        return Err(DecodeError::FileLength);
+    };
+    for (index, pair) in pairs.iter_mut().enumerate() {
         pair.copy_from_slice(&(index as u16).to_be_bytes());
     }
     Snapshot::decode(&bytes)
@@ -90,7 +93,7 @@ fn maximum_quantities_and_last_address() -> Result<(), Exception> {
     assert_eq!(bank.process(&[1, 3, 0, 0, 0, 125]).len(), 253);
     assert_eq!(bank.process(&[1, 3, 0, 0, 0, 126]), [1, 0x83, 3]);
     let mut request = vec![1, 16, 0, 0, 0, 123, 246];
-    request.extend(std::iter::repeat(0x5a).take(246));
+    request.extend(std::iter::repeat_n(0x5a, 246));
     assert_eq!(bank.process(&request), [1, 16, 0, 0, 0, 123]);
     assert!(bank.words()[..123].iter().all(|word| *word == 0x5a5a));
     assert!(RegisterBank::new(3).is_err());
@@ -98,8 +101,8 @@ fn maximum_quantities_and_last_address() -> Result<(), Exception> {
 }
 
 #[test]
-fn mirror_plain_overwrite_raw_flags_inactive_reserve_and_absent_hold(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn mirror_plain_overwrite_raw_flags_inactive_reserve_and_absent_hold()
+-> Result<(), Box<dyn std::error::Error>> {
     let mut bank = RegisterBank::new(10_001).map_err(|error| format!("{error:?}"))?;
     let snap = snapshot(650, [1, 0, 2])?; // 2 is not active; old ticks deliberately irrelevant.
     bank.tick(MirrorInput::Fresh(&snap));
@@ -125,8 +128,8 @@ fn mirror_plain_overwrite_raw_flags_inactive_reserve_and_absent_hold(
 }
 
 #[test]
-fn resize_preserves_overlap_zeros_growth_and_matches_legacy_stale_order(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn resize_preserves_overlap_zeros_growth_and_matches_legacy_stale_order()
+-> Result<(), Box<dyn std::error::Error>> {
     let mut bank = RegisterBank::new(650).map_err(|error| format!("{error:?}"))?;
     bank.process(&[1, 6, 2, 137, 0xab, 0xcd]);
     let larger = snapshot(1_000, [0; 3])?;
@@ -160,8 +163,8 @@ fn all_function_bytes_and_small_bodies_are_total_and_writes_stay_bounded() -> Re
 }
 
 #[test]
-fn each_zone_mirrors_exact_words_and_preserves_other_zones(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn each_zone_mirrors_exact_words_and_preserves_other_zones()
+-> Result<(), Box<dyn std::error::Error>> {
     for (index, selected) in Zone::ALL.into_iter().enumerate() {
         let mut flags = [0; 3];
         flags[index] = 1;

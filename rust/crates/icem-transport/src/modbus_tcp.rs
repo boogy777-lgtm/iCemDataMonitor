@@ -209,20 +209,20 @@ impl Session {
                     Err(error) => return Err(error),
                 }
             }
-            if let Some(length) = self.frame_length()? {
-                if self.input.len() >= length {
-                    let response = bank
-                        .lock()
-                        .map_err(|_| io::Error::other("register mirror lock poisoned"))?
-                        .process(&self.input[6..length]);
-                    self.output.extend_from_slice(&self.input[..4]); // preserve TID and legacy PID echo
-                    let response_len = u16::try_from(response.len())
-                        .map_err(|_| io::Error::other("oversized Modbus response"))?;
-                    self.output.extend_from_slice(&response_len.to_be_bytes());
-                    self.output.extend_from_slice(&response);
-                    self.input.drain(..length);
-                    counters.requests.fetch_add(1, Ordering::Relaxed);
-                }
+            if let Some(length) = self.frame_length()?
+                && self.input.len() >= length
+            {
+                let response = bank
+                    .lock()
+                    .map_err(|_| io::Error::other("register mirror lock poisoned"))?
+                    .process(&self.input[6..length]);
+                self.output.extend_from_slice(&self.input[..4]); // preserve TID and legacy PID echo
+                let response_len = u16::try_from(response.len())
+                    .map_err(|_| io::Error::other("oversized Modbus response"))?;
+                self.output.extend_from_slice(&response_len.to_be_bytes());
+                self.output.extend_from_slice(&response);
+                self.input.drain(..length);
+                counters.requests.fetch_add(1, Ordering::Relaxed);
             }
         }
         if !self.output.is_empty() {

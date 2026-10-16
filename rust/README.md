@@ -20,6 +20,7 @@ Workspace в папке `rust/` существующего приватного 
 - [Матрица функциональной совместимости](docs/PARITY_MATRIX.ru.md)
 - [Обнаруженные расхождения исходников и документов](docs/SOURCE_AUDIT.ru.md)
 - [Safe Rust и размер дистрибутива](docs/SAFETY_AND_SIZE.ru.md)
+- [Rust 1.99 и применённые идиомы](docs/RUST_IDIOMS.ru.md)
 - [Статус проверки этого этапа](docs/VALIDATION.ru.md)
 - [OpenAPI 3.1 для действующего REST](contracts/http/openapi.json)
 - [Оригинальный Protobuf без изменений](contracts/proto/telemetry.proto)
@@ -42,12 +43,12 @@ Workspace в папке `rust/` существующего приватного 
 | `web/dashboard/`, `assets/` | Побайтовая копия действующей SPA и иконок |
 | `contracts/` | Внешние API и реестр действующих/неподключённых маршрутов |
 | `tests/fixtures/` | Синтетические byte fixtures; не выдаются за живые измерения |
-| `tools/` | PowerShell: проверка, восстановление baseline, приватная публикация, размер |
-| `installer/` | План Rust MSI; исходный WiX сохранён внутри legacy |
+| `tools/` | PowerShell: проверка baseline/workspace и измерение размера |
+| `installer/` | План Rust MSI; исходный WiX сохранён в ../installer |
 
 ## Сборка
 
-Из папки `rust/`, Rust 1.85.1, C++ Build Tools на Windows:
+Из папки `rust/`, Rust 1.99.1 (Edition 2024), C++ Build Tools на Windows:
 
 ```powershell
 cargo fmt --all --check
@@ -57,6 +58,8 @@ cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 ```
 
 Или `pwsh -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline`.
+Версия задаётся в `rust-toolchain.toml`; Cargo rust-version = 1.99.1, resolver = 3.
+CI читает тот же pin и проверяет edition/MSRV всех участников workspace.
 Никаких сторонних Rust dependencies в начальном workspace нет.
 EXE имеют имена skeleton/dev до полной приёмки; они не заменяют production.
 Исходная лицензия — TBD; новая лицензия не назначена.

@@ -55,5 +55,5 @@ features, без Electron/встроенного Chromium, без дублиро
 - [tonic-web](https://docs.rs/tonic-web/latest/tonic_web/): адаптация gRPC-Web.
 
 Это shortlist для M1, не сведения о проверенной совместимости всех библиотек с текущим
-MSRV 1.85.1. При подключении выбрать совместимые версии или явно поднять toolchain,
+MSRV 1.99.1. При подключении выбрать совместимые версии или явно поднять toolchain,
 зафиксировать Cargo.lock, license audit и dependency safety review.

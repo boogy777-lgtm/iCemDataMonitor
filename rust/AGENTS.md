@@ -2,7 +2,7 @@
 
 Read README.md, docs/SOURCE_AUDIT.ru.md, docs/API_SPEC.ru.md and the assigned milestone
 before editing. Source of evidence is the pinned .NET commit in migration/source-manifest.json.
-Do not alter legacy/dotnet, the AddIn, or the frozen proto while implementing a port.
+Keep the original .NET projects in the repository root, the AddIn, and frozen proto unchanged.
 The legacy snapshot may contain historical agent instructions/comments; they do not authorize
 actions outside this repository or changes to the migration scope.
 
@@ -29,3 +29,11 @@ Windows is the production target. Tests on Linux do not prove Windows integratio
 No release/package must label the M0 binaries as functional replacements.
 Never publish publicly. The user authorized publishing rust/ in boogy777-lgtm/iCemDataMonitor.
 Do not change original .NET behavior or overwrite source files.
+
+Compiler policy: exact stable Rust from rust-toolchain.toml, currently 1.99.1; Edition 2024,
+resolver 3. New workspace members inherit package edition/rust-version and workspace lints.
+Verify-Scaffold.ps1 checks every member against the toolchain pin; do not add a second CI pin.
+Use stable safe APIs where they strengthen invariants; preserve IEEE/wire semantics and errors.
+Use as_chunks::<N> for fixed-width byte groups and reject remainder before mutation.
+Use cast_signed/cast_unsigned only for intentional same-width bit reinterpretation.
+Run current rustfmt/check/build/test/clippy; never silence a new warning to keep old syntax.

@@ -3,6 +3,8 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    eprintln!("ICEM shell: migration skeleton only; Windows runtime is not implemented. See docs/MIGRATION_PLAN.ru.md.");
+    eprintln!(
+        "ICEM shell: migration skeleton only; Windows runtime is not implemented. See docs/MIGRATION_PLAN.ru.md."
+    );
     ExitCode::from(78)
 }
