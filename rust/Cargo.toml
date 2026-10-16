@@ -1,0 +1,32 @@
+[workspace]
+resolver = "2"
+members = ["crates/*", "apps/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+overflow-checks = true
+
+# Compare this with release using the SAME functionality and assets.
+# Keep unwinding: panic=abort would skip cleanup (tray/handles).
+[profile.size]
+inherits = "release"
+opt-level = "z"
+lto = "fat"

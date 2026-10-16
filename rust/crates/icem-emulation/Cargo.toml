@@ -1,0 +1,12 @@
+[package]
+name = "icem-emulation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+icem-protocols = { path = "../icem-protocols" }

@@ -1,0 +1,180 @@
+{
+  "source_commit": "96e2206562c9389d1543095232115d81eae4b692",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/status",
+      "status": "active",
+      "source": "../iCemDataMonitor.Host.Core/HostComposition.cs",
+      "line": 177
+    },
+    {
+      "method": "GET",
+      "path": "/api/status/summary",
+      "status": "active",
+      "source": "../iCemDataMonitor.Host.Core/HostComposition.cs",
+      "line": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/sniffer/status",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 18
+    },
+    {
+      "method": "GET",
+      "path": "/api/sniffer/service-vectors",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 28
+    },
+    {
+      "method": "GET",
+      "path": "/api/sniffer/signal-preview",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 34
+    },
+    {
+      "method": "POST",
+      "path": "/api/sniffer/control",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 44
+    },
+    {
+      "method": "POST",
+      "path": "/api/sniffer/capture",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 72
+    },
+    {
+      "method": "GET",
+      "path": "/api/sniffer/capture/status",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 110
+    },
+    {
+      "method": "GET",
+      "path": "/api/sniffer/capture/download",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 131
+    },
+    {
+      "method": "GET",
+      "path": "/api/tee/status",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 154
+    },
+    {
+      "method": "POST",
+      "path": "/api/tee/control",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "line": 159
+    },
+    {
+      "method": "GET",
+      "path": "/api/sources",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SourceEndpoints.cs",
+      "line": 20
+    },
+    {
+      "method": "GET",
+      "path": "/api/data",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/SourceEndpoints.cs",
+      "line": 50
+    },
+    {
+      "method": "GET",
+      "path": "/api/com0com/status",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/Com0ComEndpoints.cs",
+      "line": 19
+    },
+    {
+      "method": "POST",
+      "path": "/api/com0com/open-config",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/Com0ComEndpoints.cs",
+      "line": 28
+    },
+    {
+      "method": "POST",
+      "path": "/api/com0com/refresh",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/Com0ComEndpoints.cs",
+      "line": 47
+    },
+    {
+      "method": "GET",
+      "path": "/api/templates/files",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/TemplatesEndpoints.cs",
+      "line": 24
+    },
+    {
+      "method": "GET",
+      "path": "/api/templates/detail",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/TemplatesEndpoints.cs",
+      "line": 38
+    },
+    {
+      "method": "POST",
+      "path": "/api/templates/save",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/TemplatesEndpoints.cs",
+      "line": 73
+    },
+    {
+      "method": "POST",
+      "path": "/api/templates/delete",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/TemplatesEndpoints.cs",
+      "line": 142
+    },
+    {
+      "method": "GET",
+      "path": "/api/regs",
+      "status": "active",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs",
+      "line": 79
+    },
+    {
+      "method": "GET",
+      "path": "/api/regs/history",
+      "status": "active",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs",
+      "line": 130
+    },
+    {
+      "method": "GET",
+      "path": "/api/modbus/preview",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/ModbusPreviewEndpoints.cs",
+      "line": 18
+    },
+    {
+      "method": "GET",
+      "path": "/api/registry",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs",
+      "line": 17
+    },
+    {
+      "method": "GET",
+      "path": "/api/registry/mapping",
+      "status": "defined_not_mapped_by_current_host",
+      "source": "../iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs",
+      "line": 68
+    }
+  ]
+}

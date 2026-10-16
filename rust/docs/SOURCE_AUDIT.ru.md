@@ -1,0 +1,44 @@
+# Аудит исходной базы
+
+База: `96e2206562c9389d1543095232115d81eae4b692`, проверено чтением файлов 2026-10-16.
+512 файлов получены и проверены по Git blob SHA-1. Отсутствует только
+`docs/Wireshark/iCemCrio.pcapng.bin` (1,415,304 bytes, hash в manifest).
+Ни live-стенд, ни сборка исходного .NET в этой среде не запускались.
+
+## Расхождения, которые нельзя переносить молча
+
+| ID | Доказательство в legacy/dotnet | Вывод для миграции |
+|---|---|---|
+| D01 | README пишет FC03/04; Transport/ModbusTcpPublisher.ProcessRequest имеет 03/04/06/10 hex | Обязательно переносить FC06/16, writable зеркало и его hold/overwrite |
+| D02 | specs/contracts/CONTRACT_BusV2.yaml упоминает dual writer; Host.Core/HostComposition.RegisterCoreServices прямо удаляет BusZoneWriter/LanBusSink | AddIn — единственный писатель; сниффер только reader. Старое описание dual writer не активировать |
+| D03 | Host.Core/Endpoints содержит много маршрутов; HostAppFactory вызывает только MapFrozenOpsSurface | 4 действующих REST GET, остальные — неподключённые обработчики; см. route inventory |
+| D04 | telemetry.proto LayerControlRequest.desired_state существует, TelemetryServiceImpl.SetLayer вызывает Toggle и не читает поле | Legacy API v1 — toggle, НЕ идемпотентный set. Не ретраить слепо; desired-state исправление требует отдельной версии/решения |
+| D05 | ModbusTcpPublisher.ProcessWriteSingle проверяет Length<5, потом читает индекс 5 | При 5-байтовом теле возможен выход за границу и закрытие соединения. Rust требует ≥6; точный ответ malformed запросу фиксируется как intentional safety delta, не valid-traffic regression |
+| D06 | HostComposition.StartLayersAsync запускает зарегистрированный sniffer без проверки layers.LanSniffer | Проверить реальный эффект lansniffer_on=0 в M1; не обещать соответствие таблице конфигурации без прогона |
+| D07 | BusReader.IsActive учитывает age<5s; ModbusTcpPublisher.IsZoneActive использует сырое Active | UI может показать stale, а Modbus продолжить mirror при flag=1. В v1 это разные предикаты; не объединять автоматически |
+| D08 | CLI get main переинтерпретирует int32 timestamp как float; gRPC отдаёт int32; /api/regs — ISO string; history stores float32 seconds | Сохранить отдельные projection contracts, не заменять одним JSON-типом |
+| D09 | BusReader повторяет last-good на некоторых ошибках без выставления Stale; README обещает единый stale-hold | Перед M2 захватить failure traces. Любое улучшение stale-маркировки записать отдельным решением, не приписывать baseline |
+| D10 | Modbus комментарий запрещает resize stale, но TickOnce вызывает ResizeToBus до проверки snap.Stale | Зафиксировать фактические traces роста/уменьшения/ошибок; не полагаться на комментарий |
+| D11 | specs/INDEX.yaml сохраняет старое embed-описание emulator; Host/Contracts и EmulatorAppContract отделяют приложение | Эмулятор — отдельный процесс/окно/трей/CLI, host его не закрывает |
+| D12 | docs пути установки расходятся с EmulatorAppContract/installer/Product.wxs | Перед MSI составить фактическую таблицу Directory/Component/Shortcut. Не выбирать путь по README |
+| D13 | AceLanEmitter: BurstFrameIntervalMs=5.25, sleep округлён Math.Round до 5 ms | Проверять фактический pacing/timing, не обещать точность 5.25 ms по комментарию |
+
+Иерархия доказательств: текущая задача пользователя → pinned executable call graph и
+контрактные тесты → действующие specs → описательный README/комментарии.
+Конфликт кода и требования помечается как открытое решение. Неопределённость не заменяется
+предположением «как должно работать». Будущие функции (OPC DA, ace_full, снятые API)
+не становятся частью rewrite автоматически.
+
+## Исходники с наиболее важными контрактами
+
+- `Burservis.iCem.DataMonitor/BusLayout.cs`, `BusWriter.cs` — остающийся producer.
+- `iCemDataMonitor.Sdk/Bus/BusLayout.cs`, `Data/Bus/BusReader.cs` — layout и reader.
+- `iCemDataMonitor.Transport/ModbusTcpPublisher.cs` — фактическая Modbus семантика.
+- `iCemDataMonitor.Host/HostAppFactory.cs`, `Host.Core/HostComposition.cs` — active wiring.
+- `iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs` и оригинальный proto — RPC.
+- `iCemDataMonitor.Host/CliMode/CliForwarder.cs` — argv/stdout/exit.
+- `iCemDataMonitor.Host/Tray/*`, `iCemEmulator/TrayIconHost.cs` — отдельные tray/lifecycle.
+- `iCemEmule.Core/Control/*`, `Emitters/*`, `Dfb/*`, `Core/UnitConversion.cs` — emulator.
+
+Названия `Data/Bus` в сокращённых ссылках выше означают `iCemDataMonitor.Data/Bus`.
+Полный список файлов и точные хеши — `migration/source-manifest.json`.

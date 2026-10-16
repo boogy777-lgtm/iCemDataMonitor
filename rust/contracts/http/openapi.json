@@ -1,0 +1,571 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "iCem Data Monitor frozen REST compatibility API",
+    "version": "0.1.0",
+    "description": "Contract of source commit 96e2206; Rust handlers are not implemented. Non-finite float behavior requires baseline characterization."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8090",
+      "description": "Default loopback, web_port configurable"
+    }
+  ],
+  "paths": {
+    "/api/status": {
+      "get": {
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "Baseline response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        },
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/status/summary": {
+      "get": {
+        "operationId": "getStatusSummary",
+        "responses": {
+          "200": {
+            "description": "Baseline response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          }
+        },
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/regs": {
+      "get": {
+        "operationId": "getRegisterMirror",
+        "responses": {
+          "200": {
+            "description": "Baseline response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Registers"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Bus unavailable, or history disabled when web layer is off.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/regs/history": {
+      "get": {
+        "operationId": "getRegisterHistory",
+        "responses": {
+          "200": {
+            "description": "Baseline response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/History"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Bus unavailable, or history disabled when web layer is off.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid addr",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-implementation-status": "planned",
+        "description": "History availability is checked before query validation (web_on=0 => 503 even if addr invalid).",
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "minimum": 4,
+                "maximum": 598,
+                "multipleOf": 2
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ZoneHealth": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "ageMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "active",
+          "ageMs"
+        ]
+      },
+      "Liveness": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "producerFlag": {
+            "type": "boolean"
+          },
+          "ageMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "writeCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "active",
+          "producerFlag",
+          "ageMs",
+          "writeCount"
+        ]
+      },
+      "ZonesHealth": {
+        "type": "object",
+        "properties": {
+          "com": {
+            "$ref": "#/components/schemas/ZoneHealth"
+          },
+          "lan": {
+            "$ref": "#/components/schemas/ZoneHealth"
+          },
+          "raw": {
+            "$ref": "#/components/schemas/ZoneHealth"
+          }
+        },
+        "required": [
+          "com",
+          "lan",
+          "raw"
+        ]
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "busOpen": {
+            "type": "boolean"
+          },
+          "addInAlive": {
+            "type": "boolean"
+          },
+          "heartbeat": {
+            "type": "integer"
+          },
+          "comPort": {
+            "type": "integer"
+          },
+          "lanStatus": {
+            "type": "integer"
+          },
+          "zones": {
+            "$ref": "#/components/schemas/ZonesHealth"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "busOpen",
+          "addInAlive",
+          "heartbeat",
+          "comPort",
+          "lanStatus",
+          "zones",
+          "updatedAtUtc"
+        ]
+      },
+      "LayersSummary": {
+        "type": "object",
+        "properties": {
+          "modbus": {
+            "type": "boolean"
+          },
+          "modbusPort": {
+            "type": "integer"
+          },
+          "sniffer": {
+            "type": "boolean"
+          },
+          "opcDa": {
+            "type": "boolean"
+          },
+          "setAsDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "modbus",
+          "modbusPort",
+          "sniffer",
+          "opcDa",
+          "setAsDefault"
+        ]
+      },
+      "SnifferStats": {
+        "type": "object",
+        "properties": {
+          "up": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string"
+          },
+          "totalFrames": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "aceFrames": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "framesPerSec": {
+            "type": "number"
+          },
+          "lastFrameAgeSec": {
+            "type": "number"
+          },
+          "distinctMacs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "up",
+          "state",
+          "totalFrames",
+          "aceFrames",
+          "framesPerSec",
+          "lastFrameAgeSec",
+          "distinctMacs"
+        ]
+      },
+      "Scalar": {
+        "type": "object",
+        "properties": {
+          "reg": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "integer"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "reg",
+          "name",
+          "value",
+          "label"
+        ]
+      },
+      "Pair": {
+        "type": "object",
+        "properties": {
+          "idx": {
+            "type": "integer"
+          },
+          "addr": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 598,
+            "multipleOf": 2
+          },
+          "addrEnd": {
+            "type": "integer"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "unix",
+              "float"
+            ]
+          }
+        },
+        "required": [
+          "idx",
+          "addr",
+          "addrEnd",
+          "name",
+          "value",
+          "kind"
+        ]
+      },
+      "RegisterZone": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "baseReg": {
+            "type": "integer"
+          },
+          "len": {
+            "type": "integer"
+          },
+          "pairs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Pair"
+            }
+          }
+        },
+        "required": [
+          "label",
+          "baseReg",
+          "len",
+          "pairs"
+        ]
+      },
+      "HistorySample": {
+        "type": "object",
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "v": {
+            "type": "number",
+            "format": "float",
+            "description": "Float32 value, including numeric Unix seconds at addr=4 (legacy precision)."
+          }
+        },
+        "required": [
+          "ts",
+          "v"
+        ]
+      },
+      "History": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "maxItems": 600,
+          "items": {
+            "$ref": "#/components/schemas/HistorySample"
+          }
+        },
+        "description": "Keys are requested absolute even addresses as decimal strings; samples oldest to newest."
+      },
+      "Summary": {
+        "type": "object",
+        "properties": {
+          "busOpen": {
+            "type": "boolean"
+          },
+          "addInAlive": {
+            "type": "boolean"
+          },
+          "heartbeat": {
+            "type": "integer"
+          },
+          "zones": {
+            "$ref": "#/components/schemas/ZonesHealth"
+          },
+          "layers": {
+            "$ref": "#/components/schemas/LayersSummary"
+          },
+          "snifferStats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnifferStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "busOpen",
+          "addInAlive",
+          "heartbeat",
+          "zones",
+          "layers",
+          "snifferStats",
+          "updatedAtUtc"
+        ]
+      },
+      "Registers": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "object",
+            "properties": {
+              "scalars": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "$ref": "#/components/schemas/Scalar"
+                }
+              },
+              "liveness": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "scalars",
+              "liveness"
+            ]
+          },
+          "zones": {
+            "type": "object",
+            "properties": {
+              "com": {
+                "$ref": "#/components/schemas/RegisterZone"
+              },
+              "lan": {
+                "$ref": "#/components/schemas/RegisterZone"
+              },
+              "raw": {
+                "$ref": "#/components/schemas/RegisterZone"
+              }
+            },
+            "required": [
+              "com",
+              "lan",
+              "raw"
+            ]
+          },
+          "liveness": {
+            "type": "object",
+            "properties": {
+              "com": {
+                "$ref": "#/components/schemas/Liveness"
+              },
+              "lan": {
+                "$ref": "#/components/schemas/Liveness"
+              },
+              "raw": {
+                "$ref": "#/components/schemas/Liveness"
+              }
+            },
+            "required": [
+              "com",
+              "lan",
+              "raw"
+            ]
+          },
+          "updatedAtUtc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "stale": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "system",
+          "zones",
+          "liveness",
+          "updatedAtUtc",
+          "stale"
+        ]
+      }
+    }
+  }
+}

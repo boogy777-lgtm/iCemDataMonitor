@@ -1,0 +1,3087 @@
+{
+  "source_repository": "boogy777-lgtm/iCemDataMonitor",
+  "source_commit": "96e2206562c9389d1543095232115d81eae4b692",
+  "source_tree": "48ff275da922e058cf799e565f7e1ed63773c67d",
+  "retrieved_on": "2026-10-16",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "git_blob_sha1": "b3766a719bb567cf3ec609379a0b91dca3234914",
+      "size": 1211,
+      "available": true
+    },
+    {
+      "path": ".gitattributes",
+      "git_blob_sha1": "59c8a8faad1d68a0e7db37f875159c4ac2c6721e",
+      "size": 863,
+      "available": true
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
+      "size": 2190,
+      "available": true
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "git_blob_sha1": "c1eeef21286f688da9b9e05d4fddc99277b7366d",
+      "size": 2314,
+      "available": true
+    },
+    {
+      "path": ".gitignore",
+      "git_blob_sha1": "30b63e9c3a60741814ae7b79790e2e45e405bc7d",
+      "size": 686,
+      "available": true
+    },
+    {
+      "path": ".vscode/extensions.json",
+      "git_blob_sha1": "f3c12b09b7d0d990bdf0f9a221505503fe110253",
+      "size": 250,
+      "available": true
+    },
+    {
+      "path": ".vscode/tasks.json",
+      "git_blob_sha1": "35b2f6f1df711cda47f4cd830181603ddcd0e2e6",
+      "size": 1463,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/Burservis.iCem.DataMonitor.Tests.csproj",
+      "git_blob_sha1": "0410bab1ff4090c6b3285d23a3a15e389f9a52c2",
+      "size": 1515,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/BusLayoutTests.cs",
+      "git_blob_sha1": "965582a6bc9e7d3c887c3bc347de576507dc5ccf",
+      "size": 10874,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/BusWriteQueueTests.cs",
+      "git_blob_sha1": "b9bc307d194e6dbf93c48595a33ab883f0863700",
+      "size": 3273,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/BusWriterDaclTests.cs",
+      "git_blob_sha1": "c73d47f384fe278a7ca981befcbaab44f6300c76",
+      "size": 8199,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/BusWriterTests.cs",
+      "git_blob_sha1": "f19c82887691d02425b0b79849f779490643c153",
+      "size": 31114,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/CdabCodecTests.cs",
+      "git_blob_sha1": "511be0e2705a2b1111e8dadee797e69cca60f4c7",
+      "size": 1841,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/ComFeedLatchTests.cs",
+      "git_blob_sha1": "7014725a7290fed9def9f217035f3daa0b1c0dd8",
+      "size": 3216,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/DataMonitorAddressMapTests.cs",
+      "git_blob_sha1": "1cd43b4a2c6a5fb432c3ac57f4129618be2c91fd",
+      "size": 17847,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/DataMonitorEdgeTruthTableTests.cs",
+      "git_blob_sha1": "7c37c7726713e2eb044673b7c35b6b7ce34d861c",
+      "size": 34878,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/DataMonitorPollLivenessTests.cs",
+      "git_blob_sha1": "f3a1605b4a9fd7cac9fe2bf8c595527ddff2cae8",
+      "size": 22635,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/LanSourceTrackerTests.cs",
+      "git_blob_sha1": "82b7d6d2d8157096e8cfb14d2c99ee9be4a8f8b0",
+      "size": 5827,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/PollResolutionTests.cs",
+      "git_blob_sha1": "dcb0aaf1e3bd143b056c5ec0bcc757b70397e76b",
+      "size": 12071,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/TapLogTests.cs",
+      "git_blob_sha1": "3e09f435111a31e4bb25ae036cb0daece0e879ee",
+      "size": 4652,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/TestAssembly.cs",
+      "git_blob_sha1": "87c84e4a72dc912f01906adb14b3adeacabf0dd9",
+      "size": 238,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/ZoneLivenessTests.cs",
+      "git_blob_sha1": "28414abb100391c925dbd99c47576dcc079725a3",
+      "size": 3685,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj",
+      "git_blob_sha1": "b2e07d754433cffaa4207850430546dccb11b95a",
+      "size": 6283,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/BusAccessDeniedException.cs",
+      "git_blob_sha1": "1aad6e7de7c081268ceeb182177bdc6058b457c9",
+      "size": 3118,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/BusLayout.cs",
+      "git_blob_sha1": "1f4955ec2548a1e6f7e78a3340a4e485a3b420b9",
+      "size": 19363,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/BusSelfTest.cs",
+      "git_blob_sha1": "9ee8c4bc2da67e5ab235d222e3bca559b6a6a5cf",
+      "size": 40449,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/BusWriteQueue.cs",
+      "git_blob_sha1": "53e11a3c6991239c8a0a80c70ed508c34ed0566a",
+      "size": 2717,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/BusWriter.cs",
+      "git_blob_sha1": "ae1d03cbce01108d5894929a5a4c6cb9deed1c46",
+      "size": 45596,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/ComFeedLatch.cs",
+      "git_blob_sha1": "a5858f93607c0c2accdce5ece8b14407975cc5ae",
+      "size": 3127,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/DataMonitorAddressMap.cs",
+      "git_blob_sha1": "71d819012580228699f41accf24acb23df0ee0fd",
+      "size": 28579,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/DataMonitorModule.cs",
+      "git_blob_sha1": "407dd96f533fdbf1a477aa75ac270dab3e2cde2e",
+      "size": 60493,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/LanSourceTracker.cs",
+      "git_blob_sha1": "a494bea88b2e3e832f9d23ced9e2fa7ee07def0e",
+      "size": 4646,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/NameNormalizer.cs",
+      "git_blob_sha1": "e92566a5e0e41ddd85d36dff65c5ce162b0ff241",
+      "size": 1743,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/PollResolution.cs",
+      "git_blob_sha1": "ef1f324735e958b1adc651cbd837ee69aabf8389",
+      "size": 10724,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/Properties/AssemblyInfo.cs",
+      "git_blob_sha1": "25377d2434de6a8cda95fabdbb59a0a71bfad091",
+      "size": 715,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/RawCsvFields.cs",
+      "git_blob_sha1": "89dad83393a15cbea1f9a227e01fb46be70c4bf3",
+      "size": 3121,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/TapLog.cs",
+      "git_blob_sha1": "1be16afeb82f9b4c18939f6b2d176f5051486b0d",
+      "size": 7212,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/UnixTimestamp.cs",
+      "git_blob_sha1": "03621e549c655fb1dc21f0900b3fb01137dcc683",
+      "size": 1810,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/ZoneLiveness.cs",
+      "git_blob_sha1": "63adeb8dcbf8ae9167622b7bb3da35be84ec4166",
+      "size": 2821,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/ZoneStaleness.cs",
+      "git_blob_sha1": "9d78dbc6eb95b96c2a7aa7b6c34e237bb57a1319",
+      "size": 1159,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/gen_datamonitor_map.ps1",
+      "git_blob_sha1": "d5e5d45552192394dc6d96da9f9e66c673cdb88b",
+      "size": 14802,
+      "available": true
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/lan_vendor_aliases.csv",
+      "git_blob_sha1": "b059a6e4e820eef280d560ce932e4d87b8a228de",
+      "size": 1217,
+      "available": true
+    },
+    {
+      "path": "CI.slnf",
+      "git_blob_sha1": "4fb782b92866b62d8aac981ddf1491e015e4a14a",
+      "size": 1635,
+      "available": true
+    },
+    {
+      "path": "Directory.Build.props",
+      "git_blob_sha1": "ccaa7602c6d455a7fb9a37f1db59104af3edcf50",
+      "size": 1531,
+      "available": true
+    },
+    {
+      "path": "PROTOCOL.md",
+      "git_blob_sha1": "c5259ee6774cb936f25d6bc560bf71a15e537c49",
+      "size": 56067,
+      "available": true
+    },
+    {
+      "path": "README.md",
+      "git_blob_sha1": "1cc13aab5d4274ec185e65e2aa99d565d2369656",
+      "size": 8645,
+      "available": true
+    },
+    {
+      "path": "VERSION",
+      "git_blob_sha1": "e516bb9d963a0cc79a2d530e45103ac21eac0643",
+      "size": 6,
+      "available": true
+    },
+    {
+      "path": "assets/iCemDataMonitor.ico",
+      "git_blob_sha1": "30c6a34e28f570d2d76e03a6f7e51ba64384b499",
+      "size": 13115,
+      "available": true
+    },
+    {
+      "path": "assets/iCemEmule.ico",
+      "git_blob_sha1": "856c7fda601bc45743679d6be1f97f7854b92ae4",
+      "size": 12524,
+      "available": true
+    },
+    {
+      "path": "assets/iCemEmule_256.png",
+      "git_blob_sha1": "469b27c125e24393e4c13a6c8476402c7720986e",
+      "size": 5323,
+      "available": true
+    },
+    {
+      "path": "assets/iCemPOC.ico",
+      "git_blob_sha1": "30c6a34e28f570d2d76e03a6f7e51ba64384b499",
+      "size": 13115,
+      "available": true
+    },
+    {
+      "path": "assets/iCemPOC_256.png",
+      "git_blob_sha1": "727517d7bb3556b9cc2339cc9cf5d599a1b19b67",
+      "size": 5554,
+      "available": true
+    },
+    {
+      "path": "build.ps1",
+      "git_blob_sha1": "a9d935c0b06b06db595e262dbb59f5f31ff91adc",
+      "size": 1196,
+      "available": true
+    },
+    {
+      "path": "docs/Wireshark/CrioTest4.pcapng",
+      "git_blob_sha1": "d6b9cec0410923d989571db3cd51601f6ceaaffb",
+      "size": 12664,
+      "available": true
+    },
+    {
+      "path": "docs/Wireshark/PROTOCOL.md",
+      "git_blob_sha1": "c5259ee6774cb936f25d6bc560bf71a15e537c49",
+      "size": 56067,
+      "available": true
+    },
+    {
+      "path": "docs/Wireshark/golden_verify.ps1",
+      "git_blob_sha1": "4881c2956e1c64f5dd1f0065b82708d8b9bc8207",
+      "size": 3827,
+      "available": true
+    },
+    {
+      "path": "docs/Wireshark/iCem без крио.pcapng.bin",
+      "git_blob_sha1": "05a156571a84eaa46600c212841f4bbeb0b6ca33",
+      "size": 287560,
+      "available": true
+    },
+    {
+      "path": "docs/Wireshark/iCemCrio.pcapng.bin",
+      "git_blob_sha1": "47671f504e01e757d005d1e56a2f26a8a594e5f8",
+      "size": 1415304,
+      "available": true
+    },
+    {
+      "path": "docs/architecture.md",
+      "git_blob_sha1": "464e1416c3a4d6e4d82b837d33932db8fac82284",
+      "size": 8065,
+      "available": true
+    },
+    {
+      "path": "docs/config.md",
+      "git_blob_sha1": "84f5df4052dc1cd967a353c5591defd9e74fbf7e",
+      "size": 6476,
+      "available": true
+    },
+    {
+      "path": "docs/development.md",
+      "git_blob_sha1": "66ccd373b78e913acf66d0679158cba8a01eaf91",
+      "size": 7294,
+      "available": true
+    },
+    {
+      "path": "docs/install.md",
+      "git_blob_sha1": "84ec4832c8e545fcf77ea171fe3868f76242c770",
+      "size": 8926,
+      "available": true
+    },
+    {
+      "path": "docs/release.md",
+      "git_blob_sha1": "f57a3104c227cbb997c059a8969554343e1be698",
+      "size": 4450,
+      "available": true
+    },
+    {
+      "path": "global.json",
+      "git_blob_sha1": "545c92ce961dfe7574fe57b5e70fe629645547ba",
+      "size": 81,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Contracts.Tests/TelemetryContractTests.cs",
+      "git_blob_sha1": "b047081168534c418e2caf65e136ca4dc32a5a2c",
+      "size": 12661,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Contracts.Tests/iCemDataMonitor.Contracts.Tests.csproj",
+      "git_blob_sha1": "38f859f32b29bf24a3702b8fb87d9e487f2b57f4",
+      "size": 1105,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Contracts.Tests/telemetry.proto.fields.json",
+      "git_blob_sha1": "32cff3bb635d4f91e1c6c10426f7eaf48f519d07",
+      "size": 3840,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Contracts.Tests/telemetry.proto.sha256",
+      "git_blob_sha1": "3a70a58c588a032a85c8892e3e46e34f1419d8e9",
+      "size": 64,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Contracts/HostChannelNames.cs",
+      "git_blob_sha1": "0d588584bd1f82471129b2b663fd77f2ce6e0b29",
+      "size": 446,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Contracts/Protos/telemetry.proto",
+      "git_blob_sha1": "ddfb4e328873723989a83a964d31ba96f3c1bfa2",
+      "size": 16906,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Contracts/iCemDataMonitor.Contracts.csproj",
+      "git_blob_sha1": "b586358962fdfaad48e0294b1aefe33d90d48dd8",
+      "size": 1036,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/ArchTests.cs",
+      "git_blob_sha1": "a8c57cb7b2b9dcbfac28008695eecde056166e51",
+      "size": 7816,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/ContractTests.cs",
+      "git_blob_sha1": "9fc8930f326d3154ff67ff11bc99367f0007bdad",
+      "size": 21857,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/IniConfigTests.cs",
+      "git_blob_sha1": "0aa34b3605dbd2343bd85d0367346e3c3f8ec6c8",
+      "size": 22330,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/Usings.cs",
+      "git_blob_sha1": "c802f4480b198aad9bb8709a616c0891f99086c9",
+      "size": 20,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/iCemDataMonitor.Core.Tests.csproj",
+      "git_blob_sha1": "3da90787fd9889a38a9592ff19006a3995de61a4",
+      "size": 843,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/Config/IniConfig.cs",
+      "git_blob_sha1": "8ea89f09bd5e8bef1612568557baf458c4838544",
+      "size": 33906,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/Config/LayerFlags.cs",
+      "git_blob_sha1": "a125b54d23d8bfd6743c21e5e93b85f5fb8d032b",
+      "size": 1286,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/Extensions/CoreServicesExtensions.cs",
+      "git_blob_sha1": "ffc3324c3cbb87bd2106579c26c38da60105b554",
+      "size": 1155,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/HealthCheckService.cs",
+      "git_blob_sha1": "11448d2eb9d6795924f24732cecc6db9b0be23fc",
+      "size": 4535,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/Models/CoreOptions.cs",
+      "git_blob_sha1": "ff9f6f835a23909c813009cb062cc19b2b3443b6",
+      "size": 1359,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/Models/HealthEvent.cs",
+      "git_blob_sha1": "ce543500262a74bbfc1edf5030b3d4012944f179",
+      "size": 311,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/PipelineWorker.cs",
+      "git_blob_sha1": "a03ae6dfafc29d951a7c372601caa96003337718",
+      "size": 15995,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Core/iCemDataMonitor.Core.csproj",
+      "git_blob_sha1": "068177be668d4d244f0ea9317cc66e06aa4a2c83",
+      "size": 1341,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/ArchitectureTests.cs",
+      "git_blob_sha1": "7bfdd31d079c8fcb7d2b5985203864551380ab38",
+      "size": 3851,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusAccessDeniedTests.cs",
+      "git_blob_sha1": "5b3df6e7adeb6a2ce539e1177348e58b5e4ac4f2",
+      "size": 11060,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusAddrRingServiceTests.cs",
+      "git_blob_sha1": "2a609202b8e94e974e00bc17e3db744f4df72bd7",
+      "size": 4944,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusDecodeTruthTableTests.cs",
+      "git_blob_sha1": "65b95e6d97ff5c9e6f5a03893e6f00e4ca60b322",
+      "size": 11783,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusOpenTruthTableTests.cs",
+      "git_blob_sha1": "2c2c622d7709be2a3ca267356237f4f12d75f6c2",
+      "size": 30970,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusReaderReadOnlyTests.cs",
+      "git_blob_sha1": "1694a68773a6c894e4dc5c3384704572dee9a5b8",
+      "size": 7929,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusReaderTests.cs",
+      "git_blob_sha1": "4d72e2182707ecfc9bc980542665d581939333d9",
+      "size": 19555,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusRingServiceTests.cs",
+      "git_blob_sha1": "c5d65a88cdd3477637f4f9ea28fcc80c58c09337",
+      "size": 3960,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusTestFactory.cs",
+      "git_blob_sha1": "af3b44e1b0be972b9c4d4f80507442789a944c88",
+      "size": 9117,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/DataBusLogTests.cs",
+      "git_blob_sha1": "11d81cf04fa6899de8ecb7227c085e7b4b549f2d",
+      "size": 6108,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/IniConfigSearchOrderTests.cs",
+      "git_blob_sha1": "024ad7fba0dfb931b2cc6630742f861c508391bc",
+      "size": 13579,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs",
+      "git_blob_sha1": "faded2621f43084b8298713488c354e3a77c4834",
+      "size": 16336,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/RingHistoryTests.cs",
+      "git_blob_sha1": "08ad8b0ac69d6b10312ae42a053472f66e457fd3",
+      "size": 6618,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/TestBootstrap.cs",
+      "git_blob_sha1": "67301005a7d51735af2b1fb8f4eede4155e3f492",
+      "size": 610,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/iCemDataMonitor.Data.Tests.csproj",
+      "git_blob_sha1": "768bb6b9f464b9dd9d291d49e218adc53d03c407",
+      "size": 1216,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusAccessDeniedException.cs",
+      "git_blob_sha1": "aab87b2efae58555a83fe32696dc075e5942bb94",
+      "size": 6243,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusAddrRingService.cs",
+      "git_blob_sha1": "707a2d3110d2ca9487380b875822c52825b89dba",
+      "size": 3144,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusMapping.cs",
+      "git_blob_sha1": "97d2897656b515c61e5068ee1a1d6e3a95ca8a06",
+      "size": 7238,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusReader.cs",
+      "git_blob_sha1": "0de6a74f8f2517e1e946525e958f37b61b156822",
+      "size": 27586,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusRingService.cs",
+      "git_blob_sha1": "14e1451d73a5a472ae1e5ec6c2796677ab2a0d54",
+      "size": 3591,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/RingHistory.cs",
+      "git_blob_sha1": "f521a24e20a21b09c59af1e1ec985db9001d712d",
+      "size": 3906,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/DataBusLog.cs",
+      "git_blob_sha1": "75713ea2ffb7f41c22962610d2525e210e38bb71",
+      "size": 4319,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/FamilyAwareCatalog.cs",
+      "git_blob_sha1": "a90f1c341ec649c8a19a82f4317a470766c7bcea",
+      "size": 2294,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/ISourceStore.cs",
+      "git_blob_sha1": "382dbc431e9d0b270ec5fc619d8b82364867b167",
+      "size": 1462,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/InMemoryConfigStore.cs",
+      "git_blob_sha1": "0890ae5c2dae07c86f6b8055eff48ac8f0dcac54",
+      "size": 12080,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/LogsCleanup.cs",
+      "git_blob_sha1": "8350b47e38d936c942f4a99118977932b02145c0",
+      "size": 1626,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/SourceStatus.cs",
+      "git_blob_sha1": "821efc8a92a34cd6fe0f4d7465072e7ddf55364d",
+      "size": 1084,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Telemetry/MetricsSampler.cs",
+      "git_blob_sha1": "2cd119edb2fb2ba2c7ee590713c0a5a78fc9885c",
+      "size": 8790,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/Telemetry/RegisterDecoder.cs",
+      "git_blob_sha1": "6ec8e0ba3a045c49abef1553090bf094ae2d4fdf",
+      "size": 2074,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Data/iCemDataMonitor.Data.csproj",
+      "git_blob_sha1": "338696acd1e8ddda2283d6376c6371ed58249a92",
+      "size": 1029,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "git_blob_sha1": "70b93aa8484f04ea7c47621619da2a5fed10204e",
+      "size": 21700,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml.cs",
+      "git_blob_sha1": "4fa0a9b013409e04f9c79a9260e70cd74fa0dfe9",
+      "size": 34483,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/EmulatorViewModel.cs",
+      "git_blob_sha1": "48a071159d8fbad2835f5fe672c350f8445a5b79",
+      "size": 42215,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "git_blob_sha1": "bf63720c2bff59563f8544d1c3c3fd5fb9b94fbd",
+      "size": 118257,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/UiTrace.cs",
+      "git_blob_sha1": "0e6c0a9e0d45765feaaa80b8b739386efb62ac6a",
+      "size": 1222,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/iCemDataMonitor.Emulator.WinUI.csproj",
+      "git_blob_sha1": "bbf83bb635435af809faf81adbc0f683419807b6",
+      "size": 2174,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/DefaultLayerActuator.cs",
+      "git_blob_sha1": "49c9e7b470048549d1e6e0585506bc561e71c7ad",
+      "size": 1558,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/Com0ComEndpoints.cs",
+      "git_blob_sha1": "ec17077e89e545e9e5c6fd5a688bb59e428f0a78",
+      "size": 3825,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/ModbusPreviewEndpoints.cs",
+      "git_blob_sha1": "afd7271b2581224ae8a48b40cfd727e7926b8216",
+      "size": 2755,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs",
+      "git_blob_sha1": "53a06293e2748d4c66af7ed5632c0112d363ce7c",
+      "size": 10249,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs",
+      "git_blob_sha1": "c78d6ec5804d448fbdf9abf6f374e490acc00d7f",
+      "size": 4735,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/ServiceFacades.cs",
+      "git_blob_sha1": "48b1e2b78e255b042412ddb3f8840fb6fcdc91a7",
+      "size": 2601,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "git_blob_sha1": "4b47a851006245f940ec4f55230b4413cd60dd4e",
+      "size": 10430,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/SourceEndpoints.cs",
+      "git_blob_sha1": "9cf9e71f4f36abae57d18a5161f6bb476ab9b80e",
+      "size": 5271,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/TemplatesEndpoints.cs",
+      "git_blob_sha1": "62493d0be4739e3500164b998fd9a027a13fc1ef",
+      "size": 7409,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Health/BusHealthMonitor.cs",
+      "git_blob_sha1": "5f5aa0b001d1d0d71d8ef21f6a42aebcd31de043",
+      "size": 7816,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/HostComposition.cs",
+      "git_blob_sha1": "213428c7d9b689f1caaf38737a02453be9abcb05",
+      "size": 12946,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/KestrelBinding.cs",
+      "git_blob_sha1": "ee8c4b4ee18240a6f4a16e300050559679ef1c4a",
+      "size": 2126,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/LayerRuntimeController.cs",
+      "git_blob_sha1": "f88a44393efe1e3e833d7b50fbb2edc11ca98b30",
+      "size": 10268,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/StationLogPaths.cs",
+      "git_blob_sha1": "e6a95a4521dfabff0a269cfef3edf28076c7c7fe",
+      "size": 1441,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/TrayToggleRules.cs",
+      "git_blob_sha1": "82cd21e71d43878688f02a34aa6ad790df3619dd",
+      "size": 3561,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/iCemDataMonitor.Host.Core.csproj",
+      "git_blob_sha1": "40174da75c962c8722add8058523f73312f86273",
+      "size": 1538,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/AutostartManagerTests.cs",
+      "git_blob_sha1": "85a03ff84e229e10777ce3e6796c093f6a04ad5d",
+      "size": 7046,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/BootStageTrackerTests.cs",
+      "git_blob_sha1": "ec870fadb837294c0baa1cb2d3a40d3e3819dd68",
+      "size": 2794,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/BusHealthMonitorTests.cs",
+      "git_blob_sha1": "99f4cd70c791d65204b3c7ec3de72ce706f0614b",
+      "size": 13570,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/CliForwarderTests.cs",
+      "git_blob_sha1": "31330440d45615d9c107bafa4340ffa8e41d8231",
+      "size": 18771,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/CompositionSmokeTests.cs",
+      "git_blob_sha1": "d6e98c176f119e71a49f5b95fa1206caedc5c7a4",
+      "size": 11441,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/ConsoleCloseProbeTests.cs",
+      "git_blob_sha1": "964491b805f42b78e379dae8fdb4217d13147415",
+      "size": 12264,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/ConsoleShowAfterHideProbeTests.cs",
+      "git_blob_sha1": "d6e6991c344a010870746a1bf8798dc1c6681aef",
+      "size": 10946,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/ConsoleVisibilityServiceTests.cs",
+      "git_blob_sha1": "1573423f8bbffbdf90d620a30154a029ab0d5061",
+      "size": 4798,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/D2GuardTests.cs",
+      "git_blob_sha1": "4b5a96102ed7b15f8ddc1699129c500ad6985c57",
+      "size": 8887,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/GrpcChannelIntegrationTests.cs",
+      "git_blob_sha1": "db133d3351f925ae09a8c4f7da1edf5cfe173057",
+      "size": 19706,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/HeadlessHygieneTests.cs",
+      "git_blob_sha1": "456fbf73b6904470786be0972797b6d87c1ba3e9",
+      "size": 7024,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/HostArgsTests.cs",
+      "git_blob_sha1": "2ac618a509c43cf97796d4c86e4e0f33fe3dc1a8",
+      "size": 1694,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/HostLifecycleTests.cs",
+      "git_blob_sha1": "53417ecc8708b67f465cf4145d96149e688c0159",
+      "size": 4211,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/PlatformSupport.cs",
+      "git_blob_sha1": "366c8e21a8e04e8a1896c90647194d683b9fe52e",
+      "size": 394,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/SingleInstanceGuardTests.cs",
+      "git_blob_sha1": "f1c3ded5d057c803a37c7ec327525602913b7f48",
+      "size": 1091,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs",
+      "git_blob_sha1": "86e60a66a6e2af8f8d11c13a3cb21714c957dafa",
+      "size": 6015,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/StationFileLogHostContractTests.cs",
+      "git_blob_sha1": "baf1dfd05946b58b2edf65bb0dfaaca58849e65f",
+      "size": 4755,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/TelemetryServiceImplTests.cs",
+      "git_blob_sha1": "17e0892b004f2a1df5049d3c0e597ac86f7a8a7a",
+      "size": 32901,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/TrayLogicTests.cs",
+      "git_blob_sha1": "5815417ea8401a93b682f56d02c46d21faa4d8ee",
+      "size": 21464,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/UiNavigationServiceTests.cs",
+      "git_blob_sha1": "cd63ce5bde8d413fda1e13dffab850721f8cba07",
+      "size": 6633,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/Usings.cs",
+      "git_blob_sha1": "c802f4480b198aad9bb8709a616c0891f99086c9",
+      "size": 20,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/WwwrootHistoryContractGuardTests.cs",
+      "git_blob_sha1": "86a208b25e3579595dc8bb7c8ea3dca921d6cd24",
+      "size": 5293,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/WwwrootVersionGuardTests.cs",
+      "git_blob_sha1": "abc9708e2219b323aea09833dffb936d576f6b70",
+      "size": 3886,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/iCemDataMonitor.Host.Tests.csproj",
+      "git_blob_sha1": "c39094b39f9f63c05333fa7d408f4b2775221cd5",
+      "size": 1552,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Boot/BootStageTracker.cs",
+      "git_blob_sha1": "ed5fa173163d3272067e0e400da8ce6a25db984d",
+      "size": 4392,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/CliMode/CliForwarder.cs",
+      "git_blob_sha1": "8c4b895bcda9a523f1bd808449e22eedad4188c8",
+      "size": 25389,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs",
+      "git_blob_sha1": "10202f0b8fb32bed197ca0872047d6cb1b87af6f",
+      "size": 20187,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/HostAppFactory.cs",
+      "git_blob_sha1": "08db0675da20e42f7e4a01668513e6d469eee062",
+      "size": 9686,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/HostArgs.cs",
+      "git_blob_sha1": "be3d8c36ea99f7e998372e924b4b57276fa128d3",
+      "size": 3255,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/PlatformSupport.cs",
+      "git_blob_sha1": "f29ef95c4c05b49871f40745a94f8d963822494e",
+      "size": 527,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Program.cs",
+      "git_blob_sha1": "9b1cfeb146c218ad9055ff0f5bb15f3540a91697",
+      "size": 19482,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/SingleInstanceGuard.cs",
+      "git_blob_sha1": "2d0e878ca2ff0a1d95dd6ebb50ae05480432222a",
+      "size": 1245,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/StartupLog.cs",
+      "git_blob_sha1": "35c09a47401b34f9f00516ab083db70e3f6beca0",
+      "size": 2140,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/AutostartManager.cs",
+      "git_blob_sha1": "6009e150448ecb9b7fa0b551866fb74703637382",
+      "size": 5744,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/ConsoleCloseGuard.cs",
+      "git_blob_sha1": "95200900fee31a71286054a47c58b32c5b20c2c8",
+      "size": 6853,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/ConsoleVisibilityPolicy.cs",
+      "git_blob_sha1": "e1bd299ba65da005a1c69af7ddce29eb48ca7c53",
+      "size": 3681,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/ConsoleVisibilityService.cs",
+      "git_blob_sha1": "0d3fe8c3e564bf1d68f4e673c59e712bbba1b762",
+      "size": 3046,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/ConsoleWindow.cs",
+      "git_blob_sha1": "4886ed376b6207aefdb887d7f45d6a33743d8909",
+      "size": 23499,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/CrossProcessNames.cs",
+      "git_blob_sha1": "d73caaa66f899a4d06afdc7ab9f12cca9bca19f4",
+      "size": 4989,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/HostLifecycle.cs",
+      "git_blob_sha1": "2962323e8051d8df6aa569fcd47436a8a9b1fdd9",
+      "size": 6084,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/HostTray.cs",
+      "git_blob_sha1": "e39e8c8438dcc25c9ed1d19c4b9c747555e4d5ff",
+      "size": 12034,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/MutexProbe.cs",
+      "git_blob_sha1": "101cd6e5df4d58bc6f4250990959f67b42a0e57a",
+      "size": 1422,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/PanelOpen.cs",
+      "git_blob_sha1": "d26a8a5989ee38222849f23d916f580b450883d0",
+      "size": 5046,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/RestartPlan.cs",
+      "git_blob_sha1": "1297a7604146f9d4d61cd9ca5d722d8467dbe752",
+      "size": 1779,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/TrayActionGate.cs",
+      "git_blob_sha1": "27f5a376881d65f3c4fa0b68b09edf0338df87e4",
+      "size": 3645,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/TrayCloseContract.cs",
+      "git_blob_sha1": "16b0f188c865e6677e48f2fc75dd6ad29c9ed099",
+      "size": 1066,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/TrayTooltipFormatter.cs",
+      "git_blob_sha1": "44fe2f032b1b4033c055ddd67ebcd2c81295a21f",
+      "size": 1342,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/UiNavigationService.cs",
+      "git_blob_sha1": "682299bd979b4cccf94d13c02b0ee6fee7e77397",
+      "size": 4741,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/UiPrefsStore.cs",
+      "git_blob_sha1": "af60ca6a5ce69de9032ae4ece0f2850afcc1dbcc",
+      "size": 5477,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/iCemDataMonitor.Host.csproj",
+      "git_blob_sha1": "852bca27a01d0a5ba2b253e45fdddba625e458d5",
+      "size": 5659,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/scripts/add-autostart.ps1",
+      "git_blob_sha1": "5dd3edb84268efbcd717063611bd70de152402d9",
+      "size": 1130,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/scripts/create-desktop-shortcut.ps1",
+      "git_blob_sha1": "8072b67f82087f9872b804b094369b25cc4c6370",
+      "size": 1095,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/wwwroot/favicon.ico",
+      "git_blob_sha1": "30c6a34e28f570d2d76e03a6f7e51ba64384b499",
+      "size": 13115,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/wwwroot/favicon.png",
+      "git_blob_sha1": "4e28aaa935fb488bc67c9786ab7f31f176895e48",
+      "size": 858,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/wwwroot/index.html",
+      "git_blob_sha1": "96c16f571bbf29eb04d4f350b9d3f7605a840b3e",
+      "size": 13131,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/wwwroot/main.css",
+      "git_blob_sha1": "97ef56027e95efd14ef7e24671440271c23028f0",
+      "size": 10209,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Host/wwwroot/main.js",
+      "git_blob_sha1": "4ce4a3e9b01229f47c8da173991e62c08b112e65",
+      "size": 261294,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/BootStageStream.cs",
+      "git_blob_sha1": "92d1c454b450f94e78370b6b92814eddd266c458",
+      "size": 1421,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/EnsureHost.cs",
+      "git_blob_sha1": "e40fea283f331caab758a1cfbf983a084ef09948",
+      "size": 3034,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/GrpcHostClient.cs",
+      "git_blob_sha1": "1c45f3541d924eb6b3b0560b2d8a8c443e7563f0",
+      "size": 6426,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/HostLink.cs",
+      "git_blob_sha1": "376c172e4d1668cdcbc38b33150f5bd3d7ed5c98",
+      "size": 8066,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/HostProcessLauncher.cs",
+      "git_blob_sha1": "822daeac0957f39f006ba1a4a45934f2795f6a61",
+      "size": 4084,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/HostStatusViewModel.cs",
+      "git_blob_sha1": "1db6b8dab771363190f42cacfba136a783e7417b",
+      "size": 24054,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/HostTooltip.cs",
+      "git_blob_sha1": "4cb4f3f964bb6e5bd4d5cd5a69807757827d10c5",
+      "size": 487,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/IHostApi.cs",
+      "git_blob_sha1": "28b35ef8a339b0208ccff2b18a52af4326d96816",
+      "size": 4879,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/MetricsStream.cs",
+      "git_blob_sha1": "ca4d8a6894dc2ddd45a3749cc24098b8ce16c070",
+      "size": 1826,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/iCemDataMonitor.HostClient.csproj",
+      "git_blob_sha1": "7bdf8403d6732e864f53d34a25ef6e360be1d656",
+      "size": 1864,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/CatalogTests.cs",
+      "git_blob_sha1": "a739977c1585a41e02c5cb45c26242192d1f629e",
+      "size": 8062,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/LanExtensionAddressingTests.cs",
+      "git_blob_sha1": "3ffe9224c82f1a2c180f4d594cc413f5ea96c326",
+      "size": 5700,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/LanFullCoverageTests.cs",
+      "git_blob_sha1": "b171d6534ddb26605dbdd53dd576d0874ba7eae8",
+      "size": 7707,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/LantableRegistryTests.cs",
+      "git_blob_sha1": "71fc8e283e3bdc326e74cbb135f15dfb47d2b5c2",
+      "size": 14609,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/LegacySvBackfillTests.cs",
+      "git_blob_sha1": "854ddb36419b81e1dc59c7385487849b62905e04",
+      "size": 3179,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/ModbusRegistryFixture.cs",
+      "git_blob_sha1": "ba6bc7ee19069acdd6ff40e4684c69e1dbf262e0",
+      "size": 2193,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/SsfTemplateLoaderTests.cs",
+      "git_blob_sha1": "c019bdf2917a3355e99697843a83bbfcd4f01bd6",
+      "size": 4755,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/UnifiedVariableRegistryTests.cs",
+      "git_blob_sha1": "3146bea523bcb32512b37fd5e87757f018573a09",
+      "size": 20948,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/Usings.cs",
+      "git_blob_sha1": "9df1d42179592e7f281ec6c5a01e964d4eaca863",
+      "size": 23,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/VariableUnitGuesserTests.cs",
+      "git_blob_sha1": "b23d89b9529e970bd2b9fa348e97f520c9f34e5f",
+      "size": 3966,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/iCemDataMonitor.Plugins.Icem.Tests.csproj",
+      "git_blob_sha1": "d091a1d6872c8bc27a5c6fd91a7d7460f5aed6c8",
+      "size": 1498,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/DeviceCatalogRegistry.cs",
+      "git_blob_sha1": "b192b5dd6b7996de2efd9dcf7a61ad9f77fec726",
+      "size": 3656,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/DeviceFamilyRegistry.cs",
+      "git_blob_sha1": "c565240f29f46d12093381c6e27dbb447e9c4b80",
+      "size": 3466,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/FlecsVariableCatalog.cs",
+      "git_blob_sha1": "f7f246f46f10c98f7145b923e7453740eb748278",
+      "size": 6930,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/LanVariableCatalog.cs",
+      "git_blob_sha1": "d63bb61d85a6db1e236696ff38660ae677e3203e",
+      "size": 4412,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/LantableRegistry.cs",
+      "git_blob_sha1": "9bdccbe5cd2a2db32c10c09e3161f226481a694b",
+      "size": 12582,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/PlcVariableCatalog.cs",
+      "git_blob_sha1": "d18b4093dc5660bac7857114b08136ca7063d9ce",
+      "size": 3906,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/SsfTemplateLoader.cs",
+      "git_blob_sha1": "15a8fca462fcc9588e25b3c44b1d534e0471559b",
+      "size": 2718,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/UnifiedVariableRegistry.cs",
+      "git_blob_sha1": "140e1f53546514cb5245e67c496cab4f0756ac17",
+      "size": 12765,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/VariableUnitGuesser.cs",
+      "git_blob_sha1": "8f5f5a2c0024495a65cb21bdf415a43a9d708e61",
+      "size": 10188,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/iCemDataMonitor.Plugins.Icem.csproj",
+      "git_blob_sha1": "5c69ad9ab8a86f2a260a6720af6a80ddd942e0dc",
+      "size": 1007,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/AdcPump.ssf",
+      "git_blob_sha1": "5d5429ca0d38d7a45217820f8722b942e8051795",
+      "size": 478,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/CanadianBodyloadMastCTU.ssf",
+      "git_blob_sha1": "75574bd67d71a0e0de0f48c51ea6082f7e16a329",
+      "size": 400,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/FlecsCTunit.ssf",
+      "git_blob_sha1": "7e5c6cab9c27a6b6b4b9beda1d9ac5ffbccf9d79",
+      "size": 545,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC.ssf",
+      "git_blob_sha1": "8accaee4dae70515ae92e5feebef7f8dbe6f2f1f",
+      "size": 2052,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC_kgl_lpm_bar.ssf",
+      "git_blob_sha1": "271f18c7262f4fda6cb888b1ed16ccde4c8664f4",
+      "size": 2062,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC_km3_m3m_mpa.ssf",
+      "git_blob_sha1": "14c4fef8578bf0d0248abe682c855d03bebe54d0",
+      "size": 2036,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC_sg_lpm_atm.ssf",
+      "git_blob_sha1": "c14293d03f111501ea363c779fb5f6c3cc8c9045",
+      "size": 2060,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/PLC_AdvantageOne_New.ssf",
+      "git_blob_sha1": "995e1e70ed9234bd9bd23b18faa263af7aa3503d",
+      "size": 2575,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/adc_down.ssf",
+      "git_blob_sha1": "e1421acdee830ae52ce52e7c8a7178f80f557101",
+      "size": 741,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/amp.ssf",
+      "git_blob_sha1": "5de9ef9490cd52b9736b9ef5812c3adec9e5983d",
+      "size": 3467,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/c75tc4.ssf",
+      "git_blob_sha1": "b84bc41657f7f9e659ddc0a685b58fdbb94f8224",
+      "size": 606,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/c75tc4_down.ssf",
+      "git_blob_sha1": "8fa994397b4799a5856a15b1b6f7f299708c6853",
+      "size": 695,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/cmntace.ssf",
+      "git_blob_sha1": "7de96b482cdee7e15828e070f847f450cf0b71cb",
+      "size": 133,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/cmntadc.ssf",
+      "git_blob_sha1": "8bb6cda4ef827cf1aedd0d59dbfdd93d5f0a37e1",
+      "size": 837,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/cms.ssf",
+      "git_blob_sha1": "153747e769e8bf165130a388946a2d7c0b1bf16c",
+      "size": 1115,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/cms_down.ssf",
+      "git_blob_sha1": "f69e3f5486691d164fb9b1caac3146342195445c",
+      "size": 836,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/coiltube.ssf",
+      "git_blob_sha1": "19f89c3e8deb32df63dee6d62d344a0242fc4a8f",
+      "size": 527,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/compac.ssf",
+      "git_blob_sha1": "0dab2a56697039b62189da451dec9670cf3fc46f",
+      "size": 484,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/compac_unipro.ssf",
+      "git_blob_sha1": "475cce99f13a6894f54319a27a455321d97ed161",
+      "size": 853,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/cpt300.ssf",
+      "git_blob_sha1": "57cd9bb2817a5bf43a2446cd90f12f25ba4a622f",
+      "size": 554,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/ct60079b.ssf",
+      "git_blob_sha1": "63c4ce31cf562aa0e596dd7cf44266eae18d153e",
+      "size": 596,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_kgl_lpm_bar.ssf",
+      "git_blob_sha1": "c3134ed4498c0198c837e3932293697332609f4f",
+      "size": 1326,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_km3_m3m_mpa.ssf",
+      "git_blob_sha1": "7d589f3e7484d1ae59def75bc2dace7b3b726ed3",
+      "size": 1329,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_ppg_bpm_psi.ssf",
+      "git_blob_sha1": "f1c177239f51faa29261e560f2926c484a8aec00",
+      "size": 1320,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_sg_lpm_atm.ssf",
+      "git_blob_sha1": "d5baaaca4349a4497a6eb9fc2f9633ddca04bebb",
+      "size": 1326,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_kgl_lpm_bar.ssf",
+      "git_blob_sha1": "3f47f902e287e2955abc5dcb758ce53ee0e1f2ec",
+      "size": 1328,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_km3_m3m_mpa.ssf",
+      "git_blob_sha1": "c9305753530f7a3ce4167c7135ca817f261e6734",
+      "size": 1328,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_ppg_bpm_psi.ssf",
+      "git_blob_sha1": "2c52d66b902d5bb17819ecfc3f71cf328e1e2007",
+      "size": 1328,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_sg_lpm_atm.ssf",
+      "git_blob_sha1": "9599674b0ef594f7d2bf84ab970ae84278debfad",
+      "size": 1328,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecsadc.ssf",
+      "git_blob_sha1": "684549d26c8cc747422e7f8f8e2d9d50b624e8c7",
+      "size": 836,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecsadc30.ssf",
+      "git_blob_sha1": "ac604b1333cc6bba2d42570a70aa0d9c67b75635",
+      "size": 1240,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecsadc30_metric.ssf",
+      "git_blob_sha1": "b9da1c75000c64c7130c6c3b88ae3891e5063e2b",
+      "size": 1240,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecscmt_3_06_english.ssf",
+      "git_blob_sha1": "a1cd0bae47ee8c32e14f2f530eb2c148e4570ef3",
+      "size": 1270,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/flecscmt_4_03_english.ssf",
+      "git_blob_sha1": "e6bd92e8e49343aa49f5293eae91d181116ea4bc",
+      "size": 1283,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/hydrtube.ssf",
+      "git_blob_sha1": "19e8a7df41b2c3483e850cd5767b0f4678b1d289",
+      "size": 598,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json",
+      "git_blob_sha1": "219fe5250f907145b78f277c8d88707fa7fcc441",
+      "size": 1019988,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/n2_foam.ssf",
+      "git_blob_sha1": "3ba191dce47e3e88d2c472f2527991cd2bd4836a",
+      "size": 321,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/nit_340.ssf",
+      "git_blob_sha1": "f818bef28d8a979159c302bb97b3d08e9deaff20",
+      "size": 576,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/nit_90_660.ssf",
+      "git_blob_sha1": "f818bef28d8a979159c302bb97b3d08e9deaff20",
+      "size": 576,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/nitout.ssf",
+      "git_blob_sha1": "c963cc2c1f9bfe2d91ffd92bb886b051e2223fa2",
+      "size": 349,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/nitro_180.ssf",
+      "git_blob_sha1": "40371c251a279890f17233a48b59e1dab57bce74",
+      "size": 914,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/plc.ssf",
+      "git_blob_sha1": "5f466ff363a7179ca0e8065bff3945cfce50a54c",
+      "size": 622,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/plc_cms.ssf",
+      "git_blob_sha1": "16cc28da089748ed6200bd6dd251e6dc9af32835",
+      "size": 2497,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/plc_cms_IPGenIV.ssf",
+      "git_blob_sha1": "41b422fa2f45424925c79a7bb2903024ae5bb815",
+      "size": 2262,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/plc_cms_lpm_m3m.ssf",
+      "git_blob_sha1": "569eba8143327193d892c877805fa75d1d8e8dfb",
+      "size": 2497,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/prd.ssf",
+      "git_blob_sha1": "41a4401487402248da1e009df90e29c7abcb50c3",
+      "size": 280,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/s&s_blender.ssf",
+      "git_blob_sha1": "9e3bf9c1d2462dc80db1a926d96f54b5a5dc615b",
+      "size": 2523,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/s&s_pump.ssf",
+      "git_blob_sha1": "94955f2fd2f877ad0900130995b8dbda7fbe06b0",
+      "size": 1210,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/tanklevel.ssf",
+      "git_blob_sha1": "c89bd3669b488ddfa2046af33141a104d9212477",
+      "size": 1997,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/tanklevelmetric.ssf",
+      "git_blob_sha1": "cfedcd97dd7ceaa97d6962e3ffbe8d54650f2bc9",
+      "size": 1997,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/wits17cementing.ssf",
+      "git_blob_sha1": "4918e0f84e0ea117715986421f8e62931510b865",
+      "size": 1405,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/wits1generaltimebased.ssf",
+      "git_blob_sha1": "0f77b9ad440a37e0607d449dc64f583c0eeb3172",
+      "size": 1511,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/templates/wits4hydraulics.ssf",
+      "git_blob_sha1": "538a9f709b576607410f138b91025291336b5dd6",
+      "size": 1315,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/BusLayoutTests.cs",
+      "git_blob_sha1": "7d6c35ab8fdf65e249a5ccf0546b7cf72beb52a0",
+      "size": 35792,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/CdabCodecTests.cs",
+      "git_blob_sha1": "aca36c4741a8fcb8903a6d8a9aebd5be5e89197d",
+      "size": 2598,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/IniSchemaTests.cs",
+      "git_blob_sha1": "4ecf231edcd7e64862fa64877fddcfc034947d55",
+      "size": 10108,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/RegisterMapV2Tests.cs",
+      "git_blob_sha1": "4515a8f8bb0c174eca1a52bbd701c99dd1c770ab",
+      "size": 4362,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/StationFileLogTests.cs",
+      "git_blob_sha1": "0678c320c11cc4ac2f466e41e190b3807fb6dd4b",
+      "size": 7321,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/Usings.cs",
+      "git_blob_sha1": "9df1d42179592e7f281ec6c5a01e964d4eaca863",
+      "size": 23,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/iCemDataMonitor.Sdk.Tests.csproj",
+      "git_blob_sha1": "882d3349d89b2edd2101ebeefc74c690f65030b6",
+      "size": 866,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Bus/BusLayout.cs",
+      "git_blob_sha1": "3bc8cecdccd4499aa040ca73ee39a49ebfa9b0cd",
+      "size": 41744,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Bus/IniSchema.cs",
+      "git_blob_sha1": "0d854561ea5bc09611debf1ebc474cb67d315c2b",
+      "size": 10255,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Bus/RegisterMapV2.cs",
+      "git_blob_sha1": "a2311834f9112315f78ef572f1a6ed57c56269a1",
+      "size": 2655,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs",
+      "git_blob_sha1": "4a203d1f2e1069d360fff60a03fd9b18a93f4979",
+      "size": 7086,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IConfigStore.cs",
+      "git_blob_sha1": "c4c09a186421b26915f3cbc2c493c2ec7c552de9",
+      "size": 748,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IDataSource.cs",
+      "git_blob_sha1": "86baa40b5edcffd54d52311e30d59fbfbab4eed2",
+      "size": 322,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IDeviceCatalogRegistry.cs",
+      "git_blob_sha1": "5e95b51ebd8062f8611f4a76d325e64e1855837b",
+      "size": 1170,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IModbusPublisher.cs",
+      "git_blob_sha1": "30e930ad40e2bd9ac2146aea68ec2afb491faf4b",
+      "size": 1501,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/ISourceReader.cs",
+      "git_blob_sha1": "e5f094e8f59248af2fa3c3586629df71d1bf8ba1",
+      "size": 1101,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/ITimeseriesStore.cs",
+      "git_blob_sha1": "3e7d2218def21ea99c189a507130fdf6aef63d2b",
+      "size": 1267,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IVariableCatalog.cs",
+      "git_blob_sha1": "a2766919ea882aef6a6819caaeee0d52d01457b5",
+      "size": 308,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Models/DeviceConfig.cs",
+      "git_blob_sha1": "b856b73c71dc0307dcec2e7642fdac231753b51d",
+      "size": 154,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Models/DeviceFamily.cs",
+      "git_blob_sha1": "9ac04fb557762672799b511c32081a65334af5ea",
+      "size": 146,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Models/ModbusRegisterEntry.cs",
+      "git_blob_sha1": "90f193f86f04245d378bfde6f1a5ca8c9b95b26c",
+      "size": 145,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Models/SourceKind.cs",
+      "git_blob_sha1": "4020ab1810a74b7a291d423eca6df8c0ca0288cf",
+      "size": 512,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Models/SourceSample.cs",
+      "git_blob_sha1": "c84ef3723c7b7db7390064fa23ac92ec60f7fa5f",
+      "size": 387,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Models/TimeSeriesSample.cs",
+      "git_blob_sha1": "2671a606d39fd311c86fb3b6429b2392e4709933",
+      "size": 164,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Models/VariableDefinition.cs",
+      "git_blob_sha1": "f83772898508efbf508f5cdfe357525299587aba",
+      "size": 224,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/iCemDataMonitor.Sdk.csproj",
+      "git_blob_sha1": "bf52a659538fd866907974dffd74ec63650e470f",
+      "size": 358,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/App.xaml",
+      "git_blob_sha1": "e0816330e862bd0acf77fcdbe08bc1ecc1ad5cb3",
+      "size": 653,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/App.xaml.cs",
+      "git_blob_sha1": "e03b217b11a2d90715f394ea246200fe69de1342",
+      "size": 8280,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml",
+      "git_blob_sha1": "d5a34fc403499bda977f646baf468f0d227a4b38",
+      "size": 1959,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml.cs",
+      "git_blob_sha1": "dbb03f11539d87e21a01f04bdb81d83713a1584b",
+      "size": 6313,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/BootStageItem.cs",
+      "git_blob_sha1": "8023faec8a97f16586850cc16b10b64057eaf082",
+      "size": 1024,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "git_blob_sha1": "d527d8e1453a923ad6613ceb16ebc3da0ca88788",
+      "size": 13741,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml.cs",
+      "git_blob_sha1": "0caf4ac714d76b9b397b350268d36d554e9eef61",
+      "size": 41572,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/ShellSession.cs",
+      "git_blob_sha1": "061059562990d5d43d19bedcf272daaa1e072e80",
+      "size": 4968,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/ThemeResources.xaml",
+      "git_blob_sha1": "30a4e3df96535c29de662c0f32e23391efd09c59",
+      "size": 5905,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/app.manifest",
+      "git_blob_sha1": "e1f267b1465293366bf4784e5066399357ed5c62",
+      "size": 649,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/iCemDataMonitor.Shell.WinUI.csproj",
+      "git_blob_sha1": "cfe1d48f1f1298b7a4cde7570e1232f37956ab53",
+      "size": 5444,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Tools.IconGen/Program.cs",
+      "git_blob_sha1": "e31ee18e9c2b0767011f12ae0a99af2c62dd6f45",
+      "size": 7097,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Tools.IconGen/iCemDataMonitor.Tools.IconGen.csproj",
+      "git_blob_sha1": "cf099612299a3731a72058d1566e9dd89fb70ec4",
+      "size": 585,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/AceLanDecodeContractTests.cs",
+      "git_blob_sha1": "7da30638d9e457e19a329ed09eed7e35136ed5fe",
+      "size": 10280,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/AceSnifferServiceTests.cs",
+      "git_blob_sha1": "dfbf9d923a2c8d1937a6b8da25319ea0eca401ae",
+      "size": 26237,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/Com0ComMonitorTests.cs",
+      "git_blob_sha1": "058198af520efdaa5c6eaffcdc4ea12faa04877c",
+      "size": 4561,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/LiveModbusEmulatorTests.cs",
+      "git_blob_sha1": "5abc1d22a88b5bcd94d5b806941b806bf8002477",
+      "size": 47450,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/ModbusContractTests.cs",
+      "git_blob_sha1": "e01e35d5563db01ed786cff91c151adcd2a6ceda",
+      "size": 55239,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/PcapngReader.cs",
+      "git_blob_sha1": "575182419e7bc0e673a117a6b7d14ca7248b6b78",
+      "size": 4275,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/ReconnectBackoffTests.cs",
+      "git_blob_sha1": "066c6d1b9483235283764d99562556d2ebc0690c",
+      "size": 3464,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/ReplayAceFrameSource.cs",
+      "git_blob_sha1": "46425a31ce7f6603a48be56e6df9e3ca7bd4bb67",
+      "size": 2300,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
+      "git_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
+      "size": 15844,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/TransportArchitectureTests.cs",
+      "git_blob_sha1": "7a275fdadc70042c3c5c53f7de698c42be527209",
+      "size": 2667,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/Usings.cs",
+      "git_blob_sha1": "8c927eb747a6a304db265e6753aee6c47504f604",
+      "size": 19,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/iCemDataMonitor.Transport.Tests.csproj",
+      "git_blob_sha1": "0cf39bfb10f22be4e9ffed1173722782bd2998df",
+      "size": 1342,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/AceSnifferService.cs",
+      "git_blob_sha1": "5d9ff16a3c8b5249f08c8b58ad5dd47c04ef481b",
+      "size": 34384,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Com0ComMonitor.cs",
+      "git_blob_sha1": "40e0d64e6d4e0f82f24068dee116ba6c6806a61f",
+      "size": 15537,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/IAceFrameSource.cs",
+      "git_blob_sha1": "7f29e0ea4205159c6d7e1c3e70b4915b30a2cb9e",
+      "size": 958,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/ISerialPort.cs",
+      "git_blob_sha1": "4d294ad8d0ccd690edca2fdde75d54d7e4eb43c4",
+      "size": 719,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/ModbusTcpPublisher.cs",
+      "git_blob_sha1": "2af3376650e74e5e7d8ed49c6bf404cdcd2793eb",
+      "size": 24466,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/AceCaptureStatus.cs",
+      "git_blob_sha1": "b9cf0e8bebae4e0ca79883098d9c2f6157d62611",
+      "size": 460,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/AceEquipmentStatus.cs",
+      "git_blob_sha1": "c6d220e2b90267a6b3aca5c526017bc08da35282",
+      "size": 547,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/AceServiceVectorInfo.cs",
+      "git_blob_sha1": "4d51bc09e52d9614550b55cf30a5c8170ee6cf36",
+      "size": 454,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/AceSignalPreview.cs",
+      "git_blob_sha1": "bbd7e50f2e07e32fb39f79777b869a9c1a558d36",
+      "size": 423,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/AceSnifferOptions.cs",
+      "git_blob_sha1": "d9cf6777ff7c12d94f90009a7e4af66646df5fd8",
+      "size": 733,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/AceSnifferStatus.cs",
+      "git_blob_sha1": "4bb0b76be68125ccbf451cfac41daa07df941386",
+      "size": 1663,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/Com0ComStatus.cs",
+      "git_blob_sha1": "1f16bc1514d70f3d91e33ec45c147ba9a33b7a2c",
+      "size": 1317,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/ComTeeStatus.cs",
+      "git_blob_sha1": "2664559bfa40cb44a498d6416a6a7de5ab8effe5",
+      "size": 932,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/ModbusOptions.cs",
+      "git_blob_sha1": "b869cebc1b4f453bd9c8e1aa17a762a00342d008",
+      "size": 1803,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/TeeOptions.cs",
+      "git_blob_sha1": "889c29ed6e6188eb2f8415f91c5052a50f6422f2",
+      "size": 591,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/ReconnectBackoff.cs",
+      "git_blob_sha1": "bb139f432e60d1ce1c6b5c55ac22620dc4c066a2",
+      "size": 4340,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/SerialPortAdapter.cs",
+      "git_blob_sha1": "63fb9d6e52d9c7f86e437d940ee7666a0e6a4222",
+      "size": 1430,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/SerialTeeService.cs",
+      "git_blob_sha1": "2814d72e490395bf29fad6ec5808a83ddf0482cc",
+      "size": 16803,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/SharpPcapAceSource.cs",
+      "git_blob_sha1": "a32fe02c429af0edfd8e07556d9eca7fc4e457a2",
+      "size": 2739,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.Transport/iCemDataMonitor.Transport.csproj",
+      "git_blob_sha1": "5ba9014ee26cc3bcc04d590c12a1c8c9d3016463",
+      "size": 1519,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/B5ContractTests.cs",
+      "git_blob_sha1": "808b2bff061b3e2937c60ab1d5169e4d018ab2e9",
+      "size": 23438,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/ContractTests.cs",
+      "git_blob_sha1": "9a5aa576a5c4d0d1971fa98d6670a265fd5961fa",
+      "size": 11904,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/E3UniquenessTests.cs",
+      "git_blob_sha1": "820d020ac77455e19ee2a6df7265bc0bf25b8ccf",
+      "size": 11509,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/HostClientTests.cs",
+      "git_blob_sha1": "d332e684966e65b94382216ac474ed909b064f9c",
+      "size": 37929,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/LayerRuntimeControllerTests.cs",
+      "git_blob_sha1": "c032db27af2fb8fab941123b33936d1f38841b5b",
+      "size": 11860,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/RegisterMirrorTests.cs",
+      "git_blob_sha1": "54a32036f138fa28a6fa717da69f1fd1855a34a4",
+      "size": 17466,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/TrayToggleRulesTests.cs",
+      "git_blob_sha1": "1b67a340d40dff6867e75b85f17f0a7b9d3c811e",
+      "size": 4477,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/Usings.cs",
+      "git_blob_sha1": "5abf6eca7c30fd39afdd0c8c9c29fb561534620e",
+      "size": 60,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/iCemDataMonitor.UI.Tests.csproj",
+      "git_blob_sha1": "e30b3a2af7d868c6ccfdb66587d0890c3949c8e9",
+      "size": 1901,
+      "available": true
+    },
+    {
+      "path": "iCemDataMonitor.sln",
+      "git_blob_sha1": "3f39ac89a671cee80e1b15c0a6a029703cfd5ed7",
+      "size": 29066,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/App.xaml",
+      "git_blob_sha1": "8f98f3b74c39aa1537d0d09dc930530af04d85bd",
+      "size": 762,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/App.xaml.cs",
+      "git_blob_sha1": "f8c35fa69a5336254fbd98a07fcacfc94bd3cdc9",
+      "size": 6548,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/MainWindow.xaml",
+      "git_blob_sha1": "bf035156736767a7db0155d2e6da4124f4d25ea4",
+      "size": 1790,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/MainWindow.xaml.cs",
+      "git_blob_sha1": "290949e27099c177a6e62db0bb3b8c1abf083c67",
+      "size": 7240,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/Program.cs",
+      "git_blob_sha1": "c1dd1f91a631f374c960d5a25fee5cd707598b03",
+      "size": 4582,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/TrayIconHost.cs",
+      "git_blob_sha1": "294b328b94e0d86aa25c24a3c72381ddd47213f1",
+      "size": 14297,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/app.manifest",
+      "git_blob_sha1": "6157bb000edd4c0d137f2cded1d6cb8f08d105e1",
+      "size": 1161,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/iCemEmulator.csproj",
+      "git_blob_sha1": "0a89c531143b876322b047dd6f58f5c167a165b9",
+      "size": 6469,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/run.bat",
+      "git_blob_sha1": "cb2a4d95b33787c7048ef30c86ffab8e3294aceb",
+      "size": 1843,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/templates/firmware_registry.json",
+      "git_blob_sha1": "b2bab7f1afc4e2f15c02dd26d17ff7be2bdf2f3d",
+      "size": 34413,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/templates/firmware_variables.json",
+      "git_blob_sha1": "babfe75a6f4f6318c3a71a3155cb2e7538672cce",
+      "size": 233633,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/templates/flecs_4.53.json",
+      "git_blob_sha1": "671df1e8fbf49941870f69dd73cd4942d00eb3a9",
+      "size": 1892,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/templates/lantable_registry.json",
+      "git_blob_sha1": "219fe5250f907145b78f277c8d88707fa7fcc441",
+      "size": 1019988,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/templates/plc_basic.json",
+      "git_blob_sha1": "4e8ebc38023e4006d1a662fc15ea51b3c865ca50",
+      "size": 653,
+      "available": true
+    },
+    {
+      "path": "iCemEmulator/templates/variable_registry.json",
+      "git_blob_sha1": "f01f1fa82c01a54e4cf966c3d3a6aee10e271e0c",
+      "size": 60567,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Control/CommandProcessor.cs",
+      "git_blob_sha1": "e5ddc5a231298a024352da1f4b5e9c68fce6d6b8",
+      "size": 17056,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Control/ControlClient.cs",
+      "git_blob_sha1": "b0318f269ce6035d0cc7672342505a9465360ca1",
+      "size": 5470,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Control/ControlPipeClient.cs",
+      "git_blob_sha1": "0e0eab861dc0483c2139fee45ab063aa814fdefe",
+      "size": 7114,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Control/ControlPipeServer.cs",
+      "git_blob_sha1": "eca06cfd407774457107c71483a8723160c28088",
+      "size": 6518,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Control/EmulatorAppContract.cs",
+      "git_blob_sha1": "ea881c3c109732a7887dd745a741bc3da9e23285",
+      "size": 5257,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Control/IEmuControl.cs",
+      "git_blob_sha1": "f5d3c9df7f7a851da8269b32a9da77c07e0b8c6f",
+      "size": 4197,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/AcePayloadProvider.cs",
+      "git_blob_sha1": "03525ba2dfd4d70bcdee24f3ce95a90c8ce2fdbd",
+      "size": 13249,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/CrashLog.cs",
+      "git_blob_sha1": "a5192ba5ec4853a1ca8387b7896f840ed64d035d",
+      "size": 6312,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/DeviceTemplate.cs",
+      "git_blob_sha1": "b68c42c3f39fe373ee53ef2e1560d058539f5ba2",
+      "size": 1762,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/DfbAcePayloadProvider.cs",
+      "git_blob_sha1": "963dcfb02909101a2d573bc10fb70064c2997908",
+      "size": 5508,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/EmuEngineHost.cs",
+      "git_blob_sha1": "b0bda5f6207ddee0a2f2a3cbef56edbd89057293",
+      "size": 42302,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/EmuIcon.cs",
+      "git_blob_sha1": "70fc32aeb88fd5952465382ddf16c7381b788ef0",
+      "size": 2449,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/EmuSettings.cs",
+      "git_blob_sha1": "a749b5f0ce41f21c0d3f1cc91e86c5fa121c5051",
+      "size": 14690,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/FrozenPayloadProvider.cs",
+      "git_blob_sha1": "8628d74252522324d7e0b6b73e22b5248ace6693",
+      "size": 1556,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/ISignalValueProvider.cs",
+      "git_blob_sha1": "6db5b5002ba2b90aeb70604f6cceaf709cfee1a6",
+      "size": 499,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/LantableRegistry.cs",
+      "git_blob_sha1": "dca824e65cae274a3cf47cd56f54e025b388ec08",
+      "size": 6572,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/ManualOverridePayloadProvider.cs",
+      "git_blob_sha1": "fdb8487741a36e879e2c6a3c6b17f1fd708ce470",
+      "size": 7823,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/SignalWireCodec.cs",
+      "git_blob_sha1": "69fdd84066203c66b31e532fec4a2faaa9914124",
+      "size": 3634,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/SimFileResolver.cs",
+      "git_blob_sha1": "b9ab5bc3ef5a061435aa69c3230900bedf8ac825",
+      "size": 1547,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/SimulationEngine.cs",
+      "git_blob_sha1": "35ebb727b6bb340552a99330afe69ae8ece1b507",
+      "size": 5644,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/TemplateCatalog.cs",
+      "git_blob_sha1": "0109931c78282b188338f503f91a7973703c9c6a",
+      "size": 15423,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/UnitConversion.cs",
+      "git_blob_sha1": "9dd91f3eee7afe954c99c02adba0f3469921024a",
+      "size": 19383,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Core/UnitConvertingPayloadProvider.cs",
+      "git_blob_sha1": "49789579088abb47afc599bf5bd6e64c83ab91fd",
+      "size": 10788,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/F300HpvtBlock.cs",
+      "git_blob_sha1": "c3e6ab3455a3afa5c9ffc8b585fe3e263bb26d97",
+      "size": 25120,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/FirstOrderLagBlock.cs",
+      "git_blob_sha1": "b7354b684a09e868a2d057e7f76eb64628fb4089",
+      "size": 890,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/JobSequencerBlock.cs",
+      "git_blob_sha1": "3dafc864963e8a29f181e856006cc863ced24c14",
+      "size": 2849,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/KickoutLatchBlock.cs",
+      "git_blob_sha1": "444858a917391ef9210fb0abdcd45a37cc7c45a3",
+      "size": 1541,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/MixerBlock.cs",
+      "git_blob_sha1": "643dc6e148fc6c487df753b451127aaede82cf59",
+      "size": 8498,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/PumpSideBlock.cs",
+      "git_blob_sha1": "4badabb4a4206a5c3ab6114760acf6536065d3a0",
+      "size": 3494,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/RawIoBlock.cs",
+      "git_blob_sha1": "609a6ef8fe9a616ce9c9130ebb9ca2e6dd8dc291",
+      "size": 3040,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/TemperatureBlock.cs",
+      "git_blob_sha1": "91065f4c4c79b8e03f6aa1fb0030e33c0e0988d8",
+      "size": 1275,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/Blocks/TotalizerBlock.cs",
+      "git_blob_sha1": "717a285815a3924d81b382c744f905a3ce7737e6",
+      "size": 1182,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/CementUnitNetworkFactory.cs",
+      "git_blob_sha1": "b981a2d5b07923850fa5739eb722c71bdc4113e2",
+      "size": 2134,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/DfbContext.cs",
+      "git_blob_sha1": "554590bb4976d45821cc44bf478a60a21b7c8699",
+      "size": 1132,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/DfbNetwork.cs",
+      "git_blob_sha1": "0ed075dbcf86e64f7c2d345f5d5c5288a58891a0",
+      "size": 2428,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/DfbParameter.cs",
+      "git_blob_sha1": "01a35bfe4a1904c020a22da83d046742fdcab58e",
+      "size": 280,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/DfbSignal.cs",
+      "git_blob_sha1": "1b8ce87879822bce2d498aa1096264ed4582022f",
+      "size": 569,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/DfbSignalSource.cs",
+      "git_blob_sha1": "b92099e5feff7befcb8314f6de8e917c7d6faefd",
+      "size": 20780,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Dfb/IDfbBlock.cs",
+      "git_blob_sha1": "0181bcdfd04d8c68eee42e6f36f9789db9b3e218",
+      "size": 837,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Emitters/AceFrameBuilder.cs",
+      "git_blob_sha1": "2b9b4bb3119736bf1d92393ad38a257bda4dac64",
+      "size": 7219,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Emitters/AceLanEmitter.cs",
+      "git_blob_sha1": "e928f78af3c9e733d4c4fbfa7e3266afef5ae942",
+      "size": 17397,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/Emitters/ComSerialEmitter.cs",
+      "git_blob_sha1": "0fce203b51912e3de8c5707bb0d66bea067ba4f5",
+      "size": 5306,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/SelfTest/CommandChannelTests.cs",
+      "git_blob_sha1": "8b2e7cb6f8915f800ac1244ab9a2e95cea332baf",
+      "size": 21197,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/SelfTest/FrameRoundTrip.cs",
+      "git_blob_sha1": "2b099eeec203e7f543349e9ee822244a934d47f9",
+      "size": 70579,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/SelfTest/LanLoopbackDiag.cs",
+      "git_blob_sha1": "4ea4b59c9672e050510e05a98bd608e2f30fef79",
+      "size": 11083,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Core/iCemEmule.Core.csproj",
+      "git_blob_sha1": "8288ec9e14b8f46af50332b19779fb5e5eab60cb",
+      "size": 1133,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/CommandProcessorParityTests.cs",
+      "git_blob_sha1": "be7924eddbdd2c27a0822fbb2c62cd4d6ac4db26",
+      "size": 19693,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/ControlPipeClientTests.cs",
+      "git_blob_sha1": "87d65f74a35307369e77fbd0539e8a36a872b73d",
+      "size": 2979,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/ControlPipeServerTests.cs",
+      "git_blob_sha1": "921b22aba9a37cff258299a3426f3662d8bca726",
+      "size": 6806,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/CrashLogTests.cs",
+      "git_blob_sha1": "ab21930f76dc07b685fa9e0ac6d403558411a1aa",
+      "size": 5396,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/DeterminismTests.cs",
+      "git_blob_sha1": "535778f3e1955d11a22ac68c82d385c8230052f4",
+      "size": 1260,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/EmulatorAppTests.cs",
+      "git_blob_sha1": "49e6d4104553c2e5596e668797c2ff03325ed458",
+      "size": 13027,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/EngineDefaultStateTests.cs",
+      "git_blob_sha1": "f494d85e7c42385665f0ce5785c8bafe459390be",
+      "size": 4607,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/EngineStreamToggleTests.cs",
+      "git_blob_sha1": "2e26726a0468a0d2df3685417349bc44b42ec08a",
+      "size": 12019,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/InProcControlChannelTests.cs",
+      "git_blob_sha1": "8d4275e4581e08655eb441fd3c696b015ced1280",
+      "size": 14933,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/KickoutLatchTests.cs",
+      "git_blob_sha1": "a392b6e244a8c290a0963dde9651ed2a001c87f4",
+      "size": 1849,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/LanDiagnosticsTests.cs",
+      "git_blob_sha1": "6bb09f12863a581e71cdc1a27912946da6dbb527",
+      "size": 5947,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/LanFreezeCouplingTests.cs",
+      "git_blob_sha1": "c132a4adaf788a73d7e6f826abd5995b89aa0393",
+      "size": 9900,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/PayloadSmokeTests.cs",
+      "git_blob_sha1": "3e8f79c24ace2618f667ccdd40251da4fb3cb7ea",
+      "size": 5239,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/PumpSideTests.cs",
+      "git_blob_sha1": "87c0c8fe73f3f3522b3a514bba0d581c277a3464",
+      "size": 2079,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/SignalSourceTests.cs",
+      "git_blob_sha1": "cddfecc79e818707710ba8d3f964518f752b16e3",
+      "size": 2049,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/TestEmitters.cs",
+      "git_blob_sha1": "67258bbcd2c6a8821b2776084626def7a220963c",
+      "size": 2156,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/TotalizerTests.cs",
+      "git_blob_sha1": "ba4649acf01cae2922f280e4fdf194fb8c2ff5a8",
+      "size": 1122,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/WireFormatTests.cs",
+      "git_blob_sha1": "10af018ed16642dbb90a51c31d21e65a186cdf8c",
+      "size": 7042,
+      "available": true
+    },
+    {
+      "path": "iCemEmule.Tests/iCemEmule.Tests.csproj",
+      "git_blob_sha1": "6b4f1284a0aeb437bf7531728193a3ffa67f0d03",
+      "size": 1071,
+      "available": true
+    },
+    {
+      "path": "installer/Product.wxs",
+      "git_blob_sha1": "b5931fca85372b1c47546548370393f9fe5a9fd6",
+      "size": 39028,
+      "available": true
+    },
+    {
+      "path": "installer/assets/Burservis_logo_cyr_red.png",
+      "git_blob_sha1": "6195e9680439b3840d2c78b063917cc82ff86136",
+      "size": 12310,
+      "available": true
+    },
+    {
+      "path": "installer/assets/CheckConflicts.harness.js",
+      "git_blob_sha1": "3e98d287fed3f6a083909f70cef60f9dc7951453",
+      "size": 5298,
+      "available": true
+    },
+    {
+      "path": "installer/assets/CheckConflicts.js",
+      "git_blob_sha1": "e135cc8127ee486d380cf3de8a83a137c0c10725",
+      "size": 9645,
+      "available": true
+    },
+    {
+      "path": "installer/assets/app-icon.ico",
+      "git_blob_sha1": "30c6a34e28f570d2d76e03a6f7e51ba64384b499",
+      "size": 13115,
+      "available": true
+    },
+    {
+      "path": "installer/assets/banner_red.bmp",
+      "git_blob_sha1": "359ada9286275dbf9d0d72f2d5bde72061fc2744",
+      "size": 85894,
+      "available": true
+    },
+    {
+      "path": "installer/assets/burservis_logo.bmp",
+      "git_blob_sha1": "a0384e27d72a26f4d2c4b7c3d3fa2b60dbe1523f",
+      "size": 108174,
+      "available": true
+    },
+    {
+      "path": "installer/assets/ui-banner.bmp",
+      "git_blob_sha1": "e52fce11fb854f4f1fd180dacf30358e782df96a",
+      "size": 85894,
+      "available": true
+    },
+    {
+      "path": "installer/assets/ui-dialog.bmp",
+      "git_blob_sha1": "0171d82eb06070e7ad9c089b99b499377e810f85",
+      "size": 461814,
+      "available": true
+    },
+    {
+      "path": "installer/assets/ui-welcome.bmp",
+      "git_blob_sha1": "091f57fb86c83f38c07ad4aabf7df2cc776bf4e2",
+      "size": 461814,
+      "available": true
+    },
+    {
+      "path": "installer/build-msi.ps1",
+      "git_blob_sha1": "d057ca637febb604b7dd3b970e98bf9118ee9e45",
+      "size": 31716,
+      "available": true
+    },
+    {
+      "path": "installer/gen-payload.ps1",
+      "git_blob_sha1": "bfd5652db95caca2b1c3965cc4a2c395fadd600f",
+      "size": 13378,
+      "available": true
+    },
+    {
+      "path": "installer/gen-ui-bmps.ps1",
+      "git_blob_sha1": "763bc2fb4d09503a6c001dd358a099349fa31cd0",
+      "size": 5233,
+      "available": true
+    },
+    {
+      "path": "scripts/make-release.ps1",
+      "git_blob_sha1": "4ade480bd5683bb59649bd35587048af1fdea89f",
+      "size": 5295,
+      "available": true
+    },
+    {
+      "path": "specs/INDEX.yaml",
+      "git_blob_sha1": "ecc760a0add9d67f1ccc3d7e7a47355d5212d74b",
+      "size": 2540,
+      "available": true
+    },
+    {
+      "path": "specs/PLAN_lifecycle_ABD.md",
+      "git_blob_sha1": "9f7b9c8e412adf5157460d5456094e65e2b9a04b",
+      "size": 51630,
+      "available": true
+    },
+    {
+      "path": "specs/TZ-DOCSYS-001.yaml",
+      "git_blob_sha1": "ffbe8e46d1b696be5cc2963b4f19f477a8f38c68",
+      "size": 7821,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/2026-08-18_dotnet-server_current_state_pass.md",
+      "git_blob_sha1": "eddb74af93807ac211bd4ade8ce348a96ce19174",
+      "size": 23430,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/CONTRACT_iCemEmule_file_ownership_E1E3.md",
+      "git_blob_sha1": "c00550440ddaae195ebf5c4cb09855e9b9b94d1f",
+      "size": 1656,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/FlecsEmu_Э2c_lan_zone_classification.csv",
+      "git_blob_sha1": "f23a097f236f7e058c565a63afc9a3f060997f97",
+      "size": 21014,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/FlecsEmu_Э4_invariants.yaml",
+      "git_blob_sha1": "98b4aaf97fd957900d5adf59638df6f2c4d8a0cb",
+      "size": 3460,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/FlecsEmu_Э6_failures.csv",
+      "git_blob_sha1": "9ea9945f8f5ccf2969601ac949366de5aace252c",
+      "size": 3185,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/GAP.yaml",
+      "git_blob_sha1": "b7871f42da4c5c5d074385a820a5a483f6930bac",
+      "size": 1853,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/_index.yaml",
+      "git_blob_sha1": "1ceccef988ff06a9a7a51e3c924fda060e11c96a",
+      "size": 1911,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/incidents.csv",
+      "git_blob_sha1": "66a063b4c64eec5a8054efdb8166aab6200e2316",
+      "size": 6357,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/incidents_charter.yaml",
+      "git_blob_sha1": "91734321bf850a060f1bb0186d30924ffb421872",
+      "size": 1945,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/modbus_register_map.md",
+      "git_blob_sha1": "0c0ae92233152be50aaed8ca7b60d959ce08e96c",
+      "size": 8323,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/stand_topology.mmd",
+      "git_blob_sha1": "27b9631ce4276cc937c70767b013f6a5b63978a2",
+      "size": 1026,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э0_mission.yaml",
+      "git_blob_sha1": "d3447cf5c5eff65a3eed5646bf90a834ca68aaea",
+      "size": 5062,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э1_topology.mmd",
+      "git_blob_sha1": "9fba2f8f2b4f455cced528460f20941541c0fc90",
+      "size": 2238,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э2_contracts.csv",
+      "git_blob_sha1": "a040951287e42bff315879ac3af9989a225eed77",
+      "size": 9500,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э2b_edge_truth_tables.csv",
+      "git_blob_sha1": "8e57fb9db745100bedcdc026208f479cda1cd8fc",
+      "size": 22472,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э3_statemachines.mmd",
+      "git_blob_sha1": "2439bc081d39c800dfea196922e3fe73207748e7",
+      "size": 2800,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э4_invariants.yaml",
+      "git_blob_sha1": "f834d78545f001fce8b49bc5a671df84a6afe888",
+      "size": 22497,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э5_config.csv",
+      "git_blob_sha1": "aac6fb52232ae03ba9ddeb43e27a7fb6135dbc77",
+      "size": 701,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э6_failures.csv",
+      "git_blob_sha1": "6bc899bd8061cc7886a91a7c637b9b38b5c38d61",
+      "size": 4041,
+      "available": true
+    },
+    {
+      "path": "specs/_archive/devlog/Э8_design_variableid.yaml",
+      "git_blob_sha1": "8ada727a24bf3bb68996664782948f6fde050dba",
+      "size": 11057,
+      "available": true
+    },
+    {
+      "path": "specs/audits/UAC_MMF_data_dat_audit.md",
+      "git_blob_sha1": "f6beb4568412a3f9f0e9baccc4686ceabf0ceb1c",
+      "size": 6693,
+      "available": true
+    },
+    {
+      "path": "specs/contracts/CONTRACT_BusV2.yaml",
+      "git_blob_sha1": "25e0a3891d6bd96f53d924cbb99f29c192aaf4dd",
+      "size": 38871,
+      "available": true
+    },
+    {
+      "path": "specs/contracts/HES64_SCHEMA.yaml",
+      "git_blob_sha1": "6f6e4eabadd0bea7649713240bf1f51ca05c67a4",
+      "size": 13881,
+      "available": true
+    },
+    {
+      "path": "specs/contracts/LANTABLE_Complete.yaml",
+      "git_blob_sha1": "b19d55495dee648a6b904823264cb75e21d13d21",
+      "size": 18240,
+      "available": true
+    },
+    {
+      "path": "specs/contracts/LAN_SIM_VALUES.yaml",
+      "git_blob_sha1": "9f52b4bf6d4977179e87edfe9598abc80c18af8d",
+      "size": 13339,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э0_mission.yaml",
+      "git_blob_sha1": "77e948e16786ad7ef65cbc4308737d9e2dbc891a",
+      "size": 5519,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э1_topology.mmd",
+      "git_blob_sha1": "28d578ebd76f06bd5080e343a5de9206e80bd36c",
+      "size": 1204,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э2_contracts.csv",
+      "git_blob_sha1": "04729352510b94e860205b275642562612838a14",
+      "size": 18311,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э2b_ace_full_measurement.csv",
+      "git_blob_sha1": "dd00df8e2e31464dd08dcc040254791f1b3a6bdd",
+      "size": 7875,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э3_statemachines.mmd",
+      "git_blob_sha1": "42b174738a09cff41ddc018eefaa0e165f90abbe",
+      "size": 2365,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э4_invariants.yaml",
+      "git_blob_sha1": "3f2a44c09f6741203413ad5dcc69b34aa1025a4c",
+      "size": 22441,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э5_config.csv",
+      "git_blob_sha1": "8662fd8cfb051cd10a48a03fcb73e24a9362b1c8",
+      "size": 5262,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э6_failures.csv",
+      "git_blob_sha1": "a7d966579cc633b1727e698721b9e015bce2da8c",
+      "size": 10148,
+      "available": true
+    },
+    {
+      "path": "specs/dotnet-server/Э7_verification.csv",
+      "git_blob_sha1": "7491711489c6ea358b30d411f499215196b3e819",
+      "size": 18145,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/FUTURE_full_coverage_spec.md",
+      "git_blob_sha1": "fb6f840034d8be3dec0a3c17f07602270bae0cb6",
+      "size": 16405,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э0_mission.yaml",
+      "git_blob_sha1": "7a61587cb6b4bdc9910bb932448354cf4cf00b12",
+      "size": 7475,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э1_topology.mmd",
+      "git_blob_sha1": "63a1b5079c016f394e5c34b8dd11583dec4861c7",
+      "size": 2811,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э2_contracts.csv",
+      "git_blob_sha1": "6603a64a0874382cebdbc59598d8e5712e59e34a",
+      "size": 8830,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э2b_edge_truth_tables.csv",
+      "git_blob_sha1": "4b05611cfe25a1d912fb67e4f970aead45271531",
+      "size": 22361,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э3_statemachines.mmd",
+      "git_blob_sha1": "eeffea0fe3cf71a45eb07d25d6ed3226d926799e",
+      "size": 2591,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э4_invariants.yaml",
+      "git_blob_sha1": "953f5b856b27675e80a514b7743691470b108ec6",
+      "size": 29836,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э5_config.csv",
+      "git_blob_sha1": "e15aaef4ef74e0baca7345a67922c3ffb09980a2",
+      "size": 687,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э6_failures.csv",
+      "git_blob_sha1": "07555b3706c10751bd9e807960169701180d7265",
+      "size": 8392,
+      "available": true
+    },
+    {
+      "path": "specs/iCemAddIn/Э8_design_variableid.yaml",
+      "git_blob_sha1": "c2916b1c8a4f0a8fe663de30a419e11b85883218",
+      "size": 11114,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/CONTRACT_iCemEmule.yaml",
+      "git_blob_sha1": "cae5ff58905f254afb623d096ab20be6c10a5ce1",
+      "size": 18727,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э0_mission.yaml",
+      "git_blob_sha1": "160c71817d49eb02516e7023ec1da1c736877a0e",
+      "size": 4361,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э1_topology.mmd",
+      "git_blob_sha1": "3eeb481c192e818d1fa2807d4276663d60c5114b",
+      "size": 2829,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э2_contracts.csv",
+      "git_blob_sha1": "7328de3028e4a0b8a12e5e50a25c84e715cd62c1",
+      "size": 10009,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э2c_lan_zone_classification.csv",
+      "git_blob_sha1": "e40bda19320f2c9a360ff54cf11f084bb7fcc5b3",
+      "size": 15437,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э3_statemachines.mmd",
+      "git_blob_sha1": "24dcd0dd6a17a76f4ebebc4159a7c6b3c0e67f54",
+      "size": 1574,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э4_invariants.yaml",
+      "git_blob_sha1": "079bb3967abb18f8dddc58d0d4d141f51297895c",
+      "size": 9141,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э5_config.csv",
+      "git_blob_sha1": "5253f1ba24008a9193534597b0a7ac0933e25dd0",
+      "size": 2906,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э6_failures.csv",
+      "git_blob_sha1": "335742945bedaebb8d6ee2960ceb899c6c15e03a",
+      "size": 7222,
+      "available": true
+    },
+    {
+      "path": "specs/iCemEmule/Э7_verification.csv",
+      "git_blob_sha1": "a55c9b6ebd2bf0c0c9dc375d63ee031db7d33b51",
+      "size": 6777,
+      "available": true
+    },
+    {
+      "path": "specs/stand_topology.mmd",
+      "git_blob_sha1": "fa222eb16796192f307c2c2a14d14f6e8a020b22",
+      "size": 1020,
+      "available": true
+    },
+    {
+      "path": "templates/flecs_4.53.json",
+      "git_blob_sha1": "671df1e8fbf49941870f69dd73cd4942d00eb3a9",
+      "size": 1892,
+      "available": true
+    },
+    {
+      "path": "templates/plc_basic.json",
+      "git_blob_sha1": "4e8ebc38023e4006d1a662fc15ea51b3c865ca50",
+      "size": 653,
+      "available": true
+    },
+    {
+      "path": "templates/variable_registry.json",
+      "git_blob_sha1": "ea949d018f8ea45d9512d72b0b452f6dcc955f91",
+      "size": 932767,
+      "available": true
+    }
+  ],
+  "source_location": "repository root (parent of rust/)"
+}

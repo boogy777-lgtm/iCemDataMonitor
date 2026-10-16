@@ -1,0 +1,71 @@
+# Local-only M0 workspace. Must be validated by Cargo before release.
+version = 4
+
+[[package]]
+name = "icem-bus"
+version = "0.1.0"
+
+[[package]]
+name = "icem-config"
+version = "0.1.0"
+
+[[package]]
+name = "icem-core"
+version = "0.1.0"
+dependencies = [
+ "icem-bus",
+ "icem-config",
+]
+
+[[package]]
+name = "icem-emulation"
+version = "0.1.0"
+dependencies = [
+ "icem-protocols",
+]
+
+[[package]]
+name = "icem-emulator-app"
+version = "0.1.0"
+dependencies = [
+ "icem-emulation",
+ "icem-platform-windows",
+]
+
+[[package]]
+name = "icem-host-app"
+version = "0.1.0"
+dependencies = [
+ "icem-platform-windows",
+ "icem-protocols",
+ "icem-transport",
+]
+
+[[package]]
+name = "icem-platform-windows"
+version = "0.1.0"
+dependencies = [
+ "icem-core",
+]
+
+[[package]]
+name = "icem-protocols"
+version = "0.1.0"
+dependencies = [
+ "icem-bus",
+]
+
+[[package]]
+name = "icem-shell-app"
+version = "0.1.0"
+dependencies = [
+ "icem-platform-windows",
+ "icem-transport",
+]
+
+[[package]]
+name = "icem-transport"
+version = "0.1.0"
+dependencies = [
+ "icem-core",
+]

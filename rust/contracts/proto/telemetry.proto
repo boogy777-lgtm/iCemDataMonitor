@@ -1,0 +1,400 @@
+// iCemDataMonitor telemetry + control contract (contract-first, single .proto).
+// Source of truth for C# server/client codegen.
+//
+// Field-number registry (occupied numbers). New fields use the next free number
+// inside the owning message. Removed fields are moved to reserved blocks and are
+// NEVER reused.
+//
+// Top-level occupied numbers by message:
+//   HostStatus:        1..8, 10, 11 (W21.1 console_visible),
+//                     12 (2026-08-27 autostart_enabled)
+//   ZoneHealth:        1..4
+//   LayerState:        1..4, 5..10
+//   HostStatusRequest: (none)
+//   SubscribeRequest:  1
+//   MetricsSample:     1..6
+//   RegisterDelta:     1..3
+//   LayerControlRequest: 1..2
+//   RegistersRequest:  1        (W20 F.1)
+//   RegistersReply:    1..3     (W20 F.1)
+//   RegisterValue:     1..3     (W20 F.1)
+//   BootStreamRequest: (none)   (W21.1)
+//   BootStage:         1..5     (W21.1)
+//   SetConsoleVisibleRequest: 1 (W21.1)
+//   NavigateUiRequest:  1       (W21.1)
+//   NavigateUiResponse: 1..2    (W21.1)
+//   SetAutostartRequest: 1      (2026-08-27)
+//   UiPrefsRequest:     (none)  (2026-08-31)
+//   UiPrefs:            1       (2026-08-31)
+//   SetUiThemeRequest:  1       (2026-08-31)
+//
+// TOMBSTONES:
+//   - EmuleState            REMOVED 2026-08-27 (emulator is now a separate
+//                           independent app): numbers 1..3 RESERVED, never reuse.
+//   - EngineControlRequest  REMOVED 2026-08-27: number 1 RESERVED, never reuse.
+//   - EngineAction enum     REMOVED 2026-08-27: numbers 0..3 RESERVED, never reuse.
+//   - HostStatus.engine     field 9 RESERVED — engine, emulator independent
+//                           app (2026-08-27).
+//   - UiSection             value 3 RESERVED — emulator removed 2026-08-27
+//                           (separate independent app).
+//
+// TOMBSTONE (W19 E.2.7, owner law «хост закрывается ТОЛЬКО по команде из
+// трея»): ShutdownRequest/ShutdownAck removed W19 E.2.7 — numbers 1..2/1..2
+// RESERVED, never reuse. The ShutdownHost RPC no longer exists: no external
+// client can stop the host; the only graceful stop is the host's own tray
+// ([Закрыть], zone core) / self-restart ([Перезапуск]).
+//
+// Reserved tombstone blocks (future deletions only):
+//   global: 900..999
+//
+// Wire-format decisions:
+//   - MetricsSample carries only changed register deltas (RegisterDelta[]).
+//   - RegisterDelta uses a oneof {int32, float} because the bus carries both
+//     a special int32 Unix timestamp at addr 4..5 (CDAB raw bits) and float32
+//     values everywhere else; the producer sets the appropriate branch.
+//   - LayerKind matches TrayToggleRules.LayerKind exactly (modbus, web,
+//     lan_sniffer, opc_da). BUS_ZONE matches the live bus zones (com, lan, raw).
+
+syntax = "proto3";
+
+package icemdatamonitor.v1;
+
+option csharp_namespace = "iCemDataMonitor.Contracts";
+
+import "google/protobuf/timestamp.proto";
+
+service TelemetryService {
+  // Unary snapshot: host status summary + bus header + layer truth.
+  rpc GetStatus(HostStatusRequest) returns (HostStatus);
+
+  // Server-streaming metric feed. interval_ms is clamped to a minimum of 200;
+  // MetricsSample.interval_clamped reports when clamping happened.
+  rpc SubscribeMetrics(SubscribeRequest) returns (stream MetricsSample);
+
+  // Runtime layer toggle (Modbus / LAN sniffer) or persist-only flag (OPC).
+  rpc SetLayer(LayerControlRequest) returns (LayerState);
+
+  // Unary register snapshot (W20 F.1): bus reads AS RPC so thin clients
+  // (CLI forwarder) never touch the bus MMF themselves. Sensor-at-send:
+  // the server snapshots the bus AT CALL TIME.
+  rpc GetRegisters(RegistersRequest) returns (RegistersReply);
+
+  // ── W21.1 (owner use case «спина к спине»: UI = тупой передатчик) ────────
+
+  // Server-streaming boot-stage feed for the UI splashscreen. The host keeps
+  // a ring buffer of ALL stages recorded since PROCESS START — including the
+  // earliest ones that happen BEFORE Kestrel/gRPC is up. On subscribe the
+  // server REPLAYS the whole buffer, then streams live updates. This is why
+  // the splash never parses stdout: it subscribes as soon as the pipe is
+  // reachable and still sees stage #1. A stage with completed=true means
+  // "checkbox done"; detail carries the last human log line of the stage.
+  rpc SubscribeBootStages(BootStreamRequest) returns (stream BootStage);
+
+  // Console visibility is HOST truth (the console belongs to the host
+  // process). The Status-tab checkbox in WinUI sends this; the response is
+  // the fresh authoritative HostStatus.
+  rpc SetConsoleVisible(SetConsoleVisibleRequest) returns (HostStatus);
+
+  // Autostart (HKCU Run-key) truth and toggle — 2026-08-27. The WinUI
+  // Status-tab «Автозагрузка» checkbox mirrors HostStatus.autostart_enabled
+  // and toggles it via this RPC. The host writes/removes the HKCU Run key
+  // value iCemDataMonitorHost — the SAME key as tools\install-autostart.ps1.
+  // The response is the fresh authoritative HostStatus.
+  rpc SetAutostart(SetAutostartRequest) returns (HostStatus);
+
+  // Navigate the WinUI shell to a section (hierarchical CLI section commands
+  // — the tray [Статус] button was removed 2026-08-27). If the shell is alive,
+  // the host signals it immediately; if not, the request is stored as
+  // PENDING and delivered at the next shell show. The response reports what
+  // happened (ui_alive=false ⇒ pending stored).
+  rpc NavigateUi(NavigateUiRequest) returns (NavigateUiResponse);
+
+  // ── 2026-08-31 (owner decree «даже смена темы — тоже CLI: один bool для
+  //    одновременного использования в web и winui») ──────────────────────────
+
+  // Unary UI-preferences snapshot (NOT station telemetry — the theme is a
+  // STATION-WIDE bool owned by the ui-theme file next to config.ini in the
+  // ProgramData station root). GetUiPrefs reads the file AT CALL TIME
+  // (sensor-at-send): text "light" ⇒ theme_light=true; anything else /
+  // missing file ⇒ dark (false). The web SPA applies it at page load; the
+  // WinUI shell keeps its file+event listener as the instant-flip channel.
+  rpc GetUiPrefs(UiPrefsRequest) returns (UiPrefs);
+
+  // Idempotent theme-set command in the SetAutostart/SetConsoleVisible
+  // pattern: the HOST writes the ui-theme file, then SETs the named poke
+  // event Local\iCemDataMonitorTray_v1_UiTheme (OWNER: the shell — every
+  // listener re-reads the file, so the live WinUI flips instantly and the
+  // next web page load adopts the same truth). The response is the FRESH
+  // authoritative UiPrefs (truth re-read from the file, never a projection
+  // of the request).
+  rpc SetUiTheme(SetUiThemeRequest) returns (UiPrefs);
+
+  // TOMBSTONE (2026-08-27): ControlEngine(EngineControlRequest) returns
+  // (EmuleState) was REMOVED — the emulator is now a SEPARATE INDEPENDENT
+  // app with built-in UI + CLI; the host no longer spawns/controls it.
+  // Removed numbers RESERVED, never reuse:
+  //   EmuleState            1..3
+  //   EngineControlRequest  1
+  //   EngineAction enum     0..3
+
+  // TOMBSTONE (W19 E.2.7): ShutdownHost(ShutdownRequest) returns (ShutdownAck)
+  // was REMOVED — the host is stopped ONLY from its own tray ([Закрыть]).
+  // Field numbers 1..2 of both removed messages are RESERVED, never reuse.
+}
+
+// Empty request for the unary status snapshot.
+message HostStatusRequest { }
+
+// Live host status: status summary plus the AddIn state header.
+message HostStatus {
+  bool bus_open = 1;
+  bool addin_alive = 2;
+  int32 heartbeat = 3;        // reg 3, wraps 32000 -> 0
+  int32 com_port = 4;         // reg 0, 0 = none
+  int32 case_state = 5;       // reg 1
+  int32 case_lan_state = 6;   // reg 2
+  repeated ZoneHealth zones = 7;
+  LayerState layers = 8;
+  google.protobuf.Timestamp updated_at_utc = 10;
+
+  // W21.1: is the host console window currently visible? Host-side truth —
+  // the Status-tab checkbox mirrors this and toggles it via SetConsoleVisible.
+  bool console_visible = 11;
+
+  // HKCU Run-key truth — the host is registered for logon autostart (value
+  // name iCemDataMonitorHost, mirrors tools\install-autostart.ps1). The
+  // WinUI Status-tab «Автозагрузка» checkbox mirrors this and toggles it
+  // via SetAutostart (2026-08-27).
+  bool autostart_enabled = 12;
+
+  reserved 9;                 // engine — emulator independent app (2026-08-27)
+  reserved 900 to 999;
+}
+
+// Per-zone liveness.
+message ZoneHealth {
+  BusZoneKind kind = 1;
+  bool active = 2;            // truth: activeFlag && ageMs < 5000
+  int64 age_ms = 3;
+  uint32 write_count = 4;
+
+  reserved 900 to 999;
+}
+
+// Runtime/persisted layer state. All booleans are the UI truth (probes where applicable).
+message LayerState {
+  bool modbus = 1;
+  bool modbus_bound = 2;      // truth probe: IModbusPublisher.IsBound
+  int32 modbus_port = 3;
+  bool web = 4;                 // web SPA/dashboard layer truth: layers.Web
+  bool sniffer = 5;             // truth probe: AceSnifferService.IsRunning
+  bool sniffer_available = 6;   // registered in DI
+  bool opc_da = 7;              // external stub flag
+  bool set_as_default = 8;      // persist-on-toggle checkbox
+  bool busy = 9;                // a toggle operation is in flight
+  string last_error = 10;       // null/empty when no failure
+
+  reserved 900 to 999;
+}
+
+// TOMBSTONE (2026-08-27): EmuleState REMOVED — the emulator is now a
+// separate independent app with built-in UI + CLI; the host no longer
+// spawns/controls it. Numbers 1..3 RESERVED, never reuse.
+
+// Streaming subscription request.
+message SubscribeRequest {
+  int32 interval_ms = 1;  // requested interval; clamped to min 200 by server
+}
+
+// One metric tick. Deltas are relative to the previous sample on the stream
+// (a consumer that joins late receives a fresh full sample from the server).
+message MetricsSample {
+  google.protobuf.Timestamp timestamp_utc = 1;
+  int32 heartbeat = 2;
+  bool com_port_active = 3;   // comPort > 0
+  int32 case_state = 4;
+  bool interval_clamped = 5;  // true when interval_ms was below 200
+  repeated RegisterDelta deltas = 6;
+
+  reserved 900 to 999;
+}
+
+// A changed register value. Addresses are absolute Modbus register addresses
+// (0..599 for the live zones, matching the live bus-zone semantics).
+message RegisterDelta {
+  uint32 addr = 1;
+  oneof value {
+    int32 int32_value = 2;   // e.g. addr 4..5 Unix timestamp raw bits
+    float float_value = 3;   // all CDAB float pairs
+  }
+
+  reserved 900 to 999;
+}
+
+// Unary register snapshot request (W20 F.1).
+message RegistersRequest {
+  // UNSPECIFIED = ALL live words (absolute 0..599: header state regs 0..3 +
+  // all three data zones). A concrete zone returns ONLY that zone's range —
+  // the header state regs belong to NO data zone (CONTRACT_BusV2 v5):
+  //   BUS_ZONE_COM → com_stream        4..199
+  //   BUS_ZONE_LAN → lan_stream_crio 200..399
+  //   BUS_ZONE_RAW → raw_com_line    400..599
+  BusZoneKind zone = 1;
+
+  reserved 900 to 999;
+}
+
+// Unary register snapshot reply (sensor-at-send: the bus is read at call time).
+message RegistersReply {
+  google.protobuf.Timestamp timestamp_utc = 1;
+  int32 heartbeat = 2;                 // reg 3, wraps 32000 -> 0
+  repeated RegisterValue values = 3;
+
+  reserved 900 to 999;
+}
+
+// One decoded value at an absolute address. Same decode law as the streaming
+// RegisterDelta (MetricsSampler.ComputeDeltas): header words 0..3 surface as
+// int32; pair 4..5 carries the Unix timestamp int32 RAW BITS in CDAB word
+// order; every other even-aligned pair decodes to float32 via CDAB.
+message RegisterValue {
+  uint32 addr = 1;
+  oneof value {
+    int32 int32_value = 2;
+    float float_value = 3;
+  }
+
+  reserved 900 to 999;
+}
+
+// Layer control command.
+message LayerControlRequest {
+  LayerKind layer = 1;
+  bool desired_state = 2;
+}
+
+// TOMBSTONE (2026-08-27): EngineControlRequest REMOVED — the emulator is a
+// separate independent app. Number 1 RESERVED, never reuse.
+
+// TOMBSTONE (W19 E.2.7): ShutdownRequest/ShutdownAck removed W19 E.2.7 —
+// numbers 1..2/1..2 RESERVED, never reuse. Owner law: the host closes ONLY
+// from its own tray; no external client may stop it.
+
+// Identical to TrayToggleRules.LayerKind; 0 is reserved for unknown/unspecified.
+enum LayerKind {
+  LAYER_KIND_UNSPECIFIED = 0;
+  LAYER_KIND_MODBUS = 1;
+  LAYER_KIND_WEB = 2;           // web — SPA dashboard layer (web_on)
+  LAYER_KIND_LAN_SNIFFER = 3;
+  LAYER_KIND_OPC_DA = 4;
+}
+
+// Bus zones exposed by the live status endpoint.
+enum BusZoneKind {
+  BUS_ZONE_UNSPECIFIED = 0;
+  BUS_ZONE_COM = 1;
+  BUS_ZONE_LAN = 2;
+  BUS_ZONE_RAW = 3;
+}
+
+// TOMBSTONE (2026-08-27): EngineAction enum REMOVED — the emulator is a
+// separate independent app. Numbers 0..3 RESERVED, never reuse.
+
+// ── W21.1: boot stages, console visibility, UI navigation ──────────────────
+
+// Empty request for the boot-stage stream (reserved for future filters).
+message BootStreamRequest {
+  reserved 900 to 999;
+}
+
+// One host boot stage. The splashscreen renders each stage as a checkbox:
+// completed=true ⇒ checked. Stages are recorded from PROCESS START (before
+// Kestrel/gRPC exists) into a ring buffer that SubscribeBootStages replays.
+message BootStage {
+  uint32 ordinal = 1;    // 1-based order of recording
+  string id = 2;         // machine id, e.g. "ini", "composition", "ready"
+  string title = 3;      // human-readable, e.g. "конфигурация"
+  bool completed = 4;    // checkbox state
+  string detail = 5;     // optional last human log line of the stage
+
+  reserved 900 to 999;
+}
+
+// Console show/hide command (W21.1). The response is the fresh HostStatus —
+// one round trip gives the checkbox its new authoritative value.
+message SetConsoleVisibleRequest {
+  bool visible = 1;
+
+  reserved 900 to 999;
+}
+
+// Autostart toggle command (2026-08-27). The response is the fresh
+// authoritative HostStatus (autostart_enabled mirrors the HKCU Run key,
+// value name iCemDataMonitorHost — same key as tools\install-autostart.ps1).
+message SetAutostartRequest {
+  bool enabled = 1;
+
+  reserved 900 to 999;
+}
+
+// Closed list of WinUI shell sections (manifest-value seam: values are part
+// of the contract). Mirrors NavigationView tags in MainWindow.xaml exactly.
+// Status and Web remain in the shell — the web SPA tab («Панель») returned
+// 2026-08-27: the owner decree «Web - удали (контрол sim)» meant removing the
+// sim control FROM the page, not the page itself. The emulator section
+// («Эмулятор») stays removed — the emulator is a separate independent app.
+enum UiSection {
+  UI_SECTION_UNSPECIFIED = 0;
+  UI_SECTION_WEB = 1;           // web SPA («Панель») — restored 2026-08-27
+  UI_SECTION_STATUS = 2;
+
+  reserved 3;                   // emulator — removed 2026-08-27 (separate app)
+}
+
+// Navigate-the-shell request (W21.1): hierarchical CLI section commands land
+// here (the tray [Статус] button was removed 2026-08-27). Host-side pending
+// semantics — see rpc doc.
+message NavigateUiRequest {
+  UiSection section = 1;
+
+  reserved 900 to 999;
+}
+
+message NavigateUiResponse {
+  bool ui_alive = 1;     // shell was running and was signalled now
+  UiSection pending = 2; // stored for next shell show when ui_alive=false
+
+  reserved 900 to 999;
+}
+
+// ── 2026-08-31: UI preferences (station-wide theme bool) ───────────────────
+// OWNER DECREE: «даже смена темы — тоже CLI — bool для одновременного
+// использования в web и winui». UI preferences are deliberately NOT fields of
+// HostStatus: they are not station telemetry (bus/addin/zones) and HostStatus
+// is polled at ~1 Hz by every surface — prefs are read once at UI start.
+// A dedicated UiPrefs message is the extensible seam: future UI prefs ride
+// additive field numbers, never renumbering the status snapshot.
+
+// Empty request for the unary prefs snapshot (reserved for future filters).
+message UiPrefsRequest {
+  reserved 900 to 999;
+}
+
+// The single station-wide theme bool. theme_light=true ⇒ light; false ⇒ dark
+// (the station default). Truth source: the ui-theme text file in the
+// ProgramData station root ("light"/"dark") — the SAME file the WinUI shell
+// writes/reads; the host is the writer in client mode (SetUiTheme RPC).
+message UiPrefs {
+  bool theme_light = 1;
+
+  reserved 900 to 999;
+}
+
+// Theme-set command (idempotent): repeated identical sets leave the state
+// unchanged and always answer the fresh authoritative UiPrefs (same shape
+// law as SetAutostart's fresh HostStatus).
+message SetUiThemeRequest {
+  bool theme_light = 1;
+
+  reserved 900 to 999;
+}

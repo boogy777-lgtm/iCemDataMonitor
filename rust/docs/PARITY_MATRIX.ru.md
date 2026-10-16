@@ -1,0 +1,41 @@
+# Матрица совместимости
+
+**Ни одна строка пока не получила полный PASS.** M0 tests подготовлены, не запускались.
+`Source` ниже указан относительно `../`; Cargo.toml — корень нового workspace.
+
+| ID | Функция | Сохраняемое поведение | Source | Этап | Доказательство |
+|---|---|---|---|---|---|
+| P01 | net48 AddIn | DLL остаётся без изменений; SDK/vendor references сохранены | Burservis.iCem.DataMonitor | M2 | Byte identity DLL + original iCem load + bus trace |
+| P02 | MMF/read lifecycle | v5/64+2N, mutex500ms, DACL, abandoned, file disappear/recreate | iCemDataMonitor.Data/Bus/BusReader.cs | M2 | Windows fault matrix + source hash |
+| P03 | Byte codec | LE header / BE words / CDAB / int32 timestamp / NaN bits | iCemDataMonitor.Sdk/Bus/BusLayout.cs | M0/M2 | Pure fixture tests + real AddIn differential |
+| P04 | Modbus read/write | FC03/04/06/16, bounds, dynamic size, separate mirror | iCemDataMonitor.Transport/ModbusTcpPublisher.cs | M4 | Request/response golden bytes |
+| P05 | Modbus mirror policy | active raw flags / inactive hold / stale hold / reserve write | iCemDataMonitor.Transport/ModbusTcpPublisher.cs | M4 | Deterministic tick/write-conflict traces |
+| P06 | Web SPA | Original dashboard, charts, theme, web_on gating | iCemDataMonitor.Host/wwwroot | M4/M6 | Browser scenarios and DOM/UI comparisons |
+| P07 | REST | 4 active GET routes and exact projections/errors | iCemDataMonitor.Host.Core/HostComposition.cs | M4 | OpenAPI + golden JSON |
+| P08 | History | 600 samples/addr,1Hz,4..598 even,503-before-400 | iCemDataMonitor.Data/Bus/RingHistory.cs | M4 | FIFO/cadence/query tests |
+| P09 | gRPC/pipe/Web | 10 RPC, proto tag/oneof/reserved stability | iCemDataMonitor.Contracts/Protos/telemetry.proto | M4 | Old C# clients against Rust + wire fixtures |
+| P10 | Metrics/boot streams | initial full/deltas,clamp200,replay boot,disconnect | iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs | M4 | Reconnect/slow client/cancel traces |
+| P11 | Host CLI | pure JSON,0/1/2 exits, --start,snapshot,get,header,stop,restart | iCemDataMonitor.Host/CliMode/CliForwarder.cs | M3/M4 | argv/stdout/stderr/exit golden |
+| P12 | Host tray | same .ico,5 menu commands,console captions,tooltip63,1Hz | iCemDataMonitor.Host/Tray/HostTray.cs | M3 | Windows tray/menu/Explorer test |
+| P13 | Host lifecycle | single instance,event ownership,close shell only,restart budgets | iCemDataMonitor.Host/Tray/HostLifecycle.cs | M3 | Repeated stop/restart + no orphan processes |
+| P14 | Autostart/console | HKCU Run, --autostart,console close guard | iCemDataMonitor.Host/Tray/AutostartManager.cs | M3 | Registry/current-state/console scenarios |
+| P15 | Shell | Состояние/Панель,ensure host,splash,reconnect,status lamps | iCemDataMonitor.Shell.WinUI/MainWindow.xaml | M6 | Operator walkthrough + DPI/focus |
+| P16 | Layer switches | runtime Modbus/sniffer; persist Web/OPC; actual truth | iCemDataMonitor.Host.Core/LayerRuntimeController.cs | M3/M4 | Failure/start/stop/toggle parity + D04/D06 |
+| P17 | ACE sniffer | wire reader,decode/counters/status,Npcap availability | iCemDataMonitor.Transport/AceSnifferService.cs | M4 | pcap replay/live capture, no bus writes |
+| P18 | INI | read-once,strict validation,retired keys,migration,active path | iCemDataMonitor.Core/Config/IniConfig.cs | M2 | Original config test vectors |
+| P19 | XML/registries | emulator config,templates,firmware/variable/lantable assets | iCemEmule.Core/Core/EmuSettings.cs | M2/M5 | Original load/save/default roundtrips |
+| P20 | Emulator isolation | own process/folder/tray/CLI; host never spawns/stops it | iCemEmule.Core/Control/EmulatorAppContract.cs | M3/M5 | Independent start/close + singleton tests |
+| P21 | Emulator UI | COM/LAN/Units,all controls,close-to-tray,open/exit | iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml | M6 | Operator UI checklist covers each control |
+| P22 | Emulator control | 21 commands,text/JSON,watch,quit ACK,exit codes | iCemEmule.Core/Control/CommandProcessor.cs | M5 | Command and error golden lines |
+| P23 | FLECS COM | 32 fields,1Hz,serial settings,port selection/reconnect | iCemEmule.Core/Emitters/ComSerialEmitter.cs | M5 | Virtual COM capture + byte compare |
+| P24 | ACE emitter | raw802.3,152bytes,SV order,equipment,firmware,pacing | iCemEmule.Core/Emitters/AceFrameBuilder.cs | M5 | pcap and frame fixture equality |
+| P25 | Simulation/DFB | all existing blocks,manual/frozen/native overrides | iCemEmule.Core/Dfb | M5 | Fixed dt/input trajectories + tolerance report |
+| P26 | Unit conversion | 4 presets,per-group overrides,LAN conversion order | iCemEmule.Core/Core/UnitConversion.cs | M5 | Units cross product golden vectors |
+| P27 | Logs/diagnostics | existing paths,rotation cap,startup errors,selftest/landiag | iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs | M3/M5 | Failure evidence and capped file tests |
+| P28 | Installer | icons/shortcuts/paths/upgrade/uninstall/rollback/offline | installer/Product.wxs | M7 | Clean VM install matrix |
+| P29 | Size/safe code | no .NET10/WinAppSDK in rewritten payload,first-party unsafe forbid | ../Cargo.toml | M7/M8 | Full payload measurements + cargo gates |
+| P30 | Dormant surfaces | COM tee/com0com/old REST handlers preserved in baseline; active wiring absent | iCemDataMonitor.Host.Core/Endpoints | M1 | Call graph evidence; revive only explicit scope decision |
+
+COM tee/com0com код сохранён как исходная база. В действующей host-композиции он не подключён;
+если целевой установленный релиз имеет отличающуюся ветку, M1 обязан заменить baseline
+до заявления об идентичности. OPC DA сейчас stub, не реализованный OPC server.

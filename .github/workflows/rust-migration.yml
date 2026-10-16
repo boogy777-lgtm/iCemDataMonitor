@@ -1,0 +1,32 @@
+name: rust-migration
+on:
+  push:
+    branches: [main]
+    paths: ["rust/**", ".github/workflows/rust-migration.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["rust/**", ".github/workflows/rust-migration.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify source and skeleton
+        shell: pwsh
+        run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline

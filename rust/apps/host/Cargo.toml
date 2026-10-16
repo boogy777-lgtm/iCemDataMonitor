@@ -1,0 +1,18 @@
+[package]
+name = "icem-host-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "icem-host-skeleton"
+path = "src/main.rs"
+
+[dependencies]
+icem-transport = { path = "../../crates/icem-transport" }
+icem-platform-windows = { path = "../../crates/icem-platform-windows" }
+icem-protocols = { path = "../../crates/icem-protocols" }
