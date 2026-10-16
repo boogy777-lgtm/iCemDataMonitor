@@ -377,6 +377,7 @@ version = "0.1.0"
 dependencies = [
  "icem-emulation",
  "icem-platform-windows",
+ "icem-protocols",
  "serde_json",
 ]
 

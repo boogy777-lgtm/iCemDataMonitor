@@ -238,3 +238,9 @@ Local gRPC pipe, оставшиеся control RPC и полная Windows/UI-п�
 Отдельный icem-dfb-dev исполняет фиксированную цементировочную сеть без I/O.
 [Опции, JSON snapshot и границы](EMULATOR_E2.ru.md). Production emulator API выше
 остаётся отдельной задачей. Исходный proto и 21 command не изменены.
+
+## Development LAN trace (E3)
+
+Отдельный icem-lan-dev формирует payload/ACE frames без hardware I/O.
+[Опции, JSON/hex stdout и API-гарантии](EMULATOR_E3.ru.md). Production 21 commands
+и control pipe этим EXE не заменяются.

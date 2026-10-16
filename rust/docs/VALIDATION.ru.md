@@ -139,3 +139,8 @@ Local Linux: 47 tests, workspace fmt/build/test/clippy; Windows cross-target
 check/clippy всех emulator targets PASS. C# и Windows MMF integration выполнены
 именно в Windows CI, не приписаны локальному Linux. GPUI/hardware/tray и full-size
 comparison этим инкрементом не подтверждаются.
+
+## Emulator E3 — подготовленные проверки
+
+[Контракт LAN E3](EMULATOR_E3.ru.md). Добавлены byte-exact original C# providers/codecs
+oracle и реальные ACE dev EXE проверки. Результат exact CI фиксируется по завершении.

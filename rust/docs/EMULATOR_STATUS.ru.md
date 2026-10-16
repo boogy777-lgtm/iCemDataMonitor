@@ -111,3 +111,10 @@ migration/validation-emulator-e1.json. Полных P19/P23/P24/P25/P26 PASS п�
 Linux 47 tests + Chrome; original C# factory/RNG/map oracle .NET 10.0.12 PASS.
 Подтверждённые данные: migration/validation-emulator-e2.json. Следующая работа —
 LAN provider/freeze/override/units composition; M5 в целом ещё открыт.
+
+## E3 — LAN providers
+
+Добавлены base/catalog/codec и полная LAN provider composition с frozen cache,
+manual native overrides и units; [контракт E3](EMULATOR_E3.ru.md).
+Windows C# oracle и exact CI фиксируются после выполнения; hardware/IPC/GPUI/tray
+остаются отдельными этапами.

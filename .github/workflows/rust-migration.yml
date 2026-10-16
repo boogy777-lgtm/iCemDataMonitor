@@ -64,4 +64,5 @@ jobs:
           path: |
             rust/target/emu-differential-report.json
             rust/target/dfb-differential-report.json
+            rust/target/lan-differential-report.json
           if-no-files-found: ignore

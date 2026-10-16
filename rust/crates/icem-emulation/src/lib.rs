@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 //! Independent emulator domain: pure simulation, unit conversion and cement DFB.
-//! Hardware emitters, LAN providers and GPUI are separate migration gates.
+//! Hardware emitters, production control and GPUI are separate migration gates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Channel {
     Com,
@@ -44,3 +44,6 @@ pub mod simulation;
 pub mod units;
 
 pub mod cement;
+
+pub mod lan;
+pub mod lan_pipeline;
