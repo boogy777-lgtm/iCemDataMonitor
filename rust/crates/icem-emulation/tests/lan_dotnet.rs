@@ -34,8 +34,12 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 fn unhex(s: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    s.as_bytes()
-        .chunks_exact(2)
+    let (pairs, remainder) = s.as_bytes().as_chunks::<2>();
+    if !remainder.is_empty() {
+        return Err("odd-length hex from C# oracle".into());
+    }
+    pairs
+        .iter()
         .map(|b| Ok(u8::from_str_radix(std::str::from_utf8(b)?, 16)?))
         .collect()
 }
