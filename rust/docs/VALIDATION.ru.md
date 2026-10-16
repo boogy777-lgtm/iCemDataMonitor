@@ -7,7 +7,8 @@ Baseline привязан к `96e2206562c9389d1543095232115d81eae4b692`; manifes
 его загрузка в эту среду не выполнена. Публикация строится поверх исходного дерева и сохраняет его blob без изменений.
 
 Исторический M0/Modbus этап проверялся на Rust 1.85.1; текущая версия — 1.99.1 (см. ниже).
-Windows/.NET integration, UI, MSI и измерение полного payload ещё не выполнены.
+На начальном этапе Windows/.NET integration ещё не выполнялась; результат M2 приведён ниже.
+UI, MSI и измерение полного payload пока не выполнены.
 
 Локальный M0 Linux: `cargo fmt --all`, `cargo check --workspace --all-targets --locked --offline`,
 `cargo test --workspace --locked --offline` (5 tests PASS),
@@ -49,3 +50,17 @@ Windows x86_64-pc-windows-msvc: cargo check и clippy --all-targets --locked --o
 с -D warnings проходят cross-compilation. Это не запуск Windows tests.
 Точный результат Windows/Linux CI фиксируется по опубликованному commit/run отдельно.
 Native exception и остающиеся release gates описаны в ADR 0001 и M2_STATUS.ru.md.
+
+### Подтверждённый Windows/Linux CI M2
+
+Код commit `8f27b0718a3321980b4167e277f0980d6e7e11ac`:
+[Actions run 38936849475](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38936849475) — **success**.
+Windows job 117094387940: 32 tests + 1 compile-fail guard doctest PASS;
+Linux job 117094387493: 24 tests PASS. На обеих ОС прошли fmt/check/build/test/clippy,
+metadata pin/edition gate и сравнение 513/513 исходных blobs; frozen proto/assets не менялись.
+Все 7 MMF tests и live EXE e2e выполнялись на Windows, не были skipped.
+
+Дополнительно локальный Linux EXE прошёл fixture → FC03/06/04, inactive hold после tick,
+завершение по сроку, отсутствие stdout, usage/input/unsupported live mode exit codes.
+Реальная legacy AddIn, UI и полный payload этим результатом не проверены.
+Машиночитаемый результат: `migration/validation-m2.json`.

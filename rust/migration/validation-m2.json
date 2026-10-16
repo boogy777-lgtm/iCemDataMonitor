@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "code_commit": "8f27b0718a3321980b4167e277f0980d6e7e11ac",
+  "toolchain": "1.99.1",
+  "edition": "2024",
+  "workflow_run": 38936849475,
+  "workflow_url": "https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/38936849475",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 117094387940,
+      "os": "windows-latest",
+      "tests": 32,
+      "compile_fail_doctests": 1,
+      "conclusion": "success"
+    },
+    {
+      "id": 117094387493,
+      "os": "ubuntu-latest",
+      "tests": 24,
+      "conclusion": "success"
+    }
+  ],
+  "checks": [
+    "baseline 513/513 unchanged",
+    "frozen proto/assets",
+    "all member edition/MSRV metadata",
+    "cargo fmt --all --check",
+    "cargo check --workspace --all-targets --locked --offline",
+    "cargo build --workspace --locked --offline",
+    "cargo test --workspace --locked --offline",
+    "cargo clippy --workspace --all-targets --locked --offline -- -D warnings"
+  ],
+  "windows_integration": [
+    "named .NET write visible and owned snapshot",
+    "unnamed host-first map without producer name poisoning",
+    "absent/foreign/legacy file non-mutation",
+    "mutex timeout and recovery",
+    "abandoned mutex",
+    "sticky section capacity mismatch",
+    "orphan pathname/recreation and D09 cache semantics",
+    "live host EXE to Modbus FC03/04/06 with inactive hold"
+  ],
+  "remaining": [
+    "real AddIn x86/x64",
+    "DACL and privilege matrix",
+    "producer growth/stress",
+    "native boundary independent review",
+    "INI discovery/migration/save/XML",
+    "tray/web/gRPC/history/shell/emulator",
+    "MSI and full payload size"
+  ]
+}
