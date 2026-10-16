@@ -35,7 +35,7 @@ const { createInterface } = require('node:readline');
       assert.equal(response.status(), 200);
       assert.deepEqual(await response.body(), await fs.readFile(path.join(root, 'web/dashboard', file)));
     }
-    await page.goto(origin);
+    await page.goto(origin, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.querySelectorAll('#zones input[data-addr]').length === 298);
     await page.waitForFunction(() => document.querySelector('#metricsTable tbody tr td')?.textContent !== 'ожидание первого сэмпла…');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
@@ -58,7 +58,7 @@ const { createInterface } = require('node:readline');
       await new Promise(r => setTimeout(r, 100));
     }
     await page.screenshot({ path: path.join(shots, 'status-light.png'), fullPage: true });
-    const second = await browser.newPage(); await second.goto(origin);
+    const second = await browser.newPage(); await second.goto(origin, { waitUntil: 'domcontentloaded' });
     await second.waitForFunction(() => document.documentElement.dataset.theme === 'light');
     const response = await page.request.get(origin + '/api/regs/history?addr=6');
     const history = await response.json(); assert.ok(history['6'].length >= 1); assert.equal(history['6'][0].v, 1);

@@ -49,3 +49,7 @@ D16 — baseline index.html inline SetUiTheme вычисляет data-theme !== 
 как main.js уже выполнил визуальный toggle. Node VM trace: visual light, RPC false.
 В Rust-копии HTML исправлено на === light; внешний вид не меняется. Проверка baseline
 допускает только эту одну замену. Оригинальные .NET assets остаются неизменными.
+
+D17 — inline GetUiPrefs требует literal "grpc-status: 0", отвергая валидный trailer
+"grpc-status:0" из tonic-web. Добавлен строгий line-based parser с optional SP/HTAB,
+без изменения внешнего вида или proto. Original .NET HTML не меняется.

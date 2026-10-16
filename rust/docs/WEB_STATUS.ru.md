@@ -2,7 +2,7 @@
 
 Порядок пользователя: **web server → emulator → tray**. Desktop backend — GPUI.
 Web frontend выбран прежний HTML/CSS/JS: 4 dashboard assets неизменны; в index.html
-исправлена только инверсия темы D16. Assets embedded в Rust EXE. Ни controls, ни CSS, ни chart renderer, ни SVG иконки не перерисовываются.
+исправлены только инверсия темы D16 и разбор trailer D17. Assets embedded в Rust EXE. Ни controls, ни CSS, ни chart renderer, ни SVG иконки не перерисовываются.
 
 ## Реализовано
 
@@ -62,8 +62,17 @@ Host/emulator GPUI UI и оба tray не реализованы; внешний
 же mutex ≤500 ms. UTC projection сейчас имеет millisecond clock granularity.
 Полного parity PASS и полного size comparison этот этап не присваивает.
 
-D16: единственное изменение SPA — исправлена инверсия bool в inline SetUiTheme:
+D16: первая точечная правка SPA — исправлена инверсия bool в inline SetUiTheme:
 после bundle click визуальный light отправлял false. Теперь отправляется фактический
 visual state. main.js/CSS/icons и внешний вид не меняются; original .NET index.html
-не меняется. Verify-Baseline допускает ровно эту замену и проверяет остальной HTML
+не меняется. Verify-Baseline допускает ровно две замены D16/D17 и проверяет остальной HTML
 целиком; Node VM regression и browser scenario проверяют обе темы.
+
+D17: inline GetUiPrefs принимал только ASCII trailer с colon+space. Tonic отдаёт
+валидный grpc-status:0. Parser теперь принимает colon с нулём/пробелами/tab, только
+целый grpc-status=0; layout/styles не меняются. Node VM проверяет исходный failure
+и исправленный разбор, browser — тему во второй независимой странице.
+
+Для следующего GPUI этапа сохранён `migration/desktop-ui-inventory.json`:
+5 XAML screens/dictionaries, 176 named controls и 624 scoped resource definitions.
+Это inventory для сохранения Mac/Apple tokens, layout и control states, не готовый GPUI UI.

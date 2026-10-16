@@ -209,7 +209,7 @@
     if (5 + len + 5 <= body.length && body[5 + len] === 0x80) {
       var trailers = new TextDecoder().decode(
         body.subarray(10 + len, 10 + len + u32(body, 5 + len + 1)));
-      if (trailers.indexOf("grpc-status: 0") === -1)
+      if (!/(?:^|\r\n)grpc-status:[ \t]*0(?:\r\n|$)/.test(trailers))
         throw new Error("grpc error: " + trailers.trim());
     } else {
       throw new Error("missing grpc-web trailer frame");

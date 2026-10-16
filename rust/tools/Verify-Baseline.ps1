@@ -46,7 +46,7 @@ Get-ChildItem -File -Recurse $Dashboard | ForEach-Object {
     $RustRelative = 'rust/web/dashboard/' + $Relative.Replace('\', '/')
     $SourceRelative = 'iCemDataMonitor.Host/wwwroot/' + $Relative.Replace('\', '/')
     if ($Relative -eq 'index.html') {
-        # D16: the ONLY allowed SPA change is the inverted SetUiTheme predicate.
+        # D16: the only allowed SPA edits are the D16 bool and D17 valid trailer spacing.
         # Source hash was checked above; compare the complete transformed text.
         $Legacy = 'var light = document.documentElement.getAttribute("data-theme") !== "light";'
         $Fixed = 'var light = document.documentElement.getAttribute("data-theme") === "light";'
@@ -54,9 +54,14 @@ Get-ChildItem -File -Recurse $Dashboard | ForEach-Object {
         if ([regex]::Matches($OriginalHtml, [regex]::Escape($Legacy)).Count -ne 1) {
             throw 'D16 source predicate drift'
         }
-        $ExpectedHtml = $OriginalHtml.Replace($Legacy, $Fixed)
+        $LegacyTrailer = 'if (trailers.indexOf("grpc-status: 0") === -1)'
+        $FixedTrailer = 'if (!/(?:^|\r\n)grpc-status:[ \t]*0(?:\r\n|$)/.test(trailers))'
+        if ([regex]::Matches($OriginalHtml, [regex]::Escape($LegacyTrailer)).Count -ne 1) {
+            throw 'D17 source trailer predicate drift'
+        }
+        $ExpectedHtml = $OriginalHtml.Replace($Legacy, $Fixed).Replace($LegacyTrailer, $FixedTrailer)
         if ($ExpectedHtml -cne [IO.File]::ReadAllText($_.FullName).Replace("`r`n", "`n")) {
-            throw 'SPA index.html changed beyond the single D16 predicate'
+            throw 'SPA index.html changed beyond D16/D17 predicates'
         }
     } elseif ((Get-CanonicalHash $_.FullName $RustRelative) -ne (Get-CanonicalHash $Source $SourceRelative)) {
         throw "Original SPA changed: $Relative"
@@ -71,4 +76,4 @@ if ($Missing.Count -gt 0) {
     Write-Warning ("Missing {0} baseline file(s): {1}" -f $Missing.Count, ($Missing -join ', '))
     if ($RequireComplete) { throw 'Full source copy is required before publication' }
 }
-Write-Host "Baseline: $Verified verified of $($Manifest.files.Count); frozen proto/assets, sole D16 theme predicate and REST inventory OK."
+Write-Host "Baseline: $Verified verified of $($Manifest.files.Count); frozen proto/assets, D16/D17 theme predicates and REST inventory OK."

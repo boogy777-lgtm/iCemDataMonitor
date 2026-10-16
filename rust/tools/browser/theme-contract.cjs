@@ -4,12 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '../..');
-async function click(htmlPath, visual) {
+async function click(htmlPath, visual, spacing = ' ', initialLight = false, initOnly = false) {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const code = html.split('<script>')[1].split('</script>')[0];
   let theme = 'dark', handler, sent;
-  const trailers = Buffer.from('grpc-status: 0\r\n');
-  const response = Buffer.concat([Buffer.from([0,0,0,0,0,128,0,0,0,trailers.length]), trailers]);
+  const trailers = Buffer.from('grpc-status:' + spacing + '0\r\n');
+  const data = initialLight ? Buffer.from([8,1]) : Buffer.alloc(0);
+  const response = Buffer.concat([Buffer.from([0,0,0,0,data.length]), data, Buffer.from([128,0,0,0,trailers.length]), trailers]);
   vm.runInNewContext(code, {
     window: { location: { origin: 'http://localhost' } }, Uint8Array, TextDecoder,
     document: {
@@ -22,7 +23,7 @@ async function click(htmlPath, visual) {
       return { arrayBuffer: async () => response.buffer.slice(response.byteOffset, response.byteOffset + response.byteLength) };
     }
   });
-  await new Promise(setImmediate); theme = visual; handler(); await new Promise(setImmediate);
+  await new Promise(setImmediate); if (initOnly) return theme; theme = visual; handler(); await new Promise(setImmediate);
   return sent;
 }
 (async () => {
@@ -31,5 +32,7 @@ async function click(htmlPath, visual) {
   assert.equal(await click(original, 'light'), false, 'D16 baseline counterexample changed');
   assert.equal(await click(migrated, 'light'), true);
   assert.equal(await click(migrated, 'dark'), false);
-  console.log('PASS D16: original inverted bool reproduced, migrated light/dark follows actual visual state');
+  assert.equal(await click(original, 'light', '', true, true), 'dark', 'D17 baseline counterexample changed');
+  for (const spacing of ['', ' ', '\t']) assert.equal(await click(migrated, 'light', spacing, true, true), 'light');
+  console.log('PASS D16/D17: baseline inverse/trailer defects reproduced; migrated bool and valid gRPC trailer spacing accepted');
 })().catch(error => { console.error(error); process.exitCode = 1; });

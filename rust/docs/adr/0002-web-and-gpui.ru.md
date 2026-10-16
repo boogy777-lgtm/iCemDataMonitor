@@ -2,7 +2,7 @@
 
 Решение пользователя: web server → независимый emulator → tray. Desktop UI — GPUI;
 Apple-style custom controls и вся функциональность должны сохраниться. Web frontend
-остаётся исходной HTML/CSS/JS SPA с единственной логической правкой D16:
+остаётся исходной HTML/CSS/JS SPA с двумя логическими правками D16/D17:
 сохранение вида не требует React/Vue.
 Backend — Axum 0.8.9 + Tokio + tonic/tonic-web/tonic-prost 0.14.6, prost 0.14.4,
 serde_json/serde_urlencoded и chrono 0.4.45 (std only, без timezone DB).
@@ -35,8 +35,13 @@ GPUI будет подключён при desktop этапе с отдельны
 библиотека не добавляется в headless host заранее. Стандартные GPUI components не
 считаются заменой исходных custom controls. Число мегабайт полного приложения пока не измерено.
 
-D16: единственное изменение SPA — исправлена инверсия bool в inline SetUiTheme:
+D16: первая точечная правка SPA — исправлена инверсия bool в inline SetUiTheme:
 после bundle click визуальный light отправлял false. Теперь отправляется фактический
 visual state. main.js/CSS/icons и внешний вид не меняются; original .NET index.html
-не меняется. Verify-Baseline допускает ровно эту замену и проверяет остальной HTML
+не меняется. Verify-Baseline допускает ровно две замены D16/D17 и проверяет остальной HTML
 целиком; Node VM regression и browser scenario проверяют обе темы.
+
+D17: inline GetUiPrefs принимал только ASCII trailer с colon+space. Tonic отдаёт
+валидный grpc-status:0. Parser теперь принимает colon с нулём/пробелами/tab, только
+целый grpc-status=0; layout/styles не меняются. Node VM проверяет исходный failure
+и исправленный разбор, browser — тему во второй независимой странице.

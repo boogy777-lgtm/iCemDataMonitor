@@ -31,6 +31,8 @@ Windows is the production target. Tests on Linux do not prove Windows integratio
 No release/package must label the M0 binaries as functional replacements.
 User priority (2026-10-16): web server, then independent emulator, then tray.
 Desktop UI must use GPUI and preserve the existing custom controls/appearance.
+Read migration/desktop-ui-inventory.json and the original XAML/themes before desktop UI edits;
+176 named controls and scoped resources require explicit mapping/state acceptance.
 Web frontend preserves frozen HTML/CSS/JS; do not replace it with a generic control kit.
 The dependency graph is locked; generator-only lint allowances stay scoped to generated proto output.
 Never publish publicly. The user authorized publishing rust/ in boogy777-lgtm/iCemDataMonitor.

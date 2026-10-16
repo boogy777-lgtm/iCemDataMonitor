@@ -12,7 +12,7 @@ Workspace в папке `rust/` существующего приватного 
 и диагностический host на синтетическом Bus fixture. [Статус, ограничения и запуск](docs/IMPLEMENTATION_STATUS.ru.md).
 Добавлены Windows MMF reader, строгий INI parser и подключение живой шины к dev host.
 [Границы M2-инкремента](docs/M2_STATUS.ru.md). Добавлен web backend:
-сохранённая SPA (единственная логическая правка D16), REST/history, gRPC-Web status/registers/metrics/theme.
+сохранённая SPA (две логические правки D16/D17), REST/history, gRPC-Web status/registers/metrics/theme.
 [Запуск и ограничения](docs/WEB_STATUS.ru.md). Порядок: web → emulator → tray.
 Desktop UI — GPUI с сохранением существующих custom controls; emulator/tray ещё не перенесены.
 
@@ -73,3 +73,8 @@ CI читает тот же pin и проверяет edition/MSRV всех уч
 [Win32-граница](docs/adr/0001-win32-read-boundary.ru.md).
 EXE имеют имена skeleton/dev до полной приёмки; они не заменяют production.
 Исходная лицензия — TBD; новая лицензия не назначена.
+
+D17: inline GetUiPrefs принимал только ASCII trailer с colon+space. Tonic отдаёт
+валидный grpc-status:0. Parser теперь принимает colon с нулём/пробелами/tab, только
+целый grpc-status=0; layout/styles не меняются. Node VM проверяет исходный failure
+и исправленный разбор, browser — тему во второй независимой странице.

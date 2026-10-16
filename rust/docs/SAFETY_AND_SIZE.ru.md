@@ -52,7 +52,7 @@ features, без Electron/встроенного Chromium, без дублиро
 
 - [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html): size, LTO, strip, panic.
 - [tray-icon](https://docs.rs/tray-icon/latest/tray_icon/): кандидат native tray с message loop.
-- [wry](https://docs.rs/wry/latest/wry/): кандидат оболочки над системным WebView.
+- [GPUI](https://gpui.rs/): обязательный desktop backend по решению пользователя; Windows acceptance впереди.
 - [tokio named pipe](https://docs.rs/tokio/latest/tokio/net/windows/named_pipe/index.html): I/O pipe.
 - [tonic server](https://docs.rs/tonic/latest/tonic/transport/server/struct.Server.html): incoming transport.
 - [tonic-web](https://docs.rs/tonic-web/latest/tonic_web/): адаптация gRPC-Web.
