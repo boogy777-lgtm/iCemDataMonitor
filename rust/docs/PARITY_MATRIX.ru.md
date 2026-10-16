@@ -44,3 +44,7 @@ COM tee/com0com код сохранён как исходная база. В д�
 FC03/04/06/16, mirror/TCP, строгий INI parser, web REST/history и SPA RPC subset.
 [Web-инкремент](WEB_STATUS.ru.md); GPUI и desktop visual acceptance ещё не выполнены. [Границы M2](M2_STATUS.ru.md).
 Тесты и намеренные отклонения D05/D10/D14/D15: [implementation status](IMPLEMENTATION_STATUS.ru.md).
+
+P19/P23/P24/P25/P26 начаты частично: explicit template loading и COM waveform/formatter,
+ACE frame/signal codec, три DFB-примитива и unit conversion. Физических emitters и
+полной DFB network пока нет. Проверки/границы: [emulator E1](EMULATOR_STATUS.ru.md).

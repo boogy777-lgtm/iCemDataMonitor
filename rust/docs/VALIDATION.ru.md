@@ -93,3 +93,10 @@ Chrome: unchanged CSS/JS/icons + reviewed HTML predicates, 298 pairs, selection/
 strict trailer whitespace (D17). Обе исправлены в Rust-копии HTML с regression tests;
 остальные UI bytes и все original .NET files сохранены. Полных parity PASS нет.
 Точные результаты и remaining gates: migration/validation-web.json.
+
+## Emulator E1
+
+Добавлены domain, ACE и реальные EXE preview tests; Windows original-C# differential
+test включён в workspace. Локальные/cross-target результаты и exact CI фиксируются по
+фактическому run; Linux не считается выполнением C# oracle или Windows/GPU проверки.
+Границы описаны в EMULATOR_STATUS.ru.md.

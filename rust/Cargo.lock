@@ -368,6 +368,7 @@ name = "icem-emulation"
 version = "0.1.0"
 dependencies = [
  "icem-protocols",
+ "serde_json",
 ]
 
 [[package]]
@@ -376,6 +377,7 @@ version = "0.1.0"
 dependencies = [
  "icem-emulation",
  "icem-platform-windows",
+ "serde_json",
 ]
 
 [[package]]

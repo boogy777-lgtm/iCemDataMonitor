@@ -59,3 +59,18 @@ D18 (open characterization): main.js parseTrailerStatus ожидает protobuf-
 он возвращает пустой status, а SubscribeMetrics client возвращается без немедленного
 onError/onEnd; watchdog остаётся отдельным путём reconnect. Bundle не менялся ради
 миграции. Нужен исходный .NET vs Rust browser disconnect/reconnect trace перед полным P10 PASS.
+
+D19 — AceFrameBuilder.TryParseFrame XML обещает ровно 152 bytes и заголовочную
+length-проверку, фактический код принимает length≥152 и не проверяет frame[12..13].
+Rust codec сохраняет этот фактический predicate, включая LLC control 08/09.
+
+D20 (open, full DFB network): DfbNetwork.Add инициализирует insertAt=_blocks.Count,
+потом проверяет producer position≥insertAt; у существующих blocks position<count,
+поэтому Add фактически append-only, несмотря на комментарий о topological insertion.
+Execute выполняет блоки вне lock после создания копии списка. Пока перенесены только
+три primitive blocks; будущий network port требует factory-order characterization.
+
+D21 — SignalWireCodec.TryDecodeNative в исходнике складывает signed int offset/size
+до проверки; overflow может дойти до исключения AsSpan. Rust codec использует
+checked ranges и возвращает None для такого malformed definition; тест включает
+byteOffset=i32::MAX и отрицательную size. Valid wire widths/offsets не меняются.

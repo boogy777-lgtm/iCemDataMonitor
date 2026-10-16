@@ -28,7 +28,8 @@ Milestone IDs выше остаются идентификаторами кри�
 GPUI — обязательный desktop backend. Web — прежние HTML/CSS/JS поверх Rust Axum/tonic.
 Apple-style custom controls, light/dark, геометрия, typography, состояния/hover/focus,
 keyboard/DPI и поведение сохраняются; generic UI kit не подменяет существующий дизайн.
-[Текущий web-инкремент](WEB_STATUS.ru.md). Полного UI PASS до визуальной приёмки нет.
+[Web-инкремент](WEB_STATUS.ru.md). [Текущий emulator E1](EMULATOR_STATUS.ru.md).
+Полного UI PASS до визуальной приёмки нет.
 
 ## Работа каждой задачи LLM
 

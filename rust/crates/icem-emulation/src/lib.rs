@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
-//! Independent emulator domain. DFB and wire emission are M5 work.
+//! Independent emulator domain: pure simulation, unit conversion and primitive DFB.
+//! Hardware emitters, full DFB composition and GPUI are separate migration gates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Channel {
     Com,
@@ -37,3 +38,7 @@ pub const COMMANDS: &[&str] = &[
     "setpreset",
     "setunit",
 ];
+
+pub mod dfb;
+pub mod simulation;
+pub mod units;

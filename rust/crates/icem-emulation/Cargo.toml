@@ -10,3 +10,4 @@ workspace = true
 
 [dependencies]
 icem-protocols = { path = "../icem-protocols" }
+serde_json = "1"

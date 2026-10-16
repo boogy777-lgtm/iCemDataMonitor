@@ -1,6 +1,7 @@
 # Реализованные инкременты
 
-Текущий этап: [web backend + сохранённая SPA](WEB_STATUS.ru.md).
+Текущий этап: [независимый emulator, E1](EMULATOR_STATUS.ru.md).
+Предыдущий: [web backend + сохранённая SPA](WEB_STATUS.ru.md).
 Предыдущий: [Windows MMF + INI + live dev host](M2_STATUS.ru.md).
 Ниже сохранены сведения о предыдущем Modbus-инкременте.
 

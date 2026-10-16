@@ -14,7 +14,9 @@ Workspace в папке `rust/` существующего приватного 
 [Границы M2-инкремента](docs/M2_STATUS.ru.md). Добавлен web backend:
 сохранённая SPA (две логические правки D16/D17), REST/history, gRPC-Web status/registers/metrics/theme.
 [Запуск и ограничения](docs/WEB_STATUS.ru.md). Порядок: web → emulator → tray.
-Desktop UI — GPUI с сохранением существующих custom controls; emulator/tray ещё не перенесены.
+Desktop UI — GPUI с сохранением существующих custom controls. Начат emulator:
+[генератор FLECS, единицы, ACE codec и DFB-примитивы](docs/EMULATOR_STATUS.ru.md).
+GPUI UI, hardware emitters и tray ещё не реализованы.
 
 ## Документы
 
@@ -36,7 +38,7 @@ Desktop UI — GPUI с сохранением существующих custom co
 | `../` | Исходный .NET-проект и AddIn, сохранённые в корне репозитория |
 | `apps/host/` | Будущий Rust host + CLI + собственный трей |
 | `apps/shell/` | Будущая оболочка монитора, клиент host |
-| `apps/emulator/` | Будущий самостоятельный эмулятор + UI/CLI + собственный трей |
+| `apps/emulator/` | Рабочий dev preview; production engine/UI/CLI/tray ещё переносятся |
 | `crates/icem-bus/` | Побайтовый контракт шины и владеющий данными снимок |
 | `crates/icem-core/` | Общие прикладные команды и порты чтения снимков |
 | `crates/icem-config/` | Строгий read-once INI parser; XML запланирован |

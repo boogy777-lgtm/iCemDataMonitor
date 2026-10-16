@@ -56,3 +56,10 @@ jobs:
           name: preserved-dashboard
           path: ${{ runner.temp }}/icem-ui
           if-no-files-found: ignore
+      - name: Upload emulator differential evidence
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-differential
+          path: rust/target/emu-differential-report.json
+          if-no-files-found: ignore
