@@ -8,3 +8,5 @@ pub const REST_GET_PATHS: &[&str] = &[
     "/api/regs",
     "/api/regs/history",
 ];
+
+pub mod modbus_tcp;

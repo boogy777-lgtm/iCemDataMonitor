@@ -74,6 +74,7 @@ impl std::error::Error for DecodeError {}
 #[derive(Debug, Clone)]
 pub struct Snapshot {
     words: Box<[u16]>,
+    count: u16,
     zones: [ZoneMetadata; 3],
 }
 
@@ -111,8 +112,12 @@ impl Snapshot {
             .collect();
         Ok(Self {
             words,
+            count,
             zones: [zone(0)?, zone(1)?, zone(2)?],
         })
+    }
+    pub fn register_count(&self) -> u16 {
+        self.count
     }
     pub fn words(&self) -> &[u16] {
         &self.words

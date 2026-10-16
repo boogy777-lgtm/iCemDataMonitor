@@ -10,3 +10,4 @@ workspace = true
 
 [dependencies]
 icem-core = { path = "../icem-core" }
+icem-protocols = { path = "../icem-protocols" }

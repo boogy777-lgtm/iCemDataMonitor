@@ -3,7 +3,6 @@
 *.md text eol=lf
 *.toml text eol=lf
 *.ps1 text eol=crlf
-legacy/dotnet/** -text
 contracts/proto/** -text
 assets/** -text
 web/dashboard/** -text

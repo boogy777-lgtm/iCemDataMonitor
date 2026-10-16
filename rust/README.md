@@ -6,6 +6,12 @@ Workspace в папке `rust/` существующего приватного 
 
 Это начальная стадия переноса; production-функции отмечены в матрице приёмки.
 
+## Реализовано
+
+Рабочий Modbus codec FC03/04/06/16, динамическое зеркало, bounded TCP server
+и диагностический host на синтетическом Bus fixture. [Статус, ограничения и запуск](docs/IMPLEMENTATION_STATUS.ru.md).
+Живое подключение DLL/MMF, трей, web server и emulator ещё не реализованы.
+
 ## Документы
 
 - [Архитектура и границы](docs/ARCHITECTURE.ru.md)

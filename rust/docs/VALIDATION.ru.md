@@ -12,3 +12,15 @@ Windows/.NET integration, UI, MSI и измерение полного payload �
 Локальный M0 Linux: `cargo fmt --all`, `cargo check --workspace --all-targets --locked --offline`,
 `cargo test --workspace --locked --offline` (5 tests PASS),
 `cargo clippy --workspace --all-targets --locked --offline -- -D warnings` — PASS.
+
+## Modbus-инкремент
+
+Linux / Rust 1.85.1: fmt --check, check --all-targets, test (17 tests PASS),
+clippy --all-targets -- -D warnings — PASS; все команды с --locked --offline где применимо.
+`cargo build --workspace` и `cargo build --profile size -p icem-host-app` — PASS.
+Реальный icem-host-dev: fixture → TCP FC03/06/04, удержание external write inactive zone
+через tick, завершение по сроку, отсутствие stdout, exit 2/1 на usage/input errors — PASS.
+
+Первый GitHub Actions run `38925436458` выявил дефекты baseline script на Windows/Linux.
+Они исправлены в этом инкременте; результат повторного CI фиксируется по его фактическому run.
+Полный parity gate остаётся открытым: Windows MMF/AddIn, tray/web/emulator, MSI/size не проверены.

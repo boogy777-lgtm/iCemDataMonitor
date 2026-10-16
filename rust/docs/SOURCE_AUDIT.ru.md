@@ -42,3 +42,5 @@
 
 Названия `Data/Bus` в сокращённых ссылках выше означают `iCemDataMonitor.Data/Bus`.
 Полный список файлов и точные хеши — `migration/source-manifest.json`.
+
+D14/D15 — новые явные safety/resource deltas Rust transport: [implementation status](IMPLEMENTATION_STATUS.ru.md).

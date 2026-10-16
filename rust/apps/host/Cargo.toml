@@ -9,10 +9,11 @@ publish.workspace = true
 workspace = true
 
 [[bin]]
-name = "icem-host-skeleton"
+name = "icem-host-dev"
 path = "src/main.rs"
 
 [dependencies]
 icem-transport = { path = "../../crates/icem-transport" }
 icem-platform-windows = { path = "../../crates/icem-platform-windows" }
 icem-protocols = { path = "../../crates/icem-protocols" }
+icem-bus = { path = "../../crates/icem-bus" }

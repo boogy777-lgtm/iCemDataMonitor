@@ -4,6 +4,11 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 $SourceRoot = Split-Path $Root -Parent
 $Manifest = Get-Content -Raw (Join-Path $Root 'migration/source-manifest.json') | ConvertFrom-Json
+function Get-CanonicalHash([string] $FilePath, [string] $Relative) {
+    $Hash = & git -C $SourceRoot hash-object "--path=$Relative" -- $FilePath
+    if ($LASTEXITCODE -ne 0) { throw "Cannot hash $Relative" }
+    return $Hash.Trim()
+}
 $Missing = @()
 $Verified = 0
 foreach ($Item in $Manifest.files) {
@@ -12,7 +17,7 @@ foreach ($Item in $Manifest.files) {
     $Hash = & git hash-object --no-filters -- $Path
     if ($LASTEXITCODE -ne 0) { throw "git hash-object failed: $($Item.path)" }
     if ($Hash.Trim() -eq $Item.git_blob_sha1) {
-        if ((Get-Item -LiteralPath $Path).Length -ne $Item.size) { throw "Size mismatch: $($Item.path)" }
+        if ((Get-Item -Force -LiteralPath $Path).Length -ne $Item.size) { throw "Size mismatch: $($Item.path)" }
     } else {
         # The preserved upstream .gitattributes uses CRLF for .ps1 checkout.
         # Compare its canonical Git blob too; never normalize binary fixtures.
@@ -36,7 +41,13 @@ $Dashboard = Join-Path $Root 'web/dashboard'
 Get-ChildItem -File -Recurse $Dashboard | ForEach-Object {
     $Relative = [IO.Path]::GetRelativePath($Dashboard, $_.FullName)
     $Source = Join-Path $SourceRoot ('iCemDataMonitor.Host/wwwroot/' + $Relative)
-    if ((Get-FileHash $_.FullName).Hash -ne (Get-FileHash $Source).Hash) { throw "Original SPA changed: $Relative" }
+    # The original tree uses text=auto, while the frozen Rust SPA uses -text.
+    # Compare canonical Git bytes; Windows checkout newline conversion is not a source change.
+    $RustRelative = 'rust/web/dashboard/' + $Relative.Replace('\', '/')
+    $SourceRelative = 'iCemDataMonitor.Host/wwwroot/' + $Relative.Replace('\', '/')
+    if ((Get-CanonicalHash $_.FullName $RustRelative) -ne (Get-CanonicalHash $Source $SourceRelative)) {
+        throw "Original SPA changed: $Relative"
+    }
 }
 $Schema = Get-Content -Raw (Join-Path $Root 'contracts/http/openapi.json') | ConvertFrom-Json
 $Inventory = Get-Content -Raw (Join-Path $Root 'contracts/http/route-inventory.json') | ConvertFrom-Json
