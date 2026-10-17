@@ -25,7 +25,7 @@ UI, команды и Modbus вне класса. Inv: закрытый кана
 следующее устройство реализует SerialDevice/PacketDevice; runtime не меняется.
 
 Class: v1 operator sessions в `crates/icem-transport/src/emulator_control.rs`;
-HTTP/gRPC вне класса. Inv: одна строка → один JSON reply; bounded framing, watch
+HTTP/gRPC вне класса. Inv: одна строка → один CRLF JSON reply; bounded framing, watch
 владеет соединением, quit callback вызывается после flush; duplex + Windows tests.
 N+1: новая команда остаётся в domain parser; pipe framing и lifecycle не меняются.
 
@@ -81,7 +81,7 @@ cargo run -p icem-emulator-app --bin icem-emulator-engine-dev -- --config .\emul
 
 ## Проверки и границы доказательства
 
-Локально: Rust 1.99.1, workspace check/build/test/clippy; GNU Windows cross-check
+Локально: Rust 1.99.1, workspace check/build/test/clippy (81 test results); GNU Windows cross-check
 и Clippy emulator/platform/transport/native с all-targets. Это не запуск Windows.
 
 Windows CI дополнительно проверяет реальные named pipes: exclusive bind,

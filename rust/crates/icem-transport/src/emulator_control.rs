@@ -6,6 +6,8 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWrite
 use tokio::sync::watch;
 
 pub const MAX_LINE_BYTES: usize = 65_536;
+pub const MAX_REPLY_BYTES: usize = 8 * 1024 * 1024;
+pub const ACK_DRAIN: Duration = Duration::from_millis(1500);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(3);
 /// Calls may block on engine I/O; transport executes them on Tokio's blocking pool.
 pub trait Executor: Send + Sync + 'static {
@@ -55,7 +57,7 @@ fn decode_line(mut bytes: Vec<u8>) -> io::Result<String> {
 async fn write_line(writer: &mut (impl AsyncWrite + Unpin), json: &str) -> io::Result<()> {
     // Only a complete JSON line may escape; responses are allowed to contain the
     // original full catalog (larger than a command), with a separate 8 MiB cap.
-    if json.len() > 8 * 1024 * 1024 || json.contains(['\r', '\n']) {
+    if json.len() + 2 > MAX_REPLY_BYTES || json.contains(['\r', '\n']) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "invalid control reply framing",
@@ -63,7 +65,7 @@ async fn write_line(writer: &mut (impl AsyncWrite + Unpin), json: &str) -> io::R
     }
     tokio::time::timeout(WRITE_TIMEOUT, async {
         writer.write_all(json.as_bytes()).await?;
-        writer.write_all(b"\n").await?;
+        writer.write_all(b"\r\n").await?;
         writer.flush().await
     })
     .await
@@ -181,7 +183,7 @@ mod windows {
                 stop.send_replace(true);
                 // Current ACK/write gets a bounded drain; idle/watch readers wake
                 // immediately. Abort and join leftovers before releasing runtime.
-                if tokio::time::timeout(Duration::from_millis(1500), async { while clients.join_next().await.is_some() {} }).await.is_err() {
+                if tokio::time::timeout(ACK_DRAIN, async { while clients.join_next().await.is_some() {} }).await.is_err() {
                     clients.shutdown().await;
                 }
                 result
@@ -215,7 +217,7 @@ mod windows {
     /// Never retries an accepted command (toggle/start commands may have effects).
     pub fn request(name: &str, command: &str, timeout: Duration) -> io::Result<String> {
         let path = pipe_path(name)?;
-        if command.len() + 1 > MAX_LINE_BYTES || command.contains(['\r', '\n']) {
+        if command.len() + 2 > MAX_LINE_BYTES || command.contains(['\r', '\n']) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "invalid command framing",
@@ -238,7 +240,7 @@ mod windows {
                     let (read, mut write) = tokio::io::split(pipe);
                     write_line(&mut write, command).await?;
                     // Full vars/status replies need a larger limit than requests.
-                    let mut reader = BufReader::new(read).take(8 * 1024 * 1024 + 1);
+                    let mut reader = BufReader::new(read).take(MAX_REPLY_BYTES as u64 + 1);
                     let mut response = String::new();
                     let count = reader.read_line(&mut response).await?;
                     if count == 0 {
@@ -247,7 +249,7 @@ mod windows {
                             "connection closed before reply",
                         ));
                     }
-                    if count > 8 * 1024 * 1024 || !response.ends_with('\n') {
+                    if count > MAX_REPLY_BYTES || !response.ends_with('\n') {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
                             "invalid control reply",

@@ -11,7 +11,7 @@ mod windows {
         simulation::load_catalog,
     };
     use icem_platform_windows::{AceLanEmitter, ComSerialEmitter};
-    use icem_transport::emulator_control::{ControlServer, Executor, request};
+    use icem_transport::emulator_control::{ACK_DRAIN, ControlServer, Executor, request};
     use std::{
         path::PathBuf,
         sync::{
@@ -73,7 +73,7 @@ mod windows {
                     .quit_requested_at
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .is_some_and(|request| request.elapsed() >= Duration::from_millis(1500))
+                    .is_some_and(|request| request.elapsed() >= ACK_DRAIN)
         }
     }
     pub fn main() -> u8 {

@@ -53,6 +53,10 @@ async fn fragmented_and_coalesced_commands_quit_ack_before_eof() -> Result {
     for expected in ["status", "ports", "quit"] {
         response.clear();
         assert!(read.read_line(&mut response).await? > 0);
+        assert!(
+            response.ends_with("\r\n"),
+            "preserve Windows StreamWriter framing"
+        );
         assert!(response.contains(&format!("\"cmd\":\"{expected}\"")));
     }
     response.clear();

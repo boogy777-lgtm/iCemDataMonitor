@@ -1,0 +1,46 @@
+{
+  "milestone": "E4",
+  "date": "2026-10-17",
+  "toolchain": "1.99.1",
+  "kind": "development integration",
+  "source_checkpoint": "89899367a03df9aebf67c274b9282a7954b49567",
+  "checks": {
+    "linux_workspace": {
+      "fmt": "PASS",
+      "check_all_targets_locked_offline": "PASS",
+      "build_locked_offline": "PASS",
+      "test_results_passed": 81,
+      "clippy_all_targets_deny_warnings": "PASS",
+      "note": "Windows-only integration binaries are excluded by cfg; .NET oracle tests may return early on Linux."
+    },
+    "windows_gnu_cross": {
+      "packages": [
+        "icem-emulator-app",
+        "icem-platform-windows",
+        "icem-transport"
+      ],
+      "all_targets_check": "PASS",
+      "all_targets_clippy_deny_warnings": "PASS",
+      "execution": false
+    },
+    "github_actions": {
+      "first_rust_run": 39029173040,
+      "second_rust_run": 39029472175,
+      "latest_status": "PENDING Windows execution; update after final head CI"
+    }
+  },
+  "proofs": [
+    "All 21 COMMANDS have real Engine acceptance cases with a completeness check",
+    "Independent COM/LAN gates and malformed command isolation",
+    "Emitter wire/order/pacing and successful-send counters",
+    "Bounded fragmented/coalesced control lines, watch and quit ACK framing"
+  ],
+  "open": [
+    "D23 IPC resource/remote/malformed deltas",
+    "D24 synchronous LAN burst under engine gate",
+    "Production CLI watch streaming",
+    "Physical COM/Npcap ACL/timing/jitter",
+    "GPUI renderer and original custom controls",
+    "Host local gRPC/lifecycle, tray and MSI"
+  ]
+}
