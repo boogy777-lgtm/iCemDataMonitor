@@ -135,3 +135,17 @@ Scaffold вызывает его перед полным guard. Rust CI тепе
 D28 / E8: чтение LayerRuntimeController.Toggle(OpcDa) показывает внешний no-op, а не persist-only toggle. Уточнены API_SPEC и P16; Rust owner возвращает неизменённое OPC state без запуска server и записи INI. Web plan отделён от startup-effective routes/history; SetLayer desired_state по-прежнему игнорируется. Ошибки операций отражаются в LayerState.last_error, как legacy, вместо прежнего Rust INTERNAL. Полный sniffer и Modbus rollback/busy fault matrix остаются открытыми.
 
 D29 / E8 audit: icem-desktop::monitor показывает активный SnifferSwitch, хотя Rust Host возвращает UNIMPLEMENTED и sniffer_available=false. Этот UI gap не исправлялся в Host-инкременте и не считается disabled-state parity. Следующий UI этап должен использовать фактическую availability, сверившись с inventory/XAML.
+
+D30 / Windows packaging: default Host/autostart and emulator tray icons used
+CARGO_MANIFEST_DIR paths captured on the build machine. The common
+icem-platform-windows::application_asset resolver now requires EXE-adjacent assets
+and reports a missing resource explicitly. User settings retain their own paths;
+source-tree desktop runs must copy icons to target/debug/assets. A relocated ZIP
+supplies sidecars through windows-payload.json. The emulator keeps its tick-worker
+stop/join cleanup when asset lookup fails.
+
+Windows release script builds a locked MSVC release payload with static CRT and
+checks its manifest/checksums after ZIP extraction. Existing Linux CI build removed
+by the user's Windows-only instruction; Chrome/theme contracts moved to Windows.
+No legacy behavior, baseline manifest, approved hashes or active endpoints changed.
+Legacy CI defects remain outside priority per the user's instruction.

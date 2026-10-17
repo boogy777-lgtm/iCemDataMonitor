@@ -103,3 +103,10 @@ PASS, Host.Tests 220/220, Emulator.Tests 101/101; другой legacy Modbus rec
 ## E8: Host layer continuation
 
 Web SetLayer теперь проходит через Host owner и меняет next-start session plan; startup-effective SPA/history не выключаются на лету. OPC сохраняет legacy external no-op. Ошибки операций доступны в LayerState.last_error. Подробности и уточнённый Host backlog: [HOST_E8.ru.md](HOST_E8.ru.md). GPUI controls и mapping 176 в этом этапе не менялись; visual parity остаётся NOT_PROVEN.
+
+## Windows package sidecars
+
+Default tray icons resolve beside the EXE (`assets/`) instead of the source checkout.
+The Windows release archive includes them, canonical templates and explicit launchers;
+see [installer/README.md](../installer/README.md). Debug desktop runs require icons in
+`target/debug/assets/`. This does not change control mapping or establish visual parity.

@@ -9,11 +9,7 @@ permissions:
   contents: read
 jobs:
   verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     # Run for legacy changes too: the immutable baseline guard covers the root tree.
     # Cold MSVC check + build of the locked GPUI graph exceeded 15m.
     timeout-minutes: 35
@@ -33,7 +29,6 @@ jobs:
           cargo --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows emulator integration before desktop build
-        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           # Test the native runtime boundary before the much larger desktop graph.
@@ -51,23 +46,25 @@ jobs:
         shell: pwsh
         run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
       - name: Check preserved dashboard in Chrome
-        if: runner.os == 'Linux'
-        shell: bash
+        shell: pwsh
         env:
           ICEM_UI_ARTIFACTS: ${{ runner.temp }}/icem-ui
         run: |
           npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tools/browser/theme-contract.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tools/browser/dashboard.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload dashboard evidence
-        if: always() && runner.os == 'Linux'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: preserved-dashboard
           path: ${{ runner.temp }}/icem-ui
           if-no-files-found: ignore
       - name: Upload emulator differential evidence
-        if: always() && runner.os == 'Windows'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: emulator-differential

@@ -109,7 +109,8 @@ fn options() -> Result<Options, String> {
         }
         if tray_icon.is_none() {
             tray_icon = Some(
-                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/iCemDataMonitor.ico"),
+                icem_platform_windows::application_asset("iCemDataMonitor.ico")
+                    .map_err(|error| error.to_string())?,
             );
         }
     }

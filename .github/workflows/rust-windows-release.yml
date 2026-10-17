@@ -1,0 +1,60 @@
+name: rust-windows-release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Archive version label (Cargo versions are unchanged)'
+        required: true
+        default: '0.1.0-dev'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'rust/installer/**'
+      - 'rust/tools/Build-WindowsRelease.ps1'
+      - 'rust/tools/Test-Windows*.ps1'
+      - '.github/workflows/rust-windows-release.yml'
+permissions:
+  contents: read
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: rust
+        shell: pwsh
+    env:
+      ICEM_RELEASE_VERSION: ${{ inputs.version || '0.1.0-dev' }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build verified Windows x64 release archive
+        run: ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION
+      - name: Smoke test extracted release outside checkout
+        run: |
+          $Archive = Join-Path $PWD "dist/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
+          ./tools/Test-WindowsRelease.ps1 -Archive $Archive
+      - name: Browser contracts against the extracted release EXE
+        env:
+          ICEM_UI_ARTIFACTS: ${{ runner.temp }}/icem-release-ui
+        run: |
+          npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/browser/theme-contract.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/browser/dashboard.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload Windows ZIP and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-release
+          path: |
+            rust/dist/*.zip
+            rust/dist/*.zip.sha256
+          if-no-files-found: error
+      - name: Upload release browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-browser
+          path: ${{ runner.temp }}/icem-release-ui
+          if-no-files-found: ignore
