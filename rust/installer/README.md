@@ -82,7 +82,8 @@ After this workflow reaches main, open **Actions → rust-windows-release → Ru
 - `publish: false` only builds/checks and uploads an Actions artifact.
 - `publish: true` also creates a **draft prerelease** `rust-vX.Y.Z` containing the
   verified MSI/checksum. Publication is restricted to the existing private repo;
-  only that job gets `contents: write`. It does not merge PRs or publish a public
+  only the manual version resolver (to see reserved drafts) and publication job
+  get `contents: write`; PR/build jobs remain read-only. It does not merge PRs or publish a public
   release. Review/publish the draft from Releases when desired.
 
 Manual release runs are serialized to prevent N+1 races. Failed mutations are not

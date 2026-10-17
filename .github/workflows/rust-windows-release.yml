@@ -23,11 +23,38 @@ concurrency:
   group: rust-windows-release-${{ github.event_name == 'workflow_dispatch' && 'manual' || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 jobs:
+  resolve-version:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    permissions:
+      contents: write # GitHub only lists draft releases to identities with push access.
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select next Rust release version (including drafts)
+        id: version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          Import-Module ./rust/installer/WindowsInstaller.psm1 -Force
+          $Tags = @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/git/matching-refs/tags/rust-v" --jq '.[].ref')
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate Rust tags' }
+          $Tags += @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases" --jq '.[].tag_name')
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate releases, including reserved draft versions' }
+          $Version = Select-WindowsReleaseVersion $env:REQUESTED_VERSION $Tags
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$Version"
   windows-x64:
+    needs: resolve-version
+    if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.resolve-version.result == 'success') }}
     runs-on: windows-latest
     timeout-minutes: 90
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ env.ICEM_RELEASE_VERSION }}
+    env:
+      ICEM_RELEASE_VERSION: ${{ needs.resolve-version.outputs.version || '0.1.0' }}
     defaults:
       run:
         working-directory: rust
@@ -37,23 +64,6 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - name: Select next Rust release version
-        id: version
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REQUESTED_VERSION: ${{ inputs.version || '0.1.0' }}
-        run: |
-          Import-Module ./installer/WindowsInstaller.psm1 -Force
-          $Tags = @()
-          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
-            $Tags += @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/git/matching-refs/tags/rust-v" --jq '.[].ref')
-            if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate Rust tags' }
-            $Tags += @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases" --jq '.[].tag_name')
-            if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate releases, including reserved draft versions' }
-          }
-          $Version = Select-WindowsReleaseVersion $env:REQUESTED_VERSION $Tags
-          Add-Content -LiteralPath $env:GITHUB_ENV -Value "ICEM_RELEASE_VERSION=$Version"
-          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$Version"
       - name: Build verified Windows x64 release MSI
         run: ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION
       - name: Smoke test extracted release outside checkout
