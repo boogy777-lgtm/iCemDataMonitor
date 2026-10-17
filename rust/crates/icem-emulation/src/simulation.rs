@@ -304,10 +304,55 @@ impl Engine {
         })
     }
     pub fn set_override(&mut self, name: &str, value: f64) {
-        self.overrides.insert(name.to_ascii_lowercase(), value);
+        if let Some((_, current)) = self
+            .overrides
+            .iter_mut()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+        {
+            *current = value;
+        } else {
+            self.overrides.insert(name.into(), value);
+        }
     }
     pub fn clear_override(&mut self, name: &str) -> bool {
-        self.overrides.remove(&name.to_ascii_lowercase()).is_some()
+        let key = self
+            .overrides
+            .keys()
+            .find(|key| key.eq_ignore_ascii_case(name))
+            .cloned();
+        key.is_some_and(|key| self.overrides.remove(&key).is_some())
+    }
+    pub fn snapshot_overrides(&self) -> BTreeMap<String, f64> {
+        self.overrides.clone()
+    }
+    /// The original host mutates Tick's shared array while projecting units.
+    /// Explicit copy-back preserves that observable cache without Rust aliasing.
+    pub fn replace_last_values(&mut self, values: &[f64]) -> Result<(), &'static str> {
+        if values.len() != self.last.len() {
+            return Err("COM cache length changed");
+        }
+        self.last.copy_from_slice(values);
+        Ok(())
+    }
+    /// Original FrozenComValues: seed once, overlay an owned copy; never replace
+    /// LastValues for a subsequent frozen read, even after overrides/units.
+    pub fn frozen_values(&mut self) -> Vec<f64> {
+        if self.current().is_none() || self.last.is_empty() {
+            return self.tick();
+        }
+        let mut values = self.last.clone();
+        if let Some(template) = self.current() {
+            for (value, var) in values.iter_mut().zip(&template.variables) {
+                if let Some((_, ov)) = self
+                    .overrides
+                    .iter()
+                    .find(|(key, _)| key.eq_ignore_ascii_case(&var.name))
+                {
+                    *value = *ov;
+                }
+            }
+        }
+        values
     }
     pub fn reset_clock(&mut self) {
         self.elapsed = 0.0;
@@ -321,8 +366,9 @@ impl Engine {
                     .iter()
                     .map(|v| {
                         self.overrides
-                            .get(&v.name.to_ascii_lowercase())
-                            .copied()
+                            .iter()
+                            .find(|(key, _)| key.eq_ignore_ascii_case(&v.name))
+                            .map(|(_, value)| *value)
                             .unwrap_or_else(|| compute(v, self.elapsed))
                     })
                     .collect()
@@ -406,4 +452,442 @@ fn validate_fields(
         }
     }
     Ok(())
+}
+/// Original startup discovery; caller owns/caches the result.
+#[derive(Debug)]
+pub struct Catalog {
+    pub templates: Vec<Template>,
+    pub warnings: Vec<String>,
+}
+pub fn resolve_sim_file(directory: &Path, filename: &str) -> std::path::PathBuf {
+    let overridden = directory.join("variable_registry.emulator.json");
+    if filename.eq_ignore_ascii_case("variable_registry.json") && overridden.is_file() {
+        overridden
+    } else {
+        directory.join(filename)
+    }
+}
+pub fn load_catalog(directory: &Path) -> Catalog {
+    let mut out = Catalog {
+        templates: Vec::new(),
+        warnings: Vec::new(),
+    };
+    let registry_path = resolve_sim_file(directory, "variable_registry.json");
+    let registry = if registry_path.is_file() {
+        match read_json(&registry_path) {
+            Ok(r) => r,
+            Err(e) => {
+                out.warnings.push(format!("registry: {e}"));
+                Value::Null
+            }
+        }
+    } else {
+        out.warnings.push("variable_registry.json not found".into());
+        Value::Null
+    };
+    // Preserve Directory.GetFiles order: default profile is the first valid file.
+    match std::fs::read_dir(directory) {
+        Ok(files) => {
+            for file in files {
+                let file = match file {
+                    Ok(f) => f,
+                    Err(e) => {
+                        out.warnings.push(e.to_string());
+                        continue;
+                    }
+                };
+                let path = file.path();
+                let name = file.file_name();
+                let name = name.to_string_lossy();
+                if !name.to_ascii_lowercase().ends_with(".json")
+                    || ["variable_registry.json", "lantable_registry.json"]
+                        .iter()
+                        .any(|n| name.eq_ignore_ascii_case(n))
+                {
+                    continue;
+                }
+                match read_json(&path).and_then(|v| {
+                    if property(&v, "name").is_none_or(Value::is_null)
+                        || property(&v, "deviceType").is_none_or(Value::is_null)
+                    {
+                        Ok(None)
+                    } else {
+                        template_from_json(&v, &registry).map(Some)
+                    }
+                }) {
+                    Ok(Some(t)) => out.templates.push(t),
+                    Ok(None) => {}
+                    Err(e) => out
+                        .warnings
+                        .push(format!("template {}: {e}", path.display())),
+                }
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => out.warnings.push(e.to_string()),
+    }
+    if out.templates.is_empty() {
+        out.warnings
+            .push("zero templates: built-in flecs 4.53".into());
+        out.templates.push(fallback_flecs453());
+    }
+    out
+}
+
+fn fallback_flecs453() -> Template {
+    Template {
+        name: "flecs 4.53".into(),
+        device_type: "FLECS".into(),
+        auto_select: vec![6, 5, 2, 3, 18, 11, 13, 22, 12, 33],
+        variables: vec![
+            Variable {
+                index: 0,
+                name: "Time & Date".into(),
+                legacy_name: "Time & Date".into(),
+                unit: "".into(),
+                base: 0.0,
+                amplitude: 0.0,
+                frequency: 0.0,
+                format: "elapsed".into(),
+                exclude: true,
+                ..Variable::default()
+            },
+            Variable {
+                index: 1,
+                name: "Unit Num".into(),
+                legacy_name: "Unit Num".into(),
+                unit: "".into(),
+                base: 1.0,
+                amplitude: 0.0,
+                frequency: 0.0,
+                format: "int".into(),
+                exclude: true,
+                ..Variable::default()
+            },
+            Variable {
+                index: 2,
+                name: "SlurryDensity".into(),
+                legacy_name: "SlurryDensity".into(),
+                unit: "ppg".into(),
+                base: 15.80,
+                amplitude: 0.40,
+                frequency: 0.10,
+                ..Variable::default()
+            },
+            Variable {
+                index: 3,
+                name: "DH_Density".into(),
+                legacy_name: "DH_Density".into(),
+                unit: "ppg".into(),
+                base: 15.90,
+                amplitude: 0.30,
+                frequency: 0.08,
+                ..Variable::default()
+            },
+            Variable {
+                index: 4,
+                name: "Mix Water Rate".into(),
+                legacy_name: "Mix Water Rate".into(),
+                unit: "bpm".into(),
+                base: 2.10,
+                amplitude: 1.00,
+                frequency: 0.15,
+                ..Variable::default()
+            },
+            Variable {
+                index: 5,
+                name: "PumpRate".into(),
+                legacy_name: "PumpRate".into(),
+                unit: "bpm".into(),
+                base: 4.20,
+                amplitude: 0.80,
+                frequency: 0.12,
+                ..Variable::default()
+            },
+            Variable {
+                index: 6,
+                name: "PumpPressure".into(),
+                legacy_name: "PumpPressure".into(),
+                unit: "psi".into(),
+                base: 2500.0,
+                amplitude: 200.0,
+                frequency: 0.05,
+                ..Variable::default()
+            },
+            Variable {
+                index: 7,
+                name: "DS Pump Press".into(),
+                legacy_name: "DS Pump Press".into(),
+                unit: "psi".into(),
+                base: 1800.0,
+                amplitude: 150.0,
+                frequency: 0.06,
+                ..Variable::default()
+            },
+            Variable {
+                index: 8,
+                name: "Water Stg Tot".into(),
+                legacy_name: "Water Stg Tot".into(),
+                unit: "bbl".into(),
+                base: 120.0,
+                amplitude: 2.0,
+                frequency: 0.020,
+                ..Variable::default()
+            },
+            Variable {
+                index: 9,
+                name: "Mix Water Total".into(),
+                legacy_name: "Mix Water Total".into(),
+                unit: "bbl".into(),
+                base: 80.0,
+                amplitude: 1.5,
+                frequency: 0.025,
+                ..Variable::default()
+            },
+            Variable {
+                index: 10,
+                name: "Pump Stg Tot".into(),
+                legacy_name: "Pump Stg Tot".into(),
+                unit: "bbl".into(),
+                base: 200.0,
+                amplitude: 3.0,
+                frequency: 0.018,
+                ..Variable::default()
+            },
+            Variable {
+                index: 11,
+                name: "CombPumpTotal".into(),
+                legacy_name: "CombPumpTotal".into(),
+                unit: "bbl".into(),
+                base: 100.0,
+                amplitude: 2.5,
+                frequency: 0.020,
+                ..Variable::default()
+            },
+            Variable {
+                index: 12,
+                name: "CementValvePsn".into(),
+                legacy_name: "CementValvePsn".into(),
+                unit: "%".into(),
+                base: 85.0,
+                amplitude: 5.0,
+                frequency: 0.05,
+                ..Variable::default()
+            },
+            Variable {
+                index: 13,
+                name: "WaterValvePsn".into(),
+                legacy_name: "WaterValvePsn".into(),
+                unit: "%".into(),
+                base: 75.0,
+                amplitude: 5.0,
+                frequency: 0.04,
+                ..Variable::default()
+            },
+            Variable {
+                index: 14,
+                name: "PS Pump Rate".into(),
+                legacy_name: "PS Pump Rate".into(),
+                unit: "bpm".into(),
+                base: 3.50,
+                amplitude: 0.50,
+                frequency: 0.14,
+                ..Variable::default()
+            },
+            Variable {
+                index: 15,
+                name: "DS Pump Rate".into(),
+                legacy_name: "DS Pump Rate".into(),
+                unit: "bpm".into(),
+                base: 3.00,
+                amplitude: 0.40,
+                frequency: 0.13,
+                ..Variable::default()
+            },
+            Variable {
+                index: 16,
+                name: "Dig out".into(),
+                legacy_name: "Dig out".into(),
+                unit: "".into(),
+                base: 0.0,
+                amplitude: 0.0,
+                frequency: 0.0,
+                format: "int".into(),
+                toggle_period: 2.5,
+                ..Variable::default()
+            },
+            Variable {
+                index: 17,
+                name: "HalWin Event".into(),
+                legacy_name: "HalWin Event".into(),
+                unit: "".into(),
+                base: 0.0,
+                amplitude: 0.0,
+                frequency: 0.0,
+                format: "int".into(),
+                toggle_period: 10.0,
+                ..Variable::default()
+            },
+            Variable {
+                index: 18,
+                name: "Temperature".into(),
+                legacy_name: "Temperature".into(),
+                unit: "degF".into(),
+                base: 130.0,
+                amplitude: 5.0,
+                frequency: 0.02,
+                ..Variable::default()
+            },
+            Variable {
+                index: 19,
+                name: "rho12_hat".into(),
+                legacy_name: "rho12_hat".into(),
+                unit: "ppg".into(),
+                base: 12.80,
+                amplitude: 0.30,
+                frequency: 0.07,
+                ..Variable::default()
+            },
+            Variable {
+                index: 20,
+                name: "h2_hat".into(),
+                legacy_name: "h2_hat".into(),
+                unit: "ft".into(),
+                base: 5000.0,
+                amplitude: 100.0,
+                frequency: 0.010,
+                ..Variable::default()
+            },
+            Variable {
+                index: 21,
+                name: "vhp_density_HP".into(),
+                legacy_name: "vhp_density_HP".into(),
+                unit: "ppg".into(),
+                base: 14.50,
+                amplitude: 0.40,
+                frequency: 0.09,
+                ..Variable::default()
+            },
+            Variable {
+                index: 22,
+                name: "TubHeight".into(),
+                legacy_name: "TubHeight".into(),
+                unit: "ft".into(),
+                base: 6.50,
+                amplitude: 0.80,
+                frequency: 0.02,
+                ..Variable::default()
+            },
+            Variable {
+                index: 23,
+                name: "Extra Press 1".into(),
+                legacy_name: "Extra Press 1".into(),
+                unit: "psi".into(),
+                base: 1500.0,
+                amplitude: 100.0,
+                frequency: 0.04,
+                ..Variable::default()
+            },
+            Variable {
+                index: 24,
+                name: "Extra Press 2".into(),
+                legacy_name: "Extra Press 2".into(),
+                unit: "psi".into(),
+                base: 1200.0,
+                amplitude: 80.0,
+                frequency: 0.045,
+                ..Variable::default()
+            },
+            Variable {
+                index: 25,
+                name: "Extra Rate 1".into(),
+                legacy_name: "Extra Rate 1".into(),
+                unit: "bpm".into(),
+                base: 2.00,
+                amplitude: 0.30,
+                frequency: 0.11,
+                ..Variable::default()
+            },
+            Variable {
+                index: 26,
+                name: "Extra Total 1".into(),
+                legacy_name: "Extra Total 1".into(),
+                unit: "bbl".into(),
+                base: 50.0,
+                amplitude: 1.0,
+                frequency: 0.020,
+                ..Variable::default()
+            },
+            Variable {
+                index: 27,
+                name: "Extra Rate 2".into(),
+                legacy_name: "Extra Rate 2".into(),
+                unit: "bpm".into(),
+                base: 1.50,
+                amplitude: 0.25,
+                frequency: 0.10,
+                ..Variable::default()
+            },
+            Variable {
+                index: 28,
+                name: "Extra Total 2".into(),
+                legacy_name: "Extra Total 2".into(),
+                unit: "bbl".into(),
+                base: 40.0,
+                amplitude: 0.8,
+                frequency: 0.019,
+                ..Variable::default()
+            },
+            Variable {
+                index: 29,
+                name: "Wtr/slry Ratio".into(),
+                legacy_name: "Wtr/slry Ratio".into(),
+                unit: "".into(),
+                base: 0.85,
+                amplitude: 0.05,
+                frequency: 0.06,
+                ..Variable::default()
+            },
+            Variable {
+                index: 30,
+                name: "MudCup Density".into(),
+                legacy_name: "MudCup Density".into(),
+                unit: "ppg".into(),
+                base: 13.00,
+                amplitude: 0.40,
+                frequency: 0.08,
+                ..Variable::default()
+            },
+            Variable {
+                index: 31,
+                name: "PS Pmp Stg Tot".into(),
+                legacy_name: "PS Pmp Stg Tot".into(),
+                unit: "bbl".into(),
+                base: 100.0,
+                amplitude: 2.0,
+                frequency: 0.017,
+                ..Variable::default()
+            },
+            Variable {
+                index: 32,
+                name: "DS Pmp Stg Tot".into(),
+                legacy_name: "DS Pmp Stg Tot".into(),
+                unit: "bbl".into(),
+                base: 90.0,
+                amplitude: 1.8,
+                frequency: 0.016,
+                ..Variable::default()
+            },
+            Variable {
+                index: 33,
+                name: "VolumetricMeter".into(),
+                legacy_name: "VolumetricMeter".into(),
+                unit: "bpm".into(),
+                base: 4.20,
+                amplitude: 0.50,
+                frequency: 0.08,
+                ..Variable::default()
+            },
+        ],
+    }
 }

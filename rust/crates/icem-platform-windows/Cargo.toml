@@ -11,6 +11,7 @@ workspace = true
 [dependencies]
 icem-core = { path = "../icem-core" }
 icem-bus = { path = "../icem-bus" }
+icem-protocols = { path = "../icem-protocols" }
 
 [target.'cfg(windows)'.dependencies]
 icem-windows-native = { path = "../icem-windows-native" }

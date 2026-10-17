@@ -5,3 +5,14 @@
 mod windows;
 #[cfg(windows)]
 pub use windows::{Mapping, NamedMutex, NamedMutexGuard, NativeError, signal_existing_event};
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+mod serial;
+#[cfg(windows)]
+#[allow(unsafe_code)]
+mod pcap;
+#[cfg(windows)]
+pub use serial::{SerialPort, serial_ports};
+#[cfg(windows)]
+pub use pcap::{Adapter, Pcap, PacketSession, adapter_mac, npcap_available};

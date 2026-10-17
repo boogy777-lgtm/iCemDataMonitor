@@ -21,3 +21,6 @@ pub use bus_reader::WindowsBusReader;
 pub fn signal_theme_changed() -> Result<bool, icem_windows_native::NativeError> {
     icem_windows_native::signal_existing_event(THEME_CHANGED)
 }
+
+pub mod transport;
+pub use transport::{AceCapture, AceLanEmitter, CaptureCounters, ComSerialEmitter, PacketDevice, burst_start_ms};

@@ -47,3 +47,5 @@ pub mod cement;
 
 pub mod lan;
 pub mod lan_pipeline;
+
+pub mod control;
