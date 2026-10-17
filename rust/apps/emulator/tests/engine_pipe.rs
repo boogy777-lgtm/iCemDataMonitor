@@ -102,8 +102,26 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
         }
         std::thread::sleep(Duration::from_millis(20));
     }
-    let quit: serde_json::Value =
-        serde_json::from_str(&request(&pipe, "quit", Duration::from_secs(3))?)?;
-    assert_eq!(quit["ok"], true);
+    // Even a client that closes without reading its quit ACK must stop the
+    // successor after the bounded ACK drain, rather than leave it running.
+    {
+        use std::io::Write;
+        let mut client = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(format!(r"\\.\pipe\{pipe}"))?;
+        client.write_all(b"quit\n")?;
+    }
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if let Some(status) = process.child.try_wait()? {
+            assert!(status.success());
+            break;
+        }
+        if Instant::now() > deadline {
+            return Err("disconnected quit left engine running".into());
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
     Ok(())
 }

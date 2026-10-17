@@ -1,4 +1,4 @@
-//! ADR 0004: exclusive synchronous serial I/O with finite writes.
+//! ADR 0003: exclusive synchronous serial I/O with finite writes.
 use std::{io, ptr};
 use windows_sys::Win32::{
     Devices::Communication::{

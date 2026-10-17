@@ -81,3 +81,11 @@ D22 (E3 input compatibility limits): Rust LAN DTO loader возвращает Er
 и могут удержать частично загруженные записи. Rust принимает UTF-8/BOM и ASCII case
 lookup, полные File.ReadAllText encoding/OrdinalIgnoreCase semantics не перенесены.
 Valid pinned ASCII catalogs проверяются отдельно; loader error parity не объявлен PASS.
+
+D23 — E4 pipe вводит явные caps (32 sessions, request 64 KiB, response 8 MiB)
+и запрещает remote clients. Это resource/security delta относительно baseline,
+не полная error/ACL parity. См. EMULATOR_E4.ru.md.
+
+D24 — E4 Engine::tick вызывает LAN send_superframe синхронно под engine gate;
+исходный EmuEngineHost.Tick отправляет подготовленные vectors через Task.Run.
+Bytes/pacing adapter проверяются отдельно, command latency/timing parity открыта.

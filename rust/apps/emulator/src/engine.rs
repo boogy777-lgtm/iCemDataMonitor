@@ -26,6 +26,7 @@ mod windows {
         paths: SettingsPaths,
         started: Instant,
         quit_ack: AtomicBool,
+        quit_requested_at: Mutex<Option<Instant>>,
     }
     impl Executor for Service {
         fn execute(&self, line: &str) -> ControlReply {
@@ -43,6 +44,12 @@ mod windows {
             engine.set_time(self.started.elapsed().as_secs_f64());
             let revision = engine.settings_revision();
             let reply = process_line(line, &mut *engine);
+            if reply.quit {
+                self.quit_requested_at
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .get_or_insert_with(Instant::now);
+            }
             if engine.settings_revision() != revision
                 && let Err(error) = engine.settings().save(&self.paths)
             {
@@ -57,6 +64,16 @@ mod windows {
             if reply.quit {
                 self.quit_ack.store(true, Ordering::Release);
             }
+        }
+    }
+    impl Service {
+        fn should_stop(&self) -> bool {
+            self.quit_ack.load(Ordering::Acquire)
+                || self
+                    .quit_requested_at
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .is_some_and(|request| request.elapsed() >= Duration::from_millis(1500))
         }
     }
     pub fn main() -> u8 {
@@ -160,6 +177,7 @@ mod windows {
             paths,
             started: Instant::now(),
             quit_ack: AtomicBool::new(false),
+            quit_requested_at: Mutex::new(None),
         });
         // Bind before starting hardware; a foreign pipe must never split commands.
         let server = ControlServer::bind(&pipe, service.clone())?;
@@ -172,7 +190,7 @@ mod windows {
             "DEVELOPMENT EMULATOR ENGINE READY: {pipe}; GPUI/tray/hardware acceptance pending"
         );
         let mut due = Instant::now();
-        while !service.quit_ack.load(Ordering::Acquire)
+        while !service.should_stop()
             && duration.is_none_or(|limit| service.started.elapsed() < limit)
         {
             if Instant::now() >= due {

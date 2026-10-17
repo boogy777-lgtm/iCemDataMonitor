@@ -9,3 +9,14 @@ production-заменой: изменение будет перенесено в
 GPUI с исходными controls и встроенным web, host control/lifecycle/CLI, затем tray.
 Полная визуальная/аппаратная приёмка и размер полного дистрибутива отмечаются
 по фактическим доказательствам; готовность не выводится из наличия файлов.
+
+2026-10-17, продолжение: [E4](EMULATOR_E4.ru.md) восстанавливает собираемость
+checkpoint, подключает runtime, COM/Npcap adapters и Windows control pipe.
+Добавлен icem-emulator-engine-dev (headless process + CLI + singleton + XML).
+Проверены Linux workspace tests/Clippy и Windows GNU cross-check/Clippy;
+Windows CI и hardware/UI acceptance фиксируются отдельно по результату.
+
+Следующий этап: устранить D24 (LAN burst под engine gate), полный CLI watch,
+затем восстановить GPUI renderer по inventory/XAML, локальный Host gRPC/control
+и lifecycle, после этого tray. Desktop windows.rs отсутствует в checkpoint;
+модель/bridge/input/theme сохранены, фиктивный run() не экспортируется.

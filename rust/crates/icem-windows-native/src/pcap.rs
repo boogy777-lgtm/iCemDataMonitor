@@ -1,4 +1,4 @@
-//! ADR 0004: dynamically loaded Npcap ABI, owned packet copies only.
+//! ADR 0003: dynamically loaded Npcap ABI, owned packet copies only.
 use std::{
     ffi::{CStr, CString, c_char, c_int, c_void},
     ptr,
