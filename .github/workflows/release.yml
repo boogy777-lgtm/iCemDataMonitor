@@ -45,7 +45,7 @@ jobs:
         shell: pwsh
 
       - name: Build MSI
-        run: installer/build-msi.ps1 -MsiVersion $env:MSI_VERSION
+        run: installer/build-msi.ps1 -MsiVersion $env:MSI_VERSION -NoPause
         shell: pwsh
 
       - name: Compute SHA256 checksums

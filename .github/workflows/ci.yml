@@ -55,7 +55,7 @@ jobs:
         # build, cold cache). Cap it so a hang fails fast and leaves a full log
         # for diagnosis instead of burning the 6 h job limit.
         timeout-minutes: 30
-        run: installer/build-msi.ps1 -MsiVersion 0.0.0
+        run: installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause
         shell: pwsh
 
       - name: Upload MSI artifact
