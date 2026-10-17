@@ -62,12 +62,23 @@ try {
     $Reply = (Wait-Child $Quit 5000).output | ConvertFrom-Json
     if (-not $Reply.ok) { throw 'Packaged engine did not acknowledge quit' }
     $null = Wait-Child $EngineRun 5000
+    # Missing sidecar must fail before GPUI initialization and still join the
+    # engine worker/drain its pipe. The shipped ZIP itself is never modified.
+    $Icon = Join-Path $Package 'assets/iCemEmule.ico'
+    $HeldIcon = "$Icon.hold"
+    Move-Item -LiteralPath $Icon -Destination $HeldIcon
+    try {
+        $MissingAsset = Start-Child $Engine @('--desktop', '--config', (Join-Path $Temp 'missing-asset.xml'), '--templates', (Join-Path $Package 'templates'), '--pipe', ('icem-package-missing-' + [guid]::NewGuid().ToString('N')), '--duration-ms', '1000')
+        $MissingResult = Wait-Child $MissingAsset 10000 1
+        if ($MissingResult.error -notmatch 'application asset missing:') { throw 'Missing icon did not produce an explicit asset diagnostic' }
+    } finally { Move-Item -LiteralPath $HeldIcon -Destination $Icon }
+    $null = Test-WindowsPayload $Package
     # Check loader/startup error behavior without requiring a GPU/interactive desktop.
     $ShellRun = Start-Child (Join-Path $Package 'icem-shell-dev.exe') @('--web-url', 'invalid')
     $ShellResult = Wait-Child $ShellRun 10000 1
     if ($ShellResult.error -notmatch '--web-url requires') { throw 'Unexpected Shell startup diagnostic' }
     if ($env:GITHUB_ENV) { Add-Content -LiteralPath $env:GITHUB_ENV -Value "ICEM_HOST_EXE=$HostExe" }
-    Write-Host "PASS extracted Windows release: $($Manifest.source_commit), Unicode/space relocation, unrelated cwd, Host bind, emulator status/quit ACK, Shell loader."
+    Write-Host "PASS extracted Windows release: $($Manifest.source_commit), Unicode/space relocation, unrelated cwd, Host bind, emulator status/quit ACK, missing-icon cleanup, Shell loader."
     # Keep successful extraction for the release-browser check in the same CI job.
     Write-Host "Extracted payload: $Package"
 } finally {
