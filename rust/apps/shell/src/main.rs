@@ -118,6 +118,30 @@ mod windows {
             result
         }
     }
+    pub fn run() -> Result<(), String> {
+        let mut pipe = icem_web::HOST_PIPE.to_owned();
+        let mut url = "http://127.0.0.1:8090".to_owned();
+        let mut args = std::env::args().skip(1);
+        while let Some(key) = args.next() {
+            let value = args.next().ok_or("option requires a value")?;
+            match key.as_str() {
+                "--pipe" => pipe = value,
+                "--web-url" => url = value,
+                _ => return Err(format!("unknown option: {key}")),
+            }
+        }
+        // Development host URL is constrained to the local station endpoint.
+        let endpoint = url
+            .strip_prefix("http://127.0.0.1:")
+            .ok_or("--web-url requires http://127.0.0.1:PORT")?;
+        let port = endpoint.parse::<u16>().map_err(|_| "invalid web port")?;
+        icem_desktop::run_monitor(Arc::new(HostPort {
+            pipe,
+            endpoint: ([127, 0, 0, 1], port).into(),
+            session: std::sync::Mutex::new(None),
+        }))
+        .map_err(|e| e.to_string())
+    }
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -217,31 +241,6 @@ mod windows {
             );
             Ok(())
         }
-    }
-
-    pub fn run() -> Result<(), String> {
-        let mut pipe = icem_web::HOST_PIPE.to_owned();
-        let mut url = "http://127.0.0.1:8090".to_owned();
-        let mut args = std::env::args().skip(1);
-        while let Some(key) = args.next() {
-            let value = args.next().ok_or("option requires a value")?;
-            match key.as_str() {
-                "--pipe" => pipe = value,
-                "--web-url" => url = value,
-                _ => return Err(format!("unknown option: {key}")),
-            }
-        }
-        // Development host URL is constrained to the local station endpoint.
-        let endpoint = url
-            .strip_prefix("http://127.0.0.1:")
-            .ok_or("--web-url requires http://127.0.0.1:PORT")?;
-        let port = endpoint.parse::<u16>().map_err(|_| "invalid web port")?;
-        icem_desktop::run_monitor(Arc::new(HostPort {
-            pipe,
-            endpoint: ([127, 0, 0, 1], port).into(),
-            session: std::sync::Mutex::new(None),
-        }))
-        .map_err(|e| e.to_string())
     }
 }
 fn main() -> ExitCode {
