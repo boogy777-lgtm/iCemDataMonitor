@@ -55,7 +55,7 @@ public sealed class MetricsSampler
         // leaving the channel un-completed and the consumer awaiting forever.
         // The loop checks the token itself and always completes the channel
         // (termination law: every stream ends, empty or not).
-        _ = Task.Run(
+        subscription.ProducerCompletion = Task.Run(
             () => ProducerLoopAsync(channel, effectiveInterval, clamped, subscription, cancellationToken));
         return subscription;
     }
@@ -207,6 +207,11 @@ public sealed class MetricsSubscription : IAsyncEnumerable<MetricsSample>
 {
     private readonly ChannelReader<MetricsSample> _reader;
     internal long _dropped;
+
+    // Producer completion is distinct from ChannelReader.Completion, which
+    // also waits for buffered samples to be consumed. Tests stop and join the
+    // writer before checking exactly what the bounded channel retained.
+    internal Task ProducerCompletion { get; set; } = Task.CompletedTask;
 
     internal MetricsSubscription(ChannelReader<MetricsSample> reader)
     {

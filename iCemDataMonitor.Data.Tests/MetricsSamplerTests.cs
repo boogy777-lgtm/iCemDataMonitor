@@ -162,21 +162,30 @@ public sealed class MetricsSamplerTests : IDisposable
             while (subscription.DroppedCount < baseline + 2)
                 await Task.Delay(20, deadline.Token);
 
+            // Change the marker AFTER the queue is full. DropNewest would
+            // retain heartbeat 2; DropOldest must replace it with heartbeat 3.
+            WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 3);
+            long markedBaseline = subscription.DroppedCount;
+            while (subscription.DroppedCount < markedBaseline + 2)
+                await Task.Delay(20, deadline.Token);
+
             // Stop production before draining. Exactly ONE retained sample
             // must be the newer heartbeat; a FIFO/backlog or DropNewest
             // implementation fails without relying on timestamp age.
             stop.Cancel();
+            await subscription.ProducerCompletion.WaitAsync(deadline.Token);
             var retained = new List<MetricsSample>();
             await foreach (var sample in subscription.WithCancellation(deadline.Token))
                 retained.Add(sample);
 
             var resumed = Assert.Single(retained);
-            Assert.Equal(2, resumed.Heartbeat);
-            Assert.True(subscription.DroppedCount >= baseline + 2);
+            Assert.Equal(3, resumed.Heartbeat);
+            Assert.True(subscription.DroppedCount >= markedBaseline + 2);
         }
         finally
         {
             stop.Cancel();
+            await subscription.ProducerCompletion.WaitAsync(TimeSpan.FromSeconds(10));
         }
     }
 
@@ -354,4 +363,3 @@ public sealed class MetricsSamplerTests : IDisposable
         Assert.Equal(0, samples); // completed (empty), not hung
     }
 }
-
