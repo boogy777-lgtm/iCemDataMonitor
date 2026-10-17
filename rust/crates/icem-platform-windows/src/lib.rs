@@ -34,3 +34,16 @@ pub use transport::{AceLanEmitter, ComSerialEmitter, PacketDevice, SerialDevice,
 
 #[cfg(windows)]
 pub use icem_windows_native::{console_visible, set_console_visible};
+
+#[cfg(windows)]
+pub fn host_autostart()
+-> Result<icem_windows_native::AutostartEntry, Box<dyn std::error::Error + Send + Sync>> {
+    let exe = std::env::current_exe()?;
+    let exe = exe.to_str().ok_or("Host executable path is not Unicode")?;
+    Ok(icem_windows_native::AutostartEntry::new(
+        r"Software\Microsoft\Windows\CurrentVersion\Run",
+        r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+        "iCemDataMonitorHost",
+        exe,
+    )?)
+}

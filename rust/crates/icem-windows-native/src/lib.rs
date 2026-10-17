@@ -18,10 +18,10 @@ pub use pcap::{Adapter, PacketSession, Pcap, adapter_mac, npcap_available};
 pub use serial::{SerialPort, serial_ports};
 
 #[cfg(windows)]
-#[allow(unsafe_code)]
-mod tray;
-#[cfg(windows)]
-pub use tray::{Tray, TrayItem};
+pub use windows::{OwnedEvent, console_visible, set_console_visible};
 
 #[cfg(windows)]
-pub use windows::{OwnedEvent, console_visible, set_console_visible};
+#[allow(unsafe_code)]
+mod autostart;
+#[cfg(windows)]
+pub use autostart::AutostartEntry;

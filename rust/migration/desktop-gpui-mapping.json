@@ -394,9 +394,9 @@
       "index": 16,
       "name": "ProfileCombo",
       "implementation": "crates/icem-desktop/src/windows.rs",
-      "status": "partial",
+      "status": "implemented",
       "acceptance": "NOT_RUN",
-      "note": "Visual/state/keyboard acceptance pending."
+      "note": "Shared picker + identity-preserving action; visual acceptance remains NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
@@ -430,9 +430,9 @@
       "index": 20,
       "name": "ComVarCombo",
       "implementation": "crates/icem-desktop/src/windows.rs",
-      "status": "pending",
+      "status": "implemented",
       "acceptance": "NOT_RUN",
-      "note": "Original standalone control/behavior not yet reproduced."
+      "note": "Shared picker + identity-preserving action; visual acceptance remains NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
@@ -574,9 +574,9 @@
       "index": 36,
       "name": "LanVarCombo",
       "implementation": "crates/icem-desktop/src/windows.rs",
-      "status": "pending",
+      "status": "implemented",
       "acceptance": "NOT_RUN",
-      "note": "Original standalone control/behavior not yet reproduced."
+      "note": "Shared picker + identity-preserving action; visual acceptance remains NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",

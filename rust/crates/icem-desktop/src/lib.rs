@@ -28,6 +28,16 @@ pub struct VariableRow {
     pub uom: String,
     pub overridden: bool,
 }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProfileChoice {
+    pub name: String,
+    pub device_type: String,
+}
+impl ProfileChoice {
+    pub fn command(&self) -> Value {
+        json!({"cmd":"profile","name":self.name,"deviceType":self.device_type})
+    }
+}
 #[derive(Default)]
 pub struct Model {
     pub page: Page,
@@ -37,7 +47,7 @@ pub struct Model {
     pub snapshot: Value,
     pub com_variables: Vec<VariableRow>,
     pub lan_variables: Vec<VariableRow>,
-    pub profiles: Vec<String>,
+    pub profiles: Vec<ProfileChoice>,
     pub ports: Vec<String>,
     pub adapters: Vec<String>,
     pub selected_com: Option<usize>,
@@ -89,7 +99,19 @@ impl Model {
             "prefs" | "theme" => {
                 self.light = data["themeLight"].as_bool().unwrap_or(false);
             }
-            "profiles" => self.profiles = names(&data["profiles"]),
+            "profiles" => {
+                self.profiles = data["profiles"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|v| {
+                        Some(ProfileChoice {
+                            name: v["name"].as_str()?.into(),
+                            device_type: v["deviceType"].as_str()?.into(),
+                        })
+                    })
+                    .collect()
+            }
             "ports" => self.ports = names(&data["ports"]),
             "adapters" => self.adapters = names(&data["adapters"]),
             "vars" => {
@@ -117,6 +139,21 @@ impl Model {
         } else {
             self.selected_com.and_then(|i| self.com_variables.get(i))
         }
+    }
+    pub fn select_variable(&mut self, lan: bool, sv: &str, name: &str) -> Option<String> {
+        let rows = if lan {
+            &self.lan_variables
+        } else {
+            &self.com_variables
+        };
+        let index = rows.iter().position(|row| row.sv == sv && row.name == name);
+        let value = index.map(|i| rows[i].value.clone());
+        if lan {
+            self.selected_lan = index;
+        } else {
+            self.selected_com = index;
+        }
+        value
     }
     pub fn edit_command(&self, lan: bool, value: Option<&str>) -> Result<Value, String> {
         let row = self
@@ -273,3 +310,8 @@ pub fn unit_command(group: usize, unit: Option<&str>) -> Value {
 mod monitor;
 #[cfg(windows)]
 pub use monitor::run_monitor;
+
+#[cfg(windows)]
+mod tray;
+#[cfg(windows)]
+pub use tray::HostTray;

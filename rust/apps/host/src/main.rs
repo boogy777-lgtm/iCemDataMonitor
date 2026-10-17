@@ -50,12 +50,18 @@ fn options() -> Result<Options, String> {
     let mut mutex = None;
     let mut bind = None;
     let mut duration = 10_000;
+    let mut duration_explicit = false;
+    let mut autostart = false;
     let mut web_bind = None;
     let mut theme = None;
     let mut registry = None;
     let mut rpc_pipe = None;
     let mut tray_icon = None;
     while let Some(key) = args.next() {
+        if key == "--autostart" {
+            autostart = true;
+            continue;
+        }
         let value = args.next().ok_or("each option requires a value")?;
         match key.as_str() {
             "--modbus-fixture" => fixture = Some(PathBuf::from(value)),
@@ -81,8 +87,29 @@ fn options() -> Result<Options, String> {
             "--tray-icon" => tray_icon = Some(PathBuf::from(value)),
             "--rpc-pipe" => rpc_pipe = Some(value),
             "--registry" => registry = Some(PathBuf::from(value)),
-            "--duration-ms" => duration = value.parse().map_err(|_| "invalid duration")?,
+            "--duration-ms" => {
+                duration = value.parse().map_err(|_| "invalid duration")?;
+                duration_explicit = true;
+            }
             _ => return Err(format!("unknown option: {key}")),
+        }
+    }
+    if autostart {
+        if fixture.is_some() || live.is_some() {
+            return Err("--autostart requires station config".into());
+        }
+        let station = PathBuf::from(
+            std::env::var_os("PROGRAMDATA").unwrap_or_else(|| r"C:\ProgramData".into()),
+        )
+        .join("Halliburton/iCem/DataMonitoring");
+        config.get_or_insert_with(|| station.join("config.ini"));
+        if !duration_explicit {
+            duration = 0;
+        }
+        if tray_icon.is_none() {
+            tray_icon = Some(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/iCemDataMonitor.ico"),
+            );
         }
     }
     if usize::from(fixture.is_some()) + usize::from(live.is_some()) + usize::from(config.is_some())
@@ -242,12 +269,6 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
         ),
         None => None,
     };
-    #[cfg(windows)]
-    let mut lifecycle = options
-        .rpc_pipe
-        .as_ref()
-        .map(|_| windows::Lifecycle::new(options.tray_icon.clone()))
-        .transpose()?;
     #[cfg(not(windows))]
     if options.tray_icon.is_some() {
         return Err("Host tray requires Windows".into());
@@ -277,7 +298,7 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
         None
     };
     eprintln!(
-        "DEVELOPMENT HOST; tray/emulator/lifecycle pending. Modbus {}",
+        "DEVELOPMENT HOST; full Host/UI acceptance pending. Modbus {}",
         server
             .as_ref()
             .map(|server| server.local_addr().to_string())
@@ -327,6 +348,12 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
         .as_deref()
         .map(|name| icem_web::LocalRpcServer::bind(name, web.clone()))
         .transpose()?;
+    #[cfg(windows)]
+    let mut lifecycle = options
+        .rpc_pipe
+        .as_ref()
+        .map(|_| windows::Lifecycle::new(options.tray_icon.clone()))
+        .transpose()?;
     #[cfg(not(windows))]
     if options.rpc_pipe.is_some() {
         return Err("local Host gRPC pipe requires Windows".into());
@@ -350,7 +377,7 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
                 )
                 .map_err(Into::into),
                 Action::Web => windows::open_web(&web_url).map_err(Into::into),
-                Action::Console => windows::toggle_console().map_err(Into::into),
+                Action::Console(visible) => windows::console(visible).map_err(Into::into),
                 Action::Restart => {
                     restart = true;
                     break;

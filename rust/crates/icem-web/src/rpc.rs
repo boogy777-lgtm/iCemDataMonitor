@@ -62,7 +62,7 @@ impl TelemetryService for Rpc {
             }),
             updated_at_utc: Some(timestamp(h.at)),
             console_visible: console_visible(),
-            autostart_enabled: false,
+            autostart_enabled: autostart_enabled()?,
         }))
     }
     async fn set_layer(
@@ -224,6 +224,23 @@ impl TelemetryService for Rpc {
         #[cfg(windows)]
         self.get_status(Request::new(HostStatusRequest {})).await
     }
+    async fn set_autostart(
+        &self,
+        request: Request<SetAutostartRequest>,
+    ) -> Result<Response<HostStatus>, Status> {
+        #[cfg(windows)]
+        icem_platform_windows::host_autostart()
+            .map_err(|e| Status::internal(e.to_string()))?
+            .set_enabled(request.into_inner().enabled)
+            .map_err(|e| Status::internal(e.to_string()))?;
+        #[cfg(not(windows))]
+        {
+            let _ = request;
+            return Err(Status::unimplemented("autostart requires Windows"));
+        }
+        #[cfg(windows)]
+        self.get_status(Request::new(HostStatusRequest {})).await
+    }
     // Lifecycle/autostart/layer control and boot replay are separate
     // migration stages. Generated default stubs return UNIMPLEMENTED, never fake success.
 }
@@ -271,5 +288,19 @@ fn console_visible() -> bool {
     #[cfg(not(windows))]
     {
         false
+    }
+}
+
+fn autostart_enabled() -> Result<bool, Status> {
+    #[cfg(windows)]
+    {
+        icem_platform_windows::host_autostart()
+            .map_err(|e| Status::internal(e.to_string()))?
+            .is_enabled()
+            .map_err(|e| Status::internal(e.to_string()))
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(false)
     }
 }

@@ -2171,6 +2171,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpui-tray"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c01af03fe16178c6051e7611ae1699d4d6d5b537d579e38aea7efeec0af2a433"
+dependencies = [
+ "async-channel 2.5.0",
+ "gpui",
+ "image",
+ "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "thiserror 2.0.21",
+ "windows 0.62.2",
+ "zbus",
+]
+
+[[package]]
 name = "gpui_collections"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2642,8 +2660,11 @@ name = "icem-desktop"
 version = "0.1.0"
 dependencies = [
  "gpui",
+ "gpui-tray",
+ "icem-core",
  "icem-platform-windows",
  "icem-windows-native",
+ "image",
  "serde_json",
  "unicode-segmentation",
  "wry",
@@ -2678,6 +2699,7 @@ dependencies = [
  "icem-bus",
  "icem-config",
  "icem-core",
+ "icem-desktop",
  "icem-platform-windows",
  "icem-protocols",
  "icem-transport",

@@ -1,4 +1,5 @@
 //! XAML-derived emulator controls. All commands cross the existing owned-value bridge.
+use crate::tray::{ExitEmulator, OpenEmulator, emulator_tray};
 use crate::{
     Bridge, Model, PRESETS, Page, UNIT_GROUPS, UiPort,
     input::{self, TextInput},
@@ -8,7 +9,6 @@ use gpui::{
     App, Application, Bounds, Context, Entity, SharedString, Window, WindowBounds, WindowOptions,
     div, prelude::*, px, rgba, size,
 };
-use icem_windows_native::{Tray, TrayItem};
 use serde_json::{Value, json};
 use std::{
     path::PathBuf,
@@ -16,15 +16,70 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[derive(Clone)]
+enum ChoiceAction {
+    Command(Value),
+    Variable { lan: bool, sv: String, name: String },
+    Group(usize),
+}
+#[derive(Clone)]
+struct Choice {
+    label: String,
+    action: ChoiceAction,
+}
+fn endpoints(names: &[String], command: &str) -> Vec<Choice> {
+    names
+        .iter()
+        .map(|name| Choice {
+            label: name.clone(),
+            action: ChoiceAction::Command(json!({"cmd":command,"name":name})),
+        })
+        .collect()
+}
 struct View {
     model: Model,
     bridge: Bridge,
-    value: Entity<TextInput>,
+    com_value: Entity<TextInput>,
+    lan_value: Entity<TextInput>,
     equipment: Entity<TextInput>,
     unit: Entity<TextInput>,
     popup: Option<&'static str>,
 }
 impl View {
+    fn value_input(&self, lan: bool) -> Entity<TextInput> {
+        if lan {
+            self.lan_value.clone()
+        } else {
+            self.com_value.clone()
+        }
+    }
+    fn choose(&mut self, action: &ChoiceAction, cx: &mut Context<Self>) {
+        match action {
+            ChoiceAction::Command(command) => self.send(command.clone()),
+            ChoiceAction::Variable { lan, sv, name } => {
+                if let Some(value) = self.model.select_variable(*lan, sv, name) {
+                    self.value_input(*lan).update(cx, |input, cx| {
+                        input.set(value);
+                        cx.notify();
+                    });
+                }
+            }
+            ChoiceAction::Group(index) => {
+                self.model.group = *index;
+                let value = self.model.snapshot["units"]
+                    [format!("{}Override", UNIT_GROUPS[*index].0)]
+                .as_str()
+                .unwrap_or("")
+                .to_owned();
+                self.unit.update(cx, |input, cx| {
+                    input.set(value);
+                    cx.notify();
+                });
+            }
+        }
+        self.popup = None;
+        cx.notify();
+    }
     fn color(&self, key: &str) -> gpui::Rgba {
         let palette = if self.model.light {
             theme::LIGHT
@@ -119,8 +174,7 @@ impl View {
         &self,
         key: &'static str,
         label: String,
-        values: Vec<String>,
-        command: &'static str,
+        values: Vec<Choice>,
         cx: &Context<Self>,
     ) -> impl IntoElement {
         let mut root = div().flex().flex_col().gap(px(2.)).child(
@@ -147,18 +201,16 @@ impl View {
                 .overflow_y_scroll()
                 .bg(self.color("MacPopupBgColor"));
             for (index, value) in values.into_iter().enumerate() {
-                let arg = value.clone();
+                let action = value.action;
                 options = options.child(
                     div()
                         .id((key, index))
                         .p(px(5.))
                         .cursor_pointer()
                         .hover(|s| s.bg(rgba(0x0088ff30)))
-                        .child(value)
+                        .child(value.label)
                         .on_click(cx.listener(move |v, _, _, cx| {
-                            v.send(json!({"cmd":command,"name":arg}));
-                            v.popup = None;
-                            cx.notify();
+                            v.choose(&action, cx);
                         })),
                 );
             }
@@ -209,8 +261,7 @@ impl View {
                 .child(self.picker(
                     "LanAdapterCombo",
                     self.model.field("lan", "adapter"),
-                    self.model.adapters.clone(),
-                    "setadapter",
+                    endpoints(&self.model.adapters, "setadapter"),
                     cx,
                 ))
                 .child(self.button(
@@ -260,8 +311,7 @@ impl View {
                 .child(self.picker(
                     "ComPortCombo",
                     self.model.field("com", "port"),
-                    self.model.ports.clone(),
-                    "setport",
+                    endpoints(&self.model.ports, "setport"),
                     cx,
                 ))
                 .child(self.button(
@@ -270,13 +320,21 @@ impl View {
                     json!({"cmd":"ports"}),
                     cx,
                 ))
-                .child(self.picker(
-                    "ProfileCombo",
-                    self.model.field("com", "template"),
-                    self.model.profiles.clone(),
-                    "profile",
-                    cx,
-                ));
+                .child(
+                    self.picker(
+                        "ProfileCombo",
+                        self.model.field("com", "template"),
+                        self.model
+                            .profiles
+                            .iter()
+                            .map(|p| Choice {
+                                label: format!("{} · {}", p.name, p.device_type),
+                                action: ChoiceAction::Command(p.command()),
+                            })
+                            .collect(),
+                        cx,
+                    ),
+                );
         }
         card = card.child(self.button(
             "RefreshVarsButton",
@@ -306,6 +364,11 @@ impl View {
             } else {
                 row.name.clone()
             };
+            let action = ChoiceAction::Variable {
+                lan,
+                sv: row.sv.clone(),
+                name: row.name.clone(),
+            };
             list = list.child(
                 div()
                     .id(("variable", index))
@@ -326,19 +389,7 @@ impl View {
                     )
                     .child(div().w(px(70.)).child(row.uom.clone()))
                     .on_click(cx.listener(move |v, _, _, cx| {
-                        if lan {
-                            v.model.selected_lan = Some(index);
-                        } else {
-                            v.model.selected_com = Some(index);
-                        }
-                        if let Some(row) = v.model.selected(lan) {
-                            let value = row.value.clone();
-                            v.value.update(cx, |input, cx| {
-                                input.set(value);
-                                cx.notify();
-                            });
-                        }
-                        cx.notify();
+                        v.choose(&action, cx);
                     })),
             );
         }
@@ -346,17 +397,35 @@ impl View {
             .child(list)
             .child("Переопределения значений")
             .child(
-                self.model
-                    .selected(lan)
-                    .map(|r| r.name.clone())
-                    .unwrap_or_else(|| "Выберите переменную в списке".into()),
+                self.picker(
+                    if lan { "LanVarCombo" } else { "ComVarCombo" },
+                    self.model
+                        .selected(lan)
+                        .map(|r| r.name.clone())
+                        .unwrap_or_else(|| "Выберите переменную".into()),
+                    rows.iter()
+                        .map(|row| Choice {
+                            label: if lan {
+                                format!("{} · {}", row.sv, row.name)
+                            } else {
+                                row.name.clone()
+                            },
+                            action: ChoiceAction::Variable {
+                                lan,
+                                sv: row.sv.clone(),
+                                name: row.name.clone(),
+                            },
+                        })
+                        .collect(),
+                    cx,
+                ),
             )
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap(px(8.))
-                    .child(div().w(px(130.)).child(self.value.clone()))
+                    .child(div().w(px(130.)).child(self.value_input(lan)))
                     .child(
                         div()
                             .id("SetButton")
@@ -368,7 +437,7 @@ impl View {
                             .cursor_pointer()
                             .child("Установить")
                             .on_click(cx.listener(move |v, _, _, cx| {
-                                let value = v.value.read(cx).content.to_string();
+                                let value = v.value_input(lan).read(cx).content.to_string();
                                 match v.model.edit_command(lan, Some(&value)) {
                                     Ok(command) => v.send(command),
                                     Err(e) => v.model.note = format!("⚠ {e}"),
@@ -406,34 +475,34 @@ impl View {
             "Пресет: {}",
             text(&self.model.snapshot["units"]["preset"])
         ));
-        let mut presets = div().flex().gap(px(6.));
-        for (index, preset) in PRESETS.iter().enumerate() {
-            presets = presets.child(self.button(
-                ("preset", index),
-                *preset,
-                json!({"cmd":"setpreset","value":index}),
-                cx,
-            ));
-        }
-        card = card.child(presets);
-        let mut groups = div().flex().flex_wrap().gap(px(6.));
-        for (index, (_, name)) in UNIT_GROUPS.iter().enumerate() {
-            groups = groups.child(
-                div()
-                    .id(("group", index))
-                    .p(px(4.))
-                    .rounded(px(6.))
-                    .cursor_pointer()
-                    .when(index == self.model.group, |s| {
-                        s.bg(self.color("MacSoftHighlightColor"))
+        card = card.child(
+            self.picker(
+                "PresetCombo",
+                text(&self.model.snapshot["units"]["preset"]),
+                PRESETS
+                    .iter()
+                    .enumerate()
+                    .map(|(index, preset)| Choice {
+                        label: (*preset).into(),
+                        action: ChoiceAction::Command(json!({"cmd":"setpreset","value":index})),
                     })
-                    .child(*name)
-                    .on_click(cx.listener(move |v, _, _, cx| {
-                        v.model.group = index;
-                        cx.notify();
-                    })),
-            );
-        }
+                    .collect(),
+                cx,
+            ),
+        );
+        let groups = self.picker(
+            "UnitGroupCombo",
+            UNIT_GROUPS[self.model.group].1.into(),
+            UNIT_GROUPS
+                .iter()
+                .enumerate()
+                .map(|(index, (_, name))| Choice {
+                    label: (*name).into(),
+                    action: ChoiceAction::Group(index),
+                })
+                .collect(),
+            cx,
+        );
         card.child(text(&self.model.snapshot["units"]))
             .child(groups)
             .child(self.unit.clone())
@@ -465,7 +534,12 @@ impl Render for View {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let background = self.color("MacTextFieldBgColor");
         let foreground = self.color("MacLabelColor");
-        for input in [&self.value, &self.equipment, &self.unit] {
+        for input in [
+            &self.com_value,
+            &self.lan_value,
+            &self.equipment,
+            &self.unit,
+        ] {
             input.update(cx, |v, _| {
                 v.background = background;
                 v.foreground = foreground;
@@ -587,26 +661,15 @@ pub fn run_emulator(
     icon: PathBuf,
 ) -> std::io::Result<()> {
     let bridge = Bridge::start(port)?;
-    let tray = Tray::start(
-        icon,
-        "iCemEmulator".into(),
-        vec![
-            TrayItem {
-                id: 1,
-                label: "Открыть iCemEmulator".into(),
-            },
-            TrayItem {
-                id: 2,
-                label: "Выход".into(),
-            },
-        ],
-    )?;
+    let outcome = std::rc::Rc::new(std::cell::RefCell::new(None));
+    let failure = outcome.clone();
     Application::new().run(move |cx: &mut App| {
         input::bind_keys(cx);
         let view = cx.new(|cx| View {
             model: Model::default(),
             bridge,
-            value: input::new_input("", "Значение", cx),
+            com_value: input::new_input("", "Значение", cx),
+            lan_value: input::new_input("", "Значение", cx),
             equipment: input::new_input("0x00A86F46", "Оборудование", cx),
             unit: input::new_input("", "gpm, bar…", cx),
             popup: None,
@@ -617,14 +680,43 @@ pub fn run_emulator(
             }
             v.poll();
         });
-        let mut window = match open(view.clone(), cx) {
+        let window = match open(view.clone(), cx) {
             Ok(window) => Some(window),
             Err(e) => {
-                eprintln!("GPUI window: {e}");
+                *failure.borrow_mut() = Some(format!("GPUI window: {e}"));
                 cx.quit();
                 return;
             }
         };
+        let tray = match emulator_tray(icon, cx) {
+            Ok(tray) => tray,
+            Err(error) => {
+                *failure.borrow_mut() = Some(format!("GPUI tray: {error}"));
+                cx.quit();
+                return;
+            }
+        };
+        let handle = std::rc::Rc::new(std::cell::Cell::new(window));
+        let showing = handle.clone();
+        let showing_view = view.clone();
+        cx.on_action(move |_: &OpenEmulator, cx| {
+            let active = showing.get().is_some_and(|handle| {
+                handle
+                    .update(cx, |_, window, _| window.activate_window())
+                    .is_ok()
+            });
+            if !active {
+                match open(showing_view.clone(), cx) {
+                    Ok(window) => showing.set(Some(window)),
+                    Err(error) => eprintln!("GPUI reopen: {error}"),
+                };
+            }
+            cx.activate(true);
+        });
+        let quitting = view.clone();
+        cx.on_action(move |_: &ExitEmulator, cx| {
+            quitting.update(cx, |view, _| view.send(json!({"cmd":"quit"})));
+        });
         cx.activate(true);
         cx.spawn(async move |cx| {
             let mut due = Instant::now();
@@ -633,38 +725,28 @@ pub fn run_emulator(
                     .timer(Duration::from_millis(50))
                     .await;
                 if should_stop() {
-                    let _ = cx.update(|cx| cx.quit());
+                    let _ = cx.update(|cx| {
+                        if let Err(error) = tray.close(cx) {
+                            *failure.borrow_mut() = Some(format!("GPUI tray close: {error}"));
+                        }
+                        cx.quit();
+                    });
                     break;
-                }
-                let mut show = false;
-                let mut quit = false;
-                while let Some(event) = tray.try_event() {
-                    match event {
-                        1 => show = true,
-                        2 => quit = true,
-                        _ => {}
-                    }
                 }
                 if cx
                     .update(|cx| {
-                        if show {
-                            let active = window.is_some_and(|handle| {
-                                handle
-                                    .update(cx, |_, window, _| window.activate_window())
-                                    .is_ok()
-                            });
-                            if !active {
-                                match open(view.clone(), cx) {
-                                    Ok(handle) => window = Some(handle),
-                                    Err(e) => eprintln!("GPUI reopen: {e}"),
-                                };
-                            }
-                            cx.activate(true);
-                        }
                         view.update(cx, |v, cx| {
+                            let first = v.model.snapshot.is_null();
                             v.bridge.drain(&mut v.model);
-                            if quit {
-                                v.send(json!({"cmd":"quit"}));
+                            if first
+                                && let Some(equipment) =
+                                    v.model.snapshot["lan"]["equipment"].as_str()
+                            {
+                                let equipment = equipment.to_owned();
+                                v.equipment.update(cx, |input, cx| {
+                                    input.set(equipment);
+                                    cx.notify();
+                                });
                             }
                             if Instant::now() >= due {
                                 v.poll();
@@ -683,5 +765,6 @@ pub fn run_emulator(
         })
         .detach();
     });
-    Ok(())
+    let failure = outcome.borrow_mut().take();
+    failure.map_or(Ok(()), |error| Err(std::io::Error::other(error)))
 }

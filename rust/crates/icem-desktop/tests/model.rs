@@ -72,3 +72,35 @@ fn refresh_cannot_retarget_an_override_to_another_variable() {
     assert_eq!(model.selected_com, None);
     assert!(model.edit_command(false, Some("4")).is_err());
 }
+#[test]
+fn profile_choices_keep_device_identity_and_variable_clicks_keep_signal_identity()
+-> Result<(), String> {
+    let mut model = Model::default();
+    model.apply("profiles",Ok(json!({"ok":true,"data":{"profiles":[{"name":"Shared","deviceType":"A"},{"name":"Shared","deviceType":"B"}]}})));
+    assert_eq!(
+        model.profiles[1].command(),
+        json!({"cmd":"profile","name":"Shared","deviceType":"B"})
+    );
+    model.lan_variables = vec![
+        VariableRow {
+            sv: "0x2".into(),
+            name: "Pressure".into(),
+            value: "42".into(),
+            ..Default::default()
+        },
+        VariableRow {
+            sv: "0x1".into(),
+            name: "Pressure".into(),
+            value: "12".into(),
+            ..Default::default()
+        },
+    ];
+    assert_eq!(
+        model.select_variable(true, "0x1", "Pressure"),
+        Some("12".into())
+    );
+    assert_eq!(model.edit_command(true, Some("14"))?["sv"], "0x1");
+    assert_eq!(model.select_variable(true, "0x999", "Pressure"), None);
+    assert!(model.edit_command(true, Some("14")).is_err());
+    Ok(())
+}

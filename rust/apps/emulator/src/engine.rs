@@ -26,6 +26,7 @@ mod windows {
         paths: SettingsPaths,
         started: Instant,
         quit_ack: AtomicBool,
+        shutting_down: AtomicBool,
         quit_requested_at: Mutex<Option<Instant>>,
     }
     impl icem_desktop::UiPort for Service {
@@ -49,6 +50,14 @@ mod windows {
                     };
                 }
             };
+            if self.shutting_down.load(Ordering::Acquire) {
+                return ControlReply {
+                    cmd: String::new(),
+                    json: to_json(false, "", None, Some("engine is shutting down")),
+                    start_watch: false,
+                    quit: false,
+                };
+            }
             engine.set_time(self.started.elapsed().as_secs_f64());
             let revision = engine.settings_revision();
             let reply = process_line(line, &mut *engine);
@@ -195,6 +204,7 @@ mod windows {
             paths,
             started: Instant::now(),
             quit_ack: AtomicBool::new(false),
+            shutting_down: AtomicBool::new(false),
             quit_requested_at: Mutex::new(None),
         });
         // Bind before starting hardware; a foreign pipe must never split commands.
@@ -259,6 +269,7 @@ mod windows {
             }
             std::thread::sleep(Duration::from_millis(10));
         }
+        service.shutting_down.store(true, Ordering::Release);
         server.stop()?;
         let mut engine = service.engine.lock().map_err(|_| "engine lock poisoned")?;
         engine.shutdown();
