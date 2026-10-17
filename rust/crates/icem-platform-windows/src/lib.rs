@@ -31,3 +31,6 @@ pub fn emulator_mutex() -> Result<icem_windows_native::NamedMutex, icem_windows_
 
 pub mod transport;
 pub use transport::{AceLanEmitter, ComSerialEmitter, PacketDevice, SerialDevice, burst_start_ms};
+
+#[cfg(windows)]
+pub use icem_windows_native::{console_visible, set_console_visible};

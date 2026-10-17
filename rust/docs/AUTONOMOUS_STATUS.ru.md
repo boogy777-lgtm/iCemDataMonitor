@@ -20,3 +20,9 @@ Windows CI и hardware/UI acceptance фиксируются отдельно п�
 затем восстановить GPUI renderer по inventory/XAML, локальный Host gRPC/control
 и lifecycle, после этого tray. Desktop windows.rs отсутствует в checkpoint;
 модель/bridge/input/theme сохранены, фиктивный run() не экспортируется.
+
+2026-10-17 E5: [Desktop / Host](DESKTOP_STATUS.ru.md) содержит GPUI renderer,
+независимые tray, monitor с WebView, local Host gRPC и Modbus owner toggle.
+Полный Linux workspace: 84 tests, Clippy; Windows GNU workspace/all-targets Clippy
+прошёл. MSVC runtime/UI evidence фиксируется по отдельному CI run; аппаратная
+приёмка NOT RUN. Открытые M3/M6 пункты перечислены в статусе и control mapping.

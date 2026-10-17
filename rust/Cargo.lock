@@ -2585,6 +2585,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyper-timeout"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b90d566bffbce6a75bd8b09a05aa8c2cb1fabb6cb348f8840c9e4c90a0d83b0"
+dependencies = [
+ "hyper",
+ "hyper-util",
+ "pin-project-lite",
+ "tokio",
+ "tower-service",
+]
+
+[[package]]
 name = "hyper-util"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2629,6 +2642,8 @@ name = "icem-desktop"
 version = "0.1.0"
 dependencies = [
  "gpui",
+ "icem-platform-windows",
+ "icem-windows-native",
  "serde_json",
  "unicode-segmentation",
  "wry",
@@ -2648,6 +2663,7 @@ name = "icem-emulator-app"
 version = "0.1.0"
 dependencies = [
  "icem-config",
+ "icem-desktop",
  "icem-emulation",
  "icem-platform-windows",
  "icem-protocols",
@@ -2666,6 +2682,8 @@ dependencies = [
  "icem-protocols",
  "icem-transport",
  "icem-web",
+ "icem-windows-native",
+ "tokio",
 ]
 
 [[package]]
@@ -2690,8 +2708,12 @@ dependencies = [
 name = "icem-shell-app"
 version = "0.1.0"
 dependencies = [
+ "icem-desktop",
  "icem-platform-windows",
  "icem-transport",
+ "icem-web",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2711,6 +2733,7 @@ dependencies = [
  "axum",
  "chrono",
  "http-body-util",
+ "hyper-util",
  "icem-bus",
  "icem-core",
  "icem-platform-windows",
@@ -6138,6 +6161,7 @@ dependencies = [
  "http-body",
  "http-body-util",
  "hyper",
+ "hyper-timeout",
  "hyper-util",
  "percent-encoding",
  "pin-project",
@@ -6216,7 +6240,9 @@ checksum = "ebe5ef63511595f1344e2d5cfa636d973292adc0eec1f0ad45fae9f0851ab1d4"
 dependencies = [
  "futures-core",
  "futures-util",
+ "indexmap",
  "pin-project-lite",
+ "slab",
  "sync_wrapper",
  "tokio",
  "tokio-util",

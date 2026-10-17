@@ -32,3 +32,6 @@ path = "src/lan.rs"
 [[bin]]
 name = "icem-emulator-engine-dev"
 path = "src/engine.rs"
+
+[target.'cfg(windows)'.dependencies]
+icem-desktop = { path = "../../crates/icem-desktop" }

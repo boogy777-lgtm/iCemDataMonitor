@@ -16,3 +16,12 @@ mod serial;
 pub use pcap::{Adapter, PacketSession, Pcap, adapter_mac, npcap_available};
 #[cfg(windows)]
 pub use serial::{SerialPort, serial_ports};
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+mod tray;
+#[cfg(windows)]
+pub use tray::{Tray, TrayItem};
+
+#[cfg(windows)]
+pub use windows::{OwnedEvent, console_visible, set_console_visible};

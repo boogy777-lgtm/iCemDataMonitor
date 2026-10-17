@@ -266,3 +266,61 @@ pub fn signal_existing_event(name: &str) -> Result<bool, NativeError> {
     }
     Ok(true)
 }
+
+/// Host owns these auto-reset lifecycle events; clients only open/signal them.
+pub struct OwnedEvent(OwnedHandle);
+impl OwnedEvent {
+    pub fn create_reset(name: &str) -> Result<Self, NativeError> {
+        use windows_sys::Win32::System::Threading::{CreateEventW, ResetEvent};
+        let name = wide_name(name)?;
+        // SAFETY: valid UTF-16 name, default security, auto-reset initially unsignalled.
+        let handle = unsafe { CreateEventW(ptr::null(), 0, 0, name.as_ptr()) };
+        if handle.is_null() {
+            return Err(NativeError::last("create_event"));
+        }
+        let event = Self(OwnedHandle(handle));
+        // SAFETY: live owned event, explicitly clear a previous boot's signal.
+        if unsafe { ResetEvent(event.0.0) } == 0 {
+            return Err(NativeError::last("reset_event"));
+        }
+        Ok(event)
+    }
+    pub fn poll(&self) -> Result<bool, NativeError> {
+        // SAFETY: live owned event, nonblocking poll consumes only this auto-reset event.
+        match unsafe { WaitForSingleObject(self.0.0, 0) } {
+            WAIT_OBJECT_0 => Ok(true),
+            WAIT_TIMEOUT => Ok(false),
+            _ => Err(NativeError::last("poll_event")),
+        }
+    }
+}
+pub fn console_visible() -> bool {
+    use windows_sys::Win32::{
+        System::Console::GetConsoleWindow, UI::WindowsAndMessaging::IsWindowVisible,
+    };
+    // SAFETY: OS-provided console HWND, checked before read-only visibility probe.
+    unsafe {
+        let window = GetConsoleWindow();
+        !window.is_null() && IsWindowVisible(window) != 0
+    }
+}
+pub fn set_console_visible(visible: bool) -> Result<bool, NativeError> {
+    use windows_sys::Win32::{
+        System::Console::{AllocConsole, GetConsoleWindow},
+        UI::WindowsAndMessaging::{SW_HIDE, SW_RESTORE, ShowWindow},
+    };
+    // SAFETY: operates only on the calling process's console, no borrowed pointers.
+    unsafe {
+        let mut window = GetConsoleWindow();
+        if window.is_null() && visible {
+            if AllocConsole() == 0 {
+                return Err(NativeError::last("allocate_console"));
+            }
+            window = GetConsoleWindow();
+        }
+        if !window.is_null() {
+            ShowWindow(window, if visible { SW_RESTORE } else { SW_HIDE });
+        }
+    }
+    Ok(console_visible())
+}

@@ -2,11 +2,11 @@
 use std::ops::Range;
 
 use gpui::{
-    App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler,
-    Entity, EntityInputHandler, FocusHandle, Focusable, GlobalElementId, KeyBinding,
-    LayoutId, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point,
-    ShapedLine, SharedString, Style, TextRun, UTF16Selection, UnderlineStyle, Window, actions, black, div, fill, hsla, opaque_grey, point, prelude::*, px, relative,
-    rgba,
+    App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
+    EntityInputHandler, FocusHandle, Focusable, GlobalElementId, KeyBinding, LayoutId, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point, ShapedLine,
+    SharedString, Style, TextRun, UTF16Selection, UnderlineStyle, Window, actions, div, fill,
+    point, prelude::*, px, relative, rgba, size,
 };
 use unicode_segmentation::*;
 
@@ -248,8 +248,6 @@ impl TextInput {
             .find_map(|(idx, _)| (idx > offset).then_some(idx))
             .unwrap_or(self.content.len())
     }
-
-
 }
 
 impl EntityInputHandler for TextInput {
@@ -373,7 +371,9 @@ impl EntityInputHandler for TextInput {
         let line_point = self.last_bounds?.localize(&point)?;
         let last_layout = self.last_layout.as_ref()?;
 
-        if last_layout.text != self.content { return None; }
+        if last_layout.text != self.content {
+            return None;
+        }
         let utf8_index = last_layout.index_for_x(point.x - line_point.x)?;
         Some(self.offset_to_utf16(utf8_index))
     }
@@ -539,7 +539,9 @@ impl Element for TextElement {
         if let Some(selection) = prepaint.selection.take() {
             window.paint_quad(selection)
         }
-        let Some(line) = prepaint.line.take() else { return; };
+        let Some(line) = prepaint.line.take() else {
+            return;
+        };
         let _ = line.paint(bounds.origin, window.line_height(), window, cx);
 
         if focus_handle.is_focused(window)
@@ -579,7 +581,8 @@ impl Render for TextInput {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
-            .bg(self.background).text_color(self.foreground)
+            .bg(self.background)
+            .text_color(self.foreground)
             .line_height(px(20.))
             .text_size(px(13.))
             .child(
@@ -599,20 +602,27 @@ impl Focusable for TextInput {
     }
 }
 
-
 pub(crate) fn new_input(value: &str, placeholder: &str, cx: &mut App) -> Entity<TextInput> {
     cx.new(|cx| TextInput {
-        focus_handle: cx.focus_handle(), content: value.to_owned().into(),
-        background: rgba(0xffffffff), foreground: rgba(0x000000ff),
-        placeholder: placeholder.to_owned().into(), selected_range: 0..0,
-        selection_reversed: false, marked_range: None,
-        last_layout: None, last_bounds: None, is_selecting: false,
+        focus_handle: cx.focus_handle(),
+        content: value.to_owned().into(),
+        background: rgba(0xffffffff),
+        foreground: rgba(0x000000ff),
+        placeholder: placeholder.to_owned().into(),
+        selected_range: 0..0,
+        selection_reversed: false,
+        marked_range: None,
+        last_layout: None,
+        last_bounds: None,
+        is_selecting: false,
     })
 }
 impl TextInput {
     pub(crate) fn set(&mut self, value: String) {
-        self.content=value.into(); self.selected_range=self.content.len()..self.content.len();
-        self.marked_range=None; self.last_layout=None;
+        self.content = value.into();
+        self.selected_range = self.content.len()..self.content.len();
+        self.marked_range = None;
+        self.last_layout = None;
     }
 }
 pub(crate) fn bind_keys(cx: &mut App) {

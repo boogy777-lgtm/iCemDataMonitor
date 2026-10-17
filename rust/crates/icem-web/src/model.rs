@@ -12,6 +12,10 @@ pub struct BusReply {
     pub read: Option<SnapshotRead>,
     pub is_open: bool,
 }
+pub struct LayerRequest {
+    pub layer: icem_core::LayerKind,
+    pub response: oneshot::Sender<Result<(), String>>,
+}
 pub struct ReadRequest {
     pub response: oneshot::Sender<BusReply>,
 }
@@ -41,6 +45,7 @@ pub(crate) struct Store {
 #[derive(Clone)]
 pub struct WebState {
     pub(crate) requests: mpsc::SyncSender<ReadRequest>,
+    pub(crate) layer_requests: Option<mpsc::SyncSender<LayerRequest>>,
     pub(crate) store: Arc<Mutex<Store>>,
     pub(crate) pub_layers: Arc<Mutex<HostLayers>>,
     pub(crate) names: Arc<BTreeMap<u16, String>>,
@@ -59,6 +64,7 @@ impl WebState {
         (
             Self {
                 requests,
+                layer_requests: None,
                 store: Arc::new(Mutex::new(Store {
                     last: None,
                     health: Health {
@@ -75,6 +81,11 @@ impl WebState {
             },
             receiver,
         )
+    }
+    pub fn enable_layer_control(&mut self) -> mpsc::Receiver<LayerRequest> {
+        let (sender, receiver) = mpsc::sync_channel(16);
+        self.layer_requests = Some(sender);
+        receiver
     }
     pub fn observe(&self, reply: &BusReply) {
         if let Some(read) = &reply.read

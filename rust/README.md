@@ -19,7 +19,7 @@ Desktop UI — GPUI с сохранением существующих custom co
 [полная фиксированная DFB-фабрика и dev trace](docs/EMULATOR_E2.ru.md);
 [LAN payload/freeze/overrides/units и ACE dev trace](docs/EMULATOR_E3.ru.md).
 [Headless engine, control pipe и COM/Npcap adapters (E4)](docs/EMULATOR_E4.ru.md)
-подключены в рабочей ветке. GPUI renderer, tray и аппаратная приёмка остаются открыты.
+подключены в рабочей ветке. Добавлены [GPUI renderer, tray и local Host gRPC (E5)](docs/DESKTOP_STATUS.ru.md). Полные UI/Host gates и аппаратная приёмка остаются открыты.
 
 ## Документы
 

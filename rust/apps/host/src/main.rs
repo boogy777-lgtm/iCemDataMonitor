@@ -13,6 +13,9 @@ use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+mod windows;
+
 enum Input {
     Fixture(PathBuf),
     Live {
@@ -24,7 +27,7 @@ enum Input {
 struct Options {
     input: Input,
     bind: SocketAddr,
-    duration: Duration,
+    duration: Option<Duration>,
     tick: Duration,
     total: u16,
     modbus_on: bool,
@@ -34,6 +37,9 @@ struct Options {
     set_as_default: bool,
     theme: PathBuf,
     registry: Option<PathBuf>,
+    rpc_pipe: Option<String>,
+    tray_icon: Option<PathBuf>,
+    station: Option<(PathBuf, IniOptions)>,
 }
 fn options() -> Result<Options, String> {
     let mut args = std::env::args().skip(1);
@@ -47,6 +53,8 @@ fn options() -> Result<Options, String> {
     let mut web_bind = None;
     let mut theme = None;
     let mut registry = None;
+    let mut rpc_pipe = None;
+    let mut tray_icon = None;
     while let Some(key) = args.next() {
         let value = args.next().ok_or("each option requires a value")?;
         match key.as_str() {
@@ -70,6 +78,8 @@ fn options() -> Result<Options, String> {
                 )
             }
             "--theme-file" => theme = Some(PathBuf::from(value)),
+            "--tray-icon" => tray_icon = Some(PathBuf::from(value)),
+            "--rpc-pipe" => rpc_pipe = Some(value),
             "--registry" => registry = Some(PathBuf::from(value)),
             "--duration-ms" => duration = value.parse().map_err(|_| "invalid duration")?,
             _ => return Err(format!("unknown option: {key}")),
@@ -122,13 +132,13 @@ fn options() -> Result<Options, String> {
         1502
     };
     let bind = bind.unwrap_or_else(|| SocketAddr::from(([127, 0, 0, 1], port)));
-    if !bind.ip().is_loopback() || !(1..=3_600_000).contains(&duration) {
-        return Err("development host requires loopback and duration 1..3600000 ms".into());
+    if !bind.ip().is_loopback() || duration > 3_600_000 {
+        return Err("development host requires loopback and duration 0..3600000 ms (0 = until lifecycle stop)".into());
     }
     Ok(Options {
         input,
         bind,
-        duration: Duration::from_millis(duration),
+        duration: (duration != 0).then(|| Duration::from_millis(duration)),
         tick: Duration::from_millis(
             u64::try_from(settings.modbus_tick_ms).map_err(|_| "invalid tick")?,
         ),
@@ -140,6 +150,9 @@ fn options() -> Result<Options, String> {
         set_as_default: settings.ui_set_as_default == 1,
         theme,
         registry,
+        rpc_pipe: rpc_pipe.or_else(|| tray_icon.as_ref().map(|_| "iCemDataMonitor.Host".into())),
+        tray_icon,
+        station: config.map(|path| (path, settings)),
     })
 }
 struct Fixture(Snapshot);
@@ -213,14 +226,48 @@ fn refresh(
         is_open: source.is_open(),
     })
 }
-fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
+fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
+    #[cfg(windows)]
+    let singleton = options
+        .rpc_pipe
+        .as_ref()
+        .map(|_| windows::singleton())
+        .transpose()?;
+    #[cfg(windows)]
+    let _guard = match &singleton {
+        Some(mutex) => Some(
+            mutex
+                .lock(Duration::ZERO)?
+                .ok_or("Host is already running")?,
+        ),
+        None => None,
+    };
+    #[cfg(windows)]
+    let mut lifecycle = options
+        .rpc_pipe
+        .as_ref()
+        .map(|_| windows::Lifecycle::new(options.tray_icon.clone()))
+        .transpose()?;
+    #[cfg(not(windows))]
+    if options.tray_icon.is_some() {
+        return Err("Host tray requires Windows".into());
+    }
+    #[cfg(windows)]
+    let mut restart = false;
+    #[cfg(not(windows))]
+    let restart = false;
+    #[cfg(windows)]
+    let web_url = format!(
+        "http://127.0.0.1:{}",
+        options.web.map_or(8090, |a| a.port())
+    );
     let mut source = source(options.input)?;
     let bank = Arc::new(Mutex::new(
         RegisterBank::new(options.total).map_err(|error| format!("{error:?}"))?,
     ));
     let mut last_error = None;
     let first = refresh(&mut *source, &bank, &mut last_error)?;
-    let server = if options.modbus_on {
+    let mut server = if options.modbus_on {
         Some(ModbusServer::bind(
             options.bind,
             Arc::clone(&bank),
@@ -254,7 +301,7 @@ fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     };
-    let (web, requests) = WebState::new(
+    let (mut web, requests) = WebState::new(
         HostLayers {
             modbus_bound: server.is_some(),
             modbus_port: options.bind.port(),
@@ -265,6 +312,7 @@ fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
         options.theme,
         names,
     );
+    let layer_requests = web.enable_layer_control();
     web.observe(&first);
     let web_server = options
         .web
@@ -273,17 +321,82 @@ fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(server) = &web_server {
         eprintln!("Web http://{}", server.local_addr());
     }
+    #[cfg(windows)]
+    let pipe_server = options
+        .rpc_pipe
+        .as_deref()
+        .map(|name| icem_web::LocalRpcServer::bind(name, web.clone()))
+        .transpose()?;
+    #[cfg(not(windows))]
+    if options.rpc_pipe.is_some() {
+        return Err("local Host gRPC pipe requires Windows".into());
+    }
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
     let mut health_due = started;
-    while started.elapsed() < options.duration {
+    while options
+        .duration
+        .is_none_or(|limit| started.elapsed() < limit)
+    {
+        #[cfg(windows)]
+        if let Some(lifecycle) = &lifecycle
+            && let Some(action) = lifecycle.poll()?
+        {
+            use windows::Action;
+            let result: Result<(), Box<dyn std::error::Error>> = match action {
+                Action::Panel => windows::open_panel(
+                    options.rpc_pipe.as_deref().unwrap_or(icem_web::HOST_PIPE),
+                    &web_url,
+                )
+                .map_err(Into::into),
+                Action::Web => windows::open_web(&web_url).map_err(Into::into),
+                Action::Console => windows::toggle_console().map_err(Into::into),
+                Action::Restart => {
+                    restart = true;
+                    break;
+                }
+                Action::Close => break,
+            };
+            if let Err(error) = result {
+                eprintln!("host action: {error}");
+            }
+        }
+        while let Ok(request) = layer_requests.try_recv() {
+            if request.response.is_closed() {
+                continue;
+            }
+            let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                if request.layer != icem_core::LayerKind::Modbus {
+                    return Err("layer not implemented".into());
+                }
+                if let Some(listener) = server.take() {
+                    listener.stop()?;
+                } else {
+                    server = Some(ModbusServer::bind(
+                        options.bind,
+                        Arc::clone(&bank),
+                        ServerOptions::default(),
+                    )?);
+                }
+                web.set_modbus_bound(server.is_some())?;
+                if let Some((path, settings)) = &mut options.station
+                    && settings.ui_set_as_default == 1
+                {
+                    settings.modbus_on = i32::from(server.is_some());
+                    std::fs::write(path, settings.render())?;
+                }
+                Ok(())
+            })()
+            .map_err(|e| e.to_string());
+            let _ = request.response.send(result);
+        }
         let now = Instant::now();
         if now >= mirror_due {
             let reply = refresh(&mut *source, &bank, &mut last_error)?;
             web.observe(&reply);
             mirror_due = Instant::now() + options.tick;
         }
-        if web_server.is_some() && now >= health_due {
+        if now >= health_due {
             let reply = BusReply {
                 read: source.snapshot().ok(),
                 is_open: source.is_open(),
@@ -291,10 +404,10 @@ fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
             web.probe(&reply, icem_web::utc_now_ms())?;
             health_due = Instant::now() + Duration::from_secs(1);
         }
-        let mut wake = mirror_due.min(started + options.duration);
-        if web_server.is_some() {
-            wake = wake.min(health_due);
-        }
+        let mut wake = mirror_due
+            .min(options.duration.map_or(mirror_due, |limit| started + limit))
+            .min(Instant::now() + Duration::from_millis(50));
+        wake = wake.min(health_due);
         match requests.recv_timeout(wake.saturating_duration_since(Instant::now())) {
             Ok(request) if !request.response.is_closed() => {
                 let reply = BusReply {
@@ -308,26 +421,48 @@ fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
+    #[cfg(windows)]
+    if let Some(lifecycle) = &mut lifecycle {
+        lifecycle.remove_tray()?;
+        windows::close_shell()?;
+    }
+    #[cfg(windows)]
+    if let Some(server) = pipe_server {
+        server.stop()?;
+    }
     if let Some(web) = web_server {
         web.stop()?;
     }
     if let Some(server) = server {
         eprintln!("Stopped: {:?}", server.stop()?);
     }
-    Ok(())
+    Ok(restart)
 }
 fn main() -> ExitCode {
     let options = match options() {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH]"
+                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH]"
             );
             return ExitCode::from(2);
         }
     };
     match run(options) {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(restart) => {
+            if restart {
+                let result = std::env::current_exe().and_then(|exe| {
+                    std::process::Command::new(exe)
+                        .args(std::env::args_os().skip(1))
+                        .spawn()
+                });
+                if let Err(error) = result {
+                    eprintln!("Host restart: {error}");
+                    return ExitCode::from(1);
+                }
+            }
+            ExitCode::SUCCESS
+        }
         Err(error) => {
             eprintln!("{error}");
             ExitCode::from(1)

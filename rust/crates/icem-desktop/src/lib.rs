@@ -1,7 +1,11 @@
 //! GPUI desktop presentation. Domain state stays behind the original control seam.
 #![forbid(unsafe_code)]
 use serde_json::{Value, json};
-use std::sync::{Arc, mpsc};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+    mpsc,
+};
 
 /// Implementations must bound I/O time and return owned values.
 pub trait UiPort: Send + Sync + 'static {
@@ -82,24 +86,27 @@ impl Model {
                 self.snapshot = data.clone();
                 self.connected = true;
             }
+            "prefs" | "theme" => {
+                self.light = data["themeLight"].as_bool().unwrap_or(false);
+            }
             "profiles" => self.profiles = names(&data["profiles"]),
             "ports" => self.ports = names(&data["ports"]),
             "adapters" => self.adapters = names(&data["adapters"]),
             "vars" => {
+                let com = self.selected(false).map(|r| (r.sv.clone(), r.name.clone()));
+                let lan = self.selected(true).map(|r| (r.sv.clone(), r.name.clone()));
                 update_rows(&mut self.com_variables, &data["com"]["variables"]);
                 update_rows(&mut self.lan_variables, &data["lan"]["variables"]);
-                if self
-                    .selected_com
-                    .is_some_and(|i| i >= self.com_variables.len())
-                {
-                    self.selected_com = None;
-                }
-                if self
-                    .selected_lan
-                    .is_some_and(|i| i >= self.lan_variables.len())
-                {
-                    self.selected_lan = None;
-                }
+                self.selected_com = com.and_then(|(sv, name)| {
+                    self.com_variables
+                        .iter()
+                        .position(|r| r.sv == sv && r.name == name)
+                });
+                self.selected_lan = lan.and_then(|(sv, name)| {
+                    self.lan_variables
+                        .iter()
+                        .position(|r| r.sv == sv && r.name == name)
+                });
             }
             _ => self.note = format!("✓ {cmd}"),
         }
@@ -157,7 +164,7 @@ fn update_rows(rows: &mut Vec<VariableRow>, value: &Value) {
     };
     rows.resize_with(values.len(), VariableRow::default);
     for (row, v) in rows.iter_mut().zip(values) {
-        row.sv = text(&v["sv"]);
+        row.sv = v["sv"].as_str().unwrap_or("").to_owned();
         row.name = text(&v["name"]);
         row.value = text(&v["value"]);
         row.uom = text(&v["uom"]);
@@ -172,15 +179,28 @@ pub struct Reply {
 pub struct Bridge {
     sender: mpsc::SyncSender<Value>,
     receiver: mpsc::Receiver<Reply>,
+    stopping: Arc<AtomicBool>,
+    worker: Option<std::thread::JoinHandle<()>>,
 }
 impl Bridge {
     pub fn start(port: Arc<dyn UiPort>) -> std::io::Result<Self> {
         let (sender, requests) = mpsc::sync_channel::<Value>(16);
         let (responses, receiver) = mpsc::sync_channel(16);
-        std::thread::Builder::new()
+        let stopping = Arc::new(AtomicBool::new(false));
+        let stop = stopping.clone();
+        let worker = std::thread::Builder::new()
             .name("desktop-control".into())
             .spawn(move || {
-                while let Ok(request) = requests.recv() {
+                while !stop.load(Ordering::Acquire) {
+                    let request = match requests.recv_timeout(std::time::Duration::from_millis(50))
+                    {
+                        Ok(request) => request,
+                        Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                        Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    };
+                    if stop.load(Ordering::Acquire) {
+                        break;
+                    }
                     let command = request["cmd"].as_str().unwrap_or("").to_owned();
                     let result = port.request(request);
                     if responses.send(Reply { command, result }).is_err() {
@@ -188,7 +208,12 @@ impl Bridge {
                     }
                 }
             })?;
-        Ok(Self { sender, receiver })
+        Ok(Self {
+            sender,
+            receiver,
+            stopping,
+            worker: Some(worker),
+        })
     }
     pub fn send(&self, command: Value) -> Result<(), String> {
         self.sender
@@ -201,6 +226,50 @@ impl Bridge {
         }
     }
 }
-// The checkpoint did not include windows.rs. Keep the model usable on Windows;
-// compiling input/rendering is deferred until the complete GPUI view is restored.
-// Do not expose a run() stub that could be mistaken for a working desktop UI.
+impl Drop for Bridge {
+    fn drop(&mut self) {
+        self.stopping.store(true, Ordering::Release);
+        let (_, empty) = mpsc::channel();
+        drop(std::mem::replace(&mut self.receiver, empty));
+        if let Some(worker) = self.worker.take()
+            && worker.join().is_err()
+        {
+            eprintln!("desktop worker panicked");
+        }
+    }
+}
+
+#[cfg(windows)]
+mod input;
+#[cfg(windows)]
+mod theme;
+#[cfg(windows)]
+mod windows;
+#[cfg(windows)]
+pub use windows::run_emulator;
+
+pub fn equipment_command(value: &str) -> Result<Value, String> {
+    let value = value.trim();
+    let number = if let Some(hex) = value
+        .strip_prefix("0x")
+        .or_else(|| value.strip_prefix("0X"))
+    {
+        u32::from_str_radix(hex, 16)
+    } else {
+        value.parse::<u32>()
+    }
+    .map_err(|_| "ожидается uint32: 0x… или десятичное число".to_owned())?;
+    Ok(json!({"cmd":"setequipment","value":number}))
+}
+pub fn unit_command(group: usize, unit: Option<&str>) -> Value {
+    let mut command =
+        json!({"cmd":"setunit","channel":UNIT_GROUPS.get(group).map(|g|g.0).unwrap_or("")});
+    if let Some(unit) = unit.filter(|u| !u.trim().is_empty()) {
+        command["name"] = unit.trim().into();
+    }
+    command
+}
+#[cfg(windows)]
+mod monitor;
+#[cfg(windows)]
+pub use monitor::run_monitor;

@@ -28,6 +28,14 @@ mod windows {
         quit_ack: AtomicBool,
         quit_requested_at: Mutex<Option<Instant>>,
     }
+    impl icem_desktop::UiPort for Service {
+        fn request(&self, command: serde_json::Value) -> Result<serde_json::Value, String> {
+            let reply = self.execute(&command.to_string());
+            let value = serde_json::from_str(&reply.json).map_err(|e| e.to_string())?;
+            self.reply_flushed(&reply);
+            Ok(value)
+        }
+    }
     impl Executor for Service {
         fn execute(&self, line: &str) -> ControlReply {
             let mut engine = match self.engine.lock() {
@@ -92,10 +100,15 @@ mod windows {
         let mut pipe = icem_emulation::CONTROL_PIPE.to_owned();
         let mut duration = None;
         let mut cli = None;
+        let mut desktop = false;
         while let Some(key) = args.next() {
+            if key == "--desktop" {
+                desktop = true;
+                continue;
+            }
             if key == "--help" {
                 eprintln!(
-                    "Usage: icem-emulator-engine-dev --config PATH --templates DIR [--pipe NAME] [--duration-ms N]\n       icem-emulator-engine-dev [--pipe NAME] --cli <command...>\nDevelopment headless engine; GPUI/tray acceptance pending."
+                    "Usage: icem-emulator-engine-dev --config PATH --templates DIR [--pipe NAME] [--duration-ms N] [--desktop]\n       icem-emulator-engine-dev [--pipe NAME] --cli <command...>\nDevelopment headless engine; GPUI/tray acceptance pending."
                 );
                 return Ok(0);
             }
@@ -128,7 +141,12 @@ mod windows {
         }
         // CLI dispatch never creates a singleton, settings file or emitter.
         if let Some(command) = cli {
-            if command.is_empty() || config.is_some() || templates.is_some() || duration.is_some() {
+            if command.is_empty()
+                || config.is_some()
+                || templates.is_some()
+                || duration.is_some()
+                || desktop
+            {
                 eprintln!("invalid CLI arguments");
                 return Ok(2);
             }
@@ -189,8 +207,45 @@ mod windows {
         eprintln!(
             "DEVELOPMENT EMULATOR ENGINE READY: {pipe}; GPUI/tray/hardware acceptance pending"
         );
+        let desktop_result = if desktop {
+            let stopping = Arc::new(AtomicBool::new(false));
+            let worker_stop = stopping.clone();
+            let worker_service = service.clone();
+            let worker = std::thread::Builder::new()
+                .name("emulator-tick".into())
+                .spawn(move || -> Result<(), String> {
+                    let mut due = Instant::now();
+                    while !worker_stop.load(Ordering::Acquire) && !worker_service.should_stop() {
+                        if Instant::now() >= due {
+                            let mut engine = worker_service
+                                .engine
+                                .lock()
+                                .map_err(|_| "engine lock poisoned")?;
+                            engine.set_time(worker_service.started.elapsed().as_secs_f64());
+                            engine.tick();
+                            due = Instant::now() + Duration::from_secs(1);
+                        }
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                    Ok(())
+                })?;
+            let checking = service.clone();
+            let stop = Arc::new(move || {
+                checking.should_stop()
+                    || duration.is_some_and(|limit| checking.started.elapsed() >= limit)
+            });
+            let icon = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/iCemEmule.ico");
+            let result = icem_desktop::run_emulator(service.clone(), stop, icon);
+            stopping.store(true, Ordering::Release);
+            let tick_result = worker.join().map_err(|_| "emulator tick panicked")?;
+            tick_result?;
+            result
+        } else {
+            Ok(())
+        };
         let mut due = Instant::now();
-        while !service.should_stop()
+        while !desktop
+            && !service.should_stop()
             && duration.is_none_or(|limit| service.started.elapsed() < limit)
         {
             if Instant::now() >= due {
@@ -208,6 +263,7 @@ mod windows {
         let mut engine = service.engine.lock().map_err(|_| "engine lock poisoned")?;
         engine.shutdown();
         engine.settings().save(&service.paths)?;
+        desktop_result?;
         Ok(0)
     }
 }

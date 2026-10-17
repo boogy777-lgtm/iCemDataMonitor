@@ -5,7 +5,7 @@ pub mod registry;
 mod rest;
 mod rpc;
 mod server;
-pub use model::{BusReply, HostLayers, ReadRequest, WebState};
+pub use model::{BusReply, HostLayers, LayerRequest, ReadRequest, WebState};
 pub use rest::router;
 pub use server::WebServer;
 // Generated from the unchanged canonical proto; these lint allowances apply only
@@ -18,3 +18,10 @@ pub mod proto {
 pub fn utc_now_ms() -> i64 {
     model::now_ms()
 }
+
+#[cfg(windows)]
+mod pipe;
+#[cfg(windows)]
+pub use pipe::{HOST_PIPE, LocalRpcServer};
+#[cfg(windows)]
+pub mod client;
