@@ -2,10 +2,8 @@ name: rust-migration
 on:
   push:
     branches: [main]
-    paths: ["rust/**", ".github/workflows/rust-migration.yml"]
   pull_request:
     branches: [main]
-    paths: ["rust/**", ".github/workflows/rust-migration.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,7 +14,8 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    # Cold MSVC check + build of the locked GPUI/WRY graph exceeded 15m.
+    # Run for legacy changes too: the immutable baseline guard covers the root tree.
+    # Cold MSVC check + build of the locked GPUI graph exceeded 15m.
     timeout-minutes: 35
     defaults:
       run:

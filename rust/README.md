@@ -83,3 +83,10 @@ D17: inline GetUiPrefs принимал только ASCII trailer с colon+spac
 валидный grpc-status:0. Parser теперь принимает colon с нулём/пробелами/tab, только
 целый grpc-status=0; layout/styles не меняются. Node VM проверяет исходный failure
 и исправленный разбор, browser — тему во второй независимой странице.
+
+Legacy maintenance после pinned baseline учитывается отдельным exact-hash ledger:
+[migration/legacy-divergences.json](migration/legacy-divergences.json). Исходный
+source-manifest не обновляется при принятых исправлениях legacy. Guard и его 25
+регрессионных сценариев входят в Scaffold; CI запускается и для legacy-only изменений.
+
+[Host E8](docs/HOST_E8.ru.md): точный план пробелов, Web persist-only owner integration, OPC external no-op и отделение startup-effective web от session plan. Полная production/Windows приёмка остаётся открытой.

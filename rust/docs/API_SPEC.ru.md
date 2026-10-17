@@ -1,6 +1,6 @@
 # Спецификация API миграции — v0.1
 
-Статус: контракт переноса pinned baseline, не реализованный Rust server.
+Статус: контракт переноса pinned baseline; актуальное состояние частичной Rust-реализации — HOST_E8, DESKTOP_STATUS и WEB_STATUS. Полный parity gate остаётся открыт.
 Источник каждого пункта — корень исходного репозитория на `96e2206562c9389d1543095232115d81eae4b692`.
 Имена DLL, API routes, package/service/method, field numbers, pipe/event names и
 значения байтов сохраняются. Нового C ABI для DLL не требуется.
@@ -108,7 +108,7 @@ GetRegisters: header 0..3 как int32 из u16, pair4 как signed Unix int32,
 остальные пары float32; один элемент на base address пары. Не весь N-element словарь.
 Unknown zone/layer → INVALID_ARGUMENT. Bus недоступна → UNAVAILABLE.
 Metrics при невозможности чтения завершается UNAVAILABLE, не молчаливым EOS.
-Web/OPC toggles persist-only; Modbus/sniffer реально start/stop. `setAsDefault`
+Web toggle — persist-only план следующего запуска; OPC DA в legacy — внешний no-op (флаг и INI не меняет). Modbus/sniffer в legacy реально start/stop; Rust Host sniffer ещё не подключён. `setAsDefault`
 управляет записью конфигурации, UI обязан показывать реальные probe states.
 В API нет ShutdownHost/ControlEngine, снятые поля не возвращаются.
 Завершение host инициируется Windows events/tray через общий lifecycle.

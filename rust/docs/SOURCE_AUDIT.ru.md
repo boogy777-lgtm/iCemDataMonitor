@@ -111,3 +111,27 @@ MSVC process tests PASS, full Windows run 39045925359 FAIL на windows_pipe reb
 E7 явно освобождает client runtime и повторяет lifetime/rebind cycle 4 раза; ACL не ослаблены.
 D27 — boot live resource bound 128 updates с явным lag RPC error. ADR 0006 фиксирует
 read-only event-presence probe ui_alive вместо acquisition чужого singleton mutex.
+
+## E8: legacy maintenance относительно immutable baseline
+
+Main `a38d372911fa6972f9620a458588023141e6ef13` включает принятый PR #2
+(`ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f`); legacy CI run 39059431109 SUCCESS.
+Неизменённый Verify-Baseline воспроизведён: Hash mismatch .github/workflows/ci.yml.
+Исходный source-manifest/source_commit сохранён. `migration/legacy-divergences.json`
+содержит ровно десять путей, baseline/approved Git blob SHA-1 и provenance PR/commit/reason.
+Guard требует approved hash для каждой записи (в том числе отвергает случайный откат),
+проверяет baseline hash и источник, запрещает дубликаты и записи вне manifest.
+Proto, исходные assets и SPA не могут быть переопределены этим ledger.
+D16/D17 проверки Rust SPA остаются отдельными и неизменными.
+`tools/Test-BaselineGuard.ps1` проверяет 25 положительных/отрицательных сценариев;
+Scaffold вызывает его перед полным guard. Rust CI теперь запускается при всех изменениях
+в main/PR, включая legacy: прежний paths filter пропустил drift после PR #2.
+
+Локальное дерево сверено с GitHub по blob SHA. Connector не выдаёт бинарный файл
+`docs/Wireshark/iCemCrio.pcapng.bin` размером 1,415,304 bytes: локальный baseline
+проверяет 512/513 и RequireComplete ожидаемо отклоняет неполную копию. Файл не
+подменяется; полный 513/513 gate выполняется на checkout Windows/Linux CI.
+
+D28 / E8: чтение LayerRuntimeController.Toggle(OpcDa) показывает внешний no-op, а не persist-only toggle. Уточнены API_SPEC и P16; Rust owner возвращает неизменённое OPC state без запуска server и записи INI. Web plan отделён от startup-effective routes/history; SetLayer desired_state по-прежнему игнорируется. Ошибки операций отражаются в LayerState.last_error, как legacy, вместо прежнего Rust INTERNAL. Полный sniffer и Modbus rollback/busy fault matrix остаются открытыми.
+
+D29 / E8 audit: icem-desktop::monitor показывает активный SnifferSwitch, хотя Rust Host возвращает UNIMPLEMENTED и sniffer_available=false. Этот UI gap не исправлялся в Host-инкременте и не считается disabled-state parity. Следующий UI этап должен использовать фактическую availability, сверившись с inventory/XAML.

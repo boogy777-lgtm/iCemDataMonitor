@@ -208,6 +208,73 @@ async fn web_off_keeps_ops_and_native_grpc_but_disables_spa_history_and_grpc_web
     Ok(())
 }
 #[tokio::test]
+async fn deferred_web_plan_does_not_change_effective_routes_or_history() -> TestResult {
+    for startup in [true, false] {
+        let h = Harness::new(startup)?;
+        // Bind the actual listener before changing the plan, then also construct
+        // fresh routers below: neither lifetime may derive capabilities from it.
+        let server = icem_web::WebServer::bind("127.0.0.1:0".parse()?, h.state.clone())?;
+        h.state.toggle_web_plan()?;
+        assert_eq!(h.state.layers()?.web, !startup);
+        h.state
+            .probe(&reply(&image(), Freshness::Fresh)?, 1_700_000_001_000)?;
+        let response = icem_web::router(h.state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .version(axum::http::Version::HTTP_2)
+                    .uri("/icemdatamonitor.v1.TelemetryService/GetStatus")
+                    .header("content-type", "application/grpc")
+                    .body(Body::from(vec![0, 0, 0, 0, 0]))?,
+            )
+            .await?;
+        let collected = response.into_body().collect().await?;
+        assert_eq!(
+            collected
+                .trailers()
+                .and_then(|t| t.get("grpc-status"))
+                .ok_or("no native grpc status")?,
+            "0"
+        );
+        let bytes = collected.to_bytes();
+        assert_eq!(
+            proto::HostStatus::decode(&bytes[5..])?
+                .layers
+                .ok_or("no layers")?
+                .web,
+            !startup
+        );
+        assert_eq!(
+            h.get("/").await?.0,
+            if startup {
+                StatusCode::OK
+            } else {
+                StatusCode::NOT_FOUND
+            }
+        );
+        let (code, body) = h.get("/api/regs/history?addr=6").await?;
+        if startup {
+            assert_eq!(code, StatusCode::OK);
+            assert_eq!(
+                serde_json::from_slice::<Value>(&body)?["6"]
+                    .as_array()
+                    .ok_or("not array")?
+                    .len(),
+                2
+            );
+        } else {
+            assert_eq!(code, StatusCode::SERVICE_UNAVAILABLE);
+        }
+        let actual = icem_web::dashboard_client::read(server.local_addr(), &[6])
+            .await
+            .map_err(std::io::Error::other)?;
+        assert_eq!(actual["historyError"].is_null(), startup);
+        assert_eq!(h.get("/api/engine").await?.0, StatusCode::NOT_FOUND);
+        server.stop()?;
+    }
+    Ok(())
+}
+#[tokio::test]
 async fn rest_projection_labels_timestamp_names_and_history_validation() -> TestResult {
     let h = Harness::new(true)?;
     let (code, body) = h.get("/api/regs").await?;

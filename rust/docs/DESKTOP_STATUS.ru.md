@@ -99,3 +99,7 @@ PASS, Host.Tests 220/220, Emulator.Tests 101/101; другой legacy Modbus rec
 Остаются sniffer, actual Web/OPC integration, production CLI/ensure-host, полная визуальная
 приёмка boot/splash/controls и installer/hardware. Предыдущий список open boot/navigation выше
 является статусом E6, это дополнение его уточняет.
+
+## E8: Host layer continuation
+
+Web SetLayer теперь проходит через Host owner и меняет next-start session plan; startup-effective SPA/history не выключаются на лету. OPC сохраняет legacy external no-op. Ошибки операций доступны в LayerState.last_error. Подробности и уточнённый Host backlog: [HOST_E8.ru.md](HOST_E8.ru.md). GPUI controls и mapping 176 в этом этапе не менялись; visual parity остаётся NOT_PROVEN.

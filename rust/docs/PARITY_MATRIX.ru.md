@@ -20,7 +20,7 @@
 | P13 | Host lifecycle | single instance,event ownership,close shell only,restart budgets | iCemDataMonitor.Host/Tray/HostLifecycle.cs | M3 | Repeated stop/restart + no orphan processes |
 | P14 | Autostart/console | HKCU Run, --autostart,console close guard | iCemDataMonitor.Host/Tray/AutostartManager.cs | M3 | Registry/current-state/console scenarios |
 | P15 | Shell | Состояние/Панель,ensure host,splash,reconnect,status lamps | iCemDataMonitor.Shell.WinUI/MainWindow.xaml | M6 | Operator walkthrough + DPI/focus |
-| P16 | Layer switches | runtime Modbus/sniffer; persist Web/OPC; actual truth | iCemDataMonitor.Host.Core/LayerRuntimeController.cs | M3/M4 | Failure/start/stop/toggle parity + D04/D06 |
+| P16 | Layer switches | runtime Modbus/sniffer; persist Web; OPC external no-op; actual truth | iCemDataMonitor.Host.Core/LayerRuntimeController.cs | M3/M4 | Failure/start/stop/toggle parity + D04/D06 |
 | P17 | ACE sniffer | wire reader,decode/counters/status,Npcap availability | iCemDataMonitor.Transport/AceSnifferService.cs | M4 | pcap replay/live capture, no bus writes |
 | P18 | INI | read-once,strict validation,retired keys,migration,active path | iCemDataMonitor.Core/Config/IniConfig.cs | M2 | Original config test vectors |
 | P19 | XML/registries | emulator config,templates,firmware/variable/lantable assets | iCemEmule.Core/Core/EmuSettings.cs | M2/M5 | Original load/save/default roundtrips |
@@ -48,3 +48,5 @@ FC03/04/06/16, mirror/TCP, строгий INI parser, web REST/history и SPA RP
 P19/P23/P24/P25/P26 начаты частично: explicit template loading и COM waveform/formatter,
 ACE frame/signal codec, три DFB-примитива и unit conversion. Физических emitters и
 полной DFB network пока нет. Проверки/границы: [emulator E1](EMULATOR_STATUS.ru.md).
+
+E8: baseline maintenance ledger и Host Web/OPC owner integration — [код, проверки и открытые пробелы](HOST_E8.ru.md). P16 остаётся PARTIAL: sniffer/Modbus failure rollback/busy и Windows аппаратная приёмка не доказаны. Список старых частичных реализаций выше — исторический, не текущий backlog.
