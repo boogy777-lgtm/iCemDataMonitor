@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "source_commit": "96e2206562c9389d1543095232115d81eae4b692",
+  "changes": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
+      "approved_blob_sha1": "5c5553f92a8280b991909ee11090dac89fd41778",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Use the existing -NoPause MSI option in unattended CI."
+      }
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "baseline_blob_sha1": "c1eeef21286f688da9b9e05d4fddc99277b7366d",
+      "approved_blob_sha1": "d670855e0def7bf158f952559f37bfbeef5627ee",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Use the existing -NoPause MSI option in unattended releases."
+      }
+    },
+    {
+      "path": "docs/development.md",
+      "baseline_blob_sha1": "66ccd373b78e913acf66d0679158cba8a01eaf91",
+      "approved_blob_sha1": "20e05a93e333868e9c4db065fd9b82935bf9774d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Document CI fixes and current validation limits."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs",
+      "baseline_blob_sha1": "faded2621f43084b8298713488c354e3a77c4834",
+      "approved_blob_sha1": "477372a408671fda97ade37ac6e43833e9bd1bec",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Synchronize producer completion and exercise actual DropOldest overflow."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusReader.cs",
+      "baseline_blob_sha1": "0de6a74f8f2517e1e946525e958f37b61b156822",
+      "approved_blob_sha1": "b0241d631e7d2ca061f996d29d18305459c1ca28",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Calculate zone activity and age at the same captured UTC instant."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data/Telemetry/MetricsSampler.cs",
+      "baseline_blob_sha1": "2cd119edb2fb2ba2c7ee590713c0a5a78fc9885c",
+      "approved_blob_sha1": "32afab2c6225784dbce8fdb7935f4c734c3a7e35",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Use one captured UTC instant for sample zone liveness."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Health/BusHealthMonitor.cs",
+      "baseline_blob_sha1": "5f5aa0b001d1d0d71d8ef21f6a42aebcd31de043",
+      "approved_blob_sha1": "0c7bd957f59d6ae447ceb5cd7ccd27d6512b21b4",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Inject UTC clock and evaluate all zones at the same instant."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/BusHealthMonitorTests.cs",
+      "baseline_blob_sha1": "99f4cd70c791d65204b3c7ec3de72ce706f0614b",
+      "approved_blob_sha1": "208d18593b36c6c32e0d46a5c6f27811cd8f558e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Hold the real mutex on its owning thread; deterministic UTC boundary cases."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/ModbusContractTests.cs",
+      "baseline_blob_sha1": "e01e35d5563db01ed786cff91c151adcd2a6ceda",
+      "approved_blob_sha1": "5977f4221625a544a86c57fbd3ae9e2a91d80301",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Wait for actual tick/recovery results through TCP."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
+      "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
+      "approved_blob_sha1": "bdb74097eccbd84659376f2649548839eb66b8aa",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
+        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
+        "reason": "Synchronize serial buffer access, await actual state/data and StopAsync in finally."
+      }
+    }
+  ]
+}

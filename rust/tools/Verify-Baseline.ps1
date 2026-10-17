@@ -4,6 +4,35 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 $SourceRoot = Split-Path $Root -Parent
 $Manifest = Get-Content -Raw (Join-Path $Root 'migration/source-manifest.json') | ConvertFrom-Json
+# Keep the upstream manifest immutable. Approved legacy maintenance has a separate,
+# exact-path ledger; it cannot override frozen protocol, icon or SPA checks.
+$Ledger = Get-Content -Raw (Join-Path $Root 'migration/legacy-divergences.json') | ConvertFrom-Json
+if ($Ledger.schema_version -ne 1 -or $Ledger.source_commit -cne $Manifest.source_commit) {
+    throw 'Legacy divergence ledger schema/source commit mismatch'
+}
+$Baseline = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
+foreach ($Item in $Manifest.files) {
+    if (-not $Baseline.TryAdd($Item.path, $Item)) { throw "Duplicate baseline path: $($Item.path)" }
+}
+$Approved = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
+foreach ($Change in $Ledger.changes) {
+    if (-not $Baseline.ContainsKey($Change.path)) { throw "Divergence outside baseline: $($Change.path)" }
+    if ($Change.path -match '(?i)(\.proto$|^assets/|^iCemDataMonitor.Host/wwwroot/)') {
+        throw "Frozen surface cannot be overridden: $($Change.path)"
+    }
+    if (-not $Approved.TryAdd($Change.path, $Change)) { throw "Duplicate divergence path: $($Change.path)" }
+    if ($Change.baseline_blob_sha1 -cne $Baseline[$Change.path].git_blob_sha1 -or
+        $Change.approved_blob_sha1 -cnotmatch '^[0-9a-f]{40}$' -or
+        $Change.approved_blob_sha1 -ceq $Change.baseline_blob_sha1) {
+        throw "Invalid divergence hashes: $($Change.path)"
+    }
+    $PullPrefix = 'https://github.com/' + $Manifest.source_repository + '/pull/'
+    if ($Change.provenance.commit -cnotmatch '^[0-9a-f]{40}$' -or
+        $Change.provenance.pull_request -cnotmatch ('^' + [regex]::Escape($PullPrefix) + '[1-9][0-9]*$') -or
+        [string]::IsNullOrWhiteSpace($Change.provenance.reason)) {
+        throw "Missing divergence provenance: $($Change.path)"
+    }
+}
 function Get-CanonicalHash([string] $FilePath, [string] $Relative) {
     $Hash = & git -C $SourceRoot hash-object "--path=$Relative" -- $FilePath
     if ($LASTEXITCODE -ne 0) { throw "Cannot hash $Relative" }
@@ -12,18 +41,19 @@ function Get-CanonicalHash([string] $FilePath, [string] $Relative) {
 $Missing = @()
 $Verified = 0
 foreach ($Item in $Manifest.files) {
+    $ExpectedHash = if ($Approved.ContainsKey($Item.path)) { $Approved[$Item.path].approved_blob_sha1 } else { $Item.git_blob_sha1 }
     $Path = Join-Path $SourceRoot $Item.path
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { $Missing += $Item.path; continue }
     $Hash = & git hash-object --no-filters -- $Path
     if ($LASTEXITCODE -ne 0) { throw "git hash-object failed: $($Item.path)" }
-    if ($Hash.Trim() -eq $Item.git_blob_sha1) {
-        if ((Get-Item -Force -LiteralPath $Path).Length -ne $Item.size) { throw "Size mismatch: $($Item.path)" }
+    if ($Hash.Trim() -eq $ExpectedHash) {
+        if (-not $Approved.ContainsKey($Item.path) -and (Get-Item -Force -LiteralPath $Path).Length -ne $Item.size) { throw "Size mismatch: $($Item.path)" }
     } else {
         # The preserved upstream .gitattributes uses CRLF for .ps1 checkout.
         # Compare its canonical Git blob too; never normalize binary fixtures.
         $Relative = $Item.path
         $CanonicalHash = & git -C $SourceRoot hash-object "--path=$Relative" -- $Path
-        if ($LASTEXITCODE -ne 0 -or $CanonicalHash.Trim() -ne $Item.git_blob_sha1) {
+        if ($LASTEXITCODE -ne 0 -or $CanonicalHash.Trim() -ne $ExpectedHash) {
             throw "Hash mismatch: $($Item.path)"
         }
     }
@@ -82,4 +112,4 @@ if ($Missing.Count -gt 0) {
     Write-Warning ("Missing {0} baseline file(s): {1}" -f $Missing.Count, ($Missing -join ', '))
     if ($RequireComplete) { throw 'Full source copy is required before publication' }
 }
-Write-Host "Baseline: $Verified verified of $($Manifest.files.Count); frozen proto/assets, D16/D17 theme predicates and REST inventory OK."
+Write-Host "Baseline: $Verified verified of $($Manifest.files.Count); $($Approved.Count) exact approved legacy divergences; frozen proto/assets, D16/D17 theme predicates and REST inventory OK."
