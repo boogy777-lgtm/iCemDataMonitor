@@ -1,6 +1,6 @@
 # Спецификация API миграции — v0.1
 
-Статус: контракт переноса pinned baseline, не реализованный Rust server.
+Статус: контракт переноса pinned baseline; актуальное состояние частичной Rust-реализации — HOST_E8, DESKTOP_STATUS и WEB_STATUS. Полный parity gate остаётся открыт.
 Источник каждого пункта — корень исходного репозитория на `96e2206562c9389d1543095232115d81eae4b692`.
 Имена DLL, API routes, package/service/method, field numbers, pipe/event names и
 значения байтов сохраняются. Нового C ABI для DLL не требуется.

@@ -31,7 +31,7 @@ N+1: следующий layer реализует arm owner; core и незави
 `apps/host/src/layers.rs` использует существующую bounded очередь (16 запросов,
 RPC wait 5 s): Modbus bind/stop, Web session-plan toggle, OPC external no-op.
 Никаких автоматических повторов `SetLayer` нет. Одинаковые desired_state при Web
-и Modbus переключают дважды. Sniffer по-прежнему UNIMPLEMENTED и недоступен в UI.
+и Modbus переключают дважды. Sniffer по-прежнему UNIMPLEMENTED: существующий GPUI переключатель вызывает явный отказ; корректное disabled-state по availability остаётся задачей UI-приёмки.
 
 `WebState.web_enabled` — неизменяемый снимок startup web_on. Router, SPA, history
 и sampler используют его; `HostLayers.web` сообщает session plan, как legacy
@@ -71,3 +71,5 @@ cases, mapping 176/176. Baseline локально 512/513 с явным warning;
 выполнил полный guard 513/513, Scaffold и Chrome/theme contracts успешно. Это доказательство
 baseline-исправления, не подмена проверки последующего Host-кода. Результат Windows и
 последующего exact-head CI фиксируется в PR после завершения jobs.
+
+Node theme-contract.cjs также прошёл локально после npm ci по lockfile (D16/D17). Полный Chrome walkthrough выполняется CI; локальный Chrome в этой среде не установлен.
