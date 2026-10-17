@@ -30,3 +30,9 @@ Windows CI и hardware/UI acceptance фиксируются отдельно п�
 Уточнение E5: GPUI Tray 0.1.4 заменил собственный native tray; profiles и variable
 combos сохраняют identity, COM/LAN drafts разделены. Добавлена original HKCU
 autostart policy и --autostart. Latest exact-commit CI указан в PR/Actions.
+
+E6 (актуально): native GPUI panel заменяет WRY; tables/history/SubscribeMetrics, keyboard/focus,
+scroll/zoom и explicit errors. D24 wiring переведён на bounded interruptible LAN worker.
+94 Linux tests и Windows GNU Clippy; MSVC runtime/hardware остаются отдельной приёмкой.
+Single canonical original protobuf устраняет duplicate guard без изменения C# test/protocol.
+Открытый Host/UI/installer scope — в DESKTOP_STATUS.ru.md; старые «следующие этапы» выше исторические.

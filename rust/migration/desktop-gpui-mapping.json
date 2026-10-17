@@ -1,5 +1,5 @@
 {
-  "backend": "GPUI 0.2.2 / WRY 0.57.0",
+  "backend": "Native GPUI 0.2.2 / GPUI Tray 0.1.4",
   "visual_parity": "NOT_PROVEN",
   "controls": [
     {
@@ -207,7 +207,7 @@
       "implementation": "crates/icem-desktop/src/monitor.rs",
       "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Visual/state/keyboard acceptance pending."
+      "note": "Native GPUI dashboard replaces the legacy WebView slot: register tables/history plot/metrics. No browser. Visual/state acceptance NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
@@ -216,7 +216,7 @@
       "implementation": "crates/icem-desktop/src/monitor.rs",
       "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Visual/state/keyboard acceptance pending."
+      "note": "Native GPUI dashboard replaces the legacy WebView slot: register tables/history plot/metrics. No browser. Visual/state acceptance NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
@@ -225,7 +225,7 @@
       "implementation": "crates/icem-desktop/src/monitor.rs",
       "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Visual/state/keyboard acceptance pending."
+      "note": "Native GPUI dashboard replaces the legacy WebView slot: register tables/history plot/metrics. No browser. Visual/state acceptance NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml",

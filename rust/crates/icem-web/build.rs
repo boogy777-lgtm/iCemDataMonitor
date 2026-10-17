@@ -7,12 +7,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .generate_default_stubs(true)
         .compile_with_config(
             prost,
-            &["../../contracts/proto/telemetry.proto"],
+            &["../../../iCemDataMonitor.Contracts/Protos/telemetry.proto"],
             &[
-                "../../contracts/proto",
+                "../../../iCemDataMonitor.Contracts/Protos",
                 &protoc_bin_vendored::include_path()?.to_string_lossy(),
             ],
         )?;
-    println!("cargo:rerun-if-changed=../../contracts/proto/telemetry.proto");
+    println!("cargo:rerun-if-changed=../../../iCemDataMonitor.Contracts/Protos/telemetry.proto");
     Ok(())
 }

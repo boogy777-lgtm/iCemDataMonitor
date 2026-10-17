@@ -424,3 +424,41 @@ fn listener_bind_failure_and_drop_release_port() -> TestResult {
     drop(listener);
     Ok(())
 }
+
+#[tokio::test]
+async fn native_dashboard_reads_existing_rest_shapes_and_history_errors() -> TestResult {
+    for enabled in [true, false] {
+        let h = Harness::new(enabled)?;
+        let server = icem_web::WebServer::bind("127.0.0.1:0".parse()?, h.state.clone())?;
+        let data = icem_web::dashboard_client::read(server.local_addr(), &[4, 6])
+            .await
+            .map_err(std::io::Error::other)?;
+        assert!(data["registers"]["system"]["scalars"].is_array());
+        assert_eq!(
+            data["registers"]["zones"]["com"]["pairs"][1]["name"],
+            "UnitNum"
+        );
+        if enabled {
+            assert!(data["history"]["6"].is_array());
+            assert!(data["historyError"].is_null());
+        } else {
+            assert!(
+                data["historyError"]
+                    .as_str()
+                    .is_some_and(|e| e.contains("503"))
+            );
+        }
+        server.stop()?;
+    }
+    assert!(
+        icem_web::dashboard_client::read("192.0.2.1:80".parse()?, &[])
+            .await
+            .is_err()
+    );
+    assert!(
+        icem_web::dashboard_client::read("127.0.0.1:1".parse()?, &[5])
+            .await
+            .is_err()
+    );
+    Ok(())
+}

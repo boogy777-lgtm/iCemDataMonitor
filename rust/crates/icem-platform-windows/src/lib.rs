@@ -29,6 +29,8 @@ pub fn emulator_mutex() -> Result<icem_windows_native::NamedMutex, icem_windows_
     icem_windows_native::NamedMutex::open_or_create(EMULATOR_MUTEX)
 }
 
+mod lan_worker;
+pub use lan_worker::QueuedAceLanEmitter;
 pub mod transport;
 pub use transport::{AceLanEmitter, ComSerialEmitter, PacketDevice, SerialDevice, burst_start_ms};
 

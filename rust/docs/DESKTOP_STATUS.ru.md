@@ -1,59 +1,81 @@
-# Desktop / Host — development increment E5
+# Desktop / Host — native GPUI increment E6
 
-Реализован GPUI renderer COM/LAN/Units с исходной light/dark палитрой, editable inputs,
-списками/выбором переменных, numeric overrides, profiles/ports/adapters, equipment,
-firmware и unit commands. Статусы отражают ответы engine. Selection после refresh
-следует имени+SV, а не индексу. Полная визуальная эквивалентность не утверждается.
+Решение: desktop — **нативный GPUI 0.2.2**, tray — **gpui-tray 0.1.4**.
+WRY/WebView2 удалён из Rust desktop и Cargo.lock. Браузерная SPA остаётся отдельным
+web-интерфейсом, её HTML/CSS/JS не изменялись в E6. Исходные .NET проекты и AddIn сохранены.
+Rust 1.99.1, Edition 2024. Это development EXE, не production/MSI replacement.
 
-Добавлены независимые emulator tray и Host tray через **gpui-tray 0.1.4**,
-исходные icons/menu texts, native backend библиотеки и auto-reset Host lifecycle
-и shell events. X у эмулятора закрывает окно, engine/pipe остаются; Open возвращает view;
-Exit/CLI quit завершают engine. Background bridge joins перед освобождением state. Profiles сохраняют deviceType;
-COM/LAN имеют отдельные drafts и list/combo selection по имени+SV.
+## Нативная панель
 
-Monitor теперь GPUI client: «Состояние» через original Host gRPC и «Панель» через
-WRY/WebView2 с сохранённой SPA. Добавлены local HTTP/2 listener/client, exclusive pipe,
-Modbus SetLayer v1 toggle через владельца listener, optional active INI persistence,
-SetConsoleVisible, SetAutostart и actual console/Run probes. Остальные control RPC пока UNIMPLEMENTED.
-При отсутствии Host приложение показывает ошибку соединения, не запускает фиктивный Host.
+`icem-desktop::{monitor,dashboard,dashboard_view}` отображает System/COM/LAN/RAW,
+сворачиваемые разделы, таблицу выбранных переменных под графиком, history plot
+с исходной палитрой рядов, легендой, временной/числовой шкалой и состояниями ошибок.
+Регистры/история читаются через существующие `/api/regs` и `/api/regs/history`:
+Unix ISO value, enum labels, имена, liveness и stale projection сохраняются у Host.
+Web-off не препятствует чтению ops-регистров; история честно показывает HTTP 503.
+Выбор хранится по адресу в per-user `LOCALAPPDATA/iCemDataMonitor/native-dashboard-selection.json`;
+при загрузке принимаются только чётные адреса 4..598, файл ограничен 4096 bytes.
+История ограничена последними 600 точками на ряд; ошибки удерживают last-known данные.
 
-## Запуск из rust/ на Windows
+Внутренний Status панели содержит карточки и реальный `SubscribeMetrics` по Host pipe:
+полный первый sample, затем deltas; сохранён возраст обновления каждого адреса,
+int32/float distinction, heartbeat и interval_clamped. После ошибки поток создаётся заново,
+старые данные не выдаются за свежие. Длинное отсутствие просмотра может дать buffered
+sample с прежним timestamp — возраст виден, backdated sample не маскируется.
+
+I/O выполняет существующий Bridge worker, очередь bounded. Poll status/prefs/dashboard/metrics
+имеет максимум один outstanding запрос каждого вида. Read-only HTTP ограничен loopback,
+3 s deadline на запрос и 16 MiB body. Для истории это максимум два последовательных запроса.
+Управление проходит по original local gRPC. Мутации не ретраятся.
+Навигация/кнопки/checkbox имеют focus, Tab и Enter/Space; переключатели сохраняют pill geometry.
+Добавлены независимые scroll areas и масштаб текста/графика 80–200%. GPUI использует logical pixels.
+Это реализация, **не** доказанная UI/DPI/keyboard/visual parity.
+
+COM/LAN/Units эмулятора сохраняют E5 controls, отдельные drafts, selection по name+SV,
+профиль с deviceType, оборудования/firmware/ports/adapters/units. Непроверенные состояния
+этих контролов не объявляются завершёнными за счёт готовности мониторной панели.
+
+## D24: LAN worker
+
+Production dev-engine использует `QueuedAceLanEmitter`: один owning worker, один in-flight
+superframe, bounded control queue. Engine::tick только передаёт owned vectors, не ждёт
+938/885 ms pacing под engine mutex. Worker обслуживает запросы во время ожидания;
+close/reopen отменяют остаток burst, ACK close предшествует возврату в engine.
+Drop disconnect будит worker и joins до освобождения. Считаются только успешные send.
+
+Новый явный resource delta D26: максимум 4096 vectors (по 124 bytes payload); очередной tick
+при незавершённом burst возвращает busy вместо накопления backlog. Обычный pinned
+superframe помещается в 1 s; перегрузка/длительный Npcap send требует аппаратного измерения.
+Блокирующий системный driver call не прерывается Rust queue; тайминги на стенде открыты.
+Синхронный AceLanEmitter сохранён для deterministic codec/pacing tests.
+
+## Запуск на Windows из rust/
 
 ```powershell
 cargo build --workspace --locked
-# Синтетический dev host: не подключается к станции и не создаёт AddIn bus.
 .\target\debug\icem-host-dev.exe --modbus-fixture .\tests\fixtures\bus-v5-minimal.bin --bind 127.0.0.1:1502 --web-bind 127.0.0.1:8090 --rpc-pipe iCemDataMonitor.Host --tray-icon .\assets\iCemDataMonitor.ico --duration-ms 0
 .\target\debug\icem-shell-dev.exe --pipe iCemDataMonitor.Host --web-url http://127.0.0.1:8090
-# Независимый emulator. Отсутствующий новый XML даёт all-off defaults.
 .\target\debug\icem-emulator-engine-dev.exe --config .\emule-dev.xml --templates ..\iCemEmulator\templates --desktop
-.\target\debug\icem-emulator-engine-dev.exe --cli status
-.\target\debug\icem-emulator-engine-dev.exe --cli quit
 ```
 
-`--desktop` является opt-in к существующему dev engine. Не заменяет production EXE/MSI.
-Emulator icon сейчас берётся из source assets (development path); installer layout
-будет отдельным этапом. Host без `--duration-ms 0` сохраняет прежний default 10 s.
-`--tray-icon` автоматически включает original Host pipe, если имя не задано явно.
-Host с local pipe берёт original Host singleton; не запускать одновременно с legacy Host.
+Fixture содержит codec NaN; для REST/browser demo используйте finite fixture как в browser
+harness (обнулить bytes 84..87). Реальная шина/данные никогда не переписываются для UI.
+`--web-url` у native shell задаёт endpoint данных; страницы в нём не открываются.
+`--desktop` opt-in, отсутствующий XML — all-off defaults. Host default duration остаётся 10 s.
 
-## Честные границы
+## Проверки и открытая приёмка
 
-- `desktop-gpui-mapping.json` перечисляет все frozen named controls; partial/pending
-  являются открытой приёмкой. Palette или файл renderer не означают visual PASS.
-- Selected/focus/hover,
-  checkbox/segmented geometry, titlebar icon, splash и keyboard/DPI требуют доработки/сравнения.
-- Host sniffer/Web+OPC persistence/boot/navigation/CLI/ensure ещё не завершены.
-- Autostart сохраняет exact original Run data и очищает StartupApproved; --autostart
-  читает station config из ProgramData и работает до lifecycle stop. Installer/VM acceptance открыта.
-- Host console probe не означает сохранение всех console close/attach политик legacy.
-- D24 сохраняется: LAN burst идёт под engine gate. UI не блокирует message loop,
-  но backend command latency пока зависит от burst.
-- COM/Npcap, ACL/elevation, Explorer restart, UI screenshots и полный payload size
-  требуют стенда и не объявляются выполненными на Linux.
+Локально: Linux workspace tests **94**, check/Clippy; Windows GNU all-targets Clippy.
+Добавлены модельные тесты selection/history/metrics/error retention, actual HTTP adapter
+и LAN worker cancellation/counters. Exact-head Windows MSVC/CI результаты смотрите в PR/Actions;
+локальный cross-Clippy не является Windows runtime acceptance.
+Mapping содержит все **176** frozen named controls, visual_parity **NOT_PROVEN**.
+Guard запрещает browser dependency/renderer в desktop и сохраняет inventory completeness.
+Rust/.NET генерируют protobuf из одного неизменённого original source; второй .proto удалён.
 
-Проверки этого increment записываются по результатам exact commit CI. См.
-[аппаратную приёмку](HARDWARE_ACCEPTANCE.ru.md), [ADR](adr/0004-desktop-tray-host-pipe.ru.md).
-
-Изменение 2026-10-17: собственный native tray удалён по указанию пользователя; оба
-tray используют GPUI Tray. Общий picker сохраняет deviceType/identity, добавлены
-COM/LAN variable combos и отдельные drafts. Console probe выполняется каждые 50 ms; меню обновляется при изменении probe.
+Остаются: Host sniffer, Web/OPC owner integration с решением по baseline persist-only,
+startup replay/boot/splash/NavigateUi/production CLI/ensure; полные control states,
+console close policy, installer/payload size и аппаратная приёмка. Shell закрывается по X,
+Host tray запускает новый shell; emulator X сохраняет engine, tray Open возвращает view.
+COM/Npcap, MMF/ACL/elevation, Explorer restart, MSVC UI, DPI и latency/jitter **NOT RUN** локально.
+См. [приёмку](HARDWARE_ACCEPTANCE.ru.md) и [ADR E6](adr/0005-native-dashboard-lan-worker.ru.md).

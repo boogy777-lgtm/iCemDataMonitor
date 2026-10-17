@@ -85,7 +85,7 @@ Byte framing, fragmented TCP и malformed data имеют bounded implementation
 
 ## 3. gRPC и gRPC-Web
 
-Канон: `contracts/proto/telemetry.proto` — точная копия исходника.
+Канон: `../iCemDataMonitor.Contracts/Protos/telemetry.proto` — единственный исходник схемы для .NET и Rust; байты проверяются по pinned source manifest.
 Package `icemdatamonitor.v1`, service `TelemetryService`.
 Local transport: `\\.\pipe\iCemDataMonitor.Host`, HTTP/2 gRPC.
 TCP web port default 8090; gRPC-Web поддерживается на том же порту при web_on=1.

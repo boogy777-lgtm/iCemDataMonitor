@@ -29,9 +29,15 @@ foreach ($Item in $Manifest.files) {
     }
     $Verified++
 }
-$Proto = Join-Path $Root 'contracts/proto/telemetry.proto'
-$Original = Join-Path $SourceRoot 'iCemDataMonitor.Contracts/Protos/telemetry.proto'
-if ((Get-FileHash $Proto).Hash -ne (Get-FileHash $Original).Hash) { throw 'Frozen proto changed' }
+$OriginalRelative = 'iCemDataMonitor.Contracts/Protos/telemetry.proto'
+$Original = Join-Path $SourceRoot $OriginalRelative
+$ProtoRecord = @($Manifest.files | Where-Object path -eq $OriginalRelative)
+if ($ProtoRecord.Count -ne 1 -or (Get-CanonicalHash $Original $OriginalRelative) -ne $ProtoRecord[0].git_blob_sha1) {
+    throw 'Canonical frozen proto changed'
+}
+$ProtoFiles = @(Get-ChildItem -LiteralPath $SourceRoot -Filter '*.proto' -Recurse -File |
+    Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' })
+if ($ProtoFiles.Count -ne 1 -or $ProtoFiles[0].FullName -ne $Original) { throw 'Expected exactly one canonical proto' }
 foreach ($Asset in @('iCemDataMonitor.ico', 'iCemEmule.ico')) {
     if ((Get-FileHash (Join-Path $Root "assets/$Asset")).Hash -ne (Get-FileHash (Join-Path $SourceRoot "assets/$Asset")).Hash) {
         throw "Original icon changed: $Asset"

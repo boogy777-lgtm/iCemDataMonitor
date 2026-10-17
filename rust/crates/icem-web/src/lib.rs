@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 //! Frozen dashboard, REST and gRPC-Web over the host's single-thread bus owner.
+pub mod dashboard_client;
 mod model;
 pub mod registry;
 mod rest;

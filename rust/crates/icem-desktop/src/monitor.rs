@@ -1,4 +1,6 @@
-//! Monitor status uses GPUI controls; the frozen dashboard runs in a WebView child.
+//! Native GPUI monitor. Host owns telemetry, history and station preferences.
+#[path = "dashboard_view.rs"]
+mod dashboard_view;
 use crate::{Bridge, Model, UiPort, theme};
 use gpui::{
     App, Application, Bounds, Context, Window, WindowBounds, WindowOptions, div, prelude::*, px,
@@ -13,9 +15,11 @@ struct Monitor {
     model: Model,
     bridge: Bridge,
     panel: bool,
-    web: Option<wry::WebView>,
-    url: String,
-    web_error: Option<String>,
+    selection_path: Option<std::path::PathBuf>,
+    zoom: f32,
+    status_pending: bool,
+    prefs_pending: bool,
+    metrics_page: bool,
 }
 impl Monitor {
     fn color(&self, key: &str) -> gpui::Rgba {
@@ -45,61 +49,141 @@ impl Monitor {
         command: Value,
         cx: &Context<Self>,
     ) -> impl IntoElement {
+        self.action_button(
+            id,
+            "",
+            MonitorAction::Command(command),
+            self.model.connected,
+            cx,
+        )
+        .flex()
+        .items_center()
+        .gap(px(10.))
+        .child(
+            div()
+                .w(px(32.))
+                .h(px(20.))
+                .rounded(px(10.))
+                .p(px(2.))
+                .flex()
+                .when(on, |s| s.justify_end())
+                .bg(self.color(if on {
+                    "MacAccentColor"
+                } else {
+                    "MacSwitchTrackOffColor"
+                }))
+                .child(div().size(px(16.)).rounded(px(8.)).bg(rgba(0xffffffff))),
+        )
+        .child(label.to_owned())
+    }
+}
+#[derive(Clone)]
+enum MonitorAction {
+    Page(bool),
+    DashboardStatus,
+    Command(Value),
+    Select(u16),
+    Clear,
+    Collapse(String),
+    Zoom(f32),
+}
+impl Monitor {
+    fn act(&mut self, action: MonitorAction, cx: &mut Context<Self>) {
+        let mut save = false;
+        match action {
+            MonitorAction::Page(panel) => {
+                self.panel = panel;
+                if panel {
+                    self.poll_dashboard();
+                }
+            }
+            MonitorAction::DashboardStatus => self.metrics_page = !self.metrics_page,
+            MonitorAction::Command(command) => self.send(command),
+            MonitorAction::Select(addr) => {
+                self.model.dashboard.toggle(addr);
+                save = true;
+            }
+            MonitorAction::Clear => {
+                self.model.dashboard.clear();
+                save = true;
+            }
+            MonitorAction::Collapse(key) => {
+                if !self.model.dashboard.collapsed.remove(&key) {
+                    self.model.dashboard.collapsed.insert(key);
+                }
+            }
+            MonitorAction::Zoom(step) => self.zoom = (self.zoom + step).clamp(0.8, 2.),
+        }
+        if save {
+            if let Some(path) = &self.selection_path {
+                let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                    if let Some(parent) = path.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(path, self.model.dashboard.selection_bytes()?)?;
+                    Ok(())
+                })();
+                if let Err(error) = result {
+                    self.model.note = format!("dashboard preferences: {error}");
+                }
+            }
+            self.poll_dashboard();
+        }
+        cx.notify();
+    }
+    fn poll_dashboard(&mut self) {
+        if self.model.dashboard.pending {
+            return;
+        }
+        match self.bridge.send(self.model.dashboard.request()) {
+            Ok(()) => self.model.dashboard.pending = true,
+            Err(error) => self.model.dashboard.error = Some(error),
+        }
+    }
+    fn action_button(
+        &self,
+        id: impl Into<gpui::ElementId>,
+        label: &str,
+        action: MonitorAction,
+        enabled: bool,
+        cx: &Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let hover = self.color("MacButtonBgPressedColor");
+        let focus = self.color("MacFocusRingColor");
+        let key_action = action.clone();
         div()
             .id(id)
-            .flex()
-            .gap(px(10.))
-            .p(px(8.))
-            .cursor_pointer()
-            .child(
-                div()
-                    .w(px(32.))
-                    .h(px(20.))
-                    .rounded(px(10.))
-                    .p(px(2.))
-                    .flex()
-                    .when(on, |s| s.justify_end())
-                    .bg(self.color(if on {
-                        "MacAccentColor"
-                    } else {
-                        "MacSwitchTrackOffColor"
-                    }))
-                    .child(div().size(px(16.)).rounded(px(8.)).bg(rgba(0xffffffff))),
-            )
+            .focusable()
+            .tab_stop(enabled)
+            .px(px(10.))
+            .py(px(5.))
+            .rounded(px(6.))
+            .border_1()
+            .border_color(gpui::transparent_black())
+            .bg(self.color("MacButtonBgIdleColor"))
+            .when(enabled, |s| {
+                s.cursor_pointer()
+                    .hover(move |s| s.bg(hover))
+                    .active(move |s| s.bg(hover))
+            })
+            .when(!enabled, |s| s.opacity(0.45))
+            .focus(move |s| s.border_color(focus))
             .child(label.to_owned())
             .on_click(cx.listener(move |v, _, _, cx| {
-                v.send(command.clone());
-                cx.notify();
+                if enabled {
+                    v.act(action.clone(), cx);
+                }
+            }))
+            .on_key_down(cx.listener(move |v, e: &gpui::KeyDownEvent, _, cx| {
+                if enabled && matches!(e.keystroke.key.as_str(), "enter" | "space") {
+                    v.act(key_action.clone(), cx);
+                    cx.stop_propagation();
+                }
             }))
     }
 }
 impl Render for Monitor {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.panel && self.web.is_none() && self.web_error.is_none() {
-            match wry::WebViewBuilder::new()
-                .with_url(&self.url)
-                .build_as_child(window)
-            {
-                Ok(web) => self.web = Some(web),
-                Err(error) => self.web_error = Some(error.to_string()),
-            }
-        }
-        if let Some(web) = &self.web {
-            let size = window.viewport_size();
-            if let Err(error) = web.set_bounds(wry::Rect {
-                position: wry::dpi::LogicalPosition::new(0., 80.).into(),
-                size: wry::dpi::LogicalSize::new(
-                    f64::from(size.width),
-                    f64::from(size.height).max(80.) - 80.,
-                )
-                .into(),
-            }) {
-                self.web_error = Some(error.to_string());
-            }
-            if let Err(error) = web.set_visible(self.panel) {
-                self.web_error = Some(error.to_string());
-            }
-        }
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let status = &self.model.snapshot;
         let mut facts = div()
             .flex()
@@ -170,7 +254,7 @@ impl Render for Monitor {
             .bg(self.color("MacWindowColor"))
             .text_color(self.color("MacLabelColor"))
             .font_family("Segoe UI")
-            .text_size(px(13.))
+            .text_size(px(13. * self.zoom))
             .flex()
             .flex_col()
             .child(
@@ -183,41 +267,54 @@ impl Render for Monitor {
                     .child(
                         div()
                             .flex()
-                            .gap(px(20.))
-                            .child(
-                                div()
-                                    .id("StatusPageTab")
-                                    .cursor_pointer()
-                                    .child("Состояние")
-                                    .on_click(cx.listener(|v, _, _, cx| {
-                                        v.panel = false;
-                                        cx.notify();
-                                    })),
-                            )
-                            .child(
-                                div()
-                                    .id("WebPageTab")
-                                    .cursor_pointer()
-                                    .child("Панель")
-                                    .on_click(cx.listener(|v, _, _, cx| {
-                                        v.panel = true;
-                                        cx.notify();
-                                    })),
-                            ),
+                            .gap(px(12.))
+                            .child(self.action_button(
+                                "StatusPageTab",
+                                "Состояние",
+                                MonitorAction::Page(false),
+                                true,
+                                cx,
+                            ))
+                            .child(self.action_button(
+                                "WebPageTab",
+                                "Панель",
+                                MonitorAction::Page(true),
+                                true,
+                                cx,
+                            )),
                     )
                     .child(
                         div()
-                            .id("ThemeSwitch")
-                            .cursor_pointer()
-                            .child(if self.model.light {
-                                "Тёмная тема"
-                            } else {
-                                "Светлая тема"
-                            })
-                            .on_click(cx.listener(|v, _, _, cx| {
-                                v.send(json!({"cmd":"theme","value":!v.model.light}));
-                                cx.notify();
-                            })),
+                            .flex()
+                            .gap(px(8.))
+                            .child(self.action_button(
+                                "ZoomOut",
+                                "−",
+                                MonitorAction::Zoom(-0.1),
+                                true,
+                                cx,
+                            ))
+                            .child(format!("{:.0}%", self.zoom * 100.))
+                            .child(self.action_button(
+                                "ZoomIn",
+                                "+",
+                                MonitorAction::Zoom(0.1),
+                                true,
+                                cx,
+                            ))
+                            .child(self.action_button(
+                                "ThemeSwitch",
+                                if self.model.light {
+                                    "Тёмная тема"
+                                } else {
+                                    "Светлая тема"
+                                },
+                                MonitorAction::Command(
+                                    json!({"cmd":"theme","value":!self.model.light}),
+                                ),
+                                self.model.connected,
+                                cx,
+                            )),
                     ),
             );
         if !self.panel {
@@ -239,13 +336,13 @@ impl Render for Monitor {
                     .child(self.model.note.clone()),
             );
         }
-        if let Some(error) = &self.web_error {
-            root = root.child(format!("WebView: {error}"));
+        if self.panel {
+            root = root.child(self.dashboard_view(cx));
         }
         root
     }
 }
-pub fn run_monitor(port: Arc<dyn UiPort>, url: String) -> std::io::Result<()> {
+pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
     let singleton =
         icem_windows_native::NamedMutex::open_or_create(icem_platform_windows::SHELL_MUTEX)
             .map_err(std::io::Error::other)?;
@@ -265,6 +362,24 @@ pub fn run_monitor(port: Arc<dyn UiPort>, url: String) -> std::io::Result<()> {
     let theme = icem_windows_native::OwnedEvent::create_reset(icem_platform_windows::THEME_CHANGED)
         .map_err(std::io::Error::other)?;
     let bridge = Bridge::start(port)?;
+    let selection_path = std::env::var_os("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .map(|p| {
+            p.join("iCemDataMonitor")
+                .join("native-dashboard-selection.json")
+        });
+    let mut model = Model::default();
+    if let Some(path) = &selection_path {
+        match std::fs::read(path) {
+            Ok(bytes) => {
+                if let Err(error) = model.dashboard.restore_selection(&bytes) {
+                    model.note = error;
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => model.note = format!("dashboard preferences: {error}"),
+        }
+    }
     Application::new().run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(1000.), px(760.)), cx);
         let handle = match cx.open_window(
@@ -278,12 +393,14 @@ pub fn run_monitor(port: Arc<dyn UiPort>, url: String) -> std::io::Result<()> {
             },
             move |_, cx| {
                 cx.new(|_| Monitor {
-                    model: Model::default(),
+                    model,
                     bridge,
                     panel: false,
-                    web: None,
-                    url,
-                    web_error: None,
+                    selection_path,
+                    zoom: 1.,
+                    status_pending: false,
+                    prefs_pending: false,
+                    metrics_page: false,
                 })
             },
         ) {
@@ -313,14 +430,38 @@ pub fn run_monitor(port: Arc<dyn UiPort>, url: String) -> std::io::Result<()> {
                         if show {
                             window.activate_window();
                         }
-                        v.bridge.drain(&mut v.model);
+                        while let Ok(reply) = v.bridge.receiver.try_recv() {
+                            match reply.command.as_str() {
+                                "status" => v.status_pending = false,
+                                "prefs" => v.prefs_pending = false,
+                                _ => {}
+                            }
+                            v.model.apply(&reply.command, reply.result);
+                        }
                         if Instant::now() >= due {
-                            v.send(json!({"cmd":"status"}));
-                            v.send(json!({"cmd":"prefs"}));
+                            if !v.status_pending && v.bridge.send(json!({"cmd":"status"})).is_ok() {
+                                v.status_pending = true;
+                            }
+                            if !v.prefs_pending && v.bridge.send(json!({"cmd":"prefs"})).is_ok() {
+                                v.prefs_pending = true;
+                            }
+                            if v.panel
+                                && v.metrics_page
+                                && !v.model.dashboard.metrics_pending
+                                && v.bridge.send(json!({"cmd":"metrics"})).is_ok()
+                            {
+                                v.model.dashboard.metrics_pending = true;
+                            }
+                            if v.panel {
+                                v.poll_dashboard();
+                            }
                             due = Instant::now() + Duration::from_secs(1);
                         }
-                        if prefs {
-                            v.send(json!({"cmd":"prefs"}));
+                        if prefs
+                            && !v.prefs_pending
+                            && v.bridge.send(json!({"cmd":"prefs"})).is_ok()
+                        {
+                            v.prefs_pending = true;
                         }
                         cx.notify();
                     })

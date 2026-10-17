@@ -1,5 +1,7 @@
 # ADR 0004 — GPUI, GPUI Tray и локальный Host gRPC
 
+Исторический E5: WRY/WebView2 отменены ADR 0005 (E6); native desktop больше не требует browser runtime.
+
 Class: исходные COM/LAN/Units controls → `icem-desktop::{windows,input,theme}`;
 Host status/dashboard → `monitor`; domain engine остаётся за `UiPort`.
 Inv: bounded command/reply queues, один worker, owned JSON, join при drop,

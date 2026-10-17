@@ -95,3 +95,11 @@ D25 — .NET CI run 39029173037: D2GuardTests.ExactlyOne_ProtoFile_InSolution
 Rust-копия существует уже в main E3. Также зафиксирован MetricsSamplerTests
 DropOldest failure в неизменённом C# тесте; причинность/flakiness не установлены.
 Оба out-of-scope findings описаны в EMULATOR_E4.ru.md, исходники не менялись.
+
+E6: D24 software cause устранена QueuedAceLanEmitter; аппаратный timing gate остаётся открыт.
+D26 — explicit resource delta: один pending LAN superframe, busy вместо backlog, максимум
+4096 vectors (по 124 bytes payload). See ADR 0005.
+D25: на head d4830a2 Rust CI success; legacy run 39040898192 упал на duplicate proto
+и ControlPipeServerTests.Dispose_DrainsInFlightReply_QuitAckReachesClient (empty ACK).
+MetricsSampler в этом run не падал. E6 использует единственный original proto непосредственно,
+не меняя .NET sources/guard. Происхождение legacy pipe failure не установлено.

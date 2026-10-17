@@ -10,7 +10,7 @@ mod windows {
         runtime::Engine,
         simulation::load_catalog,
     };
-    use icem_platform_windows::{AceLanEmitter, ComSerialEmitter};
+    use icem_platform_windows::{ComSerialEmitter, QueuedAceLanEmitter};
     use icem_transport::emulator_control::{ACK_DRAIN, ControlServer, Executor, request};
     use std::{
         path::PathBuf,
@@ -20,7 +20,7 @@ mod windows {
         },
         time::{Duration, Instant},
     };
-    type Runtime = Engine<ComSerialEmitter, AceLanEmitter>;
+    type Runtime = Engine<ComSerialEmitter, QueuedAceLanEmitter>;
     struct Service {
         engine: Mutex<Runtime>,
         paths: SettingsPaths,
@@ -199,7 +199,7 @@ mod windows {
                 catalog.templates,
                 base,
                 ComSerialEmitter::default(),
-                AceLanEmitter::default(),
+                QueuedAceLanEmitter::system()?,
             )),
             paths,
             started: Instant::now(),

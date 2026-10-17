@@ -1,5 +1,6 @@
 //! GPUI desktop presentation. Domain state stays behind the original control seam.
 #![forbid(unsafe_code)]
+pub mod dashboard;
 use serde_json::{Value, json};
 use std::sync::{
     Arc,
@@ -41,6 +42,7 @@ impl ProfileChoice {
 #[derive(Default)]
 pub struct Model {
     pub page: Page,
+    pub dashboard: dashboard::Dashboard,
     pub light: bool,
     pub connected: bool,
     pub note: String,
@@ -78,6 +80,14 @@ impl Model {
         text(&self.snapshot[channel][field])
     }
     pub fn apply(&mut self, cmd: &str, response: Result<Value, String>) {
+        if cmd == "metrics" {
+            self.dashboard.apply_metrics(response);
+            return;
+        }
+        if cmd == "dashboard" {
+            self.dashboard.apply(response);
+            return;
+        }
         let result = match response {
             Ok(result) => result,
             Err(error) => {
