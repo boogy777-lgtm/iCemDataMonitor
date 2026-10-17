@@ -15,7 +15,8 @@ N+1: следующий пункт меню добавляет action/menu data;
 `icem-windows-native/src/tray.rs` удалён. Handwritten native exception не расширяется tray-кодом.
 Host использует один windowless GPUI application на выделенном foreground thread;
 MMF/mutex/service loop сохраняют owning thread. Эмулятор использует уже существующий GPUI App.
-Console caption обновляется по actual probe через `refresh_menu` каждые 50 ms и после actions.
+Console truth проверяется каждые 50 ms; `refresh_menu` вызывается при изменении
+probe, а библиотека обновляет меню после actions. Idle tick не пересоздаёт меню.
 Это не утверждение о синхронном probe прямо внутри native popup-open callback.
 
 Зависимости: ранее locked GPUI 0.2.2, WRY 0.57.0, unicode-segmentation 1.12.0.

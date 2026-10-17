@@ -56,4 +56,4 @@ Host с local pipe берёт original Host singleton; не запускать �
 
 Изменение 2026-10-17: собственный native tray удалён по указанию пользователя; оба
 tray используют GPUI Tray. Общий picker сохраняет deviceType/identity, добавлены
-COM/LAN variable combos и отдельные drafts. Caption console обновляется каждые 50 ms.
+COM/LAN variable combos и отдельные drafts. Console probe выполняется каждые 50 ms; меню обновляется при изменении probe.

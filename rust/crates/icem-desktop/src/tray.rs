@@ -112,6 +112,7 @@ impl HostTray {
                     cx.on_action(move |_: &Close, _| dispatch(&close, HostCommand::Close));
                     let _ = ready.send(Ok(()));
                     cx.spawn(async move |cx| {
+                        let mut console = icem_platform_windows::console_visible();
                         loop {
                             cx.background_executor()
                                 .timer(Duration::from_millis(50))
@@ -129,6 +130,11 @@ impl HostTray {
                                 }
                                 break;
                             }
+                            let current_console = icem_platform_windows::console_visible();
+                            if current_console == console {
+                                continue;
+                            }
+                            console = current_console;
                             match cx.update(|cx| tray.refresh_menu(cx)) {
                                 Ok(Ok(())) => {}
                                 error => {
