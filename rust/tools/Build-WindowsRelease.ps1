@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
+    [ValidatePattern('^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$')]
     [string] $Version,
     [string] $OutputDirectory
 )
@@ -12,6 +12,8 @@ if (-not $IsWindows -or -not [Environment]::Is64BitOperatingSystem) { throw 'Run
 $Root = Split-Path $PSScriptRoot -Parent
 $RepositoryRoot = Split-Path $Root -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
+Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
+Assert-WindowsMsiVersion $Version
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $Root 'dist' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $Plan = Read-WindowsPayloadPlan $RepositoryRoot
@@ -46,7 +48,8 @@ try {
     $Result = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $Built -OutputDirectory $OutputDirectory -Version $Version -Commit $Commit.Trim() -Compiler $Compiler
     Write-Host "Windows x64 archive: $($Result.archive)"
     Write-Host "SHA256: $($Result.sha256)"
-    return $Result
+    $Installer = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $Result.archive -OutputDirectory $OutputDirectory
+    return [pscustomobject]@{ archive = $Result.archive; msi = $Installer.msi; checksum = $Installer.checksum; version = $Version }
 } finally {
     [Environment]::SetEnvironmentVariable('CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS', $SavedFlags)
     Pop-Location

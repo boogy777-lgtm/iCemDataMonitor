@@ -1,0 +1,110 @@
+#requires -Version 7.4
+[CmdletBinding()]
+param([Parameter(Mandatory)] [string] $Msi, [switch] $AllowMachineChanges)
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+if (-not $IsWindows -or ($env:GITHUB_ACTIONS -ne 'true' -and -not $AllowMachineChanges)) {
+    throw 'Run on a disposable Windows CI runner, or explicitly pass -AllowMachineChanges on a disposable Windows VM.'
+}
+$Root = Split-Path $PSScriptRoot -Parent
+Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
+Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
+$Policy = Read-WindowsInstallerPolicy
+$Msi = (Resolve-Path -LiteralPath $Msi).Path
+if ((Get-Content -Raw -LiteralPath "$Msi.sha256").Split(' ')[0] -ine (Get-FileHash -LiteralPath $Msi).Hash) { throw 'MSI checksum mismatch' }
+$Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-msi-upgrade-' + [guid]::NewGuid().ToString('N'))
+$Install = Join-Path $Work "installed $([char]0x0442) files"
+$Marker = Join-Path $Install 'operator-not-msi-owned.ini'
+$MarkerText = 'operator-owned configuration must survive'
+[IO.Directory]::CreateDirectory($Work) | Out-Null
+$ProductCodes = [Collections.Generic.List[string]]::new()
+function Installed-Products {
+    @(Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' | ForEach-Object {
+        $Entry = Get-ItemProperty -LiteralPath $_.PSPath
+        if ($Entry.PSObject.Properties['DisplayName'] -and $Entry.DisplayName -eq $Policy.product_name) { $Entry }
+    })
+}
+function Read-MsiProperty([string] $Path, [string] $Name) {
+    $Installer = New-Object -ComObject WindowsInstaller.Installer
+    $Database = $null; $View = $null; $Row = $null
+    try {
+        $Database = $Installer.OpenDatabase($Path, 0)
+        $View = $Database.OpenView(('SELECT `Value` FROM `Property` WHERE `Property` = ''' + $Name + ''''))
+        $View.Execute()
+        $Row = $View.Fetch()
+        if (-not $Row) { throw "Missing MSI property $Name" }
+        return $Row.StringData(1)
+    } finally {
+        if ($View) { $View.Close() }
+        foreach ($Object in @($Row, $View, $Database, $Installer)) {
+            if ($Object) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Object) }
+        }
+    }
+}
+function Invoke-Msi([string[]] $Arguments, [string] $Label, [int] $ExpectedExit = 0) {
+    $Log = Join-Path $Work "$Label.log"
+    $Info = [Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32/msiexec.exe'))
+    $Info.UseShellExecute = $false
+    foreach ($Argument in ($Arguments + @('/qn', '/norestart', '/l*v', $Log))) { $Info.ArgumentList.Add($Argument) }
+    $Process = [Diagnostics.Process]::Start($Info)
+    try {
+        if (-not $Process.WaitForExit(180000)) { $Process.Kill($true); throw "MSI $Label exceeded 180 seconds; no retry." }
+        if ($Process.ExitCode -ne $ExpectedExit) {
+            $Tail = if (Test-Path -LiteralPath $Log) { (Get-Content -LiteralPath $Log -Tail 35) -join "`n" } else { 'No MSI log' }
+            throw "MSI $Label exit $($Process.ExitCode), expected ${ExpectedExit}: $Tail"
+        }
+    } finally { $Process.Dispose() }
+}
+function Assert-Installed([string] $Version, [string] $ProductCode) {
+    $Products = @(Installed-Products)
+    if ($Products.Count -ne 1 -or $Products[0].PSChildName -ne $ProductCode -or $Products[0].DisplayVersion -ne $Version) { throw 'MSI did not leave exactly one expected installed version' }
+    # This deliberately unowned file lives beside payload files. Move only the
+    # test-owned marker while checking the strict, otherwise unchanged manifest.
+    $Held = Join-Path $Work 'marker-held.ini'
+    $HasMarker = Test-Path -LiteralPath $Marker
+    if ($HasMarker) { Move-Item -LiteralPath $Marker -Destination $Held }
+    try {
+        $Manifest = Test-WindowsPayload $Install
+        if ($Manifest.artifact_version -ne $Version) { throw 'Installed payload version mismatch' }
+    } finally { if ($HasMarker) { Move-Item -LiteralPath $Held -Destination $Marker } }
+}
+Push-Location $Root
+try {
+    if (@(Installed-Products).Count) { throw 'A Rust development MSI is already installed; refusing to touch it.' }
+    $Version = Read-MsiProperty $Msi 'ProductVersion'
+    $Next = Get-NextWindowsMsiVersion $Version
+    $FirstCode = Read-MsiProperty $Msi 'ProductCode'
+    $ProductCodes.Add($FirstCode)
+    $NextArchive = New-WindowsArchive -RepositoryRoot (Split-Path $Root -Parent) -BinaryDirectory (Join-Path $Root 'target/x86_64-pc-windows-msvc/release') -OutputDirectory $Work -Version $Next -Commit ((& git -C $Root rev-parse HEAD).Trim()) -Compiler ((& rustc --version).Trim())
+    $NextMsi = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $NextArchive.archive -OutputDirectory $Work
+    $NextCode = Read-MsiProperty $NextMsi.msi 'ProductCode'
+    if ($NextCode -eq $FirstCode) { throw 'N+1 must have a new ProductCode' }
+    $ProductCodes.Add($NextCode)
+    $ExpectedUpgrade = [guid]$Policy.upgrade_code
+    foreach ($Path in @($Msi, $NextMsi.msi)) {
+        if ([guid](Read-MsiProperty $Path 'UpgradeCode') -ne $ExpectedUpgrade) { throw 'UpgradeCode changed between N and N+1' }
+    }
+    Invoke-Msi @('/i', $Msi, "INSTALLFOLDER=$Install") 'install-N'
+    Assert-Installed $Version $FirstCode
+    [IO.File]::WriteAllText($Marker, $MarkerText)
+    Invoke-Msi @('/i', $NextMsi.msi, "INSTALLFOLDER=$Install") 'upgrade-N-plus-one'
+    Assert-Installed $Next $NextCode
+    if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText) { throw 'Upgrade modified user data' }
+    Invoke-Msi @('/i', $Msi, "INSTALLFOLDER=$Install") 'blocked-downgrade' 1603
+    Assert-Installed $Next $NextCode
+    Invoke-Msi @('/x', $NextCode) 'uninstall'
+    if (@(Installed-Products).Count -or @(Get-ChildItem -LiteralPath $Install -Recurse -File).Count -ne 1 -or
+        (Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText) { throw 'Uninstall left payload/registration or deleted user data' }
+    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and unowned data preserved."
+} finally {
+    foreach ($Code in $ProductCodes) {
+        if (@(Installed-Products | Where-Object { $_.PSChildName -eq $Code }).Count) { Invoke-Msi @('/x', $Code) ('cleanup-' + $Code.Trim('{}')) }
+    }
+    if ($env:GITHUB_ACTIONS -eq 'true') {
+        $Logs = Join-Path $Root 'artifacts/msi'
+        [IO.Directory]::CreateDirectory($Logs) | Out-Null
+        Get-ChildItem -LiteralPath $Work -Filter '*.log' | Copy-Item -Destination $Logs
+    }
+    if (Test-Path -LiteralPath $Work) { Remove-Item -LiteralPath $Work -Recurse -Force }
+    Pop-Location
+}

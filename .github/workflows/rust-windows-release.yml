@@ -3,39 +3,67 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Archive version label (Cargo versions are unchanged)'
+        description: 'next = next Rust patch version, or explicit x.y.z'
         required: true
-        default: '0.1.0-dev'
+        default: 'next'
+      publish:
+        description: 'Create a draft prerelease with the verified MSI'
+        type: boolean
+        default: false
   pull_request:
     branches: [main]
     paths:
       - 'rust/installer/**'
-      - 'rust/tools/Build-WindowsRelease.ps1'
+      - 'rust/tools/Build-Windows*.ps1'
       - 'rust/tools/Test-Windows*.ps1'
       - '.github/workflows/rust-windows-release.yml'
 permissions:
   contents: read
 concurrency:
-  group: rust-windows-release-${{ github.ref }}
-  cancel-in-progress: true
+  group: rust-windows-release-${{ github.event_name == 'workflow_dispatch' && 'manual' || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 jobs:
   windows-x64:
     runs-on: windows-latest
     timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     defaults:
       run:
         working-directory: rust
         shell: pwsh
-    env:
-      ICEM_RELEASE_VERSION: ${{ inputs.version || '0.1.0-dev' }}
     steps:
       - uses: actions/checkout@v5
-      - name: Build verified Windows x64 release archive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Select next Rust release version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version || '0.1.0' }}
+        run: |
+          Import-Module ./installer/WindowsInstaller.psm1 -Force
+          $Tags = @()
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            $Tags += @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/git/matching-refs/tags/rust-v" --jq '.[].ref')
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate Rust tags' }
+            $Tags += @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases" --jq '.[].tag_name')
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate releases, including reserved draft versions' }
+          }
+          $Version = Select-WindowsReleaseVersion $env:REQUESTED_VERSION $Tags
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "ICEM_RELEASE_VERSION=$Version"
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$Version"
+      - name: Build verified Windows x64 release MSI
         run: ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION
       - name: Smoke test extracted release outside checkout
         run: |
           $Archive = Join-Path $PWD "dist/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
           ./tools/Test-WindowsRelease.ps1 -Archive $Archive
+      - name: Install N, upgrade N+1, reject downgrade and uninstall MSI
+        run: |
+          $Msi = Join-Path $PWD "dist/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"
+          ./tools/Test-WindowsMsiUpgrade.ps1 -Msi $Msi
       - name: Browser contracts against the extracted release EXE
         env:
           ICEM_UI_ARTIFACTS: ${{ runner.temp }}/icem-release-ui
@@ -46,18 +74,47 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tools/browser/dashboard.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Upload Windows ZIP and checksum
+      - name: Upload Windows installer and checksum
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64-release
           path: |
-            rust/dist/*.zip
-            rust/dist/*.zip.sha256
+            rust/dist/*.msi
+            rust/dist/*.msi.sha256
           if-no-files-found: error
-      - name: Upload release browser evidence
+      - name: Upload release evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: windows-release-browser
-          path: ${{ runner.temp }}/icem-release-ui
+          name: windows-release-evidence
+          path: |
+            ${{ runner.temp }}/icem-release-ui
+            rust/artifacts/msi/*.log
           if-no-files-found: ignore
+  draft-release:
+    needs: windows-x64
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64-release
+          path: release
+      - name: Create private repository draft prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.windows-x64.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Private = & gh repo view $env:GITHUB_REPOSITORY --json isPrivate --jq .isPrivate
+          if ($LASTEXITCODE -ne 0 -or $Private -ne 'true') { throw 'This workflow publishes only inside the existing private repository.' }
+          $Name = "iCemDataMonitor-rust-dev-$env:RELEASE_VERSION-windows-x64.msi"
+          $Msi = Join-Path $PWD "release/$Name"
+          $Checksum = "$Msi.sha256"
+          if ((Get-Content -Raw -LiteralPath $Checksum).Split(' ')[0] -ine (Get-FileHash -LiteralPath $Msi).Hash) { throw 'Downloaded MSI checksum mismatch' }
+          $Notes = "Windows x64 Rust development installer. Source: $env:GITHUB_SHA. Installation, N to N+1 upgrade, downgrade rejection, uninstall, executable smoke and browser contracts passed in Actions run $env:GITHUB_RUN_ID. Hardware/UI equivalence and production cutover remain open. Unsigned MSI; no AddIn replacement."
+          & gh release create "rust-v$env:RELEASE_VERSION" $Msi $Checksum --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "iCem Data Monitor Rust $env:RELEASE_VERSION (Windows x64)" --notes $Notes
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed; no mutation retry or overwrite.' }

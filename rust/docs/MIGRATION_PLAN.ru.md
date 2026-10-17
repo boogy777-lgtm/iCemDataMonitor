@@ -82,3 +82,14 @@ Modbus/sniffer, console/autostart, theme. Emulator: COM/LAN/Units и все cont
 оставить ту же AddIn DLL/Data.dat/config → запустить и проверить. Откат возвращает
 старый payload без изменения формата данных. MSI upgrade identity/пути утверждаются M7;
 Rust CI имеет отдельный workflow; существующий .NET CI сохраняется.
+
+## Windows development MSI: N → N+1
+
+`tools/Build-WindowsRelease.ps1 -Version x.y.z` теперь формирует отдельный Rust
+development MSI из проверенного payload, с собственным UpgradeCode/Program Files
+путём. `installer/README.md` описывает ограничения и manual Actions → next patch →
+draft prerelease. Политика legacy MSI не меняется. Windows workflow проверяет
+install N → upgrade N+1 → запрет downgrade → uninstall и сохранность не принадлежащего
+MSI файла. N+1 probe использует те же EXE, поэтому проверяет механику MSI, а не
+изменения функциональности. M7 целиком не закрыт: production cutover/AddIn, signing,
+rollback/failure/offline приёмка на чистой VM и running-process policy остаются открыты.

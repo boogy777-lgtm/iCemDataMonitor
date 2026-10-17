@@ -149,3 +149,9 @@ checks its manifest/checksums after ZIP extraction. Existing Linux CI build remo
 by the user's Windows-only instruction; Chrome/theme contracts moved to Windows.
 No legacy behavior, baseline manifest, approved hashes or active endpoints changed.
 Legacy CI defects remain outside priority per the user's instruction.
+
+Windows installer follow-up: the verified inventory now also generates a WiX 5.0.2
+development MSI, with independent upgrade identity and path. `rust-vX.Y.Z` tags/
+release drafts define the N+1 patch sequence; the Windows workflow includes actual
+install/upgrade/downgrade/uninstall checks before uploading an MSI or creating an
+optional draft prerelease. Production MSI identity/AddIn cutover remains unaccepted.

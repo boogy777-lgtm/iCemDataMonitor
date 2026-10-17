@@ -91,16 +91,18 @@ source-manifest не обновляется при принятых исправ
 
 [Host E8](docs/HOST_E8.ru.md): точный план пробелов, Web persist-only owner integration, OPC external no-op и отделение startup-effective web от session plan. Полная production/Windows приёмка остаётся открытой.
 
-## Windows release archive
+## Windows installer and N+1 releases
 
 Windows x64, PowerShell 7.4+ and MSVC Build Tools:
 
 ```powershell
-pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0-dev
+pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
-Run that command from the repository root. It creates one ZIP with Host, Shell,
-independent emulator and required resources plus a SHA256 file in `rust/dist/`.
+Run that command from the repository root. It creates a Windows MSI with Host, Shell, independent emulator and required
+resources plus a SHA256 file in `rust/dist/`. The verified ZIP is a build intermediate.
 [Prerequisites, contents, launch and CI artifact](installer/README.md).
 Both Rust CI and the release workflow target Windows only. Release packaging keeps
-the current `*-dev.exe` names; production/MSI and hardware/UI acceptance remain open.
+the current `*-dev.exe` names. Manual Actions runs can choose the next `rust-vX.Y.Z`
+version and create a draft prerelease after install/upgrade/uninstall checks.
+Production cutover and hardware/UI acceptance remain open.

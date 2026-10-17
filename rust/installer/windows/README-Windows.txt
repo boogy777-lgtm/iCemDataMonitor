@@ -1,6 +1,6 @@
 iCem Data Monitor - Rust development package, Windows x64
 
-Extract the complete ZIP before launching. Keep EXEs, assets and templates together.
+Install the MSI (or extract the complete intermediate ZIP). Keep its files together.
 PowerShell 7 is required for the launch scripts. Rust/.NET SDK is not needed to run
 the Rust EXEs. Npcap and a configured COM/com0com port are external requirements
 only when the corresponding physical emulator channel is used.
@@ -22,10 +22,14 @@ are not desktop applications and are deliberately excluded. Web SPA is embedded
 in Host; it does not require WebView2.
 
 release-manifest.json records source commit, compiler, target, file sizes and SHA256.
-The adjacent .zip.sha256 file checks the downloaded archive. These are integrity
+The adjacent .msi.sha256 file checks the downloaded installer. These are integrity
 checks, not Authenticode signatures. Binaries use a release profile with static CRT.
 The artifact version is a package label; Cargo package versions are not rewritten.
 
-This is a reproducible package layout for the current migration, not an MSI or a
-production replacement. Hardware timing, MMF/ACL, tray/Explorer, GPU/DPI/IME, visual
-parity, autostart installation and MSI upgrade acceptance remain separate gates.
+This is a development MSI for the current migration, not a production replacement. Hardware timing, MMF/ACL, tray/Explorer, GPU/DPI/IME, visual
+parity, autostart and production install/upgrade acceptance remain separate gates.
+
+Windows MSI installs this development product separately from legacy .NET.
+A higher x.y.z version upgrades the earlier development MSI; downgrades are blocked.
+Uninstall through Windows Installed apps. User-created config/data is preserved.
+PowerShell 7.4+ is required for the supplied .ps1 launchers.

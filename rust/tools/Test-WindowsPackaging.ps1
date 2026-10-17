@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Root = Split-Path $PSScriptRoot -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
+Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
 $Temp = Join-Path ([IO.Path]::GetTempPath()) ('icem-package-tests-' + [guid]::NewGuid().ToString('N'))
 $Repo = Join-Path $Temp 'repo'
 $Bins = Join-Path $Temp 'bins'
@@ -47,6 +48,36 @@ try {
     [IO.Compression.ZipFile]::ExtractToDirectory($Result.archive, $Unpack)
     $Verified = Test-WindowsPayload $Unpack
     if ($Verified.files.Count -ne 4) { throw 'Template directory was not packaged completely' }
+    # The installer is rendered from the already verified inventory, including
+    # the integrity manifest itself. Adding a payload file cannot miss the MSI.
+    $Numeric = Package '0.1.0'
+    $NumericPayload = Join-Path $Temp 'msi payload'
+    [IO.Compression.ZipFile]::ExtractToDirectory($Numeric.archive, $NumericPayload)
+    $Wxs = Join-Path $Temp 'Package.wxs'
+    if ((Write-WindowsInstallerSource $NumericPayload '0.1.0' $Wxs) -ne 5) { throw 'MSI omitted a payload file' }
+    $Xml = [xml](Get-Content -Raw -LiteralPath $Wxs)
+    $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable)
+    $Ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
+    if ($Xml.SelectNodes('//w:File', $Ns).Count -ne 5 -or $Xml.SelectNodes('//w:ComponentRef', $Ns).Count -ne 5) { throw 'MSI inventory completeness failed' }
+    if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
+        $Xml.SelectSingleNode('//w:Package', $Ns).Scope -ne 'perMachine' -or
+        $Xml.SelectNodes('//w:CustomAction | //w:RegistryValue | //w:ServiceInstall', $Ns).Count) { throw 'MSI ownership/transaction policy failed' }
+    $Ids = @($Xml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id })
+    $Relocated = Join-Path $Temp 'relocated msi payload'
+    Copy-Item -LiteralPath $NumericPayload -Destination $Relocated -Recurse
+    $null = Write-WindowsInstallerSource $Relocated '0.1.0' $Wxs
+    $RelocatedXml = [xml](Get-Content -Raw -LiteralPath $Wxs)
+    if (($Ids -join ',') -cne (($RelocatedXml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id }) -join ',')) { throw 'MSI component identity depends on build directory' }
+    Assert-Rejected { Write-WindowsInstallerSource $NumericPayload '0.1.1' $Wxs } 'must match'
+    foreach ($BadVersion in @('0.1.0-dev', '01.0.0', '256.0.0', '0.256.0', '0.1.65536', '1.2', '1.2.3.4')) {
+        Assert-Rejected { Assert-WindowsMsiVersion $BadVersion } 'MSI version'
+    }
+    if ((Select-WindowsReleaseVersion 'next' @()) -cne '0.1.0' -or
+        (Select-WindowsReleaseVersion 'next' @('v99.0.0', 'rust-v0.1.9', 'refs/tags/rust-v0.1.10')) -cne '0.1.11' -or
+        (Select-WindowsReleaseVersion '0.2.0' @('rust-v0.1.10')) -cne '0.2.0') { throw 'Rust N+1 version selection failed' }
+    Assert-Rejected { Select-WindowsReleaseVersion '0.1.10' @('rust-v0.1.10') } 'must exceed'
+    Assert-Rejected { Select-WindowsReleaseVersion '0.1.9' @('rust-v0.1.10') } 'must exceed'
+    Assert-Rejected { Get-NextWindowsMsiVersion '0.1.65535' } 'Patch version exhausted'
     if ((Get-Content -Raw -LiteralPath $Result.checksum).Split(' ')[0] -ne (Get-FileHash -LiteralPath $Result.archive).Hash.ToLowerInvariant()) { throw 'Bad ZIP checksum' }
     Assert-Rejected { Package '0.1.0-test' } 'already exists'
     [IO.File]::WriteAllText((Join-Path $Unpack 'assets/icon.ico'), 'tampered')
@@ -81,5 +112,5 @@ try {
     Assert-Rejected { Package '0.1.1-test' } 'Not a Windows PE'
     if (@(Get-ChildItem -LiteralPath $Output -Filter '.package-*' -Force).Count) { throw 'Failed packaging left staging directories' }
     if (@(Get-ChildItem -LiteralPath $Output -Filter '*0.1.1*').Count) { throw 'Failed packaging published an archive' }
-    Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture and failure cleanup.'
+    Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture, failure cleanup; MSI inventory/stable components and N+1 version selection.'
 } finally { if (Test-Path -LiteralPath $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force } }
