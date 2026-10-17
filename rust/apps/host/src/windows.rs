@@ -87,3 +87,15 @@ impl Drop for Lifecycle {
         }
     }
 }
+
+pub struct ShellSignals;
+impl icem_web::navigation::ShellSignals for ShellSignals {
+    fn alive(&self) -> Result<bool, String> {
+        icem_windows_native::event_exists(icem_platform_windows::SHELL_SHOW)
+            .map_err(|e| e.to_string())
+    }
+    fn show(&self) -> Result<bool, String> {
+        icem_windows_native::signal_existing_event(icem_platform_windows::SHELL_SHOW)
+            .map_err(|e| e.to_string())
+    }
+}

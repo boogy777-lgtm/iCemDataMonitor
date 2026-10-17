@@ -232,18 +232,18 @@
       "index": 0,
       "name": "StagesHost",
       "implementation": "crates/icem-desktop/src/monitor.rs",
-      "status": "pending",
+      "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Boot splash/replay not implemented."
+      "note": "Native monitor startup panel consumes real Host boot replay/live (E7). Separate legacy splash geometry/visual acceptance remains NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml",
       "index": 1,
       "name": "FooterLine",
       "implementation": "crates/icem-desktop/src/monitor.rs",
-      "status": "pending",
+      "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Boot splash/replay not implemented."
+      "note": "Native monitor startup panel consumes real Host boot replay/live (E7). Separate legacy splash geometry/visual acceptance remains NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",

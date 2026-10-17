@@ -79,3 +79,23 @@ console close policy, installer/payload size и аппаратная приём�
 Host tray запускает новый shell; emulator X сохраняет engine, tray Open возвращает view.
 COM/Npcap, MMF/ACL/elevation, Explorer restart, MSVC UI, DPI и latency/jitter **NOT RUN** локально.
 См. [приёмку](HARDWARE_ACCEPTANCE.ru.md) и [ADR E6](adr/0005-native-dashboard-lan-worker.ru.md).
+
+## E7: Host startup/navigation (актуальное дополнение)
+
+Добавлены real SubscribeBootStages replay/live и native startup panel, Host-owned NavigateUi
+pending/query и потребление section при first show/show event. См. ADR 0006: probe ui_alive
+использует Shell-owned show event без захвата чужого mutex; token/ACL parity требует Windows.
+READY соответствует фактическому завершению startup; failed stage не отмечается выполненной.
+Boot live backlog ограничен и lag сообщает RPC error. LAN busy guard удерживает model/elapsed,
+COM/status продолжаются. Tab/Shift+Tab обрабатываются явно; фокус не зависит от наличия мыши.
+Локально E7: 104 Linux tests, format/build/Clippy; Windows GNU all-targets Clippy PASS.
+
+Для 6cbbd74 Linux CI/full baseline/browser PASS; Windows MSVC integration/process suite PASS,
+но полный Windows job FAIL на windows_pipe exclusive rebind (AccessDenied). Lifetime client
+runtime исправляется E7; exact-head Windows CI обязателен. Legacy ExactlyOne_ProtoFile теперь
+PASS, Host.Tests 220/220, Emulator.Tests 101/101; другой legacy Modbus recovery test FAIL,
+причинность не установлена. C# файлы/проверки не изменены.
+
+Остаются sniffer, actual Web/OPC integration, production CLI/ensure-host, полная визуальная
+приёмка boot/splash/controls и installer/hardware. Предыдущий список open boot/navigation выше
+является статусом E6, это дополнение его уточняет.

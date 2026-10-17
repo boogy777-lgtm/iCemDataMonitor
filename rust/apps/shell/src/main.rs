@@ -8,6 +8,7 @@ mod windows {
     struct Session {
         runtime: tokio::runtime::Runtime,
         metrics: Option<tonic::Streaming<MetricsSample>>,
+        boot: Option<tonic::Streaming<BootStage>>,
     }
     struct HostPort {
         pipe: String,
@@ -27,11 +28,38 @@ mod windows {
                         .build()
                         .map_err(|e| e.to_string())?,
                     metrics: None,
+                    boot: None,
                 });
             }
-            let Session { runtime, metrics } =
-                session.as_mut().ok_or("Host UI session unavailable")?;
+            let Session {
+                runtime,
+                metrics,
+                boot,
+            } = session.as_mut().ok_or("Host UI session unavailable")?;
             runtime.block_on(async {
+                if command["cmd"] == "boot" {
+                    let result = async {
+                        if boot.is_none() {
+                            let mut client = client::connect(&self.pipe).await.map_err(|e|e.to_string())?;
+                            *boot=Some(client.subscribe_boot_stages(BootStreamRequest{}).await.map_err(|e|e.to_string())?.into_inner());
+                        }
+                        let mut stages=Vec::new();
+                        let due=std::time::Instant::now()+std::time::Duration::from_millis(100);
+                        while stages.len()<128 {
+                            let remaining=due.saturating_duration_since(std::time::Instant::now());
+                            if remaining.is_zero(){break;}
+                            match tokio::time::timeout(remaining,boot.as_mut().ok_or("boot stream unavailable")?.message()).await {
+                                Ok(Ok(Some(stage)))=>stages.push(json!({"ordinal":stage.ordinal,"id":stage.id,"title":stage.title,"completed":stage.completed,"detail":stage.detail})),
+                                Ok(Ok(None))=>return Err("boot stream ended".to_owned()),
+                                Ok(Err(error))=>return Err(error.to_string()),
+                                Err(_)=>break,
+                            }
+                        }
+                        Ok(json!({"ok":true,"data":{"stages":stages}}))
+                    }.await;
+                    if result.is_err(){*boot=None;}
+                    return result;
+                }
                 if command["cmd"] == "metrics" {
                     let result = async {
                         if metrics.is_none() {
@@ -45,7 +73,7 @@ mod windows {
                         let deltas: Vec<_> = message.deltas.into_iter().filter_map(|d| {
                             let (value,kind) = match d.value? {
                                 register_delta::Value::Int32Value(v)=>(json!(v),"int32"),
-                                register_delta::Value::FloatValue(v)=>(json!(v.to_string()),"float"),
+                                register_delta::Value::FloatValue(v)=>(json!(if v.is_nan(){"NaN".to_owned()}else if v==f32::INFINITY{"Infinity".to_owned()}else if v==f32::NEG_INFINITY{"-Infinity".to_owned()}else{v.to_string()}),"float"),
                             };
                             Some(json!({"addr":d.addr,"value":value,"kind":kind}))
                         }).collect();
@@ -63,6 +91,10 @@ mod windows {
                 }
                 let mut client=client::connect(&self.pipe).await.map_err(|e|e.to_string())?;
                 let data=match command["cmd"].as_str().unwrap_or(""){
+                    "navigate"=>{
+                        let result=client.navigate_ui(NavigateUiRequest{section:0}).await.map_err(|e|e.to_string())?.into_inner();
+                        json!({"pending":result.pending,"uiAlive":result.ui_alive})
+                    }
                     "status"=>{
                         let status=client.get_status(HostStatusRequest{}).await.map_err(|e|e.to_string())?.into_inner();
                         let layers=status.layers.unwrap_or_default();

@@ -195,6 +195,70 @@ impl TelemetryService for Rpc {
             WatchStream::new(receive).filter_map(|item| item),
         )))
     }
+    async fn navigate_ui(
+        &self,
+        request: Request<NavigateUiRequest>,
+    ) -> Result<Response<NavigateUiResponse>, Status> {
+        let section = UiSection::try_from(request.into_inner().section)
+            .map_err(|_| Status::invalid_argument("unknown UI section"))?;
+        Ok(Response::new(
+            self.0
+                .navigation
+                .navigate(section)
+                .map_err(Status::internal)?,
+        ))
+    }
+    async fn subscribe_boot_stages(
+        &self,
+        _: Request<BootStreamRequest>,
+    ) -> Result<
+        Response<Pin<Box<dyn Stream<Item = Result<BootStage, Status>> + Send + 'static>>>,
+        Status,
+    > {
+        let permit = self
+            .0
+            .streams
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| Status::resource_exhausted("stream limit reached"))?;
+        let (snapshot, mut updates) = self.0.boot.subscribe().map_err(Status::internal)?;
+        let mut stop = self.0.shutdown.subscribe();
+        let (send, receive) = tokio::sync::mpsc::channel(128);
+        tokio::spawn(async move {
+            let _permit = permit;
+            for stage in snapshot {
+                if send.send(Ok(stage)).await.is_err() {
+                    return;
+                }
+            }
+            loop {
+                let update = tokio::select! {
+                    _=send.closed()=>break,
+                    _=stop.changed()=>break,
+                    result=updates.recv()=>result,
+                };
+                match update {
+                    Ok(stage) => {
+                        if send.send(Ok(stage)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        let _ = send
+                            .send(Err(Status::resource_exhausted(
+                                "boot subscriber lagged; reconnect for replay",
+                            )))
+                            .await;
+                        break;
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+        Ok(Response::new(Box::pin(
+            tokio_stream::wrappers::ReceiverStream::new(receive),
+        )))
+    }
     async fn get_ui_prefs(&self, _: Request<UiPrefsRequest>) -> Result<Response<UiPrefs>, Status> {
         Ok(Response::new(UiPrefs {
             theme_light: self.0.theme_light(),

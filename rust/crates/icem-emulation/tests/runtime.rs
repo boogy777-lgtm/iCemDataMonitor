@@ -43,8 +43,12 @@ impl ComEmitter for Com {
 struct Lan {
     name: Option<String>,
     frames: u64,
+    busy: std::sync::atomic::AtomicBool,
 }
 impl LanEmitter for Lan {
+    fn is_sending(&self) -> bool {
+        self.busy.load(std::sync::atomic::Ordering::Acquire)
+    }
     fn open(&mut self, name: &str) -> Result<(), String> {
         self.name = Some(name.into());
         self.frames = 0;
@@ -186,5 +190,30 @@ fn malformed_command_does_not_stop_stream_or_change_settings() -> TestResult {
     }
     e.tick();
     assert_eq!(e.com_emitter().lines_sent(), 1);
+    Ok(())
+}
+
+#[test]
+fn busy_lan_burst_holds_model_clock_and_keeps_com_commands_running() -> TestResult {
+    use std::sync::atomic::Ordering;
+    let mut e = engine()?;
+    command(&mut e, "setport COM12")?;
+    command(&mut e, "setadapter Ethernet")?;
+    command(&mut e, "start com")?;
+    command(&mut e, "start lan")?;
+    e.tick();
+    let frames = e.lan_emitter().frames_sent();
+    assert_eq!(e.lan_elapsed(), 1.);
+    e.lan_emitter().busy.store(true, Ordering::Release);
+    e.tick();
+    e.tick();
+    assert_eq!(e.lan_elapsed(), 1.);
+    assert_eq!(e.lan_emitter().frames_sent(), frames);
+    assert_eq!(e.com_emitter().lines_sent(), 3);
+    command(&mut e, "status")?;
+    e.lan_emitter().busy.store(false, Ordering::Release);
+    e.tick();
+    assert_eq!(e.lan_elapsed(), 2.);
+    assert!(e.lan_emitter().frames_sent() > frames);
     Ok(())
 }

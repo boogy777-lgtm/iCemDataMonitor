@@ -39,10 +39,21 @@ impl ProfileChoice {
         json!({"cmd":"profile","name":self.name,"deviceType":self.device_type})
     }
 }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BootStageRow {
+    pub id: String,
+    pub title: String,
+    pub completed: bool,
+    pub detail: String,
+}
 #[derive(Default)]
 pub struct Model {
     pub page: Page,
     pub dashboard: dashboard::Dashboard,
+    pub boot_stages: std::collections::BTreeMap<u32, BootStageRow>,
+    pub boot_ready: bool,
+    pub boot_error: Option<String>,
+    pub navigation: Option<bool>,
     pub light: bool,
     pub connected: bool,
     pub note: String,
@@ -80,6 +91,57 @@ impl Model {
         text(&self.snapshot[channel][field])
     }
     pub fn apply(&mut self, cmd: &str, response: Result<Value, String>) {
+        if cmd == "navigate" {
+            match response {
+                Ok(value) if value["ok"] == true => {
+                    self.navigation = match value["data"]["pending"].as_i64() {
+                        Some(1) => Some(true),
+                        Some(2) => Some(false),
+                        _ => None,
+                    }
+                }
+                Ok(value) => self.note = format!("Navigation: {}", text(&value["error"])),
+                Err(error) => self.note = format!("Navigation: {error}"),
+            }
+            return;
+        }
+        if cmd == "boot" {
+            let result = response.and_then(|v| {
+                if v["ok"] == true {
+                    Ok(v["data"].clone())
+                } else {
+                    Err(text(&v["error"]))
+                }
+            });
+            match result {
+                Err(error) => self.boot_error = Some(error),
+                Ok(data) => {
+                    for stage in data["stages"].as_array().into_iter().flatten() {
+                        if let Some(ordinal) = stage["ordinal"]
+                            .as_u64()
+                            .and_then(|v| u32::try_from(v).ok())
+                            .filter(|&v| (1..=64).contains(&v))
+                        {
+                            self.boot_stages.insert(
+                                ordinal,
+                                BootStageRow {
+                                    id: text(&stage["id"]),
+                                    title: text(&stage["title"]),
+                                    completed: stage["completed"] == true,
+                                    detail: stage["detail"].as_str().unwrap_or("").into(),
+                                },
+                            );
+                        }
+                    }
+                    self.boot_ready = self
+                        .boot_stages
+                        .values()
+                        .any(|s| s.id == "ready" && s.completed);
+                    self.boot_error = None;
+                }
+            }
+            return;
+        }
         if cmd == "metrics" {
             self.dashboard.apply_metrics(response);
             return;
@@ -91,6 +153,10 @@ impl Model {
         let result = match response {
             Ok(result) => result,
             Err(error) => {
+                if cmd == "status" {
+                    self.boot_stages.clear();
+                    self.boot_ready = false;
+                }
                 self.connected = false;
                 self.note = format!("⚠ {error}");
                 return;

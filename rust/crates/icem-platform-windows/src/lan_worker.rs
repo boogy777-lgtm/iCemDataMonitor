@@ -100,6 +100,9 @@ impl QueuedAceLanEmitter {
     }
 }
 impl LanEmitter for QueuedAceLanEmitter {
+    fn is_sending(&self) -> bool {
+        self.is_busy()
+    }
     fn open(&mut self, adapter: &str) -> Result<(), String> {
         self.adapter = None;
         self.query(|r| Message::Open(adapter.into(), r))??;

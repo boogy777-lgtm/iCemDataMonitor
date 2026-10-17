@@ -44,6 +44,8 @@ pub(crate) struct Store {
 }
 #[derive(Clone)]
 pub struct WebState {
+    pub(crate) boot: crate::BootStages,
+    pub(crate) navigation: crate::navigation::Navigation,
     pub(crate) requests: mpsc::SyncSender<ReadRequest>,
     pub(crate) layer_requests: Option<mpsc::SyncSender<LayerRequest>>,
     pub(crate) store: Arc<Mutex<Store>>,
@@ -63,6 +65,8 @@ impl WebState {
         let (shutdown, _) = tokio::sync::watch::channel(false);
         (
             Self {
+                boot: crate::BootStages::default(),
+                navigation: crate::navigation::Navigation::default(),
                 requests,
                 layer_requests: None,
                 store: Arc::new(Mutex::new(Store {
@@ -81,6 +85,12 @@ impl WebState {
             },
             receiver,
         )
+    }
+    pub fn attach_navigation(&mut self, signals: Arc<dyn crate::navigation::ShellSignals>) {
+        self.navigation = crate::navigation::Navigation::new(signals);
+    }
+    pub fn attach_boot(&mut self, boot: crate::BootStages) {
+        self.boot = boot;
     }
     pub fn enable_layer_control(&mut self) -> mpsc::Receiver<LayerRequest> {
         let (sender, receiver) = mpsc::sync_channel(16);

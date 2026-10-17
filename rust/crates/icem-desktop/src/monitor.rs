@@ -15,10 +15,14 @@ struct Monitor {
     model: Model,
     bridge: Bridge,
     panel: bool,
+    focus: gpui::FocusHandle,
     selection_path: Option<std::path::PathBuf>,
     zoom: f32,
     status_pending: bool,
     prefs_pending: bool,
+    boot_pending: bool,
+    navigation_pending: bool,
+    navigation_needed: bool,
     metrics_page: bool,
 }
 impl Monitor {
@@ -153,7 +157,7 @@ impl Monitor {
         let key_action = action.clone();
         div()
             .id(id)
-            .focusable()
+            .tab_index(0)
             .tab_stop(enabled)
             .px(px(10.))
             .py(px(5.))
@@ -251,6 +255,25 @@ impl Render for Monitor {
             ));
         let mut root = div()
             .size_full()
+            .track_focus(&self.focus)
+            .tab_group()
+            .on_key_down(cx.listener(|v, event: &gpui::KeyDownEvent, window, cx| {
+                if event.keystroke.key == "tab" {
+                    if event.keystroke.modifiers.shift {
+                        window.focus_prev();
+                    } else {
+                        window.focus_next();
+                    }
+                    cx.stop_propagation();
+                } else if event.keystroke.modifiers.control {
+                    match event.keystroke.key.as_str() {
+                        "+" | "=" => v.act(MonitorAction::Zoom(0.1), cx),
+                        "-" => v.act(MonitorAction::Zoom(-0.1), cx),
+                        _ => return,
+                    }
+                    cx.stop_propagation();
+                }
+            }))
             .bg(self.color("MacWindowColor"))
             .text_color(self.color("MacLabelColor"))
             .font_family("Segoe UI")
@@ -317,6 +340,27 @@ impl Render for Monitor {
                             )),
                     ),
             );
+        if !self.model.boot_ready {
+            let mut boot = div()
+                .p(px(12.))
+                .bg(self.color("MacSurface2Color"))
+                .flex()
+                .flex_col()
+                .gap(px(4.))
+                .child("Запуск Host");
+            for stage in self.model.boot_stages.values() {
+                boot = boot.child(format!(
+                    "{} {} {}",
+                    if stage.completed { "☑" } else { "☐" },
+                    stage.title,
+                    stage.detail
+                ));
+            }
+            if let Some(error) = &self.model.boot_error {
+                boot = boot.child(format!("Boot: {error}"));
+            }
+            root = root.child(boot);
+        }
         if !self.panel {
             root = root.child(
                 div()
@@ -392,14 +436,18 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                 ..Default::default()
             },
             move |_, cx| {
-                cx.new(|_| Monitor {
+                cx.new(|cx| Monitor {
                     model,
+                    focus: cx.focus_handle(),
                     bridge,
                     panel: false,
                     selection_path,
                     zoom: 1.,
                     status_pending: false,
                     prefs_pending: false,
+                    boot_pending: false,
+                    navigation_pending: false,
+                    navigation_needed: true,
                     metrics_page: false,
                 })
             },
@@ -411,6 +459,7 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                 return;
             }
         };
+        let _ = handle.update(cx, |v, window, _| window.focus(&v.focus));
         cx.on_window_closed(|cx| cx.quit()).detach();
         cx.activate(true);
         cx.spawn(async move |cx| {
@@ -428,17 +477,40 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                 if handle
                     .update(cx, |v, window, cx| {
                         if show {
+                            v.navigation_needed = true;
                             window.activate_window();
                         }
                         while let Ok(reply) = v.bridge.receiver.try_recv() {
                             match reply.command.as_str() {
-                                "status" => v.status_pending = false,
+                                "status" => {
+                                    v.status_pending = false;
+                                    if reply.result.is_err() {
+                                        v.navigation_needed = true;
+                                    }
+                                }
+                                "navigate" => {
+                                    v.navigation_pending = false;
+                                    v.navigation_needed = reply.result.is_err();
+                                }
                                 "prefs" => v.prefs_pending = false,
+                                "boot" => v.boot_pending = false,
                                 _ => {}
                             }
                             v.model.apply(&reply.command, reply.result);
+                            if let Some(panel) = v.model.navigation.take() {
+                                v.panel = panel;
+                                if panel {
+                                    v.poll_dashboard();
+                                }
+                            }
                         }
                         if Instant::now() >= due {
+                            if v.navigation_needed
+                                && !v.navigation_pending
+                                && v.bridge.send(json!({"cmd":"navigate"})).is_ok()
+                            {
+                                v.navigation_pending = true;
+                            }
                             if !v.status_pending && v.bridge.send(json!({"cmd":"status"})).is_ok() {
                                 v.status_pending = true;
                             }
@@ -451,6 +523,12 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                                 && v.bridge.send(json!({"cmd":"metrics"})).is_ok()
                             {
                                 v.model.dashboard.metrics_pending = true;
+                            }
+                            if !v.model.boot_ready
+                                && !v.boot_pending
+                                && v.bridge.send(json!({"cmd":"boot"})).is_ok()
+                            {
+                                v.boot_pending = true;
                             }
                             if v.panel {
                                 v.poll_dashboard();

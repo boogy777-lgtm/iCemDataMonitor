@@ -18,7 +18,7 @@ pub use pcap::{Adapter, PacketSession, Pcap, adapter_mac, npcap_available};
 pub use serial::{SerialPort, serial_ports};
 
 #[cfg(windows)]
-pub use windows::{OwnedEvent, console_visible, set_console_visible};
+pub use windows::{OwnedEvent, console_visible, event_exists, set_console_visible};
 
 #[cfg(windows)]
 #[allow(unsafe_code)]

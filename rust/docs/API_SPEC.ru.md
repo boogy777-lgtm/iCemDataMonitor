@@ -230,7 +230,7 @@ required keys — явная ошибка; retired keys принимаются, 
 Windows MMF reader и Modbus TCP реализованы в development-инкременте.
 `origin` различает Captured/Retained, не меняя legacy Stale semantics D09.
 HTTP/history и необходимые SPA gRPC-Web методы перенесены: см. WEB_STATUS.ru.md.
-Local gRPC pipe, оставшиеся control RPC и полная Windows/UI-приёмка ещё впереди. Отдельные application services эмулятора не входят
+Local gRPC pipe, boot replay и NavigateUi реализуются E5–E7; остальные control RPC и полная Windows/UI-приёмка ещё впереди. Отдельные application services эмулятора не входят
 в HostCommands; общий runtime не должен знать управление cement DFB.
 
 ## Development DFB trace (E2)

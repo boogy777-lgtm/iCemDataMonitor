@@ -50,6 +50,23 @@ fn grpc_host_toggle_ignores_desired_state_and_stops_listener()
                 Err(e) => return Err(e),
             }
         };
+        let mut boot = client
+            .subscribe_boot_stages(BootStreamRequest {})
+            .await?
+            .into_inner();
+        let mut stages = Vec::new();
+        while stages.len() < 64 {
+            let stage = tokio::time::timeout(Duration::from_secs(3), boot.message())
+                .await??
+                .ok_or("boot ended before READY")?;
+            let ready = stage.id == "ready" && stage.completed;
+            stages.push(stage);
+            if ready {
+                break;
+            }
+        }
+        assert!(stages.iter().any(|s| s.id == "ini" && s.completed));
+        assert!(stages.iter().any(|s| s.id == "ready" && s.completed));
         let status = client.get_status(HostStatusRequest {}).await?.into_inner();
         assert!(status.bus_open);
         assert!(status.layers.ok_or("layers missing")?.modbus_bound);

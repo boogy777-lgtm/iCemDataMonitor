@@ -13,6 +13,10 @@ pub trait ComEmitter: Send {
 }
 
 pub trait LanEmitter: Send {
+    /// Queued adapters retain the legacy _lanSending gate until completion.
+    fn is_sending(&self) -> bool {
+        false
+    }
     fn open(&mut self, adapter: &str) -> Result<(), String>;
     fn close(&mut self);
     fn is_open(&self) -> bool;

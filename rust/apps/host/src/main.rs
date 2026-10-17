@@ -253,7 +253,10 @@ fn refresh(
         is_open: source.is_open(),
     })
 }
-fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
+fn run(
+    mut options: Options,
+    boot: icem_web::BootStages,
+) -> Result<bool, Box<dyn std::error::Error>> {
     #[cfg(windows)]
     let singleton = options
         .rpc_pipe
@@ -282,12 +285,15 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
         "http://127.0.0.1:{}",
         options.web.map_or(8090, |a| a.port())
     );
+    boot.begin("composition", "композиция")?;
     let mut source = source(options.input)?;
     let bank = Arc::new(Mutex::new(
         RegisterBank::new(options.total).map_err(|error| format!("{error:?}"))?,
     ));
     let mut last_error = None;
     let first = refresh(&mut *source, &bank, &mut last_error)?;
+    boot.complete("composition", None)?;
+    boot.begin("layers", "слои")?;
     let mut server = if options.modbus_on {
         Some(ModbusServer::bind(
             options.bind,
@@ -333,8 +339,13 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
         options.theme,
         names,
     );
+    web.attach_boot(boot.clone());
+    #[cfg(windows)]
+    web.attach_navigation(Arc::new(windows::ShellSignals));
     let layer_requests = web.enable_layer_control();
     web.observe(&first);
+    boot.complete("layers", None)?;
+    boot.begin("web", "веб-сервер")?;
     let web_server = options
         .web
         .map(|address| WebServer::bind(address, web.clone()))
@@ -342,6 +353,8 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
     if let Some(server) = &web_server {
         eprintln!("Web http://{}", server.local_addr());
     }
+    boot.complete("web", None)?;
+    boot.begin("ipc", "локальный канал и lifecycle")?;
     #[cfg(windows)]
     let pipe_server = options
         .rpc_pipe
@@ -358,6 +371,9 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
     if options.rpc_pipe.is_some() {
         return Err("local Host gRPC pipe requires Windows".into());
     }
+    boot.complete("ipc", None)?;
+    boot.begin("ready", "готовность")?;
+    boot.complete("ready", Some("READY"))?;
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
     let mut health_due = started;
@@ -466,6 +482,11 @@ fn run(mut options: Options) -> Result<bool, Box<dyn std::error::Error>> {
     Ok(restart)
 }
 fn main() -> ExitCode {
+    let boot = icem_web::BootStages::default();
+    if let Err(error) = boot.begin("ini", "конфигурация") {
+        eprintln!("{error}");
+        return ExitCode::from(1);
+    }
     let options = match options() {
         Ok(options) => options,
         Err(error) => {
@@ -475,7 +496,11 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match run(options) {
+    if let Err(error) = boot.complete("ini", None) {
+        eprintln!("{error}");
+        return ExitCode::from(1);
+    }
+    match run(options, boot) {
         Ok(restart) => {
             if restart {
                 let result = std::env::current_exe().and_then(|exe| {

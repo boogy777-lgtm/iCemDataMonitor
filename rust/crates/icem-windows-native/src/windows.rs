@@ -243,24 +243,35 @@ impl Drop for View {
     }
 }
 
-/// Signal an existing shell-owned event; never create a second owner.
-pub fn signal_existing_event(name: &str) -> Result<bool, NativeError> {
-    use windows_sys::Win32::System::Threading::{EVENT_MODIFY_STATE, OpenEventW, SetEvent};
+/// Open only an existing event. No creation, waiting or ownership transfer.
+fn open_existing_event(name: &str, access: u32) -> Result<Option<OwnedHandle>, NativeError> {
+    use windows_sys::Win32::System::Threading::OpenEventW;
     let name = wide_name(name)?;
-    // SAFETY: NUL-terminated name lives through call; request only signal rights,
-    // inheritance disabled. OpenExisting preserves shell ownership and DACL.
-    let raw = unsafe { OpenEventW(EVENT_MODIFY_STATE, 0, name.as_ptr()) };
+    // SAFETY: NUL-terminated UTF-16 is valid for the call; no inheritance,
+    // requested rights are selected by our two callers; returned handle is RAII.
+    let raw = unsafe { OpenEventW(access, 0, name.as_ptr()) };
     if raw.is_null() {
         let error = NativeError::last("open_event");
         return if error.code == 2 {
-            Ok(false)
+            Ok(None)
         } else {
             Err(error)
         };
     }
-    let handle = OwnedHandle(raw);
-    // SAFETY: successful OpenEventW yielded this live owned event handle;
-    // SetEvent retains no references and handle closes once on function exit.
+    Ok(Some(OwnedHandle(raw)))
+}
+/// Non-consuming presence probe. In particular this must not reset a show event.
+pub fn event_exists(name: &str) -> Result<bool, NativeError> {
+    use windows_sys::Win32::System::Threading::SYNCHRONIZATION_SYNCHRONIZE;
+    Ok(open_existing_event(name, SYNCHRONIZATION_SYNCHRONIZE)?.is_some())
+}
+/// Signal an existing shell-owned event; never create a second owner.
+pub fn signal_existing_event(name: &str) -> Result<bool, NativeError> {
+    use windows_sys::Win32::System::Threading::{EVENT_MODIFY_STATE, SetEvent};
+    let Some(handle) = open_existing_event(name, EVENT_MODIFY_STATE)? else {
+        return Ok(false);
+    };
+    // SAFETY: live event handle granted signal rights; no pointers retained.
     if unsafe { SetEvent(handle.0) } == 0 {
         return Err(NativeError::last("signal_event"));
     }

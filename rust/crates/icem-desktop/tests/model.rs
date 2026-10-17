@@ -104,3 +104,43 @@ fn profile_choices_keep_device_identity_and_variable_clicks_keep_signal_identity
     assert!(model.edit_command(true, Some("14")).is_err());
     Ok(())
 }
+#[test]
+fn boot_is_ordered_ready_is_authoritative_and_disconnect_starts_new_replay() {
+    let mut m = Model::default();
+    m.apply(
+        "boot",
+        Ok(json!({"ok":true,"data":{"stages":[
+        {"ordinal":2,"id":"ready","title":"готовность","completed":false},
+        {"ordinal":1,"id":"ini","title":"конфигурация","completed":true}]}})),
+    );
+    assert!(!m.boot_ready);
+    assert_eq!(
+        m.boot_stages.keys().copied().collect::<Vec<_>>(),
+        vec![1, 2]
+    );
+    m.apply("boot",Ok(json!({"ok":true,"data":{"stages":[{"ordinal":2,"id":"ready","title":"готовность","completed":true}]}})));
+    assert!(m.boot_ready);
+    assert_eq!(m.boot_stages.len(), 2);
+    m.apply("boot", Err("stream ended".into()));
+    assert!(m.boot_error.is_some());
+    m.apply("status", Err("disconnected".into()));
+    assert!(!m.boot_ready);
+    assert!(m.boot_stages.is_empty());
+}
+#[test]
+fn navigation_uses_contract_sections_without_changing_connection_truth() {
+    let mut m = Model {
+        connected: true,
+        ..Default::default()
+    };
+    for (section, panel) in [(1, Some(true)), (2, Some(false)), (0, None)] {
+        m.apply(
+            "navigate",
+            Ok(json!({"ok":true,"data":{"pending":section}})),
+        );
+        assert_eq!(m.navigation, panel);
+    }
+    m.apply("navigate", Err("unavailable".into()));
+    assert!(m.connected);
+    assert!(m.note.contains("unavailable"));
+}

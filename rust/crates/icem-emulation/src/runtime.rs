@@ -206,23 +206,25 @@ impl<C: ComEmitter, L: LanEmitter> Engine<C, L> {
             if !self.was_lan_active {
                 self.lan_elapsed = 0.0;
             }
-            if self.lan_emulating
-                && let Some(network) = &mut self.lan.network
-            {
-                network.execute(&mut Context::new(
-                    self.lan_elapsed,
-                    1.0,
-                    self.lan_elapsed as i64,
-                    7,
-                ));
+            if !self.lan_emitter.is_sending() {
+                if self.lan_emulating
+                    && let Some(network) = &mut self.lan.network
+                {
+                    network.execute(&mut Context::new(
+                        self.lan_elapsed,
+                        1.0,
+                        self.lan_elapsed as i64,
+                        7,
+                    ));
+                }
+                let vectors = self
+                    .lan
+                    .superframe(self.settings.lan_equipment, self.lan_elapsed);
+                let _ = self
+                    .lan_emitter
+                    .send_superframe(&vectors, self.settings.lan_equipment);
+                self.lan_elapsed += 1.0;
             }
-            let vectors = self
-                .lan
-                .superframe(self.settings.lan_equipment, self.lan_elapsed);
-            let _ = self
-                .lan_emitter
-                .send_superframe(&vectors, self.settings.lan_equipment);
-            self.lan_elapsed += 1.0;
         }
         self.was_lan_active = lan_active;
     }

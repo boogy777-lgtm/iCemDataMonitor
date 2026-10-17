@@ -36,3 +36,8 @@ scroll/zoom и explicit errors. D24 wiring переведён на bounded inter
 94 Linux tests и Windows GNU Clippy; MSVC runtime/hardware остаются отдельной приёмкой.
 Single canonical original protobuf устраняет duplicate guard без изменения C# test/protocol.
 Открытый Host/UI/installer scope — в DESKTOP_STATUS.ru.md; старые «следующие этапы» выше исторические.
+
+E7: real Host boot recorder/replay/live, native startup progress, pending navigation/query
+и existing-event adapter. LAN busy-clock regression и явная Tab-навигация. Локально 104 tests.
+Причины CI failures и границы ui_alive probe зафиксированы ADR 0006; основной Host scope
+sniffer/Web+OPC/production CLI/ensure и Windows/hardware/installer acceptance остаются открыты.
