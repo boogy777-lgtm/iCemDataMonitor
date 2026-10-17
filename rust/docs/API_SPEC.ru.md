@@ -85,7 +85,7 @@ Byte framing, fragmented TCP и malformed data имеют bounded implementation
 
 ## 3. gRPC и gRPC-Web
 
-Канон: `contracts/proto/telemetry.proto` — точная копия исходника.
+Канон: `../iCemDataMonitor.Contracts/Protos/telemetry.proto` — единственный исходник схемы для .NET и Rust; байты проверяются по pinned source manifest.
 Package `icemdatamonitor.v1`, service `TelemetryService`.
 Local transport: `\\.\pipe\iCemDataMonitor.Host`, HTTP/2 gRPC.
 TCP web port default 8090; gRPC-Web поддерживается на том же порту при web_on=1.
@@ -230,7 +230,7 @@ required keys — явная ошибка; retired keys принимаются, 
 Windows MMF reader и Modbus TCP реализованы в development-инкременте.
 `origin` различает Captured/Retained, не меняя legacy Stale semantics D09.
 HTTP/history и необходимые SPA gRPC-Web методы перенесены: см. WEB_STATUS.ru.md.
-Local gRPC pipe, оставшиеся control RPC и полная Windows/UI-приёмка ещё впереди. Отдельные application services эмулятора не входят
+Local gRPC pipe, boot replay и NavigateUi реализуются E5–E7; остальные control RPC и полная Windows/UI-приёмка ещё впереди. Отдельные application services эмулятора не входят
 в HostCommands; общий runtime не должен знать управление cement DFB.
 
 ## Development DFB trace (E2)

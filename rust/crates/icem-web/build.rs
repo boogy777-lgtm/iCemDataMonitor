@@ -3,16 +3,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut prost = tonic_prost_build::Config::new();
     prost.protoc_executable(protoc_bin_vendored::protoc_bin_path()?);
     tonic_prost_build::configure()
-        .build_client(false)
+        .build_client(true)
         .generate_default_stubs(true)
         .compile_with_config(
             prost,
-            &["../../contracts/proto/telemetry.proto"],
+            &["../../../iCemDataMonitor.Contracts/Protos/telemetry.proto"],
             &[
-                "../../contracts/proto",
+                "../../../iCemDataMonitor.Contracts/Protos",
                 &protoc_bin_vendored::include_path()?.to_string_lossy(),
             ],
         )?;
-    println!("cargo:rerun-if-changed=../../contracts/proto/telemetry.proto");
+    println!("cargo:rerun-if-changed=../../../iCemDataMonitor.Contracts/Protos/telemetry.proto");
     Ok(())
 }

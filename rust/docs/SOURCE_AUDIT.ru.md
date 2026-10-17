@@ -81,3 +81,33 @@ D22 (E3 input compatibility limits): Rust LAN DTO loader возвращает Er
 и могут удержать частично загруженные записи. Rust принимает UTF-8/BOM и ASCII case
 lookup, полные File.ReadAllText encoding/OrdinalIgnoreCase semantics не перенесены.
 Valid pinned ASCII catalogs проверяются отдельно; loader error parity не объявлен PASS.
+
+D23 — E4 pipe вводит явные caps (32 sessions, request 64 KiB, response 8 MiB)
+и запрещает remote clients. Это resource/security delta относительно baseline,
+не полная error/ACL parity. См. EMULATOR_E4.ru.md.
+
+D24 — E4 Engine::tick вызывает LAN send_superframe синхронно под engine gate;
+исходный EmuEngineHost.Tick отправляет подготовленные vectors через Task.Run.
+Bytes/pacing adapter проверяются отдельно, command latency/timing parity открыта.
+
+D25 — .NET CI run 39029173037: D2GuardTests.ExactlyOne_ProtoFile_InSolution
+сканирует весь repository и считает frozen Rust proto вторым contract source.
+Rust-копия существует уже в main E3. Также зафиксирован MetricsSamplerTests
+DropOldest failure в неизменённом C# тесте; причинность/flakiness не установлены.
+Оба out-of-scope findings описаны в EMULATOR_E4.ru.md, исходники не менялись.
+
+E6: D24 software cause устранена QueuedAceLanEmitter; аппаратный timing gate остаётся открыт.
+D26 — explicit resource delta: один pending LAN superframe, busy вместо backlog, максимум
+4096 vectors (по 124 bytes payload). See ADR 0005.
+D25: на head d4830a2 Rust CI success; legacy run 39040898192 упал на duplicate proto
+и ControlPipeServerTests.Dispose_DrainsInFlightReply_QuitAckReachesClient (empty ACK).
+MetricsSampler в этом run не падал. E6 использует единственный original proto непосредственно,
+не меняя .NET sources/guard. Происхождение legacy pipe failure не установлено.
+
+E7 / 6cbbd74 CI: canonical proto guard PASS, legacy Host 220/220 и emulator 101/101 PASS.
+Legacy ModbusContractTests.TickLoop_OpenFail_RecordsError_LoopSurvives_AndRecovers FAIL
+(run 39045925516), C# не менялся; причинность не установлена. Rust Linux/full browser PASS;
+MSVC process tests PASS, full Windows run 39045925359 FAIL на windows_pipe rebind code 5.
+E7 явно освобождает client runtime и повторяет lifetime/rebind cycle 4 раза; ACL не ослаблены.
+D27 — boot live resource bound 128 updates с явным lag RPC error. ADR 0006 фиксирует
+read-only event-presence probe ui_alive вместо acquisition чужого singleton mutex.

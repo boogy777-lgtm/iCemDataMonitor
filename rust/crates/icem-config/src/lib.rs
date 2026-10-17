@@ -8,3 +8,6 @@ pub const SOURCE_INI_SCHEMA: &str = include_str!("../../../../specs/dotnet-serve
 
 mod ini;
 pub use ini::{ConfigError, IniOptions};
+
+pub mod emulator;
+pub use emulator::{EmuSettings, LoadSettings, SettingsError, SettingsPaths};

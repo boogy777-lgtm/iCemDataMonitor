@@ -14,11 +14,12 @@ Workspace в папке `rust/` существующего приватного 
 [Границы M2-инкремента](docs/M2_STATUS.ru.md). Добавлен web backend:
 сохранённая SPA (две логические правки D16/D17), REST/history, gRPC-Web status/registers/metrics/theme.
 [Запуск и ограничения](docs/WEB_STATUS.ru.md). Порядок: web → emulator → tray.
-Desktop UI — GPUI с сохранением существующих custom controls. Начат emulator:
+Desktop UI — нативный GPUI без WebView с сохранением существующих custom controls. Начат emulator:
 [генератор FLECS, единицы и ACE codec](docs/EMULATOR_STATUS.ru.md);
 [полная фиксированная DFB-фабрика и dev trace](docs/EMULATOR_E2.ru.md);
 [LAN payload/freeze/overrides/units и ACE dev trace](docs/EMULATOR_E3.ru.md).
-GPUI UI, hardware emitters и tray ещё не реализованы.
+[Headless engine, control pipe и COM/Npcap adapters (E4)](docs/EMULATOR_E4.ru.md)
+подключены в рабочей ветке. Добавлены [GPUI renderer, tray и local Host gRPC (E5)](docs/DESKTOP_STATUS.ru.md). [Нативная панель и LAN worker (E6)](docs/adr/0005-native-dashboard-lan-worker.ru.md). Полные UI/Host gates и аппаратная приёмка остаются открыты.
 
 ## Документы
 
@@ -31,22 +32,22 @@ GPUI UI, hardware emitters и tray ещё не реализованы.
 - [Rust 1.99 и применённые идиомы](docs/RUST_IDIOMS.ru.md)
 - [Статус проверки этого этапа](docs/VALIDATION.ru.md)
 - [OpenAPI 3.1 для действующего REST](contracts/http/openapi.json)
-- [Оригинальный Protobuf без изменений](contracts/proto/telemetry.proto)
+- [Оригинальный Protobuf без изменений](../iCemDataMonitor.Contracts/Protos/telemetry.proto)
 
 ## Структура
 
 | Путь | Назначение |
 |---|---|
 | `../` | Исходный .NET-проект и AddIn, сохранённые в корне репозитория |
-| `apps/host/` | Будущий Rust host + CLI + собственный трей |
+| `apps/host/` | Будущий Rust host + CLI + GPUI Tray |
 | `apps/shell/` | Будущая оболочка монитора, клиент host |
-| `apps/emulator/` | Рабочий dev preview; production engine/UI/CLI/tray ещё переносятся |
+| `apps/emulator/` | Dev previews и headless engine/pipe/CLI; production UI/tray ещё переносятся |
 | `crates/icem-bus/` | Побайтовый контракт шины и владеющий данными снимок |
 | `crates/icem-core/` | Общие прикладные команды и порты чтения снимков |
-| `crates/icem-config/` | Строгий read-once INI parser; XML запланирован |
+| `crates/icem-config/` | Строгий read-once INI parser и emulator XML |
 | `crates/icem-protocols/` | Чистые codecs Modbus / ACE / FLECS |
 | `crates/icem-emulation/` | Движок DFB, генерация, ручные значения, единицы |
-| `crates/icem-platform-windows/` | Реализованный MMF reader; events/трей/COM/Npcap запланированы |
+| `crates/icem-platform-windows/` | MMF reader, COM/Npcap emitter adapters; полный lifecycle/трей впереди |
 | `crates/icem-windows-native/` | Минимальная Win32 FFI-граница, отдельное исключение ADR 0001 |
 | `crates/icem-transport/` | gRPC / gRPC-Web / REST, клиенты; контракт отдельно от I/O |
 | `web/dashboard/`, `assets/` | Побайтовая копия действующей SPA и иконок |

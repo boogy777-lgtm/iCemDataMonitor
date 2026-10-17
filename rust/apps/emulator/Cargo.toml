@@ -16,6 +16,8 @@ path = "src/main.rs"
 icem-protocols = { path = "../../crates/icem-protocols" }
 icem-emulation = { path = "../../crates/icem-emulation" }
 icem-platform-windows = { path = "../../crates/icem-platform-windows" }
+icem-config = { path = "../../crates/icem-config" }
+icem-transport = { path = "../../crates/icem-transport" }
 
 serde_json = "1"
 
@@ -26,3 +28,10 @@ path = "src/dfb.rs"
 [[bin]]
 name = "icem-lan-dev"
 path = "src/lan.rs"
+
+[[bin]]
+name = "icem-emulator-engine-dev"
+path = "src/engine.rs"
+
+[target.'cfg(windows)'.dependencies]
+icem-desktop = { path = "../../crates/icem-desktop" }

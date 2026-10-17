@@ -21,3 +21,10 @@ icem-config = { path = "../../crates/icem-config" }
 icem-core = { path = "../../crates/icem-core" }
 
 icem-web = { path = "../../crates/icem-web" }
+
+[target.'cfg(windows)'.dependencies]
+icem-windows-native = { path = "../../crates/icem-windows-native" }
+icem-desktop = { path = "../../crates/icem-desktop" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "time"] }

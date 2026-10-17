@@ -7,3 +7,6 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+roxmltree = { version = "=0.21.1", default-features = false, features = ["std"] }

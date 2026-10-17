@@ -79,3 +79,10 @@ D17: inline GetUiPrefs принимал только ASCII trailer с colon+spac
 
 Проверенный code commit: db968757fe86f43951c4a8bd1536775e990b6565, Actions 38941562186
 success (Windows/Linux + Chrome). Подробности и ограничения — VALIDATION.ru.md.
+
+## E5: актуализация Host integration
+
+Local named-pipe gRPC, generated client, SetConsoleVisible/SetAutostart с actual probes
+и Modbus SetLayer owner toggle добавлены. Web/OPC/sniffer toggles, boot replay и
+NavigateUi пока UNIMPLEMENTED. GPUI monitor/trays: [текущий статус](DESKTOP_STATUS.ru.md).
+Предыдущие ограничения этого документа относятся к web-increment checkpoint.

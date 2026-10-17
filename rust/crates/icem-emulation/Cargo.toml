@@ -9,5 +9,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+icem-config = { path = "../icem-config" }
 icem-protocols = { path = "../icem-protocols" }
 serde_json = "1"

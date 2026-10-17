@@ -16,7 +16,8 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    # Cold MSVC check + build of the locked GPUI/WRY graph exceeded 15m.
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: rust
@@ -31,6 +32,16 @@ jobs:
           rustc --version --verbose
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Windows emulator integration before desktop build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Test the native runtime boundary before the much larger desktop graph.
+          # Cargo downloads only this locked package closure on the cold runner.
+          cargo test --locked -p icem-emulator-app -p icem-transport -p icem-platform-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clippy --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Fetch locked Rust dependencies
         shell: pwsh

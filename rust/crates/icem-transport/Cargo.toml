@@ -11,3 +11,5 @@ workspace = true
 [dependencies]
 icem-core = { path = "../icem-core" }
 icem-protocols = { path = "../icem-protocols" }
+icem-emulation = { path = "../icem-emulation" }
+tokio = { version = "1", features = ["rt", "net", "sync", "time", "macros", "io-util"] }

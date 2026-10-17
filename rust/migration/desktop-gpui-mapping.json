@@ -1,0 +1,1590 @@
+{
+  "backend": "Native GPUI 0.2.2 / GPUI Tray 0.1.4",
+  "visual_parity": "NOT_PROVEN",
+  "controls": [
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 0,
+      "name": "RootGrid",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 1,
+      "name": "AppTitleBar",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 2,
+      "name": "TitleBarIcon",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "pending",
+      "acceptance": "NOT_RUN",
+      "note": "Original standalone control/behavior not yet reproduced."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 3,
+      "name": "ThemeSwitch",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 4,
+      "name": "Nav",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 5,
+      "name": "StatusPage",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 6,
+      "name": "ConnBannerBackground",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 7,
+      "name": "ConnBannerText",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 8,
+      "name": "LaunchHostButton",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "pending",
+      "acceptance": "NOT_RUN",
+      "note": "Original standalone control/behavior not yet reproduced."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 9,
+      "name": "RestartHostButton",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "pending",
+      "acceptance": "NOT_RUN",
+      "note": "Original standalone control/behavior not yet reproduced."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 10,
+      "name": "BusFact",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 11,
+      "name": "ComFact",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 12,
+      "name": "LanFact",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 13,
+      "name": "RawFact",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 14,
+      "name": "ModbusSwitch",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 15,
+      "name": "ModbusText",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 16,
+      "name": "SnifferSwitch",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 17,
+      "name": "SnifferText",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 18,
+      "name": "OpcText",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 19,
+      "name": "ConsoleSwitch",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 20,
+      "name": "AutostartSwitch",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "pending",
+      "acceptance": "NOT_RUN",
+      "note": "Original standalone control/behavior not yet reproduced."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 21,
+      "name": "StatusLine",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 22,
+      "name": "WebPage",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Native GPUI dashboard replaces the legacy WebView slot: register tables/history plot/metrics. No browser. Visual/state acceptance NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 23,
+      "name": "PanelWebView",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Native GPUI dashboard replaces the legacy WebView slot: register tables/history plot/metrics. No browser. Visual/state acceptance NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "index": 24,
+      "name": "WebPageMessage",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Native GPUI dashboard replaces the legacy WebView slot: register tables/history plot/metrics. No browser. Visual/state acceptance NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml",
+      "index": 0,
+      "name": "StagesHost",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Native monitor startup panel consumes real Host boot replay/live (E7). Separate legacy splash geometry/visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml",
+      "index": 1,
+      "name": "FooterLine",
+      "implementation": "crates/icem-desktop/src/monitor.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Native monitor startup panel consumes real Host boot replay/live (E7). Separate legacy splash geometry/visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 0,
+      "name": "EmuLamp",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 1,
+      "name": "EmuStatusText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 2,
+      "name": "EmuUptime",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 3,
+      "name": "EmuPid",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 4,
+      "name": "LanHeaderStatus",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 5,
+      "name": "EmuContent",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 6,
+      "name": "EmuTabsTrack",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 7,
+      "name": "EmuTabs",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 8,
+      "name": "CommandNoteText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 9,
+      "name": "ComPanel",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 10,
+      "name": "ComStreamSwitch",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 11,
+      "name": "ComStreamText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 12,
+      "name": "ComEmulateSwitch",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 13,
+      "name": "ComDetailText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 14,
+      "name": "ComPortCombo",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 15,
+      "name": "RefreshPortsButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 16,
+      "name": "ProfileCombo",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Shared picker + identity-preserving action; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 17,
+      "name": "RefreshVarsButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 18,
+      "name": "VarsNote",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 19,
+      "name": "ComVarsList",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 20,
+      "name": "ComVarCombo",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Shared picker + identity-preserving action; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 21,
+      "name": "ComValueBox",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 22,
+      "name": "ComSetButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 23,
+      "name": "ComClearButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 24,
+      "name": "LanPanel",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 25,
+      "name": "LanStreamSwitch",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 26,
+      "name": "LanStreamText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 27,
+      "name": "LanEmulateSwitch",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 28,
+      "name": "LanDetailText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 29,
+      "name": "LanAdapterCombo",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 30,
+      "name": "RefreshAdaptersButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 31,
+      "name": "LanAdapterHintText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 32,
+      "name": "EquipmentBox",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 33,
+      "name": "ApplyEquipmentButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 34,
+      "name": "FirmwareSwitch",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 35,
+      "name": "LanVarsList",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 36,
+      "name": "LanVarCombo",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Shared picker + identity-preserving action; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 37,
+      "name": "LanValueBox",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 38,
+      "name": "LanSetButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 39,
+      "name": "LanClearButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 40,
+      "name": "UnitsPanel",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 41,
+      "name": "UnitsPresetText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 42,
+      "name": "PresetCombo",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 43,
+      "name": "UnitsOverridesText",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Visual/state/keyboard acceptance pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 44,
+      "name": "UnitGroupCombo",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 45,
+      "name": "UnitValueBox",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 46,
+      "name": "UnitApplyButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "index": 47,
+      "name": "UnitClearButton",
+      "implementation": "crates/icem-desktop/src/windows.rs",
+      "status": "implemented",
+      "acceptance": "NOT_RUN",
+      "note": "Command/render binding exists; visual acceptance remains NOT RUN."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 0,
+      "name": "RootBorder",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 1,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 2,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 3,
+      "name": "PointerOver",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 4,
+      "name": "Pressed",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 5,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 6,
+      "name": "Content",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 7,
+      "name": "RootBorder",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 8,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 9,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 10,
+      "name": "PointerOver",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 11,
+      "name": "Pressed",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 12,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 13,
+      "name": "Content",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 14,
+      "name": "LayoutRoot",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 15,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 16,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 17,
+      "name": "PointerOver",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 18,
+      "name": "Pressed",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 19,
+      "name": "Selected",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 20,
+      "name": "PointerOverSelected",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 21,
+      "name": "PressedSelected",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 22,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 23,
+      "name": "CheckGlyph",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 24,
+      "name": "Content",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 25,
+      "name": "Root",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 26,
+      "name": "CombinedStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 27,
+      "name": "UnselectedNormal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 28,
+      "name": "UnselectedPointerOver",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 29,
+      "name": "UnselectedPressed",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 30,
+      "name": "SelectedNormal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 31,
+      "name": "SelectedPointerOver",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 32,
+      "name": "SelectedPressed",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 33,
+      "name": "DisabledStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 34,
+      "name": "Enabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 35,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 36,
+      "name": "Content",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 37,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 38,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 39,
+      "name": "PointerOver",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 40,
+      "name": "Pressed",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 41,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 42,
+      "name": "ToggleStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 43,
+      "name": "Off",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 44,
+      "name": "On",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 45,
+      "name": "ContentStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 46,
+      "name": "OffContent",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 47,
+      "name": "OnContent",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 48,
+      "name": "Root",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 49,
+      "name": "SwitchAreaGrid",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 50,
+      "name": "OffContentPresenter",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 51,
+      "name": "OnContentPresenter",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 52,
+      "name": "OuterBorder",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 53,
+      "name": "SwitchKnobBounds",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 54,
+      "name": "SwitchKnob",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 55,
+      "name": "KnobTranslateTransform",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 56,
+      "name": "SwitchThumb",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 57,
+      "name": "Root",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 58,
+      "name": "Root",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 59,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 60,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 61,
+      "name": "ThumbVisual",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 62,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 63,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 64,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 65,
+      "name": "ThumbVisual",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 66,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 67,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 68,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 69,
+      "name": "CommonStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 70,
+      "name": "Normal",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 71,
+      "name": "Disabled",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 72,
+      "name": "ScrollingIndicatorStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 73,
+      "name": "TouchIndicator",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 74,
+      "name": "MouseIndicator",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 75,
+      "name": "NoIndicator",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 76,
+      "name": "ConsciousStates",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 77,
+      "name": "Collapsed",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 78,
+      "name": "Expanded",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 79,
+      "name": "ExpandedWithoutAnimation",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 80,
+      "name": "CollapsedWithoutAnimation",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 81,
+      "name": "HorizontalRoot",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 82,
+      "name": "HorizontalTrackRect",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 83,
+      "name": "HorizontalSmallDecrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 84,
+      "name": "HorizontalLargeDecrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 85,
+      "name": "HorizontalThumb",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 86,
+      "name": "HorizontalThumbTransform",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 87,
+      "name": "HorizontalLargeIncrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 88,
+      "name": "HorizontalSmallIncrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 89,
+      "name": "HorizontalPanningRoot",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 90,
+      "name": "HorizontalPanningThumb",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 91,
+      "name": "VerticalRoot",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 92,
+      "name": "VerticalTrackRect",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 93,
+      "name": "VerticalSmallDecrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 94,
+      "name": "VerticalLargeDecrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 95,
+      "name": "VerticalThumb",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 96,
+      "name": "VerticalThumbTransform",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 97,
+      "name": "VerticalLargeIncrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 98,
+      "name": "VerticalSmallIncrease",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 99,
+      "name": "VerticalPanningRoot",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    },
+    {
+      "source": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "index": 100,
+      "name": "VerticalPanningThumb",
+      "implementation": "crates/icem-desktop/src/theme.rs",
+      "status": "partial",
+      "acceptance": "NOT_RUN",
+      "note": "Palette carried over; template part/state equivalence pending."
+    }
+  ]
+}

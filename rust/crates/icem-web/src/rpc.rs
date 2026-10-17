@@ -61,9 +61,47 @@ impl TelemetryService for Rpc {
                 ..LayerState::default()
             }),
             updated_at_utc: Some(timestamp(h.at)),
-            console_visible: false,
-            autostart_enabled: false,
+            console_visible: console_visible(),
+            autostart_enabled: autostart_enabled()?,
         }))
+    }
+    async fn set_layer(
+        &self,
+        request: Request<LayerControlRequest>,
+    ) -> Result<Response<LayerState>, Status> {
+        use icem_core::LayerKind;
+        let layer = match request.into_inner().layer {
+            1 => LayerKind::Modbus,
+            2 => LayerKind::Web,
+            3 => LayerKind::LanSniffer,
+            4 => LayerKind::OpcDa,
+            _ => return Err(Status::invalid_argument("unknown layer")),
+        };
+        if layer != LayerKind::Modbus {
+            return Err(Status::unimplemented(
+                "this layer's Host integration is pending",
+            ));
+        }
+        // Legacy v1 toggles; desired_state is intentionally ignored, and no retry occurs.
+        let queue = self
+            .0
+            .layer_requests
+            .as_ref()
+            .ok_or_else(|| Status::unimplemented("Host layer owner is not attached"))?;
+        let (response, wait) = tokio::sync::oneshot::channel();
+        queue
+            .try_send(crate::LayerRequest { layer, response })
+            .map_err(|_| Status::resource_exhausted("Host layer queue is full or stopped"))?;
+        tokio::time::timeout(Duration::from_secs(5), wait)
+            .await
+            .map_err(|_| Status::deadline_exceeded("Host layer owner timeout"))?
+            .map_err(|_| Status::unavailable("Host layer owner stopped"))?
+            .map_err(Status::internal)?;
+        let status = self
+            .get_status(Request::new(HostStatusRequest {}))
+            .await?
+            .into_inner();
+        Ok(Response::new(status.layers.unwrap_or_default()))
     }
     async fn get_registers(
         &self,
@@ -157,6 +195,70 @@ impl TelemetryService for Rpc {
             WatchStream::new(receive).filter_map(|item| item),
         )))
     }
+    async fn navigate_ui(
+        &self,
+        request: Request<NavigateUiRequest>,
+    ) -> Result<Response<NavigateUiResponse>, Status> {
+        let section = UiSection::try_from(request.into_inner().section)
+            .map_err(|_| Status::invalid_argument("unknown UI section"))?;
+        Ok(Response::new(
+            self.0
+                .navigation
+                .navigate(section)
+                .map_err(Status::internal)?,
+        ))
+    }
+    async fn subscribe_boot_stages(
+        &self,
+        _: Request<BootStreamRequest>,
+    ) -> Result<
+        Response<Pin<Box<dyn Stream<Item = Result<BootStage, Status>> + Send + 'static>>>,
+        Status,
+    > {
+        let permit = self
+            .0
+            .streams
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| Status::resource_exhausted("stream limit reached"))?;
+        let (snapshot, mut updates) = self.0.boot.subscribe().map_err(Status::internal)?;
+        let mut stop = self.0.shutdown.subscribe();
+        let (send, receive) = tokio::sync::mpsc::channel(128);
+        tokio::spawn(async move {
+            let _permit = permit;
+            for stage in snapshot {
+                if send.send(Ok(stage)).await.is_err() {
+                    return;
+                }
+            }
+            loop {
+                let update = tokio::select! {
+                    _=send.closed()=>break,
+                    _=stop.changed()=>break,
+                    result=updates.recv()=>result,
+                };
+                match update {
+                    Ok(stage) => {
+                        if send.send(Ok(stage)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        let _ = send
+                            .send(Err(Status::resource_exhausted(
+                                "boot subscriber lagged; reconnect for replay",
+                            )))
+                            .await;
+                        break;
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+        Ok(Response::new(Box::pin(
+            tokio_stream::wrappers::ReceiverStream::new(receive),
+        )))
+    }
     async fn get_ui_prefs(&self, _: Request<UiPrefsRequest>) -> Result<Response<UiPrefs>, Status> {
         Ok(Response::new(UiPrefs {
             theme_light: self.0.theme_light(),
@@ -171,7 +273,39 @@ impl TelemetryService for Rpc {
             theme_light: self.0.theme_light(),
         }))
     }
-    // Lifecycle/console/autostart/layer control and boot replay are separate
+    async fn set_console_visible(
+        &self,
+        request: Request<SetConsoleVisibleRequest>,
+    ) -> Result<Response<HostStatus>, Status> {
+        #[cfg(windows)]
+        icem_platform_windows::set_console_visible(request.into_inner().visible)
+            .map_err(|e| Status::internal(e.to_string()))?;
+        #[cfg(not(windows))]
+        {
+            let _ = request;
+            return Err(Status::unimplemented("console visibility requires Windows"));
+        }
+        #[cfg(windows)]
+        self.get_status(Request::new(HostStatusRequest {})).await
+    }
+    async fn set_autostart(
+        &self,
+        request: Request<SetAutostartRequest>,
+    ) -> Result<Response<HostStatus>, Status> {
+        #[cfg(windows)]
+        icem_platform_windows::host_autostart()
+            .map_err(|e| Status::internal(e.to_string()))?
+            .set_enabled(request.into_inner().enabled)
+            .map_err(|e| Status::internal(e.to_string()))?;
+        #[cfg(not(windows))]
+        {
+            let _ = request;
+            return Err(Status::unimplemented("autostart requires Windows"));
+        }
+        #[cfg(windows)]
+        self.get_status(Request::new(HostStatusRequest {})).await
+    }
+    // Lifecycle/autostart/layer control and boot replay are separate
     // migration stages. Generated default stubs return UNIMPLEMENTED, never fake success.
 }
 pub(crate) fn values(
@@ -208,4 +342,29 @@ pub(crate) fn values(
         });
     }
     result
+}
+
+fn console_visible() -> bool {
+    #[cfg(windows)]
+    {
+        icem_platform_windows::console_visible()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+fn autostart_enabled() -> Result<bool, Status> {
+    #[cfg(windows)]
+    {
+        icem_platform_windows::host_autostart()
+            .map_err(|e| Status::internal(e.to_string()))?
+            .is_enabled()
+            .map_err(|e| Status::internal(e.to_string()))
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(false)
+    }
 }
