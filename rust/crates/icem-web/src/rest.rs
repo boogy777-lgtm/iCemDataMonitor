@@ -18,7 +18,7 @@ pub fn router(state: WebState) -> Router {
         .route("/api/status/summary", get(summary))
         .route("/api/regs", get(registers))
         .route("/api/regs/history", get(history));
-    let routes = if state.layers().is_ok_and(|x| x.web) {
+    let routes = if state.web_enabled {
         routes.route_service(
             "/icemdatamonitor.v1.TelemetryService/{method}",
             tonic_web::GrpcWebLayer::new().layer(crate::rpc::service(state.clone())),
@@ -175,7 +175,7 @@ fn scalar_label(reg: usize, value: u16) -> Option<&'static str> {
     }
 }
 async fn history(State(state): State<WebState>, RawQuery(raw): RawQuery) -> Response {
-    if !state.layers().is_ok_and(|x| x.web) {
+    if !state.web_enabled {
         return error(
             StatusCode::SERVICE_UNAVAILABLE,
             "history disabled (web layer is off)",
@@ -233,7 +233,7 @@ async fn assets(State(state): State<WebState>, uri: Uri, method: axum::http::Met
     if method != axum::http::Method::GET && method != axum::http::Method::HEAD {
         return StatusCode::NOT_FOUND.into_response();
     }
-    if !state.layers().is_ok_and(|x| x.web) {
+    if !state.web_enabled {
         return StatusCode::NOT_FOUND.into_response();
     }
     let path = uri.path();

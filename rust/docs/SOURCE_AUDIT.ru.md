@@ -131,3 +131,5 @@ Scaffold вызывает его перед полным guard. Rust CI тепе
 `docs/Wireshark/iCemCrio.pcapng.bin` размером 1,415,304 bytes: локальный baseline
 проверяет 512/513 и RequireComplete ожидаемо отклоняет неполную копию. Файл не
 подменяется; полный 513/513 gate выполняется на checkout Windows/Linux CI.
+
+D28 / E8: чтение LayerRuntimeController.Toggle(OpcDa) показывает внешний no-op, а не persist-only toggle. Уточнены API_SPEC и P16; Rust owner возвращает неизменённое OPC state без запуска server и записи INI. Web plan отделён от startup-effective routes/history; SetLayer desired_state по-прежнему игнорируется. Ошибки операций отражаются в LayerState.last_error, как legacy, вместо прежнего Rust INTERNAL. Полный sniffer и Modbus rollback/busy fault matrix остаются открытыми.

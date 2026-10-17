@@ -25,3 +25,49 @@ Web — deferred plan, Modbus — runtime, OPC — external no-op; sniffer по�
 Inv: один сериализованный owner, bounded queue/5s RPC, desired_state не setter;
 startup-effective SPA/history не меняются deferred toggle; process/HTTP/RPC tests.
 N+1: следующий layer реализует arm owner; core и независимый emulator не изменяются.
+
+## Реализация инкремента
+
+`apps/host/src/layers.rs` использует существующую bounded очередь (16 запросов,
+RPC wait 5 s): Modbus bind/stop, Web session-plan toggle, OPC external no-op.
+Никаких автоматических повторов `SetLayer` нет. Одинаковые desired_state при Web
+и Modbus переключают дважды. Sniffer по-прежнему UNIMPLEMENTED и недоступен в UI.
+
+`WebState.web_enabled` — неизменяемый снимок startup web_on. Router, SPA, history
+и sampler используют его; `HostLayers.web` сообщает session plan, как legacy
+TelemetryServiceImpl.BuildLayerState. Это различие сохраняется и для заново
+построенного router, и для уже работающего TCP listener. Только новый Host с
+заново прочитанным config применяет сохранённый план.
+
+Web/Modbus сохраняют текущий общий план в active config, только если SetAsDefault=1;
+остальные INI поля сохраняются. Session-only Web toggle не переписывает файл.
+OPC не меняет состояния и не выполняет persistence, даже после ошибки другого слоя.
+Предыдущая документация «Web/OPC persist-only» была неточной относительно OPC.
+
+Ошибки bind/stop/persistence передаются через LayerState.last_error, как в legacy
+controller; transport/queue/deadline errors остаются RPC errors. Ошибка сохранения
+оставляет session plan и last-saved IniOptions раздельными, следующий успешный toggle
+сохраняет совокупный план. Это также исправляет прежний Rust ответ INTERNAL вместо
+legacy LayerState на ошибку операции. При bind failure состояние отражает отсутствие
+socket owner. Не введены retry/rollback мутаций. Полная эквивалентность rollback/busy
+при отказе Modbus stop остаётся открытой; software stop не имитируется как аппаратный.
+
+Проверки: owner unit tests с настоящими TCP listeners и INI файлами (save on/off,
+ошибка записи в directory, recovery, aggregate persistence, занятый port), HTTP/RPC
+контракт при противоположных effective/plan flags; Windows process gRPC test расширен
+двойным Web toggle, OPC no-op и отказом sniffer. Полный результат относится только
+к соответствующему commit/run в PR; visual/hardware/MSI gates не закрываются.
+
+## Локальная проверка E8
+
+Rust `1.99.1 (58cf8f9c3 2026-10-13)`, Edition 2024/resolver 3, cargo fetch --locked.
+Verify-Scaffold (без RequireCompleteBaseline только из-за недоступного через connector
+original PCAP) прошёл: fmt/check/build/test/Clippy -D warnings; 108 Rust tests, 25 guard
+cases, mapping 176/176. Baseline локально 512/513 с явным warning; full 513/513 проверяет
+неизменённый RequireCompleteBaseline на реальном GitHub checkout. Отсутствующий файл
+не добавлен/не удалён/не подменён. Cargo.lock и legacy sources этого инкремента не менялись.
+
+Первый коммит PR `aad778412e5c7ac34a34d9651192ff7ea8c11c10`: Linux CI run 39064480150
+выполнил полный guard 513/513, Scaffold и Chrome/theme contracts успешно. Это доказательство
+baseline-исправления, не подмена проверки последующего Host-кода. Результат Windows и
+последующего exact-head CI фиксируется в PR после завершения jobs.

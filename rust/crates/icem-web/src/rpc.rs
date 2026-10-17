@@ -58,6 +58,7 @@ impl TelemetryService for Rpc {
                 web: layers.web,
                 opc_da: layers.opc_da,
                 set_as_default: layers.set_as_default,
+                last_error: layers.last_error,
                 ..LayerState::default()
             }),
             updated_at_utc: Some(timestamp(h.at)),
@@ -77,7 +78,7 @@ impl TelemetryService for Rpc {
             4 => LayerKind::OpcDa,
             _ => return Err(Status::invalid_argument("unknown layer")),
         };
-        if layer != LayerKind::Modbus {
+        if layer == LayerKind::LanSniffer {
             return Err(Status::unimplemented(
                 "this layer's Host integration is pending",
             ));
@@ -305,8 +306,7 @@ impl TelemetryService for Rpc {
         #[cfg(windows)]
         self.get_status(Request::new(HostStatusRequest {})).await
     }
-    // Lifecycle/autostart/layer control and boot replay are separate
-    // migration stages. Generated default stubs return UNIMPLEMENTED, never fake success.
+    // Sniffer capture ownership remains a separate migration step.
 }
 pub(crate) fn values(
     snapshot: &Snapshot,

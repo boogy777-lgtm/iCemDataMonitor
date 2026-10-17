@@ -88,3 +88,5 @@ Legacy maintenance после pinned baseline учитывается отдел�
 [migration/legacy-divergences.json](migration/legacy-divergences.json). Исходный
 source-manifest не обновляется при принятых исправлениях legacy. Guard и его 25
 регрессионных сценариев входят в Scaffold; CI запускается и для legacy-only изменений.
+
+[Host E8](docs/HOST_E8.ru.md): точный план пробелов, Web persist-only owner integration, OPC external no-op и отделение startup-effective web от session plan. Полная production/Windows приёмка остаётся открытой.

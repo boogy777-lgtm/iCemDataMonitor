@@ -84,6 +84,41 @@ fn grpc_host_toggle_ignores_desired_state_and_stops_listener()
                 expected
             );
         }
+        // Identical desired_state is ignored for Web too. OPC DA is a successful
+        // external no-op in the baseline; it must not gain an actuator/toggle.
+        for expected in [false, true] {
+            let layers = client
+                .set_layer(LayerControlRequest {
+                    layer: 2,
+                    desired_state: false,
+                })
+                .await?
+                .into_inner();
+            assert_eq!(layers.web, expected);
+            assert!(layers.modbus_bound);
+            assert!(layers.last_error.is_empty());
+            let opc = client
+                .set_layer(LayerControlRequest {
+                    layer: 4,
+                    desired_state: true,
+                })
+                .await?
+                .into_inner();
+            assert!(!opc.opc_da);
+            assert_eq!(opc.web, expected);
+        }
+        assert_eq!(
+            client
+                .set_layer(LayerControlRequest {
+                    layer: 3,
+                    desired_state: true
+                })
+                .await
+                .err()
+                .ok_or("sniffer unexpectedly implemented")?
+                .code() as i32,
+            12
+        );
         Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     })?;
     assert!(icem_windows_native::signal_existing_event(

@@ -13,6 +13,7 @@ use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+mod layers;
 #[cfg(windows)]
 mod windows;
 
@@ -335,6 +336,7 @@ fn run(
             web: options.web_on,
             opc_da: options.opc_da,
             set_as_default: options.set_as_default,
+            ..HostLayers::default()
         },
         options.theme,
         names,
@@ -408,29 +410,15 @@ fn run(
             if request.response.is_closed() {
                 continue;
             }
-            let result = (|| -> Result<(), Box<dyn std::error::Error>> {
-                if request.layer != icem_core::LayerKind::Modbus {
-                    return Err("layer not implemented".into());
-                }
-                if let Some(listener) = server.take() {
-                    listener.stop()?;
-                } else {
-                    server = Some(ModbusServer::bind(
-                        options.bind,
-                        Arc::clone(&bank),
-                        ServerOptions::default(),
-                    )?);
-                }
-                web.set_modbus_bound(server.is_some())?;
-                if let Some((path, settings)) = &mut options.station
-                    && settings.ui_set_as_default == 1
-                {
-                    settings.modbus_on = i32::from(server.is_some());
-                    std::fs::write(path, settings.render())?;
-                }
-                Ok(())
-            })()
-            .map_err(|e| e.to_string());
+            let result = layers::toggle(
+                request.layer,
+                &mut server,
+                options.bind,
+                &bank,
+                &web,
+                &mut options.station,
+            )
+            .map_err(str::to_owned);
             let _ = request.response.send(result);
         }
         let now = Instant::now();

@@ -23,9 +23,11 @@ pub struct ReadRequest {
 pub struct HostLayers {
     pub modbus_bound: bool,
     pub modbus_port: u16,
+    /// Session plan for the next Host start, not the current HTTP listener.
     pub web: bool,
     pub opc_da: bool,
     pub set_as_default: bool,
+    pub last_error: String,
 }
 #[derive(Default)]
 pub(crate) struct Health {
@@ -44,6 +46,8 @@ pub(crate) struct Store {
 }
 #[derive(Clone)]
 pub struct WebState {
+    /// Read-once startup capability. Deferred Web toggles cannot change routes/history.
+    pub(crate) web_enabled: bool,
     pub(crate) boot: crate::BootStages,
     pub(crate) navigation: crate::navigation::Navigation,
     pub(crate) requests: mpsc::SyncSender<ReadRequest>,
@@ -65,6 +69,7 @@ impl WebState {
         let (shutdown, _) = tokio::sync::watch::channel(false);
         (
             Self {
+                web_enabled: layers.web,
                 boot: crate::BootStages::default(),
                 navigation: crate::navigation::Navigation::default(),
                 requests,
@@ -106,7 +111,6 @@ impl WebState {
     }
     /// One immediate, then 1 Hz sample. Freshness follows legacy Stale, including D09.
     pub fn probe(&self, reply: &BusReply, at: i64) -> Result<(), &'static str> {
-        let layers = self.layers()?;
         let mut store = self.store.lock().map_err(|_| "web store poisoned")?;
         let health = &mut store.health;
         health.bus_open = reply.is_open;
@@ -137,7 +141,7 @@ impl WebState {
             };
             health.baseline = Some(header[3]);
             health.header = header;
-            if layers.web {
+            if self.web_enabled {
                 for addr in (4..600).step_by(2) {
                     let value = if addr == 4 {
                         snapshot.unix_seconds().map(|x| x as f32)
@@ -164,11 +168,24 @@ impl WebState {
             .modbus_bound = bound;
         Ok(())
     }
-    pub(crate) fn layers(&self) -> Result<HostLayers, &'static str> {
+    /// Owned projection for the serialized Host owner and RPC/REST adapters.
+    pub fn layers(&self) -> Result<HostLayers, &'static str> {
         self.pub_layers
             .lock()
             .map(|x| x.clone())
             .map_err(|_| "layer lock poisoned")
+    }
+    pub fn toggle_web_plan(&self) -> Result<(), &'static str> {
+        let mut layers = self.pub_layers.lock().map_err(|_| "layer lock poisoned")?;
+        layers.web = !layers.web;
+        Ok(())
+    }
+    pub fn set_layer_error(&self, error: Option<String>) -> Result<(), &'static str> {
+        self.pub_layers
+            .lock()
+            .map_err(|_| "layer lock poisoned")?
+            .last_error = error.unwrap_or_default();
+        Ok(())
     }
     pub(crate) async fn read(&self) -> Result<BusReply, tonic::Status> {
         let (response, wait) = oneshot::channel();
