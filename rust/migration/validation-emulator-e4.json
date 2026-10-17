@@ -26,7 +26,18 @@
     "github_actions": {
       "first_rust_run": 39029173040,
       "second_rust_run": 39029472175,
-      "latest_status": "PENDING Windows execution; update after final head CI"
+      "latest_status": "PENDING Windows execution; update after final head CI",
+      "first_windows_result": "Timed out at 15m after successful full check/build and starting tests; not suite PASS"
+    },
+    "dotnet_ci": {
+      "run": 39029173037,
+      "build": "PASS",
+      "tests": "FAIL",
+      "failures": [
+        "D2GuardTests.ExactlyOne_ProtoFile_InSolution: frozen Rust proto is counted by repository scanner",
+        "MetricsSamplerTests.DropOldest_SlowConsumerLosesSamples_BacklogNeverAccumulates: no matching element"
+      ],
+      "original_sources_modified": false
     }
   },
   "proofs": [

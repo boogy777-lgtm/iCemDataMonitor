@@ -89,3 +89,9 @@ D23 — E4 pipe вводит явные caps (32 sessions, request 64 KiB, respo
 D24 — E4 Engine::tick вызывает LAN send_superframe синхронно под engine gate;
 исходный EmuEngineHost.Tick отправляет подготовленные vectors через Task.Run.
 Bytes/pacing adapter проверяются отдельно, command latency/timing parity открыта.
+
+D25 — .NET CI run 39029173037: D2GuardTests.ExactlyOne_ProtoFile_InSolution
+сканирует весь repository и считает frozen Rust proto вторым contract source.
+Rust-копия существует уже в main E3. Также зафиксирован MetricsSamplerTests
+DropOldest failure в неизменённом C# тесте; причинность/flakiness не установлены.
+Оба out-of-scope findings описаны в EMULATOR_E4.ru.md, исходники не менялись.

@@ -105,3 +105,30 @@ save → quit ACK → graceful exit → successor singleton/pipe acquisition →
 D23: line/session/response caps и remote-client rejection — явные resource/security
 ограничения Rust IPC, которые baseline не задаёт такими же числами. Valid local
 commands сохраняются; malformed/oversized и remote behavior не объявлены parity.
+
+## CI: первый полный Windows прогон
+
+Run 39029173040: baseline, Windows check и build прошли; холодная GPUI/WRY
+компиляция израсходовала почти весь прежний бюджет. Job отменён по 15m timeout
+после старта C# differential tests. Это не PASS всего Windows suite. Лимит job
+увеличен до 35m; реальные emulator/transport/platform tests и Clippy выполняются
+отдельным ранним шагом до тяжёлой desktop-сборки, затем полный suite сохраняется.
+
+Class: Windows native integration CI в `.github/workflows/rust-migration.yml`;
+browser checks вне класса. Inv: pipe/process tests не ждут GPUI build, полный
+workspace gate остаётся; результаты независимых steps видны в Actions. N+1:
+новые tests в тех же package targets обнаруживает Cargo; перечень команд не дублируется.
+
+Сопутствующий .NET CI (run 39029173037, job 117385997452) собрал solution, но упал:
+
+- `D2GuardTests.ExactlyOne_ProtoFile_InSolution`, line 52: scanner нашёл исходный
+  proto и существующую `rust/contracts/proto/telemetry.proto`. Rust-копия есть
+  уже в main E3; исходный guard не учитывает параллельную миграцию.
+- `MetricsSamplerTests.DropOldest_SlowConsumerLosesSamples_BacklogNeverAccumulates`,
+  line 157: `Sequence contains no matching element`. Тест/production C# не менялись;
+  причина этого failure в рамках E4 не установлена, flaky-статус не утверждается.
+
+Эти результаты не скрываются, original .NET/tests не правятся и отключение guard
+не предлагается как средство получить green. См. PR/Actions для актуального статуса.
+GPUI graph также сообщает future-incompatibility warning proc-macro-error2 2.0.1;
+upstream dependency review остаётся отдельным пунктом, warning не подавляется.
