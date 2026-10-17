@@ -16,7 +16,8 @@ public sealed class InMemorySerialPort : ISerialPort
     private readonly MemoryStream _readStream;
     private readonly MemoryStream _writeStream;
     private readonly string _portName;
-    private bool _isOpen;
+    private volatile bool _isOpen;
+    private readonly object _gate = new();
     private readonly Func<int>? _readTimeoutSim; // throw UnauthorizedAccessException after N reads
 
     public InMemorySerialPort(string name, byte[]? initialData = null, Func<int>? readTimeoutSim = null)
@@ -36,15 +37,19 @@ public sealed class InMemorySerialPort : ISerialPort
     public bool IsOpen => _isOpen;
 
     /// <summary>All bytes written to this port (assert output).</summary>
-    public byte[] WrittenData => _writeStream.ToArray();
+    public byte[] WrittenData { get { lock (_gate) return _writeStream.ToArray(); } }
 
     /// <summary>Feed additional bytes into the read stream.</summary>
     public void FeedReadData(byte[] data)
     {
-        long pos = _readStream.Position;
-        _readStream.Position = _readStream.Length;
-        _readStream.Write(data, 0, data.Length);
-        _readStream.Position = pos;
+        lock (_gate)
+        {
+            long pos = _readStream.Position;
+            _readStream.Position = _readStream.Length;
+            _readStream.Write(data, 0, data.Length);
+            _readStream.Position = pos;
+            Monitor.PulseAll(_gate);
+        }
     }
 
     public void FeedReadLine(string line)
@@ -60,35 +65,53 @@ public sealed class InMemorySerialPort : ISerialPort
             if (remaining <= 0)
                 throw new UnauthorizedAccessException("Port busy (simulated)");
         }
-        _isOpen = true;
+        lock (_gate) _isOpen = true;
     }
 
     public void Close()
     {
-        _isOpen = false;
+        lock (_gate)
+        {
+            _isOpen = false;
+            Monitor.PulseAll(_gate);
+        }
     }
 
     public int Read(byte[] buffer, int offset, int count)
     {
-        if (!_isOpen)
-            throw new InvalidOperationException("Port not open");
-        return _readStream.Read(buffer, offset, count);
+        lock (_gate)
+        {
+            // Model a bounded serial read timeout instead of spinning on an
+            // empty MemoryStream and starving the runner's thread pool.
+            if (_isOpen && _readStream.Position == _readStream.Length)
+                Monitor.Wait(_gate, 20);
+            if (!_isOpen)
+                throw new InvalidOperationException("Port not open");
+            return _readStream.Read(buffer, offset, count);
+        }
     }
 
     public void Write(byte[] buffer, int offset, int count)
     {
-        if (!_isOpen)
-            throw new InvalidOperationException("Port not open");
-        _writeStream.Write(buffer, offset, count);
+        lock (_gate)
+        {
+            if (!_isOpen)
+                throw new InvalidOperationException("Port not open");
+            _writeStream.Write(buffer, offset, count);
+        }
     }
 
     public void Flush() { }
 
     public void Dispose()
     {
-        _isOpen = false;
-        _readStream.Dispose();
-        _writeStream.Dispose();
+        lock (_gate)
+        {
+            _isOpen = false;
+            Monitor.PulseAll(_gate);
+            _readStream.Dispose();
+            _writeStream.Dispose();
+        }
     }
 }
 
@@ -180,42 +203,53 @@ public class SerialTeeServiceTests
         var physicalPort = new InMemorySerialPort("COM2");
         var virtualPort = new InMemorySerialPort("COM1");
 
-        var service = new SerialTeeService(
+        using var service = new SerialTeeService(
             Options.Create(options),
             configStore,
             logger,
             _ => physicalPort,
             _ => virtualPort);
 
-        var parsedLines = new List<IReadOnlyDictionary<string, double>>();
-        service.LineParsed += (ts, dict) => parsedLines.Add(dict);
+        var parsed = new TaskCompletionSource<IReadOnlyDictionary<string, double>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        int parsedCount = 0;
+        service.LineParsed += (ts, dict) =>
+        {
+            Interlocked.Increment(ref parsedCount);
+            parsed.TrySetResult(dict);
+        };
 
         // Start the service
-        var cts = new CancellationTokenSource();
-        var runTask = Task.Run(() => service.StartAsync(cts.Token), CancellationToken.None);
+        using var cts = new CancellationTokenSource();
+        await service.StartAsync(cts.Token);
+        try
+        {
+            await WaitUntilAsync(() => service.GetStatus().State == "RUNNING");
 
-        // Wait for ports to open
-        await Task.Delay(300);
+            Assert.Equal("RUNNING", ComTeeStatusExtensionsState(service));
 
-        Assert.Equal("RUNNING", ComTeeStatusExtensionsState(service));
+            // Feed a known CSV line
+            string csvLine = BuildDeterministicCsvLine(34, 1.01);
+            physicalPort.FeedReadLine(csvLine);
 
-        // Feed a known CSV line
-        string csvLine = BuildDeterministicCsvLine(34, 1.01);
-        physicalPort.FeedReadLine(csvLine);
+            await parsed.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-        // Give time for processing
-        await Task.Delay(500);
+            // Stop
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
 
-        // Stop
-        cts.Cancel();
-        await Task.WhenAny(runTask, Task.Delay(3000));
+            // Assert: virtual port received the bytes
+            var forwarded = Encoding.ASCII.GetString(virtualPort.WrittenData);
+            Assert.Contains(csvLine, forwarded);
 
-        // Assert: virtual port received the bytes
-        var forwarded = Encoding.ASCII.GetString(virtualPort.WrittenData);
-        Assert.Contains(csvLine, forwarded);
-
-        // Assert: line was parsed and event fired
-        Assert.Single(parsedLines);
+            // Assert: line was parsed and event fired
+            Assert.Equal(1, parsedCount);
+        }
+        finally
+        {
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
     }
 
     [Fact]
@@ -228,30 +262,37 @@ public class SerialTeeServiceTests
         var physicalPort = new InMemorySerialPort("COM2");
         var virtualPort = new InMemorySerialPort("COM1");
 
-        var service = new SerialTeeService(
+        using var service = new SerialTeeService(
             Options.Create(options),
             configStore,
             logger,
             _ => physicalPort,
             _ => virtualPort);
 
-        var cts = new CancellationTokenSource();
-        var runTask = Task.Run(() => service.StartAsync(cts.Token), CancellationToken.None);
+        using var cts = new CancellationTokenSource();
+        await service.StartAsync(cts.Token);
+        try
+        {
+            await WaitUntilAsync(() => service.GetStatus().State == "RUNNING");
 
-        await Task.Delay(300);
+            // Simulate iCem sending a command back through COM1
+            string command = "*IDN?\r\n";
+            virtualPort.FeedReadData(Encoding.ASCII.GetBytes(command));
 
-        // Simulate iCem sending a command back through COM1
-        string command = "*IDN?\r\n";
-        virtualPort.FeedReadData(Encoding.ASCII.GetBytes(command));
+            await WaitUntilAsync(() => physicalPort.WrittenData.Length == Encoding.ASCII.GetByteCount(command));
 
-        await Task.Delay(500);
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
 
-        cts.Cancel();
-        await Task.WhenAny(runTask, Task.Delay(3000));
-
-        // Assert: command bytes were forwarded to physical port
-        var phyWritten = Encoding.ASCII.GetString(physicalPort.WrittenData);
-        Assert.Contains("*IDN?", phyWritten);
+            // Assert: command bytes were forwarded to physical port
+            var phyWritten = Encoding.ASCII.GetString(physicalPort.WrittenData);
+            Assert.Equal(command, phyWritten);
+        }
+        finally
+        {
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
     }
 
     // ── Fault injection: PORT_BUSY ──
@@ -274,39 +315,38 @@ public class SerialTeeServiceTests
 
         var virtualPort = new InMemorySerialPort("COM1");
 
-        var service = new SerialTeeService(
+        using var service = new SerialTeeService(
             Options.Create(options),
             configStore,
             logger,
             CreatePhysical,
             _ => virtualPort);
 
-        var cts = new CancellationTokenSource();
-        var runTask = Task.Run(() => service.StartAsync(cts.Token), CancellationToken.None);
-
-        // Wait for the first attempt to surface PORT_BUSY — POLL instead of a
-        // fixed sleep (CaptureToFile lesson: fixed sleeps flake under the
-        // parallel load of the full-suite run).
-        var portBusyDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        var sawPortBusy = false;
-        var reportedState = string.Empty;
-        while (DateTime.UtcNow < portBusyDeadline && !sawPortBusy)
+        using var cts = new CancellationTokenSource();
+        await service.StartAsync(cts.Token);
+        try
         {
-            var sample = service.GetStatus();
-            sawPortBusy = sample.PhysicalPortBusy;
-            reportedState = sample.State;
-            await Task.Delay(50);
+            await WaitUntilAsync(() =>
+            {
+                var status = service.GetStatus();
+                return status.PhysicalPortBusy && status.State == "PORT_BUSY";
+            });
+            var status = service.GetStatus();
+            Assert.True(status.PhysicalPortBusy);
+            Assert.Equal("PORT_BUSY", status.State);
+
+            // The retry is after 5s — we can't wait that long.
+            // Instead, verify the state machine behavior and cancel.
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.True(openAttempts >= 1, "Should have attempted to open port");
         }
-
-        Assert.True(sawPortBusy, "Should be PORT_BUSY after UnauthorizedAccessException");
-        Assert.Equal("PORT_BUSY", reportedState);
-
-        // The retry is after 5s — we can't wait that long.
-        // Instead, verify the state machine behavior and cancel.
-        cts.Cancel();
-        await Task.WhenAny(runTask, Task.Delay(2000));
-
-        Assert.True(openAttempts >= 1, "Should have attempted to open port");
+        finally
+        {
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
     }
 
     [Fact]
@@ -316,24 +356,31 @@ public class SerialTeeServiceTests
         var configStore = new MockConfigStore(BuildFlecs34Variables());
         var logger = NullLogger<SerialTeeService>.Instance;
 
-        var service = new SerialTeeService(
+        using var service = new SerialTeeService(
             Options.Create(options),
             configStore,
             logger,
             _ => throw new UnauthorizedAccessException("Port occupied"),
             _ => new InMemorySerialPort("COM1"));
 
-        var cts = new CancellationTokenSource();
-        var runTask = Task.Run(() => service.StartAsync(cts.Token), CancellationToken.None);
+        using var cts = new CancellationTokenSource();
+        await service.StartAsync(cts.Token);
+        try
+        {
+            await WaitUntilAsync(() => service.GetStatus().State == "PORT_BUSY");
 
-        await Task.Delay(300);
+            var status = service.GetStatus();
+            Assert.True(status.PhysicalPortBusy);
+            Assert.Equal("PORT_BUSY", status.State);
 
-        var status = service.GetStatus();
-        Assert.True(status.PhysicalPortBusy);
-        Assert.Equal("PORT_BUSY", status.State);
-
-        cts.Cancel();
-        await Task.WhenAny(runTask, Task.Delay(2000));
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
     }
 
     // ── Status DTO compatibility ──
@@ -345,7 +392,7 @@ public class SerialTeeServiceTests
         var configStore = new MockConfigStore(BuildFlecs34Variables());
         var logger = NullLogger<SerialTeeService>.Instance;
 
-        var service = new SerialTeeService(
+        using var service = new SerialTeeService(
             Options.Create(options),
             configStore,
             logger);
@@ -392,24 +439,73 @@ public class SerialTeeServiceTests
             return new InMemorySerialPort(name);
         }
 
-        var service = new SerialTeeService(
+        using var service = new SerialTeeService(
             Options.Create(options),
             configStore,
             logger,
             _ => new InMemorySerialPort("COM2"),
             CreateVirtual);
 
-        var cts = new CancellationTokenSource();
-        var runTask = Task.Run(() => service.StartAsync(cts.Token), CancellationToken.None);
+        using var cts = new CancellationTokenSource();
+        await service.StartAsync(cts.Token);
+        try
+        {
+            await WaitUntilAsync(() => service.GetStatus().State == "PAIR_MISSING");
 
-        await Task.Delay(500);
+            var status = service.GetStatus();
+            Assert.False(status.Com0comPairOk);
+            Assert.Equal("PAIR_MISSING", status.State);
 
-        var status = service.GetStatus();
-        Assert.False(status.Com0comPairOk);
-        Assert.Equal("PAIR_MISSING", status.State);
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            cts.Cancel();
+            await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
+    }
 
-        cts.Cancel();
-        await Task.WhenAny(runTask, Task.Delay(2000));
+    [Fact]
+    public async Task InMemoryPort_ConcurrentFeedAndRead_PreservesEveryByte()
+    {
+        using var port = new InMemorySerialPort("fake");
+        port.Open();
+        byte[] expected = Enumerable.Range(0, 32_768).Select(i => (byte)(i % 251)).ToArray();
+        var actual = new byte[expected.Length];
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        var reader = Task.Run(() =>
+        {
+            int offset = 0;
+            while (offset < actual.Length)
+            {
+                deadline.Token.ThrowIfCancellationRequested();
+                offset += port.Read(actual, offset, Math.Min(31, actual.Length - offset));
+            }
+        });
+        try
+        {
+            for (int offset = 0; offset < expected.Length; offset += 32)
+            {
+                port.FeedReadData(expected.AsSpan(offset, Math.Min(32, expected.Length - offset)).ToArray());
+                await Task.Yield();
+            }
+            await reader.WaitAsync(deadline.Token);
+            Assert.Equal(expected, actual);
+        }
+        finally
+        {
+            deadline.Cancel();
+            await reader.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        while (!condition())
+            await Task.Delay(20, deadline.Token);
     }
 
     // ── Helpers ──

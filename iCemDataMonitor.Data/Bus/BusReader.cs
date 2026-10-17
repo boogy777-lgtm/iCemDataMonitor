@@ -25,9 +25,12 @@ public readonly record struct BusZoneInfo(ZoneKind Kind, long LastWriteTicks, bo
     public const long MaxZoneAgeMs = 5_000;
 
     /// <summary>Age of the zone's last write in ms (staleness metric; clamped at 0).</summary>
-    public long AgeMs()
+    public long AgeMs() => AgeMs(DateTime.UtcNow);
+
+    /// <summary>Age at an explicit UTC instant; shares the production age calculation.</summary>
+    public long AgeMs(DateTime utcNow)
     {
-        long age = (DateTime.UtcNow.Ticks - LastWriteTicks) / TimeSpan.TicksPerMillisecond;
+        long age = (utcNow.Ticks - LastWriteTicks) / TimeSpan.TicksPerMillisecond;
         return age >= 0 ? age : 0;
     }
 
@@ -41,7 +44,10 @@ public readonly record struct BusZoneInfo(ZoneKind Kind, long LastWriteTicks, bo
     /// a dead writer can never freeze a «live» verdict. The raw writer claim
     /// stays available as <see cref="Active"/> (diagnostic surface).
     /// </summary>
-    public bool IsActive => Active && AgeMs() < MaxZoneAgeMs;
+    public bool IsActive => IsActiveAt(DateTime.UtcNow);
+
+    /// <summary>Age-gated verdict at the same instant used to report the age.</summary>
+    public bool IsActiveAt(DateTime utcNow) => Active && AgeMs(utcNow) < MaxZoneAgeMs;
 }
 
 /// <summary>
@@ -589,3 +595,4 @@ public sealed class BusReader : IDisposable
         mutex?.Dispose();
     }
 }
+
