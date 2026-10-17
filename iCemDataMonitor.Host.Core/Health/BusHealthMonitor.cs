@@ -66,16 +66,24 @@ public sealed class BusHealthMonitor : BackgroundService
     private readonly BusReader _reader;
     private readonly StationHealthState _state;
     private readonly ILogger<BusHealthMonitor> _logger;
+    private readonly TimeProvider _timeProvider;
 
     private short _lastHeartbeat;
     private bool _haveBaseline;
     private int _stagnantSamples;
 
     public BusHealthMonitor(BusReader reader, StationHealthState state, ILogger<BusHealthMonitor> logger)
+        : this(reader, state, logger, TimeProvider.System)
+    {
+    }
+
+    internal BusHealthMonitor(BusReader reader, StationHealthState state, ILogger<BusHealthMonitor> logger,
+        TimeProvider timeProvider)
     {
         _reader = reader;
         _state = state;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -114,7 +122,7 @@ public sealed class BusHealthMonitor : BackgroundService
     internal void Probe()
     {
         var snap = _reader.Snapshot();
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         if (snap is null)
         {
@@ -144,9 +152,9 @@ public sealed class BusHealthMonitor : BackgroundService
             _state.Update(last with
             {
                 BusOpen = _reader.IsOpen,
-                Com = ToZoneHealth(snap.ComMain),
-                Lan = ToZoneHealth(snap.Lan),
-                Raw = ToZoneHealth(snap.RawReserve),
+                Com = ToZoneHealth(snap.ComMain, now),
+                Lan = ToZoneHealth(snap.Lan, now),
+                Raw = ToZoneHealth(snap.RawReserve, now),
                 UpdatedAtUtc = now,
             });
             return;
@@ -177,13 +185,13 @@ public sealed class BusHealthMonitor : BackgroundService
             Heartbeat: snap.Heartbeat,
             ComPort: snap.ComPort, // v4: renamed ActiveComPort → ComPort (reg 0 unchanged)
             CaseLanState: snap.CaseLanState, // FIX 2026-08-28: header reg 2 (tap-exposed LAN/cRIO state) — was snap.LanStatus (reg 8 = com_stream float-pair low word, garbage)
-            Com: ToZoneHealth(snap.ComMain),
-            Lan: ToZoneHealth(snap.Lan),
-            Raw: ToZoneHealth(snap.RawReserve),
+            Com: ToZoneHealth(snap.ComMain, now),
+            Lan: ToZoneHealth(snap.Lan, now),
+            Raw: ToZoneHealth(snap.RawReserve, now),
             UpdatedAtUtc: now));
     }
 
-    private static ZoneHealth ToZoneHealth(BusZoneInfo zone)
+    private static ZoneHealth ToZoneHealth(BusZoneInfo zone, DateTime now)
     {
         // W10.1: the zone's activeFlag is the writer's OWN claim (it can stay 1
         // forever after a writer death). The REAL liveness = UTC-tick age — the
@@ -192,6 +200,7 @@ public sealed class BusHealthMonitor : BackgroundService
         // THE law lives on BusZoneInfo.IsActive (ONE predicate + ONE constant
         // for every surface — health, REST mirrors, truth-table rows) and is
         // recomputable from stale snapshots (stale-decay law, Probe doc).
-        return new ZoneHealth(zone.IsActive, zone.AgeMs());
+        return new ZoneHealth(zone.IsActiveAt(now), zone.AgeMs(now));
     }
 }
+

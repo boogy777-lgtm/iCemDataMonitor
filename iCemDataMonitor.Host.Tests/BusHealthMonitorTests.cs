@@ -39,6 +39,7 @@ public sealed class BusHealthMonitorTests : IDisposable
     private readonly string _mutexName;
     private readonly string _mmfPath;
     private readonly BusReader _reader;
+    private readonly ProbeClock _clock = new();
     private readonly MemoryMappedFile _section;
 
     public BusHealthMonitorTests()
@@ -119,28 +120,54 @@ public sealed class BusHealthMonitorTests : IDisposable
     }
 
     private BusHealthMonitor BuildMonitor(StationHealthState state) =>
-        new(_reader, state, NullLogger<BusHealthMonitor>.Instance);
+        new(_reader, state, NullLogger<BusHealthMonitor>.Instance, _clock);
 
-    /// <summary>Holds the session-local bus mutex for `holdMs` from a DEDICATED
-    /// thread (mutex ownership is per-thread ⇒ the Probe thread is guaranteed
-    /// not to be the owner ⇒ Snapshot degrades to last-good + Stale=true).
-    /// The holder body is FULLY SYNCHRONOUS: ReleaseMutex must run on the
-    /// acquiring thread — an await across the hold would resume on another
-    /// pool thread and throw off thread-affinity.</summary>
-    private static async Task HoldBusMutexAsync(string mutexName, int holdMs, Func<Task> during)
+    private sealed class ProbeClock : TimeProvider
     {
-        using var gate = new ManualResetEventSlim(false);
-        var holder = Task.Run(() =>
+        public DateTimeOffset Now { get; private set; } =
+            new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        public override DateTimeOffset GetUtcNow() => Now;
+        public void Advance(TimeSpan elapsed) => Now += elapsed;
+    }
+
+    /// <summary>Keep ownership on one dedicated thread until the entire
+    /// assertion body finishes, including exception paths. A timer must never
+    /// release the mutex underneath a delayed probe.</summary>
+    private static async Task HoldBusMutexAsync(string mutexName, Func<Task> during)
+    {
+        using var release = new ManualResetEventSlim(false);
+        var acquired = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holder = Task.Factory.StartNew(() =>
         {
-            using var m = new Mutex(false, mutexName);
-            m.WaitOne();
-            gate.Set();
-            Thread.Sleep(holdMs);
-            m.ReleaseMutex(); // required: Dispose without Release orphans ownership
-        });
-        gate.Wait(); // holder owns the mutex — the probe path is now stale
-        try { await during(); }
-        finally { await holder.WaitAsync(TimeSpan.FromSeconds(10)); }
+            try
+            {
+                using var mutex = new Mutex(false, mutexName);
+                mutex.WaitOne();
+                try
+                {
+                    acquired.SetResult();
+                    release.Wait();
+                }
+                finally { mutex.ReleaseMutex(); }
+            }
+            catch (Exception ex)
+            {
+                acquired.TrySetException(ex);
+                throw;
+            }
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+        try
+        {
+            await acquired.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await during();
+        }
+        finally
+        {
+            release.Set();
+            await holder;
+        }
     }
 
     // ═══ FIX 1: case_lan_state = header reg 2 — the reg-8 float pair ═══
@@ -170,11 +197,8 @@ public sealed class BusHealthMonitorTests : IDisposable
     [Fact]
     public async Task StaleProbe_ZoneAgeCrosses5s_VerdictDecaysToInactive()
     {
-        // Producer wrote the LAN zone 4.0 s ago, flag frozen at 1, then died.
-        // (4.0 s: fresh probes must land within ~1 s of seeding — 1 s margin;
-        // the 2.5 s hold then pushes the stale probes past the 5 s gate with
-        // ~1.6 s of margin for scheduler stalls.)
-        WriteZoneHeader(ZoneKind.Lan, DateTime.UtcNow.AddMilliseconds(-4_000).Ticks, active: true, count: 7);
+        // Virtual UTC fixes the age independently of runner scheduling.
+        WriteZoneHeader(ZoneKind.Lan, _clock.Now.AddSeconds(-4).Ticks, active: true, count: 7);
 
         var state = new StationHealthState();
         var monitor = BuildMonitor(state);
@@ -192,13 +216,11 @@ public sealed class BusHealthMonitorTests : IDisposable
         Assert.Equal(101, state.Current.Heartbeat);
         Assert.True(state.Current.Lan.Active);
 
-        // Bus file goes STALE (mutex held ⇒ every snapshot = frozen last-good):
-        // pre-fix the whole verdict froze here ⇒ LAN stayed «active» forever.
-        // Hold 4.5 s: `during` sleeps 2 s first (real time flows past the gate),
-        // then every Snapshot pays its own 500 ms wait timeout.
-        await HoldBusMutexAsync(_mutexName, 4_500, async () =>
+        // Freeze the real reader's last-good snapshot under a real mutex.
+        // Only the monitor clock advances; the producer ticks remain frozen.
+        await HoldBusMutexAsync(_mutexName, () =>
         {
-            await Task.Delay(2_000); // real time flows while frozen — age crosses the 5 s gate
+            _clock.Advance(TimeSpan.FromSeconds(2));
 
             // Prove the hold is LIVE right now: the reader's own snapshot call
             // times out and returns the frozen last-good with Stale=true (the
@@ -212,7 +234,7 @@ public sealed class BusHealthMonitorTests : IDisposable
 
             var h1 = state.Current;
             Assert.False(h1.Lan.Active);                          // THE DECAY PIN: verdict recomputed ⇒ inactive
-            Assert.True(h1.Lan.AgeMs > BusZoneInfo.MaxZoneAgeMs); // age crossed the gate while frozen
+            Assert.Equal(6_000, h1.Lan.AgeMs); // age crossed the gate while frozen
 
             // Frozen (NOT recomputable from a frozen copy): the heartbeat-
             // movement verdict and the register VALUES stay at last-good.
@@ -223,20 +245,18 @@ public sealed class BusHealthMonitorTests : IDisposable
             // file-vanish closes the reader — a mutex hold does not).
             Assert.True(h1.BusOpen);
 
-            await Task.Delay(50);
+            _clock.Advance(TimeSpan.FromMilliseconds(50));
             monitor.Probe(); // stale probe #2 — decay KEEPS progressing
             Assert.False(state.Current.Lan.Active);
-            Assert.True(state.Current.Lan.AgeMs >= h1.Lan.AgeMs); // age still growing
+            Assert.Equal(h1.Lan.AgeMs + 50, state.Current.Lan.AgeMs); // age still growing
+            return Task.CompletedTask;
         });
     }
 
     [Fact]
     public async Task StaleProbe_ZoneAgeUnder5s_VerdictStaysActive_NoOverFlip()
     {
-        // Producer wrote the LAN zone 0.5 s ago (flag 1). Going stale must NOT
-        // over-flip the verdict — the zone is still inside the 5 s gate even
-        // under scheduler stalls (≈3.5 s of margin at assert time).
-        WriteZoneHeader(ZoneKind.Lan, DateTime.UtcNow.AddMilliseconds(-500).Ticks, active: true, count: 9);
+        WriteZoneHeader(ZoneKind.Lan, _clock.Now.AddMilliseconds(-500).Ticks, active: true, count: 9);
 
         var state = new StationHealthState();
         var monitor = BuildMonitor(state);
@@ -244,7 +264,7 @@ public sealed class BusHealthMonitorTests : IDisposable
         monitor.Probe();
         Assert.True(state.Current.Lan.Active);
 
-        await HoldBusMutexAsync(_mutexName, 2_000, () =>
+        await HoldBusMutexAsync(_mutexName, () =>
         {
             // Prove the hold is LIVE (same surface law as above), then probe.
             var staleSnap = _reader.Snapshot();
@@ -254,7 +274,7 @@ public sealed class BusHealthMonitorTests : IDisposable
             monitor.Probe(); // stale — age still under the 5 s gate
 
             var h = state.Current;
-            Assert.True(h.Lan.AgeMs < BusZoneInfo.MaxZoneAgeMs);
+            Assert.Equal(500, h.Lan.AgeMs);
             Assert.True(h.Lan.Active); // still active — stale ≠ dead
             return Task.CompletedTask;
         });
@@ -265,8 +285,8 @@ public sealed class BusHealthMonitorTests : IDisposable
     {
         // W10.1 fresh-path pin: a zone whose tick is already > 5 s old reads
         // inactive on a FRESH snapshot too — the flag alone is never truth.
-        WriteZoneHeader(ZoneKind.Lan, DateTime.UtcNow.AddMilliseconds(-6_000).Ticks, active: true, count: 3);
-        WriteZoneHeader(ZoneKind.ComMain, DateTime.UtcNow.Ticks, active: true, count: 1);
+        WriteZoneHeader(ZoneKind.Lan, _clock.Now.AddMilliseconds(-6_000).Ticks, active: true, count: 3);
+        WriteZoneHeader(ZoneKind.ComMain, _clock.Now.Ticks, active: true, count: 1);
 
         var state = new StationHealthState();
         BuildMonitor(state).Probe();
@@ -276,4 +296,42 @@ public sealed class BusHealthMonitorTests : IDisposable
         Assert.True(state.Current.Com.Active);   // fresh tick + flag ⇒ active
         Assert.True(state.Current.Com.AgeMs < BusZoneInfo.MaxZoneAgeMs);
     }
+
+    [Theory]
+    [InlineData(-1, true, true, 0)]
+    [InlineData(0, true, true, 0)]
+    [InlineData(4999, true, true, 4999)]
+    [InlineData(5000, true, false, 5000)]
+    [InlineData(5001, true, false, 5001)]
+    [InlineData(0, false, false, 0)]
+    public async Task Probe_AllZones_UseSameAgeGate_OnFreshAndStaleSnapshots(
+        long ageMs, bool flag, bool active, long reportedAgeMs)
+    {
+        foreach (var zone in new[] { ZoneKind.ComMain, ZoneKind.Lan, ZoneKind.RawReserve })
+            WriteZoneHeader(zone, _clock.Now.AddMilliseconds(-ageMs).Ticks, flag, count: 1);
+
+        var state = new StationHealthState();
+        var monitor = BuildMonitor(state);
+        void AssertZones()
+        {
+            foreach (var zone in new[] { state.Current.Com, state.Current.Lan, state.Current.Raw })
+            {
+                Assert.Equal(active, zone.Active);
+                Assert.Equal(reportedAgeMs, zone.AgeMs);
+            }
+            Assert.Equal(_clock.Now.UtcDateTime, state.Current.UpdatedAtUtc);
+        }
+
+        monitor.Probe();
+        AssertZones();
+        await HoldBusMutexAsync(_mutexName, () =>
+        {
+            Assert.True(_reader.Snapshot()!.Stale);
+            monitor.Probe();
+            AssertZones();
+            return Task.CompletedTask;
+        });
+    }
+
 }
+

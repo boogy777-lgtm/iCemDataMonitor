@@ -146,51 +146,38 @@ public sealed class MetricsSamplerTests : IDisposable
         WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 1);
 
         var sampler = new MetricsSampler(reader);
-        var subscription = sampler.Subscribe(intervalMs: 200); // producer ticks ~5/s
+        using var stop = new CancellationTokenSource();
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var subscription = sampler.Subscribe(intervalMs: 200, stop.Token);
 
-        // Consume exactly one sample, then go SILENT for ~1.5 s while the
-        // producer keeps ticking into the capacity-1 channel. (2026-09-02:
-        // widened from 700 ms — a loaded CI runner can lag the producer's
-        // Task.Delay ticks so badly that a 700 ms window may contain fewer
-        // than 2 ticks, making the drop assertion fire spuriously.)
-        MetricsSample first = await FirstSampleAsync(subscription);
-        Assert.Equal(1.0f, first.Deltas.First(d => d.Addr == 200).FloatValue, 3);
-
-        await Task.Delay(1500);
-
-        // Resume: the FIRST delivered sample must be FRESH (drop-oldest evicted
-        // everything stale) — its timestamp age must be well below the silence
-        // window. A queueing channel would deliver a ~700 ms old sample here.
-        var sw = Stopwatch.StartNew();
-        MetricsSample resumed = await FirstSampleAsync(subscription);
-        sw.Stop();
-
-        var ageMs = (DateTime.UtcNow - resumed.TimestampUtc.ToDateTime()).TotalMilliseconds;
-        Assert.True(ageMs < 500,
-            $"drop-oldest must deliver a fresh sample after a slow-consumer gap; got age {ageMs:F0} ms");
-
-        // The drop counter observed the overflow (≥ 2 ticks were evicted).
-        // Poll briefly before declaring failure: a loaded CI runner can lag
-        // the producer ticks; a queueing channel would never grow the
-        // counter at all, so this stays a hard assertion.
-        var dropSw = Stopwatch.StartNew();
-        while (subscription.DroppedCount < 1 && dropSw.Elapsed < TimeSpan.FromSeconds(5))
-            await Task.Delay(100);
-        Assert.True(subscription.DroppedCount >= 1,
-            $"DroppedCount must grow on overflow; got {subscription.DroppedCount}");
-
-        // Queue never accumulates: the NEXT sample arrives no earlier than one
-        // producer interval later (nothing was buffered during the pause).
-        sw.Restart();
-        int seen = 0;
-        await foreach (var s in subscription)
+        try
         {
-            seen++;
-            if (seen == 2) break;
+            MetricsSample first = await FirstSampleAsync(subscription, deadline.Token);
+            Assert.Equal(1.0f, first.Deltas.First(d => d.Addr == 200).FloatValue, 3);
+
+            // Mark later samples, then wait for actual overflow while the
+            // consumer is paused. Runner speed is not the verdict.
+            WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 2);
+            long baseline = subscription.DroppedCount;
+            while (subscription.DroppedCount < baseline + 2)
+                await Task.Delay(20, deadline.Token);
+
+            // Stop production before draining. Exactly ONE retained sample
+            // must be the newer heartbeat; a FIFO/backlog or DropNewest
+            // implementation fails without relying on timestamp age.
+            stop.Cancel();
+            var retained = new List<MetricsSample>();
+            await foreach (var sample in subscription.WithCancellation(deadline.Token))
+                retained.Add(sample);
+
+            var resumed = Assert.Single(retained);
+            Assert.Equal(2, resumed.Heartbeat);
+            Assert.True(subscription.DroppedCount >= baseline + 2);
         }
-        sw.Stop();
-        Assert.True(sw.ElapsedMilliseconds >= 140,
-            $"second post-gap sample arrived after {sw.ElapsedMilliseconds} ms — backlog would arrive instantly");
+        finally
+        {
+            stop.Cancel();
+        }
     }
 
     private static async Task<MetricsSample> FirstSampleAsync(
@@ -367,3 +354,4 @@ public sealed class MetricsSamplerTests : IDisposable
         Assert.Equal(0, samples); // completed (empty), not hung
     }
 }
+

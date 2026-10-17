@@ -254,9 +254,9 @@ public class ModbusContractTests
         // normally once the file appears — the tray-side recovery law.
         await using var server = await TestServer.CreateAsync(seed: null, tickMs: 200);
 
-        await Task.Delay(1200); // ~6 loop ticks against the absent file
-        Assert.True(server.Publisher.TickCount >= 3,
-            $"refresh loop not ticking: TickCount={server.Publisher.TickCount}");
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        while (server.Publisher.TickCount < 3)
+            await Task.Delay(20, deadline.Token);
         Assert.NotNull(server.Publisher.LastBusError);
         Assert.Contains("not found", server.Publisher.LastBusError);
 
@@ -265,7 +265,10 @@ public class ModbusContractTests
             .SetWord(3, 7)
             .SetFloat(4, 1.0f)); // CDAB pin: [0x0000, 0x3F80]
 
-        await Task.Delay(1200); // loop retries open per tick ⇒ recovers in place
+        // Observe recovery through the TCP surface, not an assumed number
+        // of scheduler ticks in a fixed sleep.
+        while ((await ReadRegistersAsync(0x03, 3, 1)).Words[0] != 7)
+            await Task.Delay(20, deadline.Token);
         Assert.Null(server.Publisher.LastBusError);
         Assert.Equal(new ushort[] { 7 }, (await ReadRegistersAsync(0x03, 3, 1)).Words);
         Assert.Equal(new ushort[] { 0x0000, 0x3F80 }, (await ReadRegistersAsync(0x03, 4, 2)).Words);
