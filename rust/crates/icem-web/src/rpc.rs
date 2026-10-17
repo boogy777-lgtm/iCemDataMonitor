@@ -224,11 +224,14 @@ impl TelemetryService for Rpc {
             .map_err(|_| Status::resource_exhausted("stream limit reached"))?;
         let (snapshot, mut updates) = self.0.boot.subscribe().map_err(Status::internal)?;
         let mut stop = self.0.shutdown.subscribe();
+        if *stop.borrow() {
+            return Err(Status::unavailable("Host is stopping"));
+        }
         let (send, receive) = tokio::sync::mpsc::channel(128);
         tokio::spawn(async move {
             let _permit = permit;
             for stage in snapshot {
-                if send.send(Ok(stage)).await.is_err() {
+                if !send_boot(&send, &mut stop, Ok(stage)).await {
                     return;
                 }
             }
@@ -240,16 +243,19 @@ impl TelemetryService for Rpc {
                 };
                 match update {
                     Ok(stage) => {
-                        if send.send(Ok(stage)).await.is_err() {
+                        if !send_boot(&send, &mut stop, Ok(stage)).await {
                             break;
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                        let _ = send
-                            .send(Err(Status::resource_exhausted(
+                        let _ = send_boot(
+                            &send,
+                            &mut stop,
+                            Err(Status::resource_exhausted(
                                 "boot subscriber lagged; reconnect for replay",
-                            )))
-                            .await;
+                            )),
+                        )
+                        .await;
                         break;
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
@@ -344,6 +350,23 @@ pub(crate) fn values(
     result
 }
 
+/// Every boot send, including replay and lag errors, observes shutdown while
+/// backpressured. Dropping the task releases its stream permit immediately.
+async fn send_boot(
+    send: &tokio::sync::mpsc::Sender<Result<BootStage, Status>>,
+    stop: &mut tokio::sync::watch::Receiver<bool>,
+    update: Result<BootStage, Status>,
+) -> bool {
+    if *stop.borrow() {
+        return false;
+    }
+    tokio::select! {
+        biased;
+        _ = stop.changed() => false,
+        result = send.send(update) => result.is_ok(),
+    }
+}
+
 fn console_visible() -> bool {
     #[cfg(windows)]
     {
@@ -366,5 +389,115 @@ fn autostart_enabled() -> Result<bool, Status> {
     #[cfg(not(windows))]
     {
         Ok(false)
+    }
+}
+
+#[cfg(test)]
+mod boot_faults {
+    use super::*;
+    type TestResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
+    fn state() -> WebState {
+        WebState::new(
+            crate::HostLayers::default(),
+            std::path::PathBuf::new(),
+            std::collections::BTreeMap::new(),
+        )
+        .0
+    }
+
+    #[tokio::test]
+    async fn shutdown_cancels_all_boot_sends_while_response_queue_is_full() -> TestResult {
+        for update in [
+            Ok(BootStage::default()),
+            Err(Status::resource_exhausted("lag")),
+        ] {
+            let (send, _receive) = tokio::sync::mpsc::channel(1);
+            send.send(Ok(BootStage::default())).await?;
+            let (stop, mut stopping) = tokio::sync::watch::channel(false);
+            let task = tokio::spawn(async move { send_boot(&send, &mut stopping, update).await });
+            tokio::task::yield_now().await;
+            stop.send(true)?;
+            assert!(!tokio::time::timeout(Duration::from_secs(1), task).await??);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn lag_is_an_rpc_error_then_reconnect_replays_and_drop_releases_permit() -> TestResult {
+        let state = state();
+        state.boot.begin("ready", "ready")?;
+        state.boot.complete("ready", None)?;
+        let rpc = Rpc(state.clone());
+        let mut stream = rpc
+            .subscribe_boot_stages(Request::new(BootStreamRequest {}))
+            .await?
+            .into_inner();
+        assert!(stream.next().await.ok_or("missing replay")??.completed);
+        // Overflow the broadcast before the subscriber task can run, deterministically.
+        for _ in 0..129 {
+            state.boot.begin("ready", "retry")?;
+        }
+        let error = stream
+            .next()
+            .await
+            .ok_or("missing lag error")?
+            .err()
+            .ok_or("lag not reported")?;
+        assert_eq!(error.code(), tonic::Code::ResourceExhausted);
+        assert!(stream.next().await.is_none());
+        let mut replay = rpc
+            .subscribe_boot_stages(Request::new(BootStreamRequest {}))
+            .await?
+            .into_inner();
+        let stage = replay.next().await.ok_or("missing reconnect replay")??;
+        assert_eq!(stage.id, "ready");
+        assert!(!stage.completed);
+        state.boot.complete("ready", Some("recovered"))?;
+        assert!(
+            replay
+                .next()
+                .await
+                .ok_or("missing live completion")??
+                .completed
+        );
+        drop(replay);
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while state.streams.available_permits() != 64 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await?;
+        // Admission limit remains enforced; cancellation returns all permits without
+        // requiring the downstream to read or drop the existing stream receivers.
+        let mut held = Vec::new();
+        for _ in 0..64 {
+            held.push(
+                rpc.subscribe_boot_stages(Request::new(BootStreamRequest {}))
+                    .await?
+                    .into_inner(),
+            );
+        }
+        let error = rpc
+            .subscribe_boot_stages(Request::new(BootStreamRequest {}))
+            .await
+            .err()
+            .ok_or("missing stream cap")?;
+        assert_eq!(error.code(), tonic::Code::ResourceExhausted);
+        state.shutdown.send(true)?;
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while state.streams.available_permits() != 64 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await?;
+        let error = rpc
+            .subscribe_boot_stages(Request::new(BootStreamRequest {}))
+            .await
+            .err()
+            .ok_or("accepted after shutdown")?;
+        assert_eq!(error.code(), tonic::Code::Unavailable);
+        drop(held);
+        Ok(())
     }
 }

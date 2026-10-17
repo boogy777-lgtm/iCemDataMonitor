@@ -123,9 +123,44 @@ fn boot_is_ordered_ready_is_authoritative_and_disconnect_starts_new_replay() {
     assert_eq!(m.boot_stages.len(), 2);
     m.apply("boot", Err("stream ended".into()));
     assert!(m.boot_error.is_some());
+    assert!(!m.boot_ready);
+    assert!(m.boot_stages.is_empty());
     m.apply("status", Err("disconnected".into()));
     assert!(!m.boot_ready);
     assert!(m.boot_stages.is_empty());
+}
+#[test]
+fn fresh_replay_replaces_old_ready_even_without_a_failed_status_probe() {
+    let mut m = Model::default();
+    m.apply(
+        "boot",
+        Ok(json!({"ok":true,"data":{"reset":true,"stages":[
+        {"ordinal":7,"id":"ready","title":"old process","completed":true}]}})),
+    );
+    assert!(m.boot_ready);
+    // A fast restart may never fail GetStatus. New stream replay is authoritative.
+    m.apply(
+        "boot",
+        Ok(json!({"ok":true,"data":{"reset":true,"stages":[
+        {"ordinal":1,"id":"ini","title":"new process","completed":false}]}})),
+    );
+    assert!(!m.boot_ready);
+    assert_eq!(m.boot_stages.len(), 1);
+    assert_eq!(m.boot_stages[&1].title, "new process");
+    m.apply(
+        "boot",
+        Ok(json!({"ok":true,"data":{"stages":[
+        {"ordinal":2,"id":"ready","title":"new ready","completed":true}]}})),
+    );
+    assert!(m.boot_ready);
+    m.apply(
+        "boot",
+        Ok(json!({"ok":true,"data":{"reset":true,"stages":[]}})),
+    );
+    assert!(m.boot_stages.is_empty());
+    assert!(!m.boot_ready);
+    m.apply("boot", Ok(json!({"ok":false,"error":"lag; reconnect"})));
+    assert!(m.boot_error.as_deref().is_some_and(|s| s.contains("lag")));
 }
 #[test]
 fn navigation_uses_contract_sections_without_changing_connection_truth() {

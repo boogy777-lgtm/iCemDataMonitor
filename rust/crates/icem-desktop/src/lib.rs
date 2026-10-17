@@ -1,6 +1,7 @@
 //! GPUI desktop presentation. Domain state stays behind the original control seam.
 #![forbid(unsafe_code)]
 pub mod dashboard;
+pub mod navigation;
 use serde_json::{Value, json};
 use std::sync::{
     Arc,
@@ -92,6 +93,7 @@ impl Model {
     }
     pub fn apply(&mut self, cmd: &str, response: Result<Value, String>) {
         if cmd == "navigate" {
+            self.navigation = None;
             match response {
                 Ok(value) if value["ok"] == true => {
                     self.navigation = match value["data"]["pending"].as_i64() {
@@ -101,7 +103,11 @@ impl Model {
                     }
                 }
                 Ok(value) => self.note = format!("Navigation: {}", text(&value["error"])),
-                Err(error) => self.note = format!("Navigation: {error}"),
+                Err(error) => {
+                    self.note = format!(
+                        "Navigation: {error}; результат неизвестен, автоматический повтор отключён"
+                    );
+                }
             }
             return;
         }
@@ -114,8 +120,15 @@ impl Model {
                 }
             });
             match result {
-                Err(error) => self.boot_error = Some(error),
+                Err(error) => {
+                    self.boot_stages.clear();
+                    self.boot_ready = false;
+                    self.boot_error = Some(error);
+                }
                 Ok(data) => {
+                    if data["reset"] == true {
+                        self.boot_stages.clear();
+                    }
                     for stage in data["stages"].as_array().into_iter().flatten() {
                         if let Some(ordinal) = stage["ordinal"]
                             .as_u64()

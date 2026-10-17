@@ -135,3 +135,18 @@ Scaffold вызывает его перед полным guard. Rust CI тепе
 D28 / E8: чтение LayerRuntimeController.Toggle(OpcDa) показывает внешний no-op, а не persist-only toggle. Уточнены API_SPEC и P16; Rust owner возвращает неизменённое OPC state без запуска server и записи INI. Web plan отделён от startup-effective routes/history; SetLayer desired_state по-прежнему игнорируется. Ошибки операций отражаются в LayerState.last_error, как legacy, вместо прежнего Rust INTERNAL. Полный sniffer и Modbus rollback/busy fault matrix остаются открытыми.
 
 D29 / E8 audit: icem-desktop::monitor показывает активный SnifferSwitch, хотя Rust Host возвращает UNIMPLEMENTED и sniffer_available=false. Этот UI gap не исправлялся в Host-инкременте и не считается disabled-state parity. Следующий UI этап должен использовать фактическую availability, сверившись с inventory/XAML.
+
+D30 / E9 Rust defect: monitor rearmed NavigateUi(section=0) on navigation/status
+error, хотя Host query уже мог consume pending. Исправлено at-most-one accepted attempt
+per explicit demand; lost-reply fault сохраняет следующий pending до нового show.
+Exactly-once и гарантированная доставка потерянного перехода не заявляются.
+
+D31 / E9 Rust defect: polling прекращался после READY, boot error сохранял прежние
+стадии, новый stream replay сливался со старым. Polling продолжается; error/reset
+инвалидирует прежний READY. Boot/status faults закрывают Session/runtime с transport
+handles. Model и Windows pipe restart tests проверяют отсутствие старого READY.
+
+D32 / E9 Rust defect: replay/live/lag-error send в boot RPC мог ждать заполненный
+response buffer без наблюдения shutdown. Все boot sends используют общий cancellation
+helper; fault tests проверяют полный buffer, lag/replay, stream cap и возврат permits.
+Canonical proto, Host pending semantics и legacy sources не меняются.

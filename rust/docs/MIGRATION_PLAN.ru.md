@@ -82,3 +82,14 @@ Modbus/sniffer, console/autostart, theme. Emulator: COM/LAN/Units и все cont
 оставить ту же AddIn DLL/Data.dat/config → запустить и проверить. Откат возвращает
 старый payload без изменения формата данных. MSI upgrade identity/пути утверждаются M7;
 Rust CI имеет отдельный workflow; существующий .NET CI сохраняется.
+
+## E9: законченный fault/reconnect инкремент
+
+Boot подписка наблюдается после READY; fresh replay заменяет стадии; boot/status fault
+освобождает Shell transport session. Host boot sends отменяются по shutdown при
+backpressure. Consuming NavigateUi больше не ретраится по ошибке/status reconnect;
+show-during-flight сохраняется. [Политика, тесты и границы](HOST_E9.ru.md).
+Это частичное закрытие M3/M6, не полный PASS. Следующий Host-инкремент: отдельный
+read-only sniffer capture owner, pause/resume/counters и actual availability projection.
+Далее production CLI/ensure-host/config recovery и console/window lifecycle; MSI после
+измеренного payload и Windows install/upgrade/uninstall. Legacy CI не приоритет миграции.
