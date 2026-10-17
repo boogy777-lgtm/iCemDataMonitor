@@ -1,11 +1,105 @@
-use icem_emulation::{simulation::*,units::*};
-use std::{fs,path::PathBuf};
-type R=Result<(),Box<dyn std::error::Error>>;
-#[test]fn differential_original_com_host_units_and_fallback()->R{
-let pwsh=if cfg!(windows){std::ffi::OsString::from("pwsh")}else if let Some(p)=std::env::var_os("ICEM_ORACLE_PWSH"){p}else{return Ok(())};let root=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");let dir=std::env::temp_dir().join(format!("icem-com-oracle-{}",std::process::id()));if dir.exists(){fs::remove_dir_all(&dir)?;}let input=dir.join("in");let output=dir.join("out");fs::create_dir_all(&input)?;
-let p=std::process::Command::new(pwsh).args(["-NoProfile","-File"]).arg(root.join("rust/tests/support/ConfigComOracle.ps1")).arg("-RepoRoot").arg(&root).arg("-InputDir").arg(&input).arg("-OutputDir").arg(&output).output()?;assert!(p.status.success(),"{}",String::from_utf8_lossy(&p.stderr));let oracle:serde_json::Value=serde_json::from_str(&fs::read_to_string(output.join("com.json"))?)?;
-let fallback=load_catalog(&dir.join("missing")).templates.remove(0);let original=&oracle["template"];assert_eq!(Some(fallback.name.as_str()),original["Name"].as_str());let original_vars=original["Variables"].as_array().ok_or("vars")?;assert_eq!(fallback.variables.len(),original_vars.len());for(a,b)in fallback.variables.iter().zip(original_vars){assert_eq!(Some(a.name.as_str()),b["Name"].as_str());assert_eq!(Some(a.legacy_name.as_str()),b["LegacyName"].as_str());assert_eq!(Some(a.unit.as_str()),b["UoM"].as_str());assert_eq!(Some(a.base),b["BaseValue"].as_f64());assert_eq!(Some(a.amplitude),b["Amplitude"].as_f64());assert_eq!(Some(a.frequency),b["Frequency"].as_f64());assert_eq!(Some(a.toggle_period),b["TogglePeriod"].as_f64());assert_eq!(Some(a.exclude),b["ExcludeFromTelemetry"].as_bool());}
-let units=Settings{preset:Preset::Metric,..Default::default()};let mut engine=Engine::new(vec![fallback]);for(i,step)in oracle["steps"].as_array().ok_or("steps")?.iter().enumerate(){match i{2=>engine.set_override("PumpPressure",1250.0),3|5=>{engine.clear_override("PumpPressure");},4=>engine.set_override("PumpPressure",2222.0),6=>engine.reset_clock(),_=>{}}let fresh=i==4||i==7||engine.last_values().is_empty();let mut values=if i==4||i==7{engine.tick()}else{engine.frozen_values()};if let Some(t)=engine.current(){for(v,var)in values.iter_mut().zip(&t.variables){if group_of(&var.unit)!=Group::None{*v=units.to_target(*v,&var.unit);}}}if fresh{engine.replace_last_values(&values)?;}
-for(a,key)in[(&values[..],"values"),(engine.last_values(),"cache")]{let b=step[key].as_array().ok_or("step")?;assert_eq!(a.len(),b.len());for(a,b)in a.iter().zip(b){let b=f64::from_bits(u64::from_str_radix(b.as_str().ok_or("bits")?,16)?);assert!((*a-b).abs()<=b.abs().max(1.0)*1e-12,"step{i} {key} {a} != {b}");}}
+use icem_emulation::{simulation::*, units::*};
+use std::{fs, path::PathBuf};
+type R = Result<(), Box<dyn std::error::Error>>;
+#[test]
+fn differential_original_com_host_units_and_fallback() -> R {
+    let pwsh = if cfg!(windows) {
+        std::ffi::OsString::from("pwsh")
+    } else if let Some(p) = std::env::var_os("ICEM_ORACLE_PWSH") {
+        p
+    } else {
+        return Ok(());
+    };
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    let dir = std::env::temp_dir().join(format!("icem-com-oracle-{}", std::process::id()));
+    if dir.exists() {
+        fs::remove_dir_all(&dir)?;
+    }
+    let input = dir.join("in");
+    let output = dir.join("out");
+    fs::create_dir_all(&input)?;
+    let p = std::process::Command::new(pwsh)
+        .args(["-NoProfile", "-File"])
+        .arg(root.join("rust/tests/support/ConfigComOracle.ps1"))
+        .arg("-RepoRoot")
+        .arg(&root)
+        .arg("-InputDir")
+        .arg(&input)
+        .arg("-OutputDir")
+        .arg(&output)
+        .output()?;
+    assert!(p.status.success(), "{}", String::from_utf8_lossy(&p.stderr));
+    let oracle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(output.join("com.json"))?)?;
+    let fallback = load_catalog(&dir.join("missing")).templates.remove(0);
+    let original = &oracle["template"];
+    assert_eq!(Some(fallback.name.as_str()), original["Name"].as_str());
+    let original_vars = original["Variables"].as_array().ok_or("vars")?;
+    assert_eq!(fallback.variables.len(), original_vars.len());
+    for (a, b) in fallback.variables.iter().zip(original_vars) {
+        assert_eq!(Some(a.name.as_str()), b["Name"].as_str());
+        assert_eq!(Some(a.legacy_name.as_str()), b["LegacyName"].as_str());
+        assert_eq!(Some(a.unit.as_str()), b["UoM"].as_str());
+        assert_eq!(Some(a.base), b["BaseValue"].as_f64());
+        assert_eq!(Some(a.amplitude), b["Amplitude"].as_f64());
+        assert_eq!(Some(a.frequency), b["Frequency"].as_f64());
+        assert_eq!(Some(a.toggle_period), b["TogglePeriod"].as_f64());
+        assert_eq!(Some(a.exclude), b["ExcludeFromTelemetry"].as_bool());
+    }
+    let units = Settings {
+        preset: Preset::Metric,
+        ..Default::default()
+    };
+    let mut engine = Engine::new(vec![fallback]);
+    for (i, step) in oracle["steps"]
+        .as_array()
+        .ok_or("steps")?
+        .iter()
+        .enumerate()
+    {
+        match i {
+            2 => engine.set_override("PumpPressure", 1250.0),
+            3 | 5 => {
+                engine.clear_override("PumpPressure");
+            }
+            4 => engine.set_override("PumpPressure", 2222.0),
+            6 => engine.reset_clock(),
+            _ => {}
+        }
+        let fresh = i == 4 || i == 7 || engine.last_values().is_empty();
+        let mut values = if i == 4 || i == 7 {
+            engine.tick()
+        } else {
+            engine.frozen_values()
+        };
+        if let Some(t) = engine.current() {
+            for (v, var) in values.iter_mut().zip(&t.variables) {
+                if group_of(&var.unit) != Group::None {
+                    *v = units.to_target(*v, &var.unit);
+                }
+            }
+        }
+        if fresh {
+            engine.replace_last_values(&values)?;
+        }
+        for (a, key) in [(&values[..], "values"), (engine.last_values(), "cache")] {
+            let b = step[key].as_array().ok_or("step")?;
+            assert_eq!(a.len(), b.len());
+            for (a, b) in a.iter().zip(b) {
+                let b = f64::from_bits(u64::from_str_radix(b.as_str().ok_or("bits")?, 16)?);
+                assert!(
+                    (*a - b).abs() <= b.abs().max(1.0) * 1e-12,
+                    "step{i} {key} {a} != {b}"
+                );
+            }
+        }
+    }
+    let summary = serde_json::json!({"runtime":oracle["runtime"],"settings_fixtures":8,"host_com_unit_steps":8,"fallback_variables":original_vars.len(),"cache_semantics":"original Tick alias, explicit checked projected cache copy-back; frozen clones only","result":"PASS"});
+    fs::create_dir_all(root.join("rust/target"))?;
+    fs::write(
+        root.join("rust/target/config-com-differential-report.json"),
+        serde_json::to_vec_pretty(&summary)?,
+    )?;
+    fs::remove_dir_all(dir)?;
+    Ok(())
 }
-let summary=serde_json::json!({"runtime":oracle["runtime"],"settings_fixtures":8,"host_com_unit_steps":8,"fallback_variables":original_vars.len(),"cache_semantics":"original Tick alias, explicit checked projected cache copy-back; frozen clones only","result":"PASS"});fs::create_dir_all(root.join("rust/target"))?;fs::write(root.join("rust/target/config-com-differential-report.json"),serde_json::to_vec_pretty(&summary)?)?;fs::remove_dir_all(dir)?;Ok(())}

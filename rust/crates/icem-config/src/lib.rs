@@ -10,4 +10,4 @@ mod ini;
 pub use ini::{ConfigError, IniOptions};
 
 pub mod emulator;
-pub use emulator::{EmuSettings, SettingsPaths, LoadSettings, SettingsError};
+pub use emulator::{EmuSettings, LoadSettings, SettingsError, SettingsPaths};

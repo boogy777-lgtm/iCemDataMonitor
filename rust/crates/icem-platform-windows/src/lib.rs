@@ -22,5 +22,12 @@ pub fn signal_theme_changed() -> Result<bool, icem_windows_native::NativeError> 
     icem_windows_native::signal_existing_event(THEME_CHANGED)
 }
 
+/// The caller keeps the mutex and its thread-bound guard alive through teardown.
+#[cfg(windows)]
+pub fn emulator_mutex() -> Result<icem_windows_native::NamedMutex, icem_windows_native::NativeError>
+{
+    icem_windows_native::NamedMutex::open_or_create(EMULATOR_MUTEX)
+}
+
 pub mod transport;
-pub use transport::{AceCapture, AceLanEmitter, CaptureCounters, ComSerialEmitter, PacketDevice, burst_start_ms};
+pub use transport::{AceLanEmitter, ComSerialEmitter, PacketDevice, SerialDevice, burst_start_ms};

@@ -9,4 +9,5 @@ pub const REST_GET_PATHS: &[&str] = &[
     "/api/regs/history",
 ];
 
+pub mod emulator_control;
 pub mod modbus_tcp;
