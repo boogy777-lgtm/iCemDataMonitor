@@ -1,6 +1,7 @@
 //! GPUI desktop presentation. Domain state stays behind the original control seam.
 #![forbid(unsafe_code)]
 pub mod dashboard;
+pub mod logs;
 pub mod navigation;
 use serde_json::{Value, json};
 use std::sync::{
@@ -49,6 +50,8 @@ pub struct BootStageRow {
 }
 #[derive(Default)]
 pub struct Model {
+    pub host_logs: logs::LogView,
+    pub local_logs: logs::LogView,
     pub page: Page,
     pub dashboard: dashboard::Dashboard,
     pub boot_stages: std::collections::BTreeMap<u32, BootStageRow>,
@@ -85,6 +88,19 @@ pub fn text(value: &Value) -> String {
     }
 }
 impl Model {
+    pub fn can_submit_log(&self, command: &Value) -> bool {
+        let view = match command["cmd"].as_str() {
+            Some("logs") => &self.host_logs,
+            Some("local_logs") => &self.local_logs,
+            _ => return true,
+        };
+        if command["action"] == "get" {
+            !view.pending
+        } else {
+            view.actionable()
+        }
+    }
+
     pub fn can_toggle_sniffer(&self) -> bool {
         self.connected
             && self.snapshot["layers"]["snifferAvailable"] == true
@@ -97,6 +113,14 @@ impl Model {
         text(&self.snapshot[channel][field])
     }
     pub fn apply(&mut self, cmd: &str, response: Result<Value, String>) {
+        if cmd == "logs" {
+            self.host_logs.apply(response);
+            return;
+        }
+        if cmd == "local_logs" {
+            self.local_logs.apply(response);
+            return;
+        }
         if cmd == "navigate" {
             self.navigation = None;
             match response {
@@ -172,6 +196,7 @@ impl Model {
             Ok(result) => result,
             Err(error) => {
                 if cmd == "status" {
+                    self.host_logs.fresh = false;
                     self.boot_stages.clear();
                     self.boot_ready = false;
                 }

@@ -40,8 +40,17 @@ impl Monitor {
         )
     }
     fn send(&mut self, command: Value) {
-        if let Err(error) = self.bridge.send(command) {
-            self.model.note = format!("⚠ {error}");
+        if !self.model.can_submit_log(&command) {
+            return;
+        }
+        let cmd = command["cmd"].as_str().unwrap_or("").to_owned();
+        match self.bridge.send(command) {
+            Ok(()) => match cmd.as_str() {
+                "logs" => self.model.host_logs.pending = true,
+                "local_logs" => self.model.local_logs.pending = true,
+                _ => {}
+            },
+            Err(error) => self.model.note = format!("⚠ {error}"),
         }
     }
     fn toggle(
@@ -257,7 +266,25 @@ impl Render for Monitor {
                 true,
                 cx,
             ))
-            .child(layers["lastError"].as_str().unwrap_or("").to_owned());
+            .child(layers["lastError"].as_str().unwrap_or("").to_owned())
+            .child(crate::logs::controls(
+                &self.model.host_logs,
+                "HostLogs",
+                false,
+                "Логи Host",
+                self.model.light,
+                Self::send,
+                cx,
+            ))
+            .child(crate::logs::controls(
+                &self.model.local_logs,
+                "ShellLogs",
+                true,
+                "Логи оболочки",
+                self.model.light,
+                Self::send,
+                cx,
+            ));
         let mut root = div()
             .size_full()
             .track_focus(&self.focus)
@@ -410,7 +437,10 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
             .map_err(std::io::Error::other)?;
     let theme = icem_windows_native::OwnedEvent::create_reset(icem_platform_windows::THEME_CHANGED)
         .map_err(std::io::Error::other)?;
-    let bridge = Bridge::start(port)?;
+    let bridge = Bridge::start(Arc::new(crate::logs::LoggedPort {
+        inner: port,
+        logs: Arc::new(icem_logging::SharedLogs::new(icem_logging::Owner::Shell)),
+    }))?;
     let selection_path = std::env::var_os("LOCALAPPDATA")
         .map(std::path::PathBuf::from)
         .map(|p| {
@@ -505,6 +535,12 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                             }
                         }
                         if Instant::now() >= due {
+                            if !v.model.local_logs.pending {
+                                v.send(json!({"cmd":"local_logs","action":"get"}));
+                            }
+                            if v.model.connected && !v.model.host_logs.pending {
+                                v.send(json!({"cmd":"logs","action":"get"}));
+                            }
                             if let Err(error) = v.navigation.submit(v.model.connected, || {
                                 v.bridge.send(json!({"cmd":"navigate"}))
                             }) {

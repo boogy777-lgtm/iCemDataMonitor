@@ -81,6 +81,10 @@ mod windows {
                 }
             }
             let result = runtime.block_on(async {
+                if command["cmd"] == "logs" {
+                    return icem_web::log_control::request(&self.pipe, command["action"].as_str().unwrap_or("get"), command["enabled"].as_bool()).await;
+
+                }
                 if command["cmd"] == "boot" {
                     let reset = boot.is_none();
                     let result = async {

@@ -13,6 +13,7 @@ name = "icem-emulator-dev"
 path = "src/main.rs"
 
 [dependencies]
+icem-logging = { path = "../../crates/icem-logging" }
 icem-protocols = { path = "../../crates/icem-protocols" }
 icem-emulation = { path = "../../crates/icem-emulation" }
 icem-platform-windows = { path = "../../crates/icem-platform-windows" }

@@ -63,6 +63,7 @@ pub(crate) struct Store {
 }
 #[derive(Clone)]
 pub struct WebState {
+    pub(crate) log_requests: Option<mpsc::SyncSender<crate::log_control::LogRequest>>,
     /// Read-once startup capability. Deferred Web toggles cannot change routes/history.
     pub(crate) web_enabled: bool,
     pub(crate) boot: crate::BootStages,
@@ -86,6 +87,7 @@ impl WebState {
         let (shutdown, _) = tokio::sync::watch::channel(false);
         (
             Self {
+                log_requests: None,
                 web_enabled: layers.web,
                 boot: crate::BootStages::default(),
                 navigation: crate::navigation::Navigation::default(),

@@ -71,7 +71,7 @@ cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 Или `pwsh -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline`.
 Версия задаётся в `rust-toolchain.toml`; Cargo rust-version = 1.99.1, resolver = 3.
 CI читает тот же pin и проверяет edition/MSRV всех участников workspace.
-12 workspace packages; Windows-only native bindings: windows-sys 0.61.2 и windows-link,
+13 workspace packages; Windows-only native bindings: windows-sys 0.61.2 и windows-link,
 зафиксированные Cargo.lock. Web dependencies и build-only protoc описаны в ADR 0002.
 После fetch проверки Rust работают offline; browser checks используют npm lockfile.
 Все прикладные crates запрещают unsafe; явное исключение —
@@ -124,3 +124,13 @@ E11: [первый запуск/ensure, CLI, config discovery и MSI ACL](docs/H
 Shell автоматически запускает отсутствующий Host один раз; reconnect не повторяет
 spawn. Строгая повреждённая конфигурация сохраняется и блокирует запуск; отсутствующая
 создаётся из схемы. CLI/partial software evidence не закрывают SDK/UI/hardware gates.
+
+## E12: управляемые логи (актуальное дополнение)
+
+[HOST_E12](docs/HOST_E12.ru.md) и [ADR 0008](docs/adr/0008-managed-file-logs.ru.md):
+общий файловый owner, native ON/OFF/clear для Host/Shell и независимого emulator,
+сохранённая настройка, bounded rotation и безопасная частичная очистка. Frozen
+proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1 доступен
+только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
+visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
+Console-close/window lifecycle — следующий самостоятельный инкремент.

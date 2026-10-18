@@ -94,11 +94,23 @@ impl View {
         rgba(argb.rotate_left(8))
     }
     fn send(&mut self, command: Value) {
-        if let Err(error) = self.bridge.send(command) {
-            self.model.note = format!("⚠ {error}");
+        if !self.model.can_submit_log(&command) {
+            return;
+        }
+        let logs = command["cmd"] == "local_logs";
+        match self.bridge.send(command) {
+            Ok(()) => {
+                if logs {
+                    self.model.local_logs.pending = true;
+                }
+            }
+            Err(error) => self.model.note = format!("⚠ {error}"),
         }
     }
     fn poll(&mut self) {
+        if !self.model.local_logs.pending {
+            self.send(json!({"cmd":"local_logs","action":"get"}));
+        }
         self.send(json!({"cmd":"status"}));
         self.send(json!({"cmd":"vars"}));
     }
@@ -581,6 +593,17 @@ impl Render for View {
         }
         div()
             .id("EmuContentScroll")
+            .tab_group()
+            .on_key_down(cx.listener(|_, event: &gpui::KeyDownEvent, window, cx| {
+                if event.keystroke.key == "tab" {
+                    if event.keystroke.modifiers.shift {
+                        window.focus_prev();
+                    } else {
+                        window.focus_next();
+                    }
+                    cx.stop_propagation();
+                }
+            }))
             .size_full()
             .overflow_y_scroll()
             .bg(self.color("MacWindowColor"))
@@ -625,6 +648,15 @@ impl Render for View {
                         text(&self.model.snapshot["pid"]),
                         text(&self.model.snapshot["uptimeSec"]),
                         self.model.lan_header()
+                    ))
+                    .child(crate::logs::controls(
+                        &self.model.local_logs,
+                        "EmulatorLogs",
+                        true,
+                        "Логи эмулятора",
+                        self.model.light,
+                        Self::send,
+                        cx,
                     ))
                     .child(tabs)
                     .child(

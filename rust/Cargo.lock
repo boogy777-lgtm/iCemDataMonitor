@@ -2234,6 +2234,7 @@ dependencies = [
  "gpui",
  "gpui-tray",
  "icem-core",
+ "icem-logging",
  "icem-platform-windows",
  "icem-windows-native",
  "image",
@@ -2257,6 +2258,7 @@ dependencies = [
  "icem-config",
  "icem-desktop",
  "icem-emulation",
+ "icem-logging",
  "icem-platform-windows",
  "icem-protocols",
  "icem-transport",
@@ -2271,6 +2273,7 @@ dependencies = [
  "icem-config",
  "icem-core",
  "icem-desktop",
+ "icem-logging",
  "icem-platform-windows",
  "icem-protocols",
  "icem-transport",
@@ -2278,6 +2281,15 @@ dependencies = [
  "icem-windows-native",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "icem-logging"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "icem-windows-native",
+ "serde_json",
 ]
 
 [[package]]
@@ -2333,6 +2345,7 @@ dependencies = [
  "hyper-util",
  "icem-bus",
  "icem-core",
+ "icem-logging",
  "icem-platform-windows",
  "prost",
  "prost-types",

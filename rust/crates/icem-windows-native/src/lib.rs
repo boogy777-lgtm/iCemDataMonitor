@@ -25,3 +25,9 @@ pub use windows::{OwnedEvent, console_visible, event_exists, set_console_visible
 mod autostart;
 #[cfg(windows)]
 pub use autostart::AutostartEntry;
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+mod log_directory;
+#[cfg(windows)]
+pub use log_directory::LogDirectory;
