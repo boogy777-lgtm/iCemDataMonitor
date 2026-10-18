@@ -254,6 +254,7 @@ fn refresh(
     source: &mut dyn SnapshotSource,
     bank: &Mutex<RegisterBank>,
     previous: &mut Option<SourceError>,
+    logs: &mut icem_logging::Logs,
 ) -> Result<BusReply, Box<dyn std::error::Error>> {
     let read = source.snapshot();
     let error = source.last_error().or_else(|| read.as_ref().err().copied());
@@ -265,6 +266,7 @@ fn refresh(
                 None => "recovered".into(),
             }
         );
+        logs.record(&format!("Bus state: {error:?}"));
         *previous = error;
     }
     let mut bank = bank.lock().map_err(|_| "register mirror lock poisoned")?;
@@ -281,6 +283,7 @@ fn refresh(
 fn run(
     mut options: Options,
     boot: icem_web::BootStages,
+    logs: &mut icem_logging::Logs,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     #[cfg(not(windows))]
     if options.tray_icon.is_some() {
@@ -301,7 +304,7 @@ fn run(
         RegisterBank::new(options.total).map_err(|error| format!("{error:?}"))?,
     ));
     let mut last_error = None;
-    let first = refresh(&mut *source, &bank, &mut last_error)?;
+    let first = refresh(&mut *source, &bank, &mut last_error, logs)?;
     boot.complete("composition", None)?;
     boot.begin("layers", "слои")?;
     let mut server = if options.modbus_on {
@@ -374,6 +377,7 @@ fn run(
     #[cfg(windows)]
     web.attach_navigation(Arc::new(windows::ShellSignals));
     let layer_requests = web.enable_layer_control();
+    let log_requests = web.enable_log_control();
     layers::publish_sniffer(&sniffer, &web)?;
     web.observe(&first);
     boot.complete("layers", None)?;
@@ -406,6 +410,7 @@ fn run(
     boot.complete("ipc", None)?;
     boot.begin("ready", "готовность")?;
     boot.complete("ready", Some("READY"))?;
+    logs.record("READY: configured layers started; local IPC bound");
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
     let mut health_due = started;
@@ -440,6 +445,16 @@ fn run(
                 eprintln!("host action: {error}");
             }
         }
+        // Bound work per poll; a queued cancelled mutation is never started.
+        for request in log_requests.try_iter().take(16) {
+            if request.response.is_closed() {
+                continue;
+            }
+            let ok = logs.request(request.action, request.enabled).is_ok();
+            let _ = request
+                .response
+                .send(serde_json::json!({"ok":ok,"data":logs.status()}));
+        }
         while let Ok(request) = layer_requests.try_recv() {
             if request.response.is_closed() {
                 continue;
@@ -458,7 +473,7 @@ fn run(
         }
         let now = Instant::now();
         if now >= mirror_due {
-            let reply = refresh(&mut *source, &bank, &mut last_error)?;
+            let reply = refresh(&mut *source, &bank, &mut last_error, logs)?;
             web.observe(&reply);
             mirror_due = Instant::now() + options.tick;
         }
@@ -546,6 +561,8 @@ fn main() -> ExitCode {
         }
     };
 
+    let mut logs = icem_logging::Logs::installed(icem_logging::Owner::Host);
+    logs.record("Host startup");
     let boot = icem_web::BootStages::default();
     if let Err(error) = boot.begin("ini", "конфигурация") {
         eprintln!("{error}");
@@ -554,6 +571,7 @@ fn main() -> ExitCode {
     let options = match options() {
         Ok(options) => options,
         Err(error) => {
+            logs.record(&format!("Configuration failed: {error}"));
             eprintln!(
                 "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH]"
             );
@@ -564,8 +582,10 @@ fn main() -> ExitCode {
         eprintln!("{error}");
         return ExitCode::from(1);
     }
-    match run(options, boot) {
+    match run(options, boot, &mut logs) {
         Ok(restart) => {
+            logs.record("Host stopping");
+            drop(logs);
             if restart {
                 #[cfg(windows)]
                 drop(_guard);
@@ -582,6 +602,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(error) => {
+            logs.record(&format!("Host failed: {error}"));
             eprintln!("{error}");
             ExitCode::from(1)
         }

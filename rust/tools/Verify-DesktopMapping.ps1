@@ -26,3 +26,16 @@ if ($Cargo -match '(?m)^\s*(wry|tao|webview2(?:-com)?)\s*=') { throw 'Browser de
 foreach ($File in Get-ChildItem -Path (Join-Path $DesktopRoot 'src') -Filter '*.rs' -Recurse -File) {
     if ((Get-Content -Raw $File.FullName) -match 'wry::|WebViewBuilder|build_as_child') { throw "Embedded browser in $($File.FullName)" }
 }
+
+# New controls stay separate from the frozen 176-control legacy inventory.
+$Extensions = @($Mapping.native_extensions)
+if ($Extensions.Count -ne 6) { throw 'Expected six logging extension controls' }
+$Keys = @($Extensions | ForEach-Object { "$($_.surface)|$($_.index)" })
+if (@($Keys | Sort-Object -Unique).Count -ne $Keys.Count) { throw 'Duplicate native extension identity' }
+foreach ($Control in $Extensions) {
+    if ($Control.action -notin @('set','clear') -or $Control.index -notin @(0,1)) { throw 'Invalid logging extension action/index' }
+    $Implementation = Get-Content -Raw (Join-Path $Root $Control.implementation)
+    $Composition = Get-Content -Raw (Join-Path $Root $Control.composition)
+    if (-not $Composition.Contains('"' + $Control.surface + '"') -or -not $Implementation.Contains('"' + $Control.action + '"')) { throw "Unimplemented native extension: $($Control.name)" }
+}
+Write-Host 'Native logging extensions: 6; visual acceptance NOT_RUN.'

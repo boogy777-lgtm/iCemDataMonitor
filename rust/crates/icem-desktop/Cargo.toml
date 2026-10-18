@@ -9,6 +9,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+icem-logging = { path = "../icem-logging" }
 serde_json = "=1.0.154"
 chrono = { version = "=0.4.45", default-features = false, features = ["std"] }
 

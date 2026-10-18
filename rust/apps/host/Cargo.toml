@@ -13,6 +13,8 @@ name = "icem-host-dev"
 path = "src/main.rs"
 
 [dependencies]
+serde_json = "1"
+icem-logging = { path = "../../crates/icem-logging" }
 icem-transport = { path = "../../crates/icem-transport" }
 icem-platform-windows = { path = "../../crates/icem-platform-windows" }
 icem-protocols = { path = "../../crates/icem-protocols" }
@@ -24,7 +26,6 @@ icem-web = { path = "../../crates/icem-web" }
 
 [target.'cfg(windows)'.dependencies]
 tokio = { version = "1", features = ["rt", "time"] }
-serde_json = "1"
 icem-windows-native = { path = "../../crates/icem-windows-native" }
 icem-desktop = { path = "../../crates/icem-desktop" }
 

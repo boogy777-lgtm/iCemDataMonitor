@@ -29,3 +29,10 @@ E10 / HOST02 — NOT RUN: реальный Npcap/NIC, auto/manual adapter, empty
 availability, summary counters и PCAP; проверить отсутствие записей MMF/Data.dat.
 Измерить native enumerate/open/close latency и Host command latency под load.
 Software ABI shims/nonblocking poll не доказывают deadline внутри неисправного драйвера.
+
+E12 / LOG01 — NOT RUN: в каждом desktop окне проверить ON/OFF/clear/restart,
+DPI/focus/keyboard, отсутствие UI freeze при отказе диска, ACL обычного пользователя,
+реально заполненный том, занятый внешним приложением файл и частичную очистку.
+Сравнить actual каталог/настройку/records; после clear ON запись продолжается,
+OFF не создаёт журнал. Проверить сохранность Data.dat/config/templates/AddIn и
+файлов других владельцев. Software fault injection не заменяет этот gate.

@@ -1,6 +1,7 @@
 //! GPUI desktop presentation. Domain state stays behind the original control seam.
 #![forbid(unsafe_code)]
 pub mod dashboard;
+pub mod logs;
 pub mod navigation;
 use serde_json::{Value, json};
 use std::sync::{
@@ -49,6 +50,8 @@ pub struct BootStageRow {
 }
 #[derive(Default)]
 pub struct Model {
+    pub host_logs: logs::LogView,
+    pub local_logs: logs::LogView,
     pub page: Page,
     pub dashboard: dashboard::Dashboard,
     pub boot_stages: std::collections::BTreeMap<u32, BootStageRow>,
@@ -97,6 +100,14 @@ impl Model {
         text(&self.snapshot[channel][field])
     }
     pub fn apply(&mut self, cmd: &str, response: Result<Value, String>) {
+        if cmd == "logs" {
+            self.host_logs.apply(response);
+            return;
+        }
+        if cmd == "local_logs" {
+            self.local_logs.apply(response);
+            return;
+        }
         if cmd == "navigate" {
             self.navigation = None;
             match response {
@@ -172,6 +183,7 @@ impl Model {
             Ok(result) => result,
             Err(error) => {
                 if cmd == "status" {
+                    self.host_logs.fresh = false;
                     self.boot_stages.clear();
                     self.boot_ready = false;
                 }

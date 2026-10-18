@@ -1586,5 +1586,67 @@
       "acceptance": "NOT_RUN",
       "note": "Palette carried over; template part/state equivalence pending."
     }
+  ],
+  "native_extensions": [
+    {
+      "surface": "HostLogs",
+      "index": 0,
+      "action": "set",
+      "name": "HostLogsSwitch",
+      "implementation": "crates/icem-desktop/src/logs.rs",
+      "composition": "crates/icem-desktop/src/monitor.rs",
+      "acceptance": "NOT_RUN",
+      "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
+    },
+    {
+      "surface": "HostLogs",
+      "index": 1,
+      "action": "clear",
+      "name": "HostLogsClear",
+      "implementation": "crates/icem-desktop/src/logs.rs",
+      "composition": "crates/icem-desktop/src/monitor.rs",
+      "acceptance": "NOT_RUN",
+      "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
+    },
+    {
+      "surface": "ShellLogs",
+      "index": 0,
+      "action": "set",
+      "name": "ShellLogsSwitch",
+      "implementation": "crates/icem-desktop/src/logs.rs",
+      "composition": "crates/icem-desktop/src/monitor.rs",
+      "acceptance": "NOT_RUN",
+      "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
+    },
+    {
+      "surface": "ShellLogs",
+      "index": 1,
+      "action": "clear",
+      "name": "ShellLogsClear",
+      "implementation": "crates/icem-desktop/src/logs.rs",
+      "composition": "crates/icem-desktop/src/monitor.rs",
+      "acceptance": "NOT_RUN",
+      "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
+    },
+    {
+      "surface": "EmulatorLogs",
+      "index": 0,
+      "action": "set",
+      "name": "EmulatorLogsSwitch",
+      "implementation": "crates/icem-desktop/src/logs.rs",
+      "composition": "crates/icem-desktop/src/windows.rs",
+      "acceptance": "NOT_RUN",
+      "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
+    },
+    {
+      "surface": "EmulatorLogs",
+      "index": 1,
+      "action": "clear",
+      "name": "EmulatorLogsClear",
+      "implementation": "crates/icem-desktop/src/logs.rs",
+      "composition": "crates/icem-desktop/src/windows.rs",
+      "acceptance": "NOT_RUN",
+      "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
+    }
   ]
 }

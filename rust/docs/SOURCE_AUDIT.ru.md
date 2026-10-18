@@ -248,3 +248,13 @@ Main 1f205c1: Rust push CI 39093573051 SUCCESS. Legacy push CI 39093573086 FAILU
 MetricsSamplerTests.DropOldest_SlowConsumerLosesSamples_BacklogNeverAccumulates и
 ConsoleShowAfterHideProbeTests.Show_AfterHide_OnRealConsole_IsVisible_EvenThoughShowWindowReturnsFalse.
 Emulator 103/103, Host 225/226; это не новый quit-ACK failure. Legacy не менялся в E10.
+
+## E12: управляемые логи (актуальное дополнение)
+
+[HOST_E12](HOST_E12.ru.md) и [ADR 0008](adr/0008-managed-file-logs.ru.md):
+общий файловый owner, native ON/OFF/clear для Host/Shell и независимого emulator,
+сохранённая настройка, bounded rotation и безопасная частичная очистка. Frozen
+proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1 доступен
+только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
+visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
+Console-close/window lifecycle — следующий самостоятельный инкремент.
