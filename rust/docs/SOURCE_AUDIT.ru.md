@@ -258,3 +258,12 @@ proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1
 только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
 visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
 Console-close/window lifecycle — следующий самостоятельный инкремент.
+
+## E13: ConsoleCloseGuard — неподтверждённая legacy гарантия
+
+`iCemDataMonitor.Host/Tray/ConsoleCloseGuard.cs` утверждает X → hide и выживание
+Host через TRUE из CTRL_CLOSE handler. Документация Microsoft HandlerRoutine
+говорит о завершении процесса и при TRUE; ссылки и решение в
+[ADR 0009](adr/0009-console-owner.ru.md). Такой порт не считается guard-ом.
+E13 реализует общий Show/Hide owner и Ctrl+C teardown; X → hide остаётся OPEN.
+Frozen baseline/ledger не изменяются.

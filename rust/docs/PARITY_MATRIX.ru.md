@@ -75,3 +75,8 @@ proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1
 только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
 visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
 Console-close/window lifecycle — следующий самостоятельный инкремент.
+
+E13: [console owner и Ctrl+C](HOST_E13.ru.md) дополняют P10/P15 без изменения
+статуса PARTIAL. Show/Hide/software faults покрыты; Windows process scenarios
+добавлены, но runtime NOT_RUN. X → hide не доказано и не реализовано: legacy
+CTRL_CLOSE TRUE не является гарантией Windows. Visual/window parity OPEN.

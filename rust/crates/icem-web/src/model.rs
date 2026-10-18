@@ -16,6 +16,10 @@ pub struct LayerRequest {
     pub layer: icem_core::LayerKind,
     pub response: oneshot::Sender<Result<(), String>>,
 }
+pub struct ConsoleRequest {
+    pub visible: bool,
+    pub response: oneshot::Sender<Result<bool, String>>,
+}
 pub struct ReadRequest {
     pub response: oneshot::Sender<BusReply>,
 }
@@ -63,6 +67,7 @@ pub(crate) struct Store {
 }
 #[derive(Clone)]
 pub struct WebState {
+    pub(crate) console_requests: Option<mpsc::SyncSender<ConsoleRequest>>,
     pub(crate) log_requests: Option<mpsc::SyncSender<crate::log_control::LogRequest>>,
     /// Read-once startup capability. Deferred Web toggles cannot change routes/history.
     pub(crate) web_enabled: bool,
@@ -87,6 +92,7 @@ impl WebState {
         let (shutdown, _) = tokio::sync::watch::channel(false);
         (
             Self {
+                console_requests: None,
                 log_requests: None,
                 web_enabled: layers.web,
                 boot: crate::BootStages::default(),
@@ -115,6 +121,28 @@ impl WebState {
     }
     pub fn attach_boot(&mut self, boot: crate::BootStages) {
         self.boot = boot;
+    }
+    pub fn enable_console_control(&mut self) -> mpsc::Receiver<ConsoleRequest> {
+        let (sender, receiver) = mpsc::sync_channel(16);
+        self.console_requests = Some(sender);
+        receiver
+    }
+    pub(crate) async fn set_console(&self, visible: bool) -> Result<bool, tonic::Status> {
+        let mut stopping = self.shutdown.subscribe();
+        if *stopping.borrow() {
+            return Err(tonic::Status::unavailable("Host stopping"));
+        }
+        let (response, wait) = oneshot::channel();
+        self.console_requests
+            .as_ref()
+            .ok_or_else(|| tonic::Status::unimplemented("Host console owner not attached"))?
+            .try_send(ConsoleRequest { visible, response })
+            .map_err(|_| tonic::Status::resource_exhausted("console queue full or stopped"))?;
+        tokio::select! {
+            result=wait=>result.map_err(|_|tonic::Status::unavailable("console owner stopped; outcome unknown"))?.map_err(tonic::Status::internal),
+            _=tokio::time::sleep(std::time::Duration::from_secs(5))=>Err(tonic::Status::deadline_exceeded("console owner timeout; outcome unknown")),
+            _=stopping.changed()=>Err(tonic::Status::unavailable("Host stopping; outcome unknown")),
+        }
     }
     pub fn enable_layer_control(&mut self) -> mpsc::Receiver<LayerRequest> {
         let (sender, receiver) = mpsc::sync_channel(16);
@@ -267,5 +295,126 @@ pub(crate) fn timestamp(at: i64) -> prost_types::Timestamp {
     prost_types::Timestamp {
         seconds: at.div_euclid(1000),
         nanos: (at.rem_euclid(1000) * 1_000_000) as i32,
+    }
+}
+
+#[cfg(test)]
+mod console_tests {
+    use super::*;
+    fn state() -> WebState {
+        WebState::new(HostLayers::default(), PathBuf::new(), Default::default()).0
+    }
+    #[tokio::test]
+    async fn owner_ack_and_error_are_forwarded_without_retry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut state = state();
+        let owner = state.enable_console_control();
+        let work = async {
+            loop {
+                if let Ok(request) = owner.try_recv() {
+                    assert!(request.visible);
+                    let _ = request.response.send(Ok(true));
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        };
+        let (result, ()) = tokio::join!(state.set_console(true), work);
+        assert!(result?);
+        let work = async {
+            loop {
+                if let Ok(request) = owner.try_recv() {
+                    let _ = request.response.send(Err("access denied".into()));
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        };
+        let (result, ()) = tokio::join!(state.set_console(false), work);
+        assert_eq!(
+            result.err().ok_or("missing error")?.code(),
+            tonic::Code::Internal
+        );
+        assert!(owner.try_recv().is_err());
+        Ok(())
+    }
+    #[tokio::test]
+    async fn unavailable_full_shutdown_and_cancellation_are_bounded()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut state = state();
+        assert_eq!(
+            state
+                .set_console(true)
+                .await
+                .err()
+                .ok_or("missing error")?
+                .code(),
+            tonic::Code::Unimplemented
+        );
+        let owner = state.enable_console_control();
+        let mut waits = Vec::new();
+        for _ in 0..16 {
+            let (response, wait) = oneshot::channel();
+            waits.push(wait);
+            state
+                .console_requests
+                .as_ref()
+                .ok_or("no sender")?
+                .try_send(ConsoleRequest {
+                    visible: true,
+                    response,
+                })?;
+        }
+        assert_eq!(
+            state
+                .set_console(true)
+                .await
+                .err()
+                .ok_or("missing error")?
+                .code(),
+            tonic::Code::ResourceExhausted
+        );
+        assert_eq!(owner.try_iter().count(), 16);
+        assert!(
+            tokio::time::timeout(
+                std::time::Duration::from_millis(10),
+                state.set_console(false)
+            )
+            .await
+            .is_err()
+        );
+        let cancelled = owner.try_recv()?;
+        assert!(cancelled.response.is_closed());
+        state.shutdown.send_replace(true);
+        assert_eq!(
+            state
+                .set_console(true)
+                .await
+                .err()
+                .ok_or("missing error")?
+                .code(),
+            tonic::Code::Unavailable
+        );
+        assert!(owner.try_recv().is_err());
+        Ok(())
+    }
+    #[tokio::test]
+    async fn dropped_owner_reports_unknown_outcome() -> Result<(), Box<dyn std::error::Error>> {
+        let mut state = state();
+        let owner = state.enable_console_control();
+        let stop = async {
+            loop {
+                if let Ok(request) = owner.try_recv() {
+                    drop(request);
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        };
+        let (result, ()) = tokio::join!(state.set_console(true), stop);
+        let error = result.err().ok_or("missing error")?;
+        assert_eq!(error.code(), tonic::Code::Unavailable);
+        assert!(error.message().contains("outcome unknown"));
+        Ok(())
     }
 }

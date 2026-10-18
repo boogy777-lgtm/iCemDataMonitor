@@ -280,10 +280,11 @@ fn refresh(
         is_open: source.is_open(),
     })
 }
-fn run(
+fn run<D: icem_platform_windows::console::Device>(
     mut options: Options,
     boot: icem_web::BootStages,
     logs: &mut icem_logging::Logs,
+    console: &mut icem_platform_windows::console::Controller<D>,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     #[cfg(not(windows))]
     if options.tray_icon.is_some() {
@@ -376,6 +377,7 @@ fn run(
     web.attach_boot(boot.clone());
     #[cfg(windows)]
     web.attach_navigation(Arc::new(windows::ShellSignals));
+    let console_requests = web.enable_console_control();
     let layer_requests = web.enable_layer_control();
     let log_requests = web.enable_log_control();
     layers::publish_sniffer(&sniffer, &web)?;
@@ -407,6 +409,7 @@ fn run(
     if options.rpc_pipe.is_some() {
         return Err("local Host gRPC pipe requires Windows".into());
     }
+    console.rearm()?;
     boot.complete("ipc", None)?;
     boot.begin("ready", "готовность")?;
     boot.complete("ready", Some("READY"))?;
@@ -429,6 +432,10 @@ fn run(
         .duration
         .is_none_or(|limit| started.elapsed() < limit)
     {
+        if console.take_stop() {
+            logs.record("Ctrl+C: graceful Host stop requested");
+            break;
+        }
         if let Some(capture) = &mut sniffer {
             capture.poll(capture_started.elapsed());
         }
@@ -445,7 +452,9 @@ fn run(
                 )
                 .map_err(Into::into),
                 Action::Web => windows::open_web(&web_url).map_err(Into::into),
-                Action::Console(visible) => windows::console(visible).map_err(Into::into),
+                Action::Console(visible) => {
+                    console.set_visible(visible).map(|_| ()).map_err(Into::into)
+                }
                 Action::Restart => {
                     restart = true;
                     break;
@@ -456,6 +465,17 @@ fn run(
                 logs.record(&format!("host action: {error}"));
                 eprintln!("host action: {error}");
             }
+        }
+        for request in console_requests.try_iter().take(16) {
+            if request.response.is_closed() {
+                continue;
+            }
+            let result = console.set_visible(request.visible);
+            match &result {
+                Ok(actual) => logs.record(&format!("Console visible={actual}")),
+                Err(error) => logs.record(&format!("Console failed: {error}")),
+            }
+            let _ = request.response.send(result);
         }
         // Bound work per poll; a queued cancelled mutation is never started.
         for request in log_requests.try_iter().take(16) {
@@ -573,8 +593,26 @@ fn main() -> ExitCode {
         }
     };
 
+    #[cfg(windows)]
+    let console_device = match icem_windows_native::ConsoleControl::install() {
+        Ok(device) => device,
+        Err(error) => {
+            eprintln!("{error}");
+            return ExitCode::from(1);
+        }
+    };
+    #[cfg(not(windows))]
+    let console_device = icem_platform_windows::console::Unsupported;
+    let mut console = icem_platform_windows::console::Controller::new(console_device);
     let mut logs = icem_logging::Logs::installed(icem_logging::Owner::Host);
     logs.record("Host startup");
+    if arguments.iter().any(|argument| argument == "--autostart")
+        && let Err(error) = console.set_visible(false)
+    {
+        logs.record(&format!("Startup console hide failed: {error}"));
+        eprintln!("{error}");
+        return ExitCode::from(1);
+    }
     let boot = icem_web::BootStages::default();
     if let Err(error) = boot.begin("ini", "конфигурация") {
         eprintln!("{error}");
@@ -594,7 +632,11 @@ fn main() -> ExitCode {
         eprintln!("{error}");
         return ExitCode::from(1);
     }
-    match run(options, boot, &mut logs) {
+    if console.take_stop() {
+        logs.record("Ctrl+C: Host stopped during startup");
+        return ExitCode::SUCCESS;
+    }
+    match run(options, boot, &mut logs, &mut console) {
         Ok(restart) => {
             logs.record("Host stopping");
             drop(logs);

@@ -144,3 +144,10 @@ proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1
 только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
 visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
 Console-close/window lifecycle — следующий самостоятельный инкремент.
+
+## E13: консоль через Host owner
+
+Прежние tray/RPC действия Show/Hide теперь выполняет один Host controller; actual
+visibility остаётся источником статуса. Контролы/appearance/mapping 176 + 6 не менялись.
+[HOST_E13](HOST_E13.ru.md): Ctrl+C идёт в graceful teardown, console X → hide OPEN.
+Native focus, DPI, sessions и поведение всех окон остаются operator gates.

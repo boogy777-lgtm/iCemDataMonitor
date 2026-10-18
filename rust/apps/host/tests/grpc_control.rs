@@ -70,6 +70,23 @@ fn grpc_host_toggle_ignores_desired_state_and_stops_listener()
         let status = client.get_status(HostStatusRequest {}).await?.into_inner();
         assert!(status.bus_open);
         assert!(status.layers.ok_or("layers missing")?.modbus_bound);
+        // Every command is acknowledged by the Host service owner, including
+        // headless demand-attach and repeated commands. GetStatus probes the HWND.
+        for visible in [false, true, true, false, true, false] {
+            let status = client
+                .set_console_visible(SetConsoleVisibleRequest { visible })
+                .await?
+                .into_inner();
+            assert_eq!(status.console_visible, visible);
+            assert_eq!(
+                client
+                    .get_status(HostStatusRequest {})
+                    .await?
+                    .into_inner()
+                    .console_visible,
+                visible
+            );
+        }
         for expected in [false, true] {
             let layers = client
                 .set_layer(LayerControlRequest {

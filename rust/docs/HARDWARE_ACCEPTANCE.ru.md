@@ -36,3 +36,12 @@ DPI/focus/keyboard, отсутствие UI freeze при отказе диск�
 Сравнить actual каталог/настройку/records; после clear ON запись продолжается,
 OFF не создаёт журнал. Проверить сохранность Data.dat/config/templates/AddIn и
 файлов других владельцев. Software fault injection не заменяет этот gate.
+
+## E13: console/window operator gate
+
+Проверить на настоящем Windows: headless/manual/autostart, repeated Show/Hide,
+minimize/restore, tray и desktop disconnect/reconnect; Ctrl+C должен завершить Host
+с освобождением pipe/listeners/tray, не останавливая независимый emulator. Проверить
+DPI/focus, elevated/non-elevated и разные sessions. X → hide сейчас OPEN: закрытие
+нативной консоли завершает Host по OS default. Не принимать этот сценарий за PASS
+на основании callback или cross-build. [Подробности E13](HOST_E13.ru.md).

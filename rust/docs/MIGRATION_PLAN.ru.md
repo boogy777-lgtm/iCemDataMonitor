@@ -150,3 +150,10 @@ proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1
 только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
 visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
 Console-close/window lifecycle — следующий самостоятельный инкремент.
+
+## E13: частичный console/window lifecycle
+
+[HOST_E13](HOST_E13.ru.md): единый owner видимости, headless attach,
+actual acknowledgement и graceful Ctrl+C. Console X → hide требует отдельной
+архитектуры окна: legacy callback не отменяет CTRL_CLOSE. Этот gate и оставшиеся
+window lifecycle/operator сценарии открыты; весь P10/P15 не объявляется завершённым.
