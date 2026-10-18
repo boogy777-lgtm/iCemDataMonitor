@@ -419,6 +419,87 @@ async fn nonfinite_rest_is_failure_while_protobuf_preserves_ieee() -> TestResult
     assert!(matches!(value,proto::register_value::Value::FloatValue(v) if v.is_nan()));
     Ok(())
 }
+#[tokio::test]
+async fn sniffer_actual_status_summary_and_layer_rpc_use_the_host_owner() -> TestResult {
+    let mut h = Harness::new(true)?;
+    let requests = h.state.enable_layer_control();
+    // Projection-only contract test. Real capture lifecycle is exercised in
+    // icem-platform-windows and apps/host; this seam verifies RPC dispatch/wire.
+    for (available, running, state) in [
+        (true, true, "RUNNING"),
+        (true, false, "PAUSED"),
+        (false, false, "FAULT"),
+    ] {
+        h.state.set_sniffer(Some(icem_web::HostSniffer {
+            available,
+            running,
+            state: state.into(),
+            total_frames: 7,
+            ace_frames: 3,
+            distinct_macs: 2,
+            last_error: if available {
+                String::new()
+            } else {
+                "driver failed".into()
+            },
+            ..icem_web::HostSniffer::default()
+        }))?;
+        let body = h.rpc("GetStatus", proto::HostStatusRequest {}).await?;
+        let layers = proto::HostStatus::decode(data(&body)?)?
+            .layers
+            .ok_or("layers")?;
+        assert_eq!(
+            (layers.sniffer_available, layers.sniffer),
+            (available, running)
+        );
+        assert_eq!(layers.last_error.is_empty(), available);
+        let (_, body) = h.get("/api/status/summary").await?;
+        let summary: Value = serde_json::from_slice(&body)?;
+        assert_eq!(summary["layers"]["sniffer"], running);
+        assert_eq!(summary["snifferStats"]["state"], state);
+        assert_eq!(summary["snifferStats"]["aceFrames"], 3);
+    }
+    let projection = h.state.clone();
+    let owner = std::thread::spawn(move || -> Result<(), String> {
+        // Two identical desired_state=false must reach the owner twice, as toggles.
+        for running in [false, true] {
+            let request = requests
+                .recv_timeout(Duration::from_secs(2))
+                .map_err(|e| e.to_string())?;
+            assert_eq!(request.layer, icem_core::LayerKind::LanSniffer);
+            projection.set_sniffer(Some(icem_web::HostSniffer {
+                available: true,
+                running,
+                ..icem_web::HostSniffer::default()
+            }))?;
+            request.response.send(Ok(())).map_err(|_| "reply dropped")?;
+        }
+        Ok(())
+    });
+    for running in [false, true] {
+        let frame = h
+            .rpc(
+                "SetLayer",
+                proto::LayerControlRequest {
+                    layer: 3,
+                    desired_state: false,
+                },
+            )
+            .await?;
+        let state = proto::LayerState::decode(data(&frame)?)?;
+        assert_eq!(state.sniffer, running);
+        assert!(state.sniffer_available);
+    }
+    owner.join().map_err(|_| "owner panicked")??;
+    for dormant in [
+        "/api/sniffer/status",
+        "/api/sniffer/start",
+        "/api/sniffer/capture",
+    ] {
+        assert_eq!(h.get(dormant).await?.0, StatusCode::NOT_FOUND);
+    }
+    Ok(())
+}
 
 async fn next_web_frame(
     body: &mut Body,

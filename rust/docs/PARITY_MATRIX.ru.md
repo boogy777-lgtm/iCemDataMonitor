@@ -55,3 +55,8 @@ E9: P10/P13/P15 дополнены [boot/navigation fault checks](HOST_E9.ru.md)
 lag/cancel/stream permits, Shell session release и at-most-one consuming navigation
 attempt per explicit demand. Partial software evidence не закрывает Windows operator,
 startup-before-IPC, ensure-host, console, hardware или visual/MSI gates.
+
+E10: P16/P17/P15 дополнены [Host capture owner](HOST_E10.ru.md): реальный
+Npcap receive, pause/resume, bounded counters, actual RPC/summary, UI availability.
+Статус PARTIAL. Decode/signals/service-vectors, capture-to-file, real NIC/Npcap
+и Windows operator/visual acceptance остаются открытыми.

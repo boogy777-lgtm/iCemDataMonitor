@@ -5,6 +5,11 @@ mod windows {
     use icem_web::{client, proto::*};
     use serde_json::{Value, json};
     use std::sync::Arc;
+    fn layer_view(layers: LayerState) -> Value {
+        json!({"modbus":layers.modbus_bound,"sniffer":layers.sniffer,
+            "snifferAvailable":layers.sniffer_available,"busy":layers.busy,
+            "opcDa":layers.opc_da,"web":layers.web,"lastError":layers.last_error})
+    }
     struct Session {
         runtime: tokio::runtime::Runtime,
         metrics: Option<tonic::Streaming<MetricsSample>>,
@@ -99,11 +104,11 @@ mod windows {
                     "status"=>{
                         let status=client.get_status(HostStatusRequest{}).await.map_err(|e|e.to_string())?.into_inner();
                         let layers=status.layers.unwrap_or_default();
-                        json!({"busOpen":status.bus_open,"addinAlive":status.addin_alive,"heartbeat":status.heartbeat,"zones":status.zones.into_iter().map(|z|json!({"kind":z.kind,"active":z.active,"ageMs":z.age_ms})).collect::<Vec<_>>(),"layers":{"modbus":layers.modbus_bound,"sniffer":layers.sniffer,"opcDa":layers.opc_da,"web":layers.web,"lastError":layers.last_error},"consoleVisible":status.console_visible,"autostartEnabled":status.autostart_enabled})
+                        json!({"busOpen":status.bus_open,"addinAlive":status.addin_alive,"heartbeat":status.heartbeat,"zones":status.zones.into_iter().map(|z|json!({"kind":z.kind,"active":z.active,"ageMs":z.age_ms})).collect::<Vec<_>>(),"layers":layer_view(layers),"consoleVisible":status.console_visible,"autostartEnabled":status.autostart_enabled})
                     }
                     "prefs"=>{let result=client.get_ui_prefs(UiPrefsRequest{}).await.map_err(|e|e.to_string())?.into_inner();json!({"themeLight":result.theme_light})}
                     "theme"=>{let result=client.set_ui_theme(SetUiThemeRequest{theme_light:command["value"]==true}).await.map_err(|e|e.to_string())?.into_inner();json!({"themeLight":result.theme_light})}
-                    "layer"=>{client.set_layer(LayerControlRequest{layer:command["layer"].as_i64().unwrap_or(0) as i32,desired_state:false}).await.map_err(|e|e.to_string())?;json!({})}
+                    "layer"=>{let result=client.set_layer(LayerControlRequest{layer:command["layer"].as_i64().unwrap_or(0) as i32,desired_state:false}).await.map_err(|e|e.to_string())?.into_inner();layer_view(result)}
                     "console"=>{client.set_console_visible(SetConsoleVisibleRequest{visible:command["value"]==true}).await.map_err(|e|e.to_string())?;json!({})}
                     "autostart"=>{client.set_autostart(SetAutostartRequest{enabled:command["value"]==true}).await.map_err(|e|e.to_string())?;json!({})}
                     _=>return Err("unknown Host UI command".into()),

@@ -112,3 +112,13 @@ boot/status fault. Navigation section=0 получает один attempt per st
 ошибка и status reconnect не вызывают скрытый повтор consume. Новый show во время
 in-flight сохраняется. Добавлены policy/model/Host RPC faults и Windows pipe cycles;
 геометрия/стили контролов не менялись, visual acceptance остаётся NOT_PROVEN.
+
+## E10: SnifferSwitch availability
+
+Shell сохраняет snifferAvailable/busy и LayerState результата мутации. Модель
+разрешает SnifferSwitch только при связи с Host, доступном capture и !busy.
+Mouse/Enter/Space используют общий enabled path; disabled не входит в tab stops.
+LastError видна в status view. При потере Host last-known остаётся, action запрещён.
+Прочитаны original MainWindow.xaml, MainWindow.xaml.cs и ThemeResources.xaml.
+Mapping всё ещё 176/176 inventory; Windows visual/focus/DPI acceptance NOT_RUN.
+[Границы и проверки](HOST_E10.ru.md).

@@ -155,3 +155,20 @@ Canonical proto, Host pending semantics и legacy sources не меняются.
 Исправлены registration-before-execute и shutdown-test timing: [разбор и границы](LEGACY_QUIT_ACK.ru.md).
 Source manifest остаётся immutable; ledger дополнен двумя точными хешами и provenance.
 Это отдельное последующее разрешение на legacy maintenance, не изменение исходного scope E9.
+
+## E10: уточнение активного sniffer wiring
+
+D06 теперь охарактеризован кодом и regression: HostComposition.StartLayersAsync
+запускает зарегистрированный capture независимо от lansniffer_on. Controller хранит
+отдельный session plan. При ini=0 capture RUNNING, первый toggle планирует true
+и оставляет RUNNING; второй ставит PAUSED. Rust сохраняет это различие.
+AceSnifferService выбирает первый подходящий Ethernet автоматически, хотя его
+комментарий утверждает manual-only. IsAceFrame слабее AceFrameBuilder parser:
+ровно 152 bytes + LLC 03/03/08|09; witness не заменён emitter predicate.
+D29 UI gap исправлен по backend availability. Намеренные E10 resource/availability
+deltas и оставшийся decode/driver backlog перечислены в HOST_E10/ADR 0007.
+
+Main 1f205c1: Rust push CI 39093573051 SUCCESS. Legacy push CI 39093573086 FAILURE:
+MetricsSamplerTests.DropOldest_SlowConsumerLosesSamples_BacklogNeverAccumulates и
+ConsoleShowAfterHideProbeTests.Show_AfterHide_OnRealConsole_IsVisible_EvenThoughShowWindowReturnsFalse.
+Emulator 103/103, Host 225/226; это не новый quit-ACK failure. Legacy не менялся в E10.
