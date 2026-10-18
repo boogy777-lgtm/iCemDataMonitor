@@ -106,7 +106,9 @@ function Assert-Installed([string] $Version, [string] $ProductCode) {
     $UsersSid = 'S-1-5-32-545'
     $Modify = [Security.AccessControl.FileSystemRights]::Modify
     $Inheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
-    $UsersRules = @((Get-Acl -LiteralPath $Install).Access | Where-Object {
+    # Runtime is deliberately relocated by this test; station config remains canonical.
+    $StationData = Join-Path $env:ProgramData 'Halliburton/iCem/DataMonitoring'
+    $UsersRules = @((Get-Acl -LiteralPath $StationData).Access | Where-Object {
         $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -eq $UsersSid -and
         $_.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and
         ($_.FileSystemRights -band $Modify) -eq $Modify -and

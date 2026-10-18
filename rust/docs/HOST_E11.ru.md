@@ -83,7 +83,10 @@ Class: рабочий каталог MSI (`Product.wxs`, `Build-WindowsMsi`, о�
 Inv: Users имеют наследуемый Modify, ACE других identities сохраняются; проверка после каждого
 install/repair/upgrade. N+1: прежняя генерация GUID компонентов, без ACL-скрипта.
 
-Добавлен CreateFolder component с util PermissionEx. Группа определяется
+Добавлен один CreateFolder component с util PermissionEx для STATIONDATAROOT —
+canonical ProgramData пути. Он не следует за перенесённым MONITORROOT: выбор
+другого каталога EXE не меняет legacy путь конфигурации. MSI contract специально
+переносит runtime и проверяет ACL canonical каталога после install/repair/upgrade. Группа определяется
 через встроенное сопоставление Util `Users` → WinBuiltinUsersSid (не локализованное имя ОС). Это соответствует legacy Users Modify
 для общего каталога данных/приложения. Права ChangePermissions/TakeOwnership не выдаются.
 WiX Util использует существующий pin 5.0.2 (MIT); явный installer-only dependency,

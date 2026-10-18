@@ -70,7 +70,9 @@ try {
     if ($Util.Count -ne 1 -or $Util[0].LocalName -cne 'PermissionEx' -or
         $Util[0].ParentNode.LocalName -cne 'CreateFolder' -or
         $Util[0].ParentNode.ParentNode.Id -cne 'Cmp.StationDirectory' -or
-        $Util[0].ParentNode.ParentNode.Directory -cne 'MONITORROOT' -or
+        $Util[0].ParentNode.ParentNode.Directory -cne 'STATIONDATAROOT' -or
+        $Xml.SelectSingleNode('//w:Directory[@Id="STATIONDATAROOT"]', $Ns).Name -cne 'DataMonitoring' -or
+        $Xml.SelectSingleNode('//w:Directory[@Id="STATIONDATAROOT"]', $Ns).ParentNode.Id -cne 'IcemDataDir' -or
         $Util[0].Attributes.Count -ne $ExpectedAcl.Count) { throw 'Unreviewed/missing station ACL resource' }
     foreach ($Name in $ExpectedAcl.Keys) {
         if ($Util[0].GetAttribute($Name) -cne $ExpectedAcl[$Name]) { throw "Station ACL invariant failed: $Name" }

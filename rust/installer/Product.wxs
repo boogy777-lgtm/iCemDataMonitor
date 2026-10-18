@@ -63,6 +63,8 @@
       <Directory Id="HalliburtonDataDir" Name="Halliburton">
         <Directory Id="IcemDataDir" Name="iCem">
           <Directory Id="MONITORROOT" Name="DataMonitoring" />
+          <!-- Canonical station settings stay here even when MONITORROOT is relocated. -->
+          <Directory Id="STATIONDATAROOT" Name="DataMonitoring" />
         </Directory>
       </Directory>
     </StandardDirectory>
@@ -83,7 +85,7 @@
       </Component>
     </StandardDirectory>
     <ComponentGroup Id="Setup.Options">
-      <Component Id="Cmp.StationDirectory" Directory="MONITORROOT" Guid="00000000-0000-0000-0000-000000000000">
+      <Component Id="Cmp.StationDirectory" Directory="STATIONDATAROOT" Guid="00000000-0000-0000-0000-000000000000">
         <CreateFolder>
           <util:PermissionEx User="Users" Inheritable="yes"
                              Read="yes" CreateFile="yes" CreateChild="yes" Traverse="yes" Delete="yes"
