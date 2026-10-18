@@ -133,8 +133,9 @@ try {
     if ((Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Wrong native autostart command' }
     $Wsh = New-Object -ComObject WScript.Shell
     try {
+        if (-not (Test-Path -LiteralPath $Shortcut -PathType Leaf)) { throw "Desktop shortcut missing: $Shortcut" }
         $Link = $Wsh.CreateShortcut($Shortcut)
-        try { if ($Link.TargetPath -ine (Join-Path $Install 'icem-shell-dev.exe')) { throw 'Wrong desktop shortcut target' } }
+        try { if ($Link.TargetPath -ine (Join-Path $Install 'icem-shell-dev.exe')) { throw "Wrong desktop shortcut target: <$($Link.TargetPath)>" } }
         finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Link) }
     } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Wsh) }
     [IO.File]::WriteAllText($Marker, $MarkerText)

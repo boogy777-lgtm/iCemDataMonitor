@@ -68,6 +68,10 @@ function Write-WindowsInstallerSource([string] $PayloadDirectory, [string] $Vers
     foreach ($Search in @($Xml.SelectNodes('//w:Property[@Id="ICEMDIR"]/w:DirectorySearch', $Ns))) { $null = $Search.ParentNode.RemoveChild($Search) }
     $WipePath = $Xml.SelectSingleNode('//w:SetProperty[@Id="WipeMonitorRoot"]', $Ns)
     $WipePath.SetAttribute('Value', '[MONITORROOT]')
+    $Desktop = $Xml.SelectSingleNode('//w:Component[@Id="Cmp.DesktopShortcut"]', $Ns)
+    if (-not $Desktop.SelectSingleNode('w:CreateFolder', $Ns)) {
+        $null = $Desktop.AppendChild($Xml.CreateElement('CreateFolder', $Ns.LookupNamespace('w')))
+    }
     $RoleMap = @{
         'iCemDataMonitor.Host.exe' = 'host'
         'iCemDataMonitor.WinUI.exe' = 'shell'

@@ -52,6 +52,7 @@ try {
         $Xml.SelectNodes('//w:Dialog[@Id="IcemRunningCheckDlg" or @Id="OptionsDlg"]', $Ns).Count -ne 2 -or
         $Xml.SelectSingleNode('//w:StandardDirectory[@Id="CommonAppDataFolder"]//w:Directory[@Id="MONITORROOT"]', $Ns).Name -ne 'DataMonitoring' -or
         $Xml.SelectSingleNode('//w:Shortcut[@Id="DesktopMonitorShortcut"]', $Ns).Target -cne '[MONITORROOT]icem-shell-dev.exe' -or
+        $Xml.SelectNodes('//w:Component[@Id="Cmp.DesktopShortcut"]/w:CreateFolder', $Ns).Count -ne 1 -or
         $Xml.SelectSingleNode('//w:RegistryValue[@Name="iCemDataMonitorHost"]', $Ns).Value -cne '"[MONITORROOT]icem-host-dev.exe" --autostart' -or
         $Xml.SelectSingleNode('//w:SetProperty[@Id="WipeMonitorRoot"]', $Ns).Value -cne '[MONITORROOT]' -or
         $Xml.SelectSingleNode('//w:UpgradeVersion[@Property="LEGACY_MONITOR_PRESENT"]', $Ns).OnlyDetect -ne 'yes') { throw 'Legacy UI/paths/options/ownership projection failed' }

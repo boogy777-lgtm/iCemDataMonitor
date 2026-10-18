@@ -201,3 +201,11 @@ Host path. Schema-2 packaging now keeps both original inputs: Host templates/
 variable_registry.json and emulator/templates/variable_registry.json. Role paths
 are manifest data consumed by launchers/release smoke; hash tests reject either
 substitution. No canonical registry contents or runtime protocol code changed.
+
+D37 / candidate MSI desktop ownership: Windows installer-contract run 39102512162
+installed both payload mounts and autostart successfully, but logged Warning 1909
+and produced no desktop link. The inherited shortcut-only/registry component did
+not author CreateFolder for an absent Common Desktop on a clean runner. The Rust
+projection now adds native CreateFolder to the same opt-in component; it does not
+edit the legacy source or pre-create folders in the test. Creation of a real link,
+its target and removal remain asserted.
