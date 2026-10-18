@@ -94,6 +94,39 @@ read-only sniffer capture owner, pause/resume/counters и actual availability pr
 Далее production CLI/ensure-host/config recovery и console/window lifecycle; MSI после
 измеренного payload и Windows install/upgrade/uninstall. Legacy CI не приоритет миграции.
 
+## Windows development MSI: N → N+1
+
+`tools/Build-WindowsRelease.ps1 -Version x.y.z` теперь формирует отдельный Rust
+development MSI из проверенного payload, с собственным UpgradeCode и исходным ProgramData-путём. `installer/README.md` описывает ограничения и manual Actions → next patch →
+draft prerelease. Политика legacy MSI не меняется. Windows workflow проверяет
+install N → upgrade N+1 → запрет downgrade → uninstall; пользовательский файл
+сохраняется при upgrade и uninstall; удаляются только MSI-owned ресурсы. N+1 probe использует те же EXE, поэтому проверяет механику MSI, а не
+изменения функциональности. M7 целиком не закрыт: production cutover/загрузка AddIn в iCem, signing,
+rollback/failure/offline приёмка на чистой VM и running-process policy остаются открыты.
+
+### M7: полный состав и legacy оформление упаковщика
+
+Обязательны Rust runtime + исходный net48 AddIn, provenance/hash/metadata guard и
+исходное оформление Бурсервис. Rust builder переиспользует исходные assets/bitmap generator и harvester;
+SDK/DLL нельзя пропускать. Windows installer-contracts проверяет реальные MSI
+операции на синтетических файлах без выпуска fixture MSI; реальный релиз отдельно
+требует SDK-built DLL, полные Rust gates и runtime smoke/browser проверки. Пути и
+opt-in опции сохранены. После [аудита v3.1](INSTALLER_AUDIT.ru.md) Rust package
+не копирует WMI/kill/wipe/hidden-ARP политику legacy: используются native MSI
+ownership и отдельный component GUID namespace; unowned данные сохраняются. Автоматический cutover установленного .NET MSI заблокирован.
+Полная M7/визуальная/аппаратная приёмка этим изменением не закрыта.
+
+
+### M7 clarification: повторный запуск и разрешённое force-закрытие
+
+Установка ориентирована на оператора без IT-навыков. MSI восстанавливает сохранённые
+пути/опции и повторным запуском ремонтирует отсутствующие/испорченные owned files.
+Native Restart Manager закрывает владельцев затрагиваемых файлов; force — явная
+несохраняемая опция, Cancel не является командой kill. Windows contracts проверяют
+same-name foreign process isolation, grace/force, plain repeat repair и opt-out.
+Реальные iCem/службы/другие sessions, reboot и first-run Host/config остаются gates.
+Legacy и Rust упаковываются в разные MSI. См. INSTALLER_AUDIT.ru.md.
+
 ## E10: read-only capture vertical
 
 [HOST_E10](HOST_E10.ru.md) реализует capture → lifecycle → actual status →

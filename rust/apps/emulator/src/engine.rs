@@ -244,8 +244,8 @@ mod windows {
                 checking.should_stop()
                     || duration.is_some_and(|limit| checking.started.elapsed() >= limit)
             });
-            let icon = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/iCemEmule.ico");
-            let result = icem_desktop::run_emulator(service.clone(), stop, icon);
+            let result = icem_platform_windows::application_asset("iCemEmule.ico")
+                .and_then(|icon| icem_desktop::run_emulator(service.clone(), stop, icon));
             stopping.store(true, Ordering::Release);
             let tick_result = worker.join().map_err(|_| "emulator tick panicked")?;
             tick_result?;

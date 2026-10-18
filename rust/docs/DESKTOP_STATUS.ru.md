@@ -113,6 +113,13 @@ boot/status fault. Navigation section=0 получает один attempt per st
 in-flight сохраняется. Добавлены policy/model/Host RPC faults и Windows pipe cycles;
 геометрия/стили контролов не менялись, visual acceptance остаётся NOT_PROVEN.
 
+## Windows package sidecars
+
+Default tray icons resolve beside the EXE (`assets/`) instead of the source checkout.
+The Windows release archive includes them, canonical templates and explicit launchers;
+see [installer/README.md](../installer/README.md). Debug desktop runs require icons in
+`target/debug/assets/`. This does not change control mapping or establish visual parity.
+
 ## E10: SnifferSwitch availability
 
 Shell сохраняет snifferAvailable/busy и LayerState результата мутации. Модель

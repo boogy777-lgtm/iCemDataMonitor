@@ -13,7 +13,7 @@ const { createInterface } = require('node:readline');
   fixture.fill(0, 64 + 20, 64 + 24); // remove intentional codec NaN for JSON UI scenario
   await fs.writeFile(path.join(dir, 'bus.bin'), fixture);
   await fs.writeFile(path.join(dir, 'ui-theme'), 'dark');
-  const exe = path.join(root, 'target/debug/icem-host-dev' + (process.platform === 'win32' ? '.exe' : ''));
+  const exe = process.env.ICEM_HOST_EXE || path.join(root, 'target/debug/icem-host-dev' + (process.platform === 'win32' ? '.exe' : ''));
   const host = spawn(exe, ['--modbus-fixture', path.join(dir, 'bus.bin'), '--bind', '127.0.0.1:0', '--web-bind', '127.0.0.1:0', '--theme-file', path.join(dir, 'ui-theme'), '--registry', path.join(root, '../templates/variable_registry.json'), '--duration-ms', '60000'], { cwd: root });
   let logs = '', stdout = '', browser;
   host.stdout.on('data', b => stdout += b);

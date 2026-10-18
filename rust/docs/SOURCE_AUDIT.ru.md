@@ -156,6 +156,82 @@ Canonical proto, Host pending semantics и legacy sources не меняются.
 Source manifest остаётся immutable; ledger дополнен двумя точными хешами и provenance.
 Это отдельное последующее разрешение на legacy maintenance, не изменение исходного scope E9.
 
+D33 / Windows packaging: default Host/autostart and emulator tray icons used
+CARGO_MANIFEST_DIR paths captured on the build machine. The common
+icem-platform-windows::application_asset resolver now requires EXE-adjacent assets
+and reports a missing resource explicitly. User settings retain their own paths;
+source-tree desktop runs must copy icons to target/debug/assets. A relocated ZIP
+supplies sidecars through windows-payload.json. The emulator keeps its tick-worker
+stop/join cleanup when asset lookup fails.
+
+Windows release script builds a locked MSVC release payload with static CRT and
+checks its manifest/checksums after ZIP extraction. Existing Linux CI build removed
+by the user's Windows-only instruction; Chrome/theme contracts moved to Windows.
+The packaging changes do not modify legacy source behavior, the baseline manifest or active endpoints.
+Legacy CI defects remain outside priority per the user's instruction.
+
+Windows installer follow-up: the verified inventory now also generates a WiX 5.0.2
+development MSI, with independent upgrade identity and canonical legacy runtime path. `rust-vX.Y.Z` tags/
+release drafts define the N+1 patch sequence; the Windows workflow includes actual
+install/upgrade/downgrade/uninstall checks before uploading an MSI or creating an
+optional draft prerelease. Production MSI identity/AddIn cutover remains unaccepted.
+
+D34 / observed Windows release blocker: on head 5d464d10f711483dbec5ab6267dc806216cbdba6,
+full Windows Rust CI run 39069337634 passed, while release run 39069337765 failed
+in unchanged icem-web/tests/windows_pipe.rs (rebind after both owners closed,
+PermissionDenied/os error 5), before release/MSI build. IOCP/runtime shutdown
+ownership is a hypothesis, not a proven cause. No test was bypassed or mutation
+retried. This remains a Rust lifecycle issue, unrelated to legacy CI priority.
+
+D35 / M7 packaging correction: schema-2 payload now requires the unchanged net48 AddIn
+with source/SDK/DLL provenance and managed x64/net48 metadata checks. Complete
+releases cannot skip a missing SDK/DLL. Runtime/AddIn retain the original
+ProgramData / iCem Bin/Modules mounts. The initial whole-template projection has
+been superseded by the v3.1 ownership audit below. Fixture MSI contracts do not
+prove SDK-backed DLL build or application behavior. See installer/README.md.
+
+D36 / packaging registry ownership: legacy merged its 3507-variable Host registry
+and 140-variable emulator registry using an explicit emulator override filename.
+The initial Rust dev plan instead shipped only emulator/templates at the shared
+Host path. Schema-2 packaging now keeps both original inputs: Host templates/
+variable_registry.json and emulator/templates/variable_registry.json. Role paths
+are manifest data consumed by launchers/release smoke; hash tests reject either
+substitution. No canonical registry contents or runtime protocol code changed.
+
+D37 / candidate MSI desktop evidence: runs 39102512162 and 39102823775
+installed payload/autostart but produced Warning 1909 and no desktop link.
+Adding CreateFolder did not fix it; absence of the folder was an unproven
+hypothesis, not an established cause. The fixture used only a 128-byte PE header,
+not a valid shell target. Windows fixture now uses an OS executable; real .lnk
+creation/target/removal remain mandatory, never replaced with XML-only acceptance.
+
+D38 / installer ownership audit v3.1: [mechanisms and executable invariants](INSTALLER_AUDIT.ru.md).
+Removed whole legacy Product projection, WMI/kill/cancel CAs, force-close Util,
+elevated recursive wipe, deletion of StartupApproved, ARP hiding and forced repair
+rewrite policy from Rust MSI. Retained original payload/bitmap generators and
+Burservis assets. A small Rust product uses native MSI ownership and disables
+Restart Manager auto-shutdown. GUID namespace now covers all payload components,
+including AddIn, not only opt-in components. Tests compare legacy/Rust GUID sets
+and relocated harvests and check opt-out/opt-in, N+1, downgrade and preservation
+of unowned data at uninstall. Original .NET sources/installer remain unchanged.
+Actual running-process/rollback/visual and SDK integration acceptance remain open.
+
+
+D39 / уточнение installer lifecycle: запрет любого force-закрытия в D38 был
+слишком широк. Пользователь требует явную force-опцию для зависших ресурсов iCem
+и повторную полную установку для оператора без IT-навыков. Rust MSI включает
+native Restart Manager (file-owner scope, не image-name), per-operation
+MSIRMSHUTDOWN checkbox, native saved-path/options recovery и repair ALL/amus только
+для установленного продукта вне uninstall/major-upgrade removal. Тесты проверяют
+missing/corrupt files, plain repeat, explicit opt-out, grace/force и foreign process
+того же имени. Свойства и mutable payload guard не ослаблены; script CAs и wipe
+по-прежнему отсутствуют. Реальные vendor/hardware/first-run gates не объявлены PASS.
+
+D39 дополнение: MSI checkbox Off представлен null, не строкой `0`. Все три
+checkbox проходят native UI/backend conversion; Windows UI Automation regression
+проверяет defaults/CLI/saved choices, Back/Cancel и committed repair opt-out.
+Silent MSI проверки отдельно сохраняются; GUI fixture не публикуется.
+
 ## E10: уточнение активного sniffer wiring
 
 D06 теперь охарактеризован кодом и regression: HostComposition.StartLayersAsync

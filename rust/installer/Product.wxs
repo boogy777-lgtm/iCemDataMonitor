@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <!-- Rust package policy only. Payload comes from the verified manifest;
+       branding comes from the original assets. File owners use native Restart Manager; no name-based kills or wipe CAs. -->
+  <Package Name="RENDERED" Manufacturer="RENDERED" Version="0.0.0"
+           UpgradeCode="00000000-0000-0000-0000-000000000000" ProductCode="*"
+           Scope="perMachine" Compressed="yes" InstallerVersion="500" Codepage="1251">
+    <SummaryInformation Description="Rust development candidate with original net48 AddIn; production cutover is not approved." />
+    <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer Rust candidate is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Upgrade Id="34A0FD7C-EBD5-4E28-BA96-AE6575896F32">
+      <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" OnlyDetect="yes" Property="LEGACY_MONITOR_PRESENT" />
+    </Upgrade>
+    <Launch Condition="NOT LEGACY_MONITOR_PRESENT" Message="Legacy .NET MSI is installed. Automatic production cutover is not supported." />
+    <!-- 0 = graceful shutdown; 1 = force unresponsive file owners after native
+         RM deadlines (30 s/application, 20 s/service). Never persist this consent. -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="0" />
+    <Property Id="MSIRMSHUTDOWN" Secure="yes" />
+    <Launch Condition='NOT MSIRMSHUTDOWN OR MSIRMSHUTDOWN="0" OR MSIRMSHUTDOWN="1"' Message="Invalid shutdown choice. Use the installer checkbox." />
+    <Icon Id="MonitorIco" SourceFile="$(var.AssetsDir)\app-icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="MonitorIco" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)\ui-banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)\ui-dialog.bmp" />
+    <!-- This is the AddIn destination, not the ProgramData runtime directory.
+         No AppSearch may overwrite an explicit CLI/wizard ICEMDIR. -->
+    <Property Id="ICEMDIR" Secure="yes" />
+    <Property Id="MONITORROOT" Secure="yes" />
+    <Property Id="PREFERENCES_INITIALIZED" Secure="yes" />
+    <Property Id="CREATEDESKTOPSHORTCUT" Secure="yes" />
+    <Property Id="ADDAUTOSTART" Secure="yes" />
+    <!-- Native property recovery before costing. CLI properties win. The secure
+         marker prevents execute-sequence AppSearch from overwriting UI edits. -->
+    <Property Id="SAVED_MONITORROOT" Secure="yes">
+      <RegistrySearch Id="FindRuntimeDirectory" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="RuntimeDirectory" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SAVED_ICEMDIR" Secure="yes">
+      <RegistrySearch Id="FindIcemDirectory" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="IcemDirectory" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SAVED_CREATEDESKTOPSHORTCUT" Secure="yes">
+      <RegistrySearch Id="FindDesktopChoice" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="DesktopChoice" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SAVED_ADDAUTOSTART" Secure="yes">
+      <RegistrySearch Id="FindAutostartChoice" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="AutostartChoice" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Id="MONITORROOT" Action="RestoreMONITORROOT" Value="[SAVED_MONITORROOT]" After="AppSearch" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT MONITORROOT AND SAVED_MONITORROOT" />
+    <SetProperty Id="ICEMDIR" Action="RestoreICEMDIR" Value="[SAVED_ICEMDIR]" After="RestoreMONITORROOT" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT ICEMDIR AND SAVED_ICEMDIR" />
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="RestoreCREATEDESKTOPSHORTCUT" Value="[SAVED_CREATEDESKTOPSHORTCUT]" After="RestoreICEMDIR" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT CREATEDESKTOPSHORTCUT AND SAVED_CREATEDESKTOPSHORTCUT" />
+    <SetProperty Id="ADDAUTOSTART" Action="RestoreADDAUTOSTART" Value="[SAVED_ADDAUTOSTART]" After="RestoreCREATEDESKTOPSHORTCUT" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT ADDAUTOSTART AND SAVED_ADDAUTOSTART" />
+    <SetProperty Id="ICEMDIR" Action="DefaultIcemDirectory" Value="C:\Program Files\Halliburton\iCem" After="RestoreADDAUTOSTART" Sequence="both" Condition="NOT ICEMDIR" />
+    <SetProperty Id="PREFERENCES_INITIALIZED" Value="1" After="DefaultIcemDirectory" Sequence="both" />
+    <!-- Native checkboxes use null, not the nonempty string "0", for Off.
+         Recover CLI/saved zero as null before UI; serialize null as zero only
+         in the execute sequence, after UI choices are transferred securely. -->
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="ClearCREATEDESKTOPSHORTCUT" Value="" After="SetPREFERENCES_INITIALIZED" Sequence="both" Condition='CREATEDESKTOPSHORTCUT="0"' />
+    <SetProperty Id="ADDAUTOSTART" Action="ClearADDAUTOSTART" Value="" After="ClearCREATEDESKTOPSHORTCUT" Sequence="both" Condition='ADDAUTOSTART="0"' />
+    <SetProperty Id="MSIRMSHUTDOWN" Action="ClearMSIRMSHUTDOWN" Value="" After="ClearADDAUTOSTART" Sequence="both" Condition='MSIRMSHUTDOWN="0"' />
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="NormalizeCREATEDESKTOPSHORTCUT" Value="0" After="ClearMSIRMSHUTDOWN" Sequence="execute" Condition="NOT CREATEDESKTOPSHORTCUT" />
+    <SetProperty Id="ADDAUTOSTART" Action="NormalizeADDAUTOSTART" Value="0" After="NormalizeCREATEDESKTOPSHORTCUT" Sequence="execute" Condition="NOT ADDAUTOSTART" />
+    <SetProperty Id="MSIRMSHUTDOWN" Action="NormalizeMSIRMSHUTDOWN" Value="0" After="NormalizeADDAUTOSTART" Sequence="execute" Condition="NOT MSIRMSHUTDOWN" />
+    <SetProperty Id="REINSTALL" Value="ALL" After="NormalizeMSIRMSHUTDOWN" Sequence="execute" Condition="Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+    <SetProperty Id="REINSTALLMODE" Value="amus" After="SetREINSTALL" Sequence="execute" Condition="Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="HalliburtonDataDir" Name="Halliburton">
+        <Directory Id="IcemDataDir" Name="iCem">
+          <Directory Id="MONITORROOT" Name="DataMonitoring" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="TARGETDIR">
+      <Directory Id="ICEMDIR" Name="iCem">
+        <Directory Id="ICEMBIN" Name="Bin">
+          <Directory Id="ICEMMODULES" Name="Modules" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="Cmp.DesktopShortcut" Guid="00000000-0000-0000-0000-000000000000" Condition="CREATEDESKTOPSHORTCUT=1" Transitive="yes">
+        <CreateFolder />
+        <Shortcut Id="DesktopMonitorShortcut" Name="iCem Data Monitor" Description="iCem Data Monitor"
+                  Target="RENDERED" WorkingDirectory="MONITORROOT" Icon="MonitorIco" IconIndex="0" />
+        <RegistryValue Root="HKCU" Key="Software\Burservis\iCemDataMonitor\RustDevelopment"
+                       Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+    <ComponentGroup Id="Setup.Options">
+      <ComponentRef Id="Cmp.DesktopShortcut" />
+      <Component Id="Cmp.InstallState" Directory="MONITORROOT" Guid="00000000-0000-0000-0000-000000000000">
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="RuntimeDirectory" Type="string" Value="[MONITORROOT]" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="IcemDirectory" Type="string" Value="[ICEMDIR]" />
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="DesktopChoice" Type="string" Value="[CREATEDESKTOPSHORTCUT]" />
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="AutostartChoice" Type="string" Value="[ADDAUTOSTART]" />
+      </Component>
+      <Component Id="Cmp.AutostartReg" Directory="MONITORROOT" Guid="00000000-0000-0000-0000-000000000000" Condition="ADDAUTOSTART=1" Transitive="yes">
+        <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                       Name="iCemDataMonitorHost" Type="string" Value="RENDERED" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="ICEMDIR" />
+    <UI>
+      <Dialog Id="OptionsDlg" Width="370" Height="270" Title="[ProductName] — параметры установки" NoMinimize="yes">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Property="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Дополнительные параметры" />
+        <Control Id="Description" Type="Text" X="25" Y="52" Width="320" Height="28" Text="{\WixUI_Font_Normal}Проверьте параметры выбранной операции:" />
+        <Control Id="DesktopShortcutCheck" Type="CheckBox" X="25" Y="92" Width="300" Height="17" Property="CREATEDESKTOPSHORTCUT" CheckBoxValue="1" DisableCondition='WixUI_InstallMode="Remove"' EnableCondition='NOT WixUI_InstallMode="Remove"' Text="{\WixUI_Font_Normal}Создать ярлык на рабочем столе" />
+        <Control Id="AutostartCheck" Type="CheckBox" X="25" Y="116" Width="300" Height="17" Property="ADDAUTOSTART" CheckBoxValue="1" DisableCondition='WixUI_InstallMode="Remove"' EnableCondition='NOT WixUI_InstallMode="Remove"' Text="{\WixUI_Font_Normal}Добавить Host в автозагрузку текущего пользователя" />
+        <Control Id="ForceCloseCheck" Type="CheckBox" X="25" Y="144" Width="320" Height="28" Property="MSIRMSHUTDOWN" CheckBoxValue="1" Text="{\WixUI_Font_Normal}Принудительно закрыть зависшие приложения и службы, мешающие установке" />
+        <Control Id="ForceCloseNotice" Type="Text" X="25" Y="180" Width="320" Height="36" Text="{\WixUI_Font_Normal}Сохраните работу в iCem. Эта опция действует только сейчас. Установщик сначала запрашивает штатное закрытие." />
+        <Control Id="Back" Type="PushButton" X="124" Y="243" Width="56" Height="17" Text="{\WixUI_Font_Normal}Назад">
+          <Publish Event="NewDialog" Value="InstallDirDlg" Condition="NOT Installed" />
+          <Publish Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="244" Y="243" Width="56" Height="17" Default="yes" Text="{\WixUI_Font_Normal}Далее">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="{\WixUI_Font_Normal}Отмена">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+      <!-- Same navigation as the legacy wizard, without its process gate or
+           the stock WiX license page (not this product's license). -->
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="4" Condition="NOT Installed" />
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="4" Condition="NOT Installed" />
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Order="5" Condition="NOT Installed AND (WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID=&quot;1&quot;)" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="OptionsDlg" Order="4" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="OptionsDlg" Order="4" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="4" />
+    </UI>
+    <Feature Id="Main" Level="1">
+      <ComponentGroupRef Id="Payload.All" />
+      <ComponentGroupRef Id="Setup.Options" />
+    </Feature>
+  </Package>
+</Wix>
