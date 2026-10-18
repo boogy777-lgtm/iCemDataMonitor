@@ -226,7 +226,7 @@ mod tests {
         assert!(
             runtime
                 .block_on(ensure_with(
-                    || std::future::pending(),
+                    std::future::pending,
                     || Err("must not spawn".into()),
                     StartPolicy::RequireRunning,
                     Duration::from_millis(20)

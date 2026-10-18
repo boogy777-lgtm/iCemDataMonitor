@@ -12,10 +12,13 @@ use std::{
     time::{Duration, Instant},
 };
 type TestResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
-struct Station(PathBuf);
+struct Station(PathBuf, Option<String>);
 impl Drop for Station {
     fn drop(&mut self) {
-        let _ = icem_windows_native::signal_existing_event(icem_platform_windows::HOST_SHUTDOWN);
+        // An unsuccessful launch must never signal an unrelated existing Host.
+        if let Some(event) = &self.1 {
+            let _ = icem_windows_native::signal_existing_event(event);
+        }
         let _ = fs::remove_dir_all(&self.0);
     }
 }
@@ -40,7 +43,7 @@ fn launch(config: &std::path::Path, pipe: &str) -> Launch {
 fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> TestResult {
     let root = std::env::temp_dir().join(format!("icem-first-run-{}", std::process::id()));
     fs::create_dir(&root)?;
-    let station = Station(root);
+    let mut station = Station(root, None);
     let config = station.0.join("config.ini");
     let pipe = format!("icem-ensure-{}", std::process::id());
     let candidate = launch(&config, &pipe);
@@ -54,6 +57,9 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
             host_client::ensure(&pipe, Some(&candidate), Duration::from_secs(10)),
             host_client::ensure(&pipe, Some(&candidate), Duration::from_secs(10))
         );
+        if a.is_ok() || b.is_ok() {
+            station.1 = Some(icem_platform_windows::HOST_SHUTDOWN.into());
+        }
         a?;
         b?;
         let original = fs::read(&config)?;
@@ -110,6 +116,7 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
             }
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
+        station.1 = None;
         let bad = launch(&corrupt, &pipe);
         let error = host_client::ensure(&pipe, Some(&bad), Duration::from_secs(3))
             .await
