@@ -185,14 +185,10 @@ retried. This remains a Rust lifecycle issue, unrelated to legacy CI priority.
 
 D35 / M7 packaging correction: schema-2 payload now requires the unchanged net48 AddIn
 with source/SDK/DLL provenance and managed x64/net48 metadata checks. Complete
-releases cannot skip a missing SDK/DLL. Rust authoring projects the original
-installer/Product.wxs and reuses its harvester, Burservis logo generator, gate and
-harness without modifying the legacy sources. Runtime and AddIn use the original
-ProgramData / iCem Bin/Modules mounts. Rust option GUIDs/UpgradeCode remain
-separate; a registered legacy MSI blocks candidate installation. Full uninstall
-now follows legacy runtime wipe (upgrade preserves data), replacing the earlier
-development package's preserve-on-uninstall policy. Windows fixture-MSI contracts
-do not prove SDK-backed DLL build or application behavior. See installer/README.md.
+releases cannot skip a missing SDK/DLL. Runtime/AddIn retain the original
+ProgramData / iCem Bin/Modules mounts. The initial whole-template projection has
+been superseded by the v3.1 ownership audit below. Fixture MSI contracts do not
+prove SDK-backed DLL build or application behavior. See installer/README.md.
 
 D36 / packaging registry ownership: legacy merged its 3507-variable Host registry
 and 140-variable emulator registry using an explicit emulator override filename.
@@ -202,10 +198,20 @@ variable_registry.json and emulator/templates/variable_registry.json. Role paths
 are manifest data consumed by launchers/release smoke; hash tests reject either
 substitution. No canonical registry contents or runtime protocol code changed.
 
-D37 / candidate MSI desktop ownership: Windows installer-contract run 39102512162
-installed both payload mounts and autostart successfully, but logged Warning 1909
-and produced no desktop link. The inherited shortcut-only/registry component did
-not author CreateFolder for an absent Common Desktop on a clean runner. The Rust
-projection now adds native CreateFolder to the same opt-in component; it does not
-edit the legacy source or pre-create folders in the test. Creation of a real link,
-its target and removal remain asserted.
+D37 / candidate MSI desktop evidence: runs 39102512162 and 39102823775
+installed payload/autostart but produced Warning 1909 and no desktop link.
+Adding CreateFolder did not fix it; absence of the folder was an unproven
+hypothesis, not an established cause. The fixture used only a 128-byte PE header,
+not a valid shell target. Windows fixture now uses an OS executable; real .lnk
+creation/target/removal remain mandatory, never replaced with XML-only acceptance.
+
+D38 / installer ownership audit v3.1: [mechanisms and executable invariants](INSTALLER_AUDIT.ru.md).
+Removed whole legacy Product projection, WMI/kill/cancel CAs, force-close Util,
+elevated recursive wipe, deletion of StartupApproved, ARP hiding and forced repair
+rewrite policy from Rust MSI. Retained original payload/bitmap generators and
+Burservis assets. A small Rust product uses native MSI ownership and disables
+Restart Manager auto-shutdown. GUID namespace now covers all payload components,
+including AddIn, not only opt-in components. Tests compare legacy/Rust GUID sets
+and relocated harvests and check opt-out/opt-in, N+1, downgrade and preservation
+of unowned data at uninstall. Original .NET sources/installer remain unchanged.
+Actual running-process/rollback/visual and SDK integration acceptance remain open.

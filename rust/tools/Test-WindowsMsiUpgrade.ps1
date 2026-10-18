@@ -128,6 +128,11 @@ try {
     foreach ($Path in @($Msi, $NextMsi.msi)) {
         if ([guid](Read-MsiProperty $Path 'UpgradeCode') -ne $ExpectedUpgrade) { throw 'UpgradeCode changed between N and N+1' }
     }
+    Invoke-Msi @('/i', $Msi) 'install-default-opt-out'
+    Assert-Installed $Version $FirstCode
+    if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Default install enabled opt-in options' }
+    Invoke-Msi @('/x', $FirstCode) 'uninstall-default-opt-out'
+    if (@(Installed-Products).Count -or @(Get-ChildItem -LiteralPath $Install -Recurse -File -ErrorAction SilentlyContinue).Count) { throw 'Default uninstall left MSI-owned files/registration' }
     Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'install-N'
     Assert-Installed $Version $FirstCode
     if ((Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Wrong native autostart command' }
@@ -145,9 +150,10 @@ try {
     Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'blocked-downgrade' 1603
     Assert-Installed $Next $NextCode
     Invoke-Msi @('/x', $NextCode) 'uninstall'
-    if (@(Installed-Products).Count -or (Test-Path -LiteralPath $Install) -or (Test-Path -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll'))) { throw 'Legacy full uninstall left runtime/AddIn/registration' }
+    if (@(Installed-Products).Count -or (Test-Path -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll'))) { throw 'Uninstall left AddIn/registration' }
+    if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText -or @(Get-ChildItem -LiteralPath $Install -Recurse -File).Count -ne 1) { throw 'Uninstall changed user data or left MSI-owned files' }
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Uninstall left shortcut/autostart' }
-    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and upgrade preserves unowned data; full uninstall follows legacy runtime cleanup."
+    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and upgrade preserves unowned data; uninstall preserves unowned data and removes all owned files/options."
 } finally {
     foreach ($Code in $ProductCodes) {
         if (@(Installed-Products | Where-Object { $_.PSChildName -eq $Code }).Count) { Invoke-Msi @('/x', $Code) ('cleanup-' + $Code.Trim('{}')) }

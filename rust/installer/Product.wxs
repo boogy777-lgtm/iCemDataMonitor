@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <!-- Rust package policy only. Payload comes from the verified manifest;
+       branding comes from the original assets. No process-control or wipe CAs. -->
+  <Package Name="RENDERED" Manufacturer="RENDERED" Version="0.0.0"
+           UpgradeCode="00000000-0000-0000-0000-000000000000" ProductCode="*"
+           Scope="perMachine" Compressed="yes" InstallerVersion="500" Codepage="1251">
+    <SummaryInformation Description="Rust development candidate with original net48 AddIn; production cutover is not approved." />
+    <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer Rust candidate is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Upgrade Id="34A0FD7C-EBD5-4E28-BA96-AE6575896F32">
+      <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" OnlyDetect="yes" Property="LEGACY_MONITOR_PRESENT" />
+    </Upgrade>
+    <Launch Condition="NOT LEGACY_MONITOR_PRESENT" Message="Legacy .NET MSI is installed. Automatic production cutover is not supported." />
+    <!-- Detect locks through MSI; never terminate iCem/services automatically. -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="DisableShutdown" />
+    <Icon Id="MonitorIco" SourceFile="$(var.AssetsDir)\app-icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="MonitorIco" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)\ui-banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)\ui-dialog.bmp" />
+    <!-- This is the AddIn destination, not the ProgramData runtime directory.
+         No AppSearch may overwrite an explicit CLI/wizard ICEMDIR. -->
+    <Property Id="ICEMDIR" Secure="yes" Value="C:\Program Files\Halliburton\iCem" />
+    <Property Id="CREATEDESKTOPSHORTCUT" Secure="yes" />
+    <Property Id="ADDAUTOSTART" Secure="yes" />
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="HalliburtonDataDir" Name="Halliburton">
+        <Directory Id="IcemDataDir" Name="iCem">
+          <Directory Id="MONITORROOT" Name="DataMonitoring" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="TARGETDIR">
+      <Directory Id="ICEMDIR" Name="iCem">
+        <Directory Id="ICEMBIN" Name="Bin">
+          <Directory Id="ICEMMODULES" Name="Modules" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="Cmp.DesktopShortcut" Guid="00000000-0000-0000-0000-000000000000" Condition="CREATEDESKTOPSHORTCUT=1">
+        <CreateFolder />
+        <Shortcut Id="DesktopMonitorShortcut" Name="iCem Data Monitor" Description="iCem Data Monitor"
+                  Target="RENDERED" WorkingDirectory="MONITORROOT" Icon="MonitorIco" IconIndex="0" />
+        <RegistryValue Root="HKCU" Key="Software\Burservis\iCemDataMonitor\RustDevelopment"
+                       Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+    <ComponentGroup Id="Setup.Options">
+      <ComponentRef Id="Cmp.DesktopShortcut" />
+      <Component Id="Cmp.AutostartReg" Directory="MONITORROOT" Guid="00000000-0000-0000-0000-000000000000" Condition="ADDAUTOSTART=1">
+        <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                       Name="iCemDataMonitorHost" Type="string" Value="RENDERED" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="ICEMDIR" />
+    <UI>
+      <Dialog Id="OptionsDlg" Width="370" Height="270" Title="[ProductName] — параметры установки" NoMinimize="yes">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Property="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Дополнительные параметры" />
+        <Control Id="Description" Type="Text" X="25" Y="52" Width="320" Height="28" Text="{\WixUI_Font_Normal}Выберите, что создать при установке:" />
+        <Control Id="DesktopShortcutCheck" Type="CheckBox" X="25" Y="92" Width="300" Height="17" Property="CREATEDESKTOPSHORTCUT" CheckBoxValue="1" Text="{\WixUI_Font_Normal}Создать ярлык на рабочем столе" />
+        <Control Id="AutostartCheck" Type="CheckBox" X="25" Y="116" Width="300" Height="17" Property="ADDAUTOSTART" CheckBoxValue="1" Text="{\WixUI_Font_Normal}Добавить Host в автозагрузку текущего пользователя" />
+        <Control Id="Back" Type="PushButton" X="124" Y="243" Width="56" Height="17" Text="{\WixUI_Font_Normal}Назад">
+          <Publish Event="NewDialog" Value="InstallDirDlg" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="244" Y="243" Width="56" Height="17" Default="yes" Text="{\WixUI_Font_Normal}Далее">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="{\WixUI_Font_Normal}Отмена">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+      <!-- Same navigation as the legacy wizard, without its process gate or
+           the stock WiX license page (not this product's license). -->
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="4" Condition="NOT Installed" />
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="4" Condition="NOT Installed" />
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Order="5" Condition="NOT Installed AND (WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID=&quot;1&quot;)" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="4" Condition="NOT Installed" />
+    </UI>
+    <Feature Id="Main" Level="1">
+      <ComponentGroupRef Id="Payload.All" />
+      <ComponentGroupRef Id="Setup.Options" />
+    </Feature>
+  </Package>
+</Wix>

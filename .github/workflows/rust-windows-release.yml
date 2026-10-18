@@ -47,9 +47,9 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - name: Full payload, AddIn provenance and legacy projection contracts
+      - name: Full payload, AddIn provenance and native MSI ownership contracts
         run: ./tools/Test-WindowsPackaging.ps1
-      - name: Build and install fixture MSI using real legacy WiX and branding
+      - name: Build and install fixture MSI using native WiX ownership and original branding
         run: ./tools/Test-WindowsInstaller.ps1
       - name: Upload installer contract logs (no fixture MSI publication)
         if: always()

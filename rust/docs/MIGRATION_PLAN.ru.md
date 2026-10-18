@@ -100,17 +100,18 @@ read-only sniffer capture owner, pause/resume/counters и actual availability pr
 development MSI из проверенного payload, с собственным UpgradeCode и исходным ProgramData-путём. `installer/README.md` описывает ограничения и manual Actions → next patch →
 draft prerelease. Политика legacy MSI не меняется. Windows workflow проверяет
 install N → upgrade N+1 → запрет downgrade → uninstall; пользовательский файл
-сохраняется при upgrade, а full uninstall очищает runtime как legacy. N+1 probe использует те же EXE, поэтому проверяет механику MSI, а не
+сохраняется при upgrade и uninstall; удаляются только MSI-owned ресурсы. N+1 probe использует те же EXE, поэтому проверяет механику MSI, а не
 изменения функциональности. M7 целиком не закрыт: production cutover/загрузка AddIn в iCem, signing,
 rollback/failure/offline приёмка на чистой VM и running-process policy остаются открыты.
 
 ### M7: полный состав и legacy оформление упаковщика
 
 Обязательны Rust runtime + исходный net48 AddIn, provenance/hash/metadata guard и
-исходное оформление Бурсервис. Rust builder переиспользует legacy WiX/UI/harvester;
+исходное оформление Бурсервис. Rust builder переиспользует исходные assets/bitmap generator и harvester;
 SDK/DLL нельзя пропускать. Windows installer-contracts проверяет реальные MSI
 операции на синтетических файлах без выпуска fixture MSI; реальный релиз отдельно
 требует SDK-built DLL, полные Rust gates и runtime smoke/browser проверки. Пути и
-opt-in опции берутся из legacy. Full uninstall удаляет runtime данные как legacy;
-upgrade их сохраняет. Автоматический cutover установленного .NET MSI заблокирован.
+opt-in опции сохранены. После [аудита v3.1](INSTALLER_AUDIT.ru.md) Rust package
+не копирует WMI/kill/wipe/hidden-ARP политику legacy: используются native MSI
+ownership и отдельный component GUID namespace; unowned данные сохраняются. Автоматический cutover установленного .NET MSI заблокирован.
 Полная M7/визуальная/аппаратная приёмка этим изменением не закрыта.

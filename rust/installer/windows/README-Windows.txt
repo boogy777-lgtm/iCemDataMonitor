@@ -21,9 +21,12 @@ No live config, Data.dat or proprietary SDK DLL is shipped.
 
 The optional desktop shortcut targets Shell. The optional autostart entry targets
 Host --autostart, never the emulator. Current Host startup needs existing config.
-Upgrade preserves runtime-created data. FULL UNINSTALL follows legacy cleanup:
-it deletes the runtime folder, including config/data/logs. Back up required data.
-Legacy ARP hiding is retained; remove with msiexec /x <MSI-or-ProductCode>.
+Upgrade and uninstall preserve runtime-created config/data/logs; uninstall removes
+only MSI-owned files, DLL, shortcut and Run value. The candidate is visible in
+installed applications. No process-kill/service-stop or recursive wipe scripts run.
+Close iCem/monitor applications before installing; in-use file handling uses MSI.
+For silent upgrades, pass the same custom paths and chosen options explicitly;
+automatic path/preference recovery has not been implemented.
 
 Rust/.NET SDK is not needed to run Rust EXEs. The AddIn uses the .NET Framework
 runtime of the original iCem application. Npcap/COM drivers remain external.

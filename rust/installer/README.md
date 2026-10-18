@@ -45,33 +45,31 @@ SDK DLLs are never redistributed. Bundle metadata/hashes provide traceability an
 integrity, not signing or independent proof of execution compatibility. Use a
 trusted SDK machine; final iCem load/behavior acceptance remains open.
 
-## Legacy installer reuse and explicit boundaries
+## Audited MSI ownership (architecture v3.1)
 
-The Rust installer projects the **unchanged** `../../installer/Product.wxs` into
-its own temporary build directory. It also reuses the original
-`gen-payload.ps1`, `gen-ui-bmps.ps1`, conflict script and its executable harness.
-There is no independent copy of the legacy wizard or payload harvester to drift.
+See [the mechanism audit](../docs/INSTALLER_AUDIT.ru.md). Rust owns a small
+`Product.wxs`; it no longer projects the entire legacy wizard/policy. The original
+`gen-payload.ps1`, `gen-ui-bmps.ps1`, Burservis PNG and icon remain reused unchanged.
+There is one inventory, not a second manually maintained MSI file list.
 
-| Behavior | Rust MSI authoring |
+| Behavior | Rust MSI |
 |---|---|
-| Burservis branding | Original `Burservis_logo_cyr_red.png`, regenerated banner/dialog BMPs, original app icon; stock WiX geometry, no SQL patch |
-| Runtime path | `%ProgramData%\Halliburton\iCem\DataMonitoring` (`MONITORROOT`), flat Rust EXEs/resources |
-| Registries | Host gets original root `templates/variable_registry.json` (3507 variables); emulator gets its own 140-variable registry and other files under `emulator/templates`; launchers/smoke read role paths from the manifest |
-| AddIn path | `[ICEMDIR]\Bin\Modules\Burservis.iCem.DataMonitor.dll`; provenance remains in runtime `addin/` |
-| iCem discovery | Original canonical-directory search and directory-selection wizard; explicit command-line ICEMDIR is respected |
-| Process/service gate | Original checks and close/refresh actions; runtime image names adapt from manifest roles; adapted harness must pass |
-| Desktop/autostart | Original opt-in controls; shortcut targets Rust Shell, HKCU Run targets Rust Host with `--autostart`; emulator never autostarts |
-| Upgrade N → N+1 | Separate stable Rust UpgradeCode; increasing numeric versions, downgrade blocked; user data survives upgrade |
-| Full uninstall | Legacy behavior: remove DLL/owned files/options and wipe runtime folder, including runtime-created config/data/logs |
-| UI registration | Legacy hidden ARP policy retained; uninstall via `msiexec /x <MSI-or-ProductCode>` |
-| Legacy .NET cutover | Existing legacy MSI is detected and blocks candidate installation; it is never removed automatically |
+| Branding | Original Burservis logo, regenerated banner/dialog BMPs and original app icon; no post-build SQL patches |
+| Runtime | `%ProgramData%\Halliburton\iCem\DataMonitoring` (`MONITORROOT`) |
+| Registries | Original Host registry (3507 variables) under `templates/`; original emulator registry (140 variables) and other templates under `emulator/templates/`; launchers read role paths from manifest |
+| AddIn | `[ICEMDIR]\Bin\Modules\Burservis.iCem.DataMonitor.dll`; provenance stays in runtime `addin/` |
+| iCem path | Standard default in the directory wizard; explicit CLI/wizard ICEMDIR remains authoritative |
+| In-use files | Native Windows Installer detection/UI; automatic Restart Manager shutdown disabled; no WMI/process-name kill scripts, service control or kill on Cancel |
+| Desktop/autostart | Opt-in, default OFF. Desktop targets Shell; installing user's HKCU Run targets Host `--autostart`; emulator never autostarts. Task Manager disable state is not erased |
+| N → N+1 | Separate stable Rust UpgradeCode and component GUID namespace; new ProductCode, increasing numeric versions, transactional removal, blocked downgrade |
+| Uninstall | Removes only MSI-owned files/AddIn/options; preserves user-created config/data/logs. No recursive wipe |
+| Registration | Visible in installed applications; standard MSI uninstall/repair |
+| Legacy cutover | Registered legacy MSI detected with OnlyDetect and blocks installation; never automatically removed |
 
-The projected wipe CustomActionData uses `[MONITORROOT]`, preserving normal legacy
-behavior while ensuring explicit test-path overrides cannot wipe the canonical
-folder. **Full uninstall deletes runtime-created data. Back it up when needed.**
-The old development MSI's preserve-on-uninstall rule is superseded by the requested
-legacy cleanup behavior. No user config or Data.dat is shipped/created by packaging.
-The .NET legacy MSI itself is unchanged, including its own update policy.
+For silent upgrades using custom paths/options, pass the same `MONITORROOT`,
+`ICEMDIR`, `CREATEDESKTOPSHORTCUT=1`, `ADDAUTOSTART=1` properties explicitly as
+applicable. Automatic preference/path recovery is not implemented. No config or
+Data.dat is shipped/created by packaging. The original .NET MSI remains unchanged.
 
 This remains a **Rust development candidate**, retaining `*-dev.exe` names.
 Production cutover is not enabled merely by adding an installer. Host restoration,
@@ -121,10 +119,10 @@ After the workflows reach main:
 ## Evidence: installer contracts versus real release
 
 On PRs, the Windows `installer-contracts` job validates packaging and builds two
-MSIs with explicitly synthetic PE/runtime and managed DLL fixtures. It exercises
-**real legacy WiX authoring, branding generation/harness and Windows Installer**:
+MSIs with test runtime bytes (a Windows system EXE) and a synthetic managed DLL. It exercises
+**native WiX authoring, original branding generation and Windows Installer**:
 install N, two mounts, shortcut/autostart targets, upgrade N+1, blocked downgrade,
-then full-uninstall cleanup. It publishes logs, never a fixture MSI. This proves
+then removal of owned resources while retaining unowned data. Default opt-out is also tested. It publishes logs, never a fixture MSI. This proves
 installer mechanics, not an actual AddIn build or Rust runtime behavior.
 
 A manually requested real release additionally requires the real SDK-built AddIn,

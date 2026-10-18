@@ -13,7 +13,7 @@ function New-WindowsPackagingFixture([string] $Directory) {
     [IO.Directory]::CreateDirectory((Join-Path $Repo 'rust/installer')) | Out-Null
     Copy-Item -LiteralPath (Join-Path $Root 'installer/windows-payload.json') -Destination (Join-Path $Repo 'rust/installer/windows-payload.json')
     [IO.Directory]::CreateDirectory((Join-Path $Repo 'installer/assets')) | Out-Null
-    foreach ($Name in @('Product.wxs', 'gen-payload.ps1', 'gen-ui-bmps.ps1', 'assets/Burservis_logo_cyr_red.png', 'assets/app-icon.ico', 'assets/CheckConflicts.js', 'assets/CheckConflicts.harness.js')) {
+    foreach ($Name in @('gen-payload.ps1', 'gen-ui-bmps.ps1', 'assets/Burservis_logo_cyr_red.png', 'assets/app-icon.ico')) {
         Copy-Item -LiteralPath (Join-Path $SourceRoot "installer/$Name") -Destination (Join-Path $Repo "installer/$Name")
     }
     $Plan = Get-Content -Raw -LiteralPath (Join-Path $Root 'installer/windows-payload.json') | ConvertFrom-Json
@@ -47,7 +47,11 @@ function New-WindowsPackagingFixture([string] $Directory) {
     $Pe[0] = 0x4D; $Pe[1] = 0x5A; $Pe[0x3C] = 64
     $Pe[64] = 0x50; $Pe[65] = 0x45; $Pe[68] = 0x64; $Pe[69] = 0x86
     $Pe[88] = 0x0B; $Pe[89] = 2
-    foreach ($Binary in $Plan.binaries) { [IO.File]::WriteAllBytes((Join-Path $Bins ($Binary.bin + '.exe')), $Pe) }
+    # MSI shortcut creation inspects executable metadata: a 128-byte PE header
+    # is only a parser fixture, not a valid Windows shell target. Use an OS test
+    # executable on Windows; never run or publish it as a Rust application.
+    $BinaryBytes = if ($IsWindows) { [IO.File]::ReadAllBytes((Join-Path $env:SystemRoot 'System32/where.exe')) } else { $Pe }
+    foreach ($Binary in $Plan.binaries) { [IO.File]::WriteAllBytes((Join-Path $Bins ($Binary.bin + '.exe')), $BinaryBytes) }
     return [pscustomobject]@{ repo = $Repo; bins = $Bins; addin = $Bundle; plan = $Plan; pe = $Pe }
 }
 Export-ModuleMember -Function New-WindowsPackagingFixture

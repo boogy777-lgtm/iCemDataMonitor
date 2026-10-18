@@ -49,21 +49,29 @@ try {
     $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable)
     $Ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
     if ($Xml.SelectNodes('//w:WixVariable[@Id="WixUIBannerBmp" or @Id="WixUIDialogBmp"]', $Ns).Count -ne 2 -or
-        $Xml.SelectNodes('//w:Dialog[@Id="IcemRunningCheckDlg" or @Id="OptionsDlg"]', $Ns).Count -ne 2 -or
+        $Xml.SelectNodes('//w:Dialog[@Id="OptionsDlg"]', $Ns).Count -ne 1 -or
         $Xml.SelectSingleNode('//w:StandardDirectory[@Id="CommonAppDataFolder"]//w:Directory[@Id="MONITORROOT"]', $Ns).Name -ne 'DataMonitoring' -or
         $Xml.SelectSingleNode('//w:Shortcut[@Id="DesktopMonitorShortcut"]', $Ns).Target -cne '[MONITORROOT]icem-shell-dev.exe' -or
         $Xml.SelectNodes('//w:Component[@Id="Cmp.DesktopShortcut"]/w:CreateFolder', $Ns).Count -ne 1 -or
         $Xml.SelectSingleNode('//w:RegistryValue[@Name="iCemDataMonitorHost"]', $Ns).Value -cne '"[MONITORROOT]icem-host-dev.exe" --autostart' -or
-        $Xml.SelectSingleNode('//w:SetProperty[@Id="WipeMonitorRoot"]', $Ns).Value -cne '[MONITORROOT]' -or
-        $Xml.SelectSingleNode('//w:UpgradeVersion[@Property="LEGACY_MONITOR_PRESENT"]', $Ns).OnlyDetect -ne 'yes') { throw 'Legacy UI/paths/options/ownership projection failed' }
+        $Xml.SelectSingleNode('//w:UpgradeVersion[@Property="LEGACY_MONITOR_PRESENT"]', $Ns).OnlyDetect -ne 'yes') { throw 'Native MSI UI/paths/options/ownership failed' }
     if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
         $Xml.SelectSingleNode('//w:Package', $Ns).Scope -ne 'perMachine') { throw 'MSI transaction policy failed' }
-    $Ids = @($Xml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id })
+    # Guard the reviewed package boundary, not implementation layout: payload,
+    # native shortcut/Run value and stock UI only. No elevated deletion/process
+    # scripts, service ownership, hidden uninstall or forced repair policy.
+    if ($Xml.SelectNodes('//w:CustomAction | //w:Binary | //w:SetProperty | //w:RemoveFile | //w:RemoveFolder | //w:RemoveRegistryValue | //w:ServiceControl | //w:ServiceInstall', $Ns).Count -or
+        $Xml.SelectNodes('//*[namespace-uri()="http://wixtoolset.org/schemas/v4/wxs/util"]', $Ns).Count -or
+        $Xml.SelectNodes('//w:Property[@Id="ARPSYSTEMCOMPONENT" or @Id="REINSTALLMODE"]', $Ns).Count -or
+        $Xml.SelectSingleNode('//w:Property[@Id="MSIRESTARTMANAGERCONTROL"]', $Ns).Value -cne 'DisableShutdown') { throw 'MSI exceeds reviewed native resource ownership' }
+    $InvalidNavigation = $Xml.SelectSingleNode('//w:Publish[@Dialog="InstallDirDlg" and @Value="OptionsDlg"]', $Ns)
+    if (-not $InvalidNavigation.Condition.Contains('WIXUI_INSTALLDIR_VALID="1"')) { throw 'Options navigation bypasses directory validation' }
+    $Ids = @($Xml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id + ':' + $_.Guid })
     $Relocated = Join-Path $Temp 'relocated msi payload'
     Copy-Item -LiteralPath $NumericPayload -Destination $Relocated -Recurse
     $null = Write-WindowsInstallerSource $Relocated '0.1.0' $Wxs
     $RelocatedXml = [xml](Get-Content -Raw -LiteralPath $Wxs)
-    if (($Ids -join ',') -cne (($RelocatedXml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id }) -join ',')) { throw 'MSI component identity depends on build directory' }
+    if (($Ids -join ',') -cne (($RelocatedXml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id + ':' + $_.Guid }) -join ',')) { throw 'MSI component identity depends on build directory' }
     Assert-Rejected { Write-WindowsInstallerSource $NumericPayload '0.1.1' $Wxs } 'must match'
     foreach ($BadVersion in @('0.1.0-dev', '01.0.0', '256.0.0', '0.256.0', '0.1.65536', '1.2', '1.2.3.4')) {
         Assert-Rejected { Assert-WindowsMsiVersion $BadVersion } 'MSI version'
@@ -99,10 +107,9 @@ try {
     [IO.File]::WriteAllText((Join-Path $Fixture.addin 'vendor.dll'), 'must not redistribute SDK')
     Assert-Rejected { Test-LegacyAddinBundle $Fixture.addin $Repo } 'exactly DLL and provenance'
     Remove-Item -LiteralPath (Join-Path $Fixture.addin 'vendor.dll')
-    $Adapter = New-WindowsInstallerAssets $Repo (Join-Path $Temp 'ui-work') $Verified
+    $Adapter = New-WindowsInstallerAssets $Repo (Join-Path $Temp 'ui-work')
     if ((Get-FileHash (Join-Path $Adapter 'assets/Burservis_logo_cyr_red.png')).Hash -cne (Get-FileHash (Join-Path $Repo 'installer/assets/Burservis_logo_cyr_red.png')).Hash) { throw 'Original Burservis logo changed' }
-    $Js = Get-Content -Raw (Join-Path $Adapter 'assets/CheckConflicts.js')
-    foreach ($Binary in $Verified.binaries) { if (-not $Js.Contains($Binary.destination)) { throw 'Missing adapted conflict process name' } }
+    if (@(Get-ChildItem -LiteralPath $Adapter -Recurse -File).Count -ne 3) { throw 'Branding adapter contains unrelated policy/scripts' }
     $PlanPath = Join-Path $Repo 'rust/installer/windows-payload.json'
     $Original = Get-Content -Raw -LiteralPath $PlanPath
     foreach ($Bad in @('../escape.ico', '/absolute.ico', 'C:\escape.ico', 'assets//empty.ico', 'release-manifest.json')) {
@@ -127,5 +134,5 @@ try {
     Assert-Rejected { Package '0.1.1-test' } 'Not a Windows PE'
     if (@(Get-ChildItem -LiteralPath $Output -Filter '.package-*' -Force).Count) { throw 'Failed packaging left staging directories' }
     if (@(Get-ChildItem -LiteralPath $Output -Filter '*0.1.1*').Count) { throw 'Failed packaging published an archive' }
-    Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture, failure cleanup; full AddIn inventory, projected legacy UI/options/paths, stable option components and N+1 version selection.'
+    Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture, failure cleanup; full AddIn inventory, native MSI ownership/UI/options/paths, stable option components and N+1 version selection.'
 } finally { if (Test-Path -LiteralPath $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force } }
