@@ -8,7 +8,7 @@ use icem_web::{
 use std::{
     fs,
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{Command, Output, Stdio},
     time::{Duration, Instant},
 };
 type TestResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -77,12 +77,12 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
         // A direct duplicate cannot parse/repair even a deliberately corrupt input.
         let corrupt = station.0.join("corrupt.ini");
         fs::write(&corrupt, b"broken")?;
-        let status = Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
-            .args(["--station-config"])
-            .arg(&corrupt)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()?;
+        let status = bounded(
+            Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
+                .arg("--station-config")
+                .arg(&corrupt),
+        )?
+        .status;
         assert_eq!(status.code(), Some(host_client::ALREADY_RUNNING));
         assert_eq!(fs::read(&corrupt)?, b"broken");
         assert_eq!(fs::read(&config)?, original);
@@ -127,20 +127,41 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
     // CLI dispatch must precede config restoration and Host ownership. --start is
     // absent: read-only failure cannot create station files or listeners.
     let programdata = station.0.join("empty-programdata");
-    let output = Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
-        .arg("header")
-        .env("PROGRAMDATA", &programdata)
-        .output()?;
+    let output = bounded(
+        Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
+            .arg("header")
+            .env("PROGRAMDATA", &programdata),
+    )?;
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
     assert!(!programdata.exists());
-    let output = Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
-        .arg("stop")
-        .output()?;
+    let output = bounded(Command::new(env!("CARGO_BIN_EXE_icem-host-dev")).arg("stop"))?;
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8(output.stdout)?.trim(),
         "{\"action\":\"stop\",\"result\":\"notRunning\"}"
     );
     Ok(())
+}
+
+fn bounded(command: &mut Command) -> std::io::Result<Output> {
+    let mut child = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let due = Instant::now() + Duration::from_secs(12);
+    loop {
+        if child.try_wait()?.is_some() {
+            return child.wait_with_output();
+        }
+        if Instant::now() >= due {
+            child.kill()?;
+            let _ = child.wait();
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "test process exceeded deadline",
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
