@@ -86,6 +86,12 @@ try {
     if ($Xml.SelectSingleNode('//w:SetProperty[@Id="REINSTALLMODE"]', $Ns).Value -cne 'amus' -or
         $Xml.SelectSingleNode('//w:SetProperty[@Id="REINSTALLMODE"]', $Ns).Condition -cne 'Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE' -or
         $Xml.SelectNodes('//w:Component[@Transitive="yes"]', $Ns).Count -ne 2) { throw 'Repeat install/option reconciliation policy failed' }
+    foreach ($Button in @('RepairButton','RemoveButton')) {
+        if ($Xml.SelectNodes('//w:Publish[@Dialog="MaintenanceTypeDlg" and @Control="' + $Button + '" and @Value="OptionsDlg"]', $Ns).Count -ne 1) { throw 'Force choice is unreachable in maintenance operation' }
+    }
+    foreach ($Control in @('DesktopShortcutCheck','AutostartCheck')) {
+        if ($Xml.SelectSingleNode('//w:Control[@Id="' + $Control + '"]', $Ns).DisableCondition -cne 'WixUI_InstallMode="Remove"') { throw 'Uninstall offers unrelated install choices' }
+    }
     $InvalidNavigation = $Xml.SelectSingleNode('//w:Publish[@Dialog="InstallDirDlg" and @Value="OptionsDlg"]', $Ns)
     if (-not $InvalidNavigation.Condition.Contains('WIXUI_INSTALLDIR_VALID="1"')) { throw 'Options navigation bypasses directory validation' }
     $Ids = @($Xml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id + ':' + $_.Guid })

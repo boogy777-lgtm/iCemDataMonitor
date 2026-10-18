@@ -97,7 +97,10 @@ function Start-FileOwner([string] $Executable, [string] $Resource, [string] $Nam
 function Assert-OwnerStopped($Owner, [bool] $Graceful) {
     if (-not $Owner.process.WaitForExit(5000)) { throw 'MSI returned success with a live file owner' }
     $DidClose = Test-Path -LiteralPath ($Owner.ready + '.closed')
-    if ($DidClose -ne $Graceful) { throw 'Unexpected graceful/forced shutdown path' }
+    if ($DidClose -ne $Graceful) {
+        $Events = Get-Content -Raw -LiteralPath ($Owner.ready + '.events.log') -ErrorAction SilentlyContinue
+        throw "Unexpected shutdown path: expected graceful=$Graceful, marker=$DidClose, exit=$($Owner.process.ExitCode), events=<$Events>"
+    }
 }
 function Assert-Installed([string] $Version, [string] $ProductCode) {
     $Products = @(Installed-Products)
@@ -230,7 +233,10 @@ try {
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Explicit opt-out did not remove options' }
     Invoke-Msi @('/i', $NextMsi.msi) 'repeat-preserves-options-off'
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Repeat resurrected disabled options' }
-    Invoke-Msi @('/x', $NextCode) 'uninstall'
+    $UninstallOwner = Start-FileOwner $OwnerExe $AddinPath 'uninstall-stubborn' 'stubborn'
+    Invoke-Msi @('/x', $NextCode, 'MSIRMSHUTDOWN=1') 'uninstall'
+    Assert-OwnerStopped $UninstallOwner $false
+    if ($Foreign.process.HasExited) { throw 'Uninstall stopped an unrelated process' }
     if (@(Installed-Products).Count -or (Test-Path -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll')) -or (Test-Path -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer')) { throw 'Uninstall left AddIn/registration/saved installer state' }
     if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText -or @(Get-ChildItem -LiteralPath $Install -Recurse -File).Count -ne 1) { throw 'Uninstall changed user data or left MSI-owned files' }
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Uninstall left shortcut/autostart' }

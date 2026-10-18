@@ -94,9 +94,9 @@
       <Dialog Id="OptionsDlg" Width="370" Height="270" Title="[ProductName] — параметры установки" NoMinimize="yes">
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Property="WixUI_Bmp_Banner" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Дополнительные параметры" />
-        <Control Id="Description" Type="Text" X="25" Y="52" Width="320" Height="28" Text="{\WixUI_Font_Normal}Проверьте параметры установки или восстановления:" />
-        <Control Id="DesktopShortcutCheck" Type="CheckBox" X="25" Y="92" Width="300" Height="17" Property="CREATEDESKTOPSHORTCUT" CheckBoxValue="1" Text="{\WixUI_Font_Normal}Создать ярлык на рабочем столе" />
-        <Control Id="AutostartCheck" Type="CheckBox" X="25" Y="116" Width="300" Height="17" Property="ADDAUTOSTART" CheckBoxValue="1" Text="{\WixUI_Font_Normal}Добавить Host в автозагрузку текущего пользователя" />
+        <Control Id="Description" Type="Text" X="25" Y="52" Width="320" Height="28" Text="{\WixUI_Font_Normal}Проверьте параметры выбранной операции:" />
+        <Control Id="DesktopShortcutCheck" Type="CheckBox" X="25" Y="92" Width="300" Height="17" Property="CREATEDESKTOPSHORTCUT" CheckBoxValue="1" DisableCondition='WixUI_InstallMode="Remove"' EnableCondition='NOT WixUI_InstallMode="Remove"' Text="{\WixUI_Font_Normal}Создать ярлык на рабочем столе" />
+        <Control Id="AutostartCheck" Type="CheckBox" X="25" Y="116" Width="300" Height="17" Property="ADDAUTOSTART" CheckBoxValue="1" DisableCondition='WixUI_InstallMode="Remove"' EnableCondition='NOT WixUI_InstallMode="Remove"' Text="{\WixUI_Font_Normal}Добавить Host в автозагрузку текущего пользователя" />
         <Control Id="ForceCloseCheck" Type="CheckBox" X="25" Y="144" Width="320" Height="28" Property="MSIRMSHUTDOWN" CheckBoxValue="1" Text="{\WixUI_Font_Normal}Принудительно закрыть зависшие приложения и службы, мешающие установке" />
         <Control Id="ForceCloseNotice" Type="Text" X="25" Y="180" Width="320" Height="36" Text="{\WixUI_Font_Normal}Сохраните работу в iCem. Эта опция действует только сейчас. Установщик сначала запрашивает штатное закрытие." />
         <Control Id="Back" Type="PushButton" X="124" Y="243" Width="56" Height="17" Text="{\WixUI_Font_Normal}Назад">
@@ -116,7 +116,8 @@
       <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="4" Condition="NOT Installed" />
       <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Order="5" Condition="NOT Installed AND (WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID=&quot;1&quot;)" />
       <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="OptionsDlg" Order="4" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="4" Condition='NOT REMOVE="ALL"' />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="OptionsDlg" Order="4" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="4" />
     </UI>
     <Feature Id="Main" Level="1">
       <ComponentGroupRef Id="Payload.All" />

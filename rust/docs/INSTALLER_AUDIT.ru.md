@@ -48,12 +48,15 @@ N+1: новые files идут через `windows-payload.json`; новый pro
 Исполняемые сценарии находятся в `Test-WindowsMsiUpgrade.ps1` и `tests/LockedFileOwner.cs`.
 
 Повторный запуск того же файла MSI восстанавливает все owned files. Стандартная
-страница maintenance предлагает repair, затем показывает сохранённые опции и force.
+страница maintenance предлагает repair/remove, затем показывает параметры и force.
+При remove controls ярлыка/autostart отключены; force доступен для текущего удаления.
 Silent `/i` установленного MSI также выполняет полный repair без ручных флагов.
 Пути и последние опции восстанавливаются из MSI-owned HKLM Installer state; явные
 CLI свойства имеют приоритет. Secure marker не даёт AppSearch execute sequence
 отменить изменения, сделанные в wizard. Transitive option components применяют
 явное отключение ярлыка/autostart. Force остаётся свойством одной операции.
+
+Fixture становится готовой только после показа настоящего GUI окна; hidden/minimized окно не является доказательством GUI shutdown path. Shutdown messages сохраняются в bounded test logs.
 
 Тесты повреждают и удаляют owned files, повторяют обычный `/i` дважды без путей и
 опций, проверяют оба mounts, Unicode-пути, настройки, один зарегистрированный

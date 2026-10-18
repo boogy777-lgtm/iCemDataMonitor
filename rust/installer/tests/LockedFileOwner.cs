@@ -15,13 +15,12 @@ internal sealed class LockedFileOwner : Form
         marker = args[1];
         stubborn = args[2] == "stubborn";
         Text = "iCem installer lock contract";
-        ShowInTaskbar = false;
-        WindowState = FormWindowState.Minimized;
     }
 
-    protected override void OnLoad(EventArgs e)
+    protected override void OnShown(EventArgs e)
     {
-        base.OnLoad(e);
+        base.OnShown(e);
+        File.WriteAllText(marker + ".events.log", "visible GUI window ready; stubborn=" + stubborn + Environment.NewLine);
         File.WriteAllText(marker, "ready");
     }
 
