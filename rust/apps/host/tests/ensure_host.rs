@@ -83,7 +83,7 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
                 .arg(&corrupt),
         )?
         .status;
-        assert_eq!(status.code(), Some(host_client::ALREADY_RUNNING));
+        assert_eq!(status.code(), Some(i32::from(host_client::ALREADY_RUNNING)));
         assert_eq!(fs::read(&corrupt)?, b"broken");
         assert_eq!(fs::read(&config)?, original);
         assert!(icem_windows_native::signal_existing_event(

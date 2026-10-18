@@ -203,14 +203,8 @@ fn project(reply: &RegistersReply, snapshot: bool) -> Result<String, String> {
         for value in &reply.values {
             let number = match value.value {
                 Some(Value::Int32Value(n)) => f32::from_bits(n.cast_unsigned()),
-                Some(Value::FloatValue(f)) => {
-                    if f.is_finite() {
-                        f
-                    } else {
-                        0.
-                    }
-                }
-                None => continue,
+                Some(Value::FloatValue(f)) if f.is_finite() => f,
+                Some(Value::FloatValue(_)) | None => 0.0,
             };
             // Baseline reinterprets timestamp before JSON without float sanitization.
             if !number.is_finite() {

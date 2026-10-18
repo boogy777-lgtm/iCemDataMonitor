@@ -538,7 +538,7 @@ fn main() -> ExitCode {
         Ok(Some(guard)) => guard,
         Ok(None) => {
             eprintln!("Host is already running or starting");
-            return ExitCode::from(73);
+            return ExitCode::from(icem_web::host_client::ALREADY_RUNNING);
         }
         Err(e) => {
             eprintln!("{e}");

@@ -12,7 +12,7 @@ use std::{
 };
 
 pub const READY_TIMEOUT: Duration = Duration::from_secs(30);
-pub const ALREADY_RUNNING: i32 = 73;
+pub const ALREADY_RUNNING: u8 = 73;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Presence {
     Absent,
@@ -156,7 +156,7 @@ where
         if let Some(process) = &mut child
             && let Some(status) = process.try_wait().map_err(|e| e.to_string())?
         {
-            if status.code() != Some(ALREADY_RUNNING) {
+            if status.code() != Some(i32::from(ALREADY_RUNNING)) {
                 return Err(format!(
                     "Host завершился до готовности ({status}). Проверьте config.ini и занятые порты. Подробности: запустите icem-host-dev.exe в консоли."
                 ));
