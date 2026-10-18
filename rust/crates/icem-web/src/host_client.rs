@@ -50,9 +50,11 @@ impl Launch {
             .args(&self.arguments)
             .current_dir(directory)
             .creation_flags(0x0800_0000)
+            // The persistent Host must not keep a CLI caller's redirected pipes
+            // open after the JSON command exits. Startup errors return via ensure.
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::null())
             .spawn()
             .map(Some)
             .map_err(|e| {

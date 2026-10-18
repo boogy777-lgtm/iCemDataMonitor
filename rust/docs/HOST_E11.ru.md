@@ -20,7 +20,10 @@ N+1: схема остаётся в прежнем ini_fields; путь явля
    GetStatus определяет присутствие; completed ready в boot replay — готовность.
    Отвечающий, но ещё не готовый Host не вызывает новый spawn.
 2. Отсутствующий Host запускается из каталога Shell, независимо от cwd, с
-   `--autostart`, без нового console window. Установленный MSI имеет плоский runtime.
+   `--autostart`, без нового console window. Stdio отсоединены: фоновый Host не удерживает stdout/stderr
+завершившегося CLI. Ошибка старта определяется по exit/pipe; подробный разбор config
+Shell показывает чтением, ручной console launch выводит собственную диагностику.
+Установленный MSI имеет плоский runtime.
    Custom `--pipe` не получает неявный station launch.
 3. Deadline — 30 s, отдельный read probe — до 1 s. Запуск не повторяется. Процесс,
    проигравший существующий Host mutex, выходит с внутренним кодом 73 до config I/O;
@@ -77,14 +80,18 @@ float NaN/Infinity в 0. Timestamp после reinterpretation не sanitizes: �
 ## MSI и доступ обычного пользователя
 
 Class: рабочий каталог MSI (`Product.wxs`, `Build-WindowsMsi`, общий Assert-Installed).
-Inv: Users имеют наследуемый Modify, прежние ACL сохраняются; проверка после каждого
+Inv: Users имеют наследуемый Modify, ACE других identities сохраняются; проверка после каждого
 install/repair/upgrade. N+1: прежняя генерация GUID компонентов, без ACL-скрипта.
 
-Добавлен CreateFolder component с additive util PermissionEx. Группа определяется
+Добавлен CreateFolder component с util PermissionEx. Группа определяется
 через WIX_ACCOUNT_USERS (SID, не язык ОС). Это соответствует legacy Users Modify
 для общего каталога данных/приложения. Права ChangePermissions/TakeOwnership не выдаются.
 WiX Util использует существующий pin 5.0.2 (MIT); явный installer-only dependency,
-без изменения Rust unsafe boundary. Runtime код не меняет DACL и не повышает права.
+без изменения Rust unsafe boundary. WiX 5.0.2 использует SET_ACCESS для целевой Users ACE: права этой группы приводятся
+к Modify; это не побайтовое сохранение старых Users ACE. ACE других identities
+сохраняются. Runtime код не меняет DACL и не повышает права.
+Проверены pinned UtilCompiler.cs и secureobj.cpp (wixtoolset/wix, tag v5.0.2);
+актуальная онлайн-схема имеет атрибуты, которых нет в pin, и не заменяет компилятор.
 Исходное совмещение runtime и данных в ProgramData сохраняется.
 
 Repair/opt-out/force/Restart Manager/AddIn provenance и разные Legacy/Rust MSI
