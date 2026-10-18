@@ -59,17 +59,25 @@ There is one inventory, not a second manually maintained MSI file list.
 | Registries | Original Host registry (3507 variables) under `templates/`; original emulator registry (140 variables) and other templates under `emulator/templates/`; launchers read role paths from manifest |
 | AddIn | `[ICEMDIR]\Bin\Modules\Burservis.iCem.DataMonitor.dll`; provenance stays in runtime `addin/` |
 | iCem path | Standard default in the directory wizard; explicit CLI/wizard ICEMDIR remains authoritative |
-| In-use files | Native Windows Installer detection/UI; automatic Restart Manager shutdown disabled; no WMI/process-name kill scripts, service control or kill on Cancel |
+| In-use files | Native Restart Manager: graceful shutdown by default, explicit per-operation force checkbox for unresponsive file owners; no WMI/process-name kills or kill on Cancel |
 | Desktop/autostart | Opt-in, default OFF. Desktop targets Shell; installing user's HKCU Run targets Host `--autostart`; emulator never autostarts. Task Manager disable state is not erased |
-| N → N+1 | Separate stable Rust UpgradeCode and component GUID namespace; new ProductCode, increasing numeric versions, transactional removal, blocked downgrade |
+| N → N+1 | Separate stable Rust UpgradeCode and component GUID namespace; new ProductCode, increasing numeric versions, transactional removal, blocked downgrade; saved paths/options restored automatically |
 | Uninstall | Removes only MSI-owned files/AddIn/options; preserves user-created config/data/logs. No recursive wipe |
 | Registration | Visible in installed applications; standard MSI uninstall/repair |
 | Legacy cutover | Registered legacy MSI detected with OnlyDetect and blocks installation; never automatically removed |
 
-For silent upgrades using custom paths/options, pass the same `MONITORROOT`,
-`ICEMDIR`, `CREATEDESKTOPSHORTCUT=1`, `ADDAUTOSTART=1` properties explicitly as
-applicable. Automatic preference/path recovery is not implemented. No config or
-Data.dat is shipped/created by packaging. The original .NET MSI remains unchanged.
+Repeat launching the same MSI repairs missing **and corrupt** owned files, with
+saved runtime/AddIn paths and options. The maintenance wizard offers Repair and
+shows the options page, including explicit force consent; silent repeated `/i`
+also performs full repair. Explicit path/option properties override saved values.
+`CREATEDESKTOPSHORTCUT=0 ADDAUTOSTART=0` disables the native option components;
+subsequent launches preserve that choice. `MSIRMSHUTDOWN=1` is the silent equivalent
+of the force checkbox; it is never saved. Restart Manager first requests graceful
+closure, then can force unresponsive owners after native deadlines. User-created
+config/data/logs are preserved. A reboot-required result is not a verified complete
+installation; the release gate requires exit 0 and verifies the installed hashes.
+No config or Data.dat is shipped/created by packaging. Legacy .NET MSI is separate
+and unchanged.
 
 This remains a **Rust development candidate**, retaining `*-dev.exe` names.
 Production cutover is not enabled merely by adding an installer. Host restoration,
@@ -121,7 +129,7 @@ After the workflows reach main:
 On PRs, the Windows `installer-contracts` job validates packaging and builds two
 MSIs with test runtime bytes (a Windows system EXE) and a synthetic managed DLL. It exercises
 **native WiX authoring, original branding generation and Windows Installer**:
-install N, two mounts, shortcut/autostart targets, upgrade N+1, blocked downgrade,
+install N, two mounts, shortcut/autostart targets, repeated repair of missing/corrupt files, saved preferences, graceful/explicit force file-owner shutdown with same-name foreign process isolation, upgrade N+1, blocked downgrade,
 then removal of owned resources while retaining unowned data. Default opt-out is also tested. It publishes logs, never a fixture MSI. This proves
 installer mechanics, not an actual AddIn build or Rust runtime behavior.
 

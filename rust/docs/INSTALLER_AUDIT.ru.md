@@ -1,7 +1,7 @@
 # Аудит границ Windows MSI по PLATFORM ARCHITECTURE RULES v3.1
 
 Class: MSI владеет файлами из `windows-payload.json`, записью своего продукта и
-opt-in ярлыком/Run value. Пользовательские файлы, службы и процессы iCem вне класса.
+opt-in ярлыком/Run value. Пользовательские файлы вне класса владения MSI. Процессы и службы входят в отдельный класс конфликтов, если удерживают затрагиваемые файлы; это не право владения ими.
 Inv: каждый файл имеет один mount и стабильный Rust component GUID; upgrade и
 uninstall сохраняют не принадлежащие MSI данные. Проверки: `Test-WindowsPackaging.ps1`,
 `Test-WindowsInstaller.ps1`, `Test-WindowsMsiUpgrade.ps1`.
@@ -19,19 +19,56 @@ N+1: новый файл добавляется в существующий payl
 | GUID harvester из `component:<relative path>` | Ограниченный адаптер задаёт GUID в namespace Rust UpgradeCode | Исходный AddIn GUID совпал бы с legacy. Windows contract сравнивает с неизменённым harvester: множества GUID не пересекаются, GUID стабильны при переносе build directory |
 | PNG, ICO и `gen-ui-bmps.ps1` | Переиспользованы оригиналы | Это оформление, а не управление установкой. Hash guard PNG, генерация BMP и WiX `-wx` обязательны; визуальная эквивалентность не доказана |
 | Проекция всего `installer/Product.wxs` и переписывание имён процессов | Удалена; небольшой `rust/installer/Product.wxs` описывает только Rust package policy | Отсутствует связность с посторонними legacy CustomAction. Role-targets берутся из verified manifest; не создаётся второй список payload |
-| `CheckConflicts.js`, WMI stop/terminate, `util:CloseApplication`, kill при Cancel | Не включаются в Rust MSI | Принадлежность процесса определяется не именем. MSI обрабатывает занятые файлы; `MSIRESTARTMANAGERCONTROL=DisableShutdown` запрещает автоматическое закрытие через Restart Manager. Guard запрещает собственные CAs, service-control и util элементы |
+| `CheckConflicts.js`, WMI stop/terminate, `util:CloseApplication`, kill при Cancel | Имён и kill-on-Cancel нет; native Restart Manager активен | Требование пользователя уточнено: force — разрешённая явная опция. `MSIRMSHUTDOWN=0` запрашивает штатное закрытие, `1` разрешает native force после deadlines. Только владельцы файлов данного MSI; согласие не сохраняется |
 | Elevated JScript `WipeMonitorRoot`, `Return=ignore` | Удалён | Рекурсивное удаление чужих данных не имеет MSI rollback/ownership. Тест оставляет пользовательский файл, проверяет его после upgrade и uninstall и отсутствие всех MSI-owned файлов |
 | Native Shortcut/RegistryValue | Сохранены, по умолчанию OFF | Target Shell и Run Host `--autostart` проверяются фактической установкой. Autostart принадлежит устанавливающему пользователю; эмулятор независим |
 | Удаление `StartupApproved` | Не переносится | Значение Task Manager не создавалось MSI; пользовательское отключение не сбрасывается установщиком |
-| Hidden ARP + forced `REINSTALLMODE=amus` | Не переносится | Rust-кандидат виден в установленном ПО; работают стандартные uninstall/repair. Guard запрещает скрытие и принудительную политику перезаписи |
+| Hidden ARP + глобальный `REINSTALLMODE=amus` | ARP виден; полный repair ограничен повторным `/i` установленного продукта | Для `Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE` задаются `REINSTALL=ALL` / `REINSTALLMODE=amus`. Восстанавливаются отсутствующие и испорченные MSI-owned файлы, не произвольные файлы каталога |
 | Разрешённые downgrade и same-version пересборки | Не переносится | Новый ProductCode для N+1, стабильный отдельный UpgradeCode, транзакционный `afterInstallInitialize`, downgrade запрещён. Версии и файлы не перезаписываются |
-| AppSearch поверх explicit ICEMDIR | Не переносится | Предлагается стандартный iCem путь, оператор может изменить AddIn destination. Тест использует Unicode/пробелы и отдельный ICEMDIR; directory validation нельзя обойти переходом в OptionsDlg |
+| AppSearch поверх explicit ICEMDIR | Native сохранение и восстановление путей/опций | Собственный HKLM Installer state, отдельные SAVED properties и type-51 transfers: explicit CLI побеждает, UI choices не затираются execute sequence. Новые файлы не требуют изменения этого механизма |
 
 Зарегистрированный legacy MSI обнаруживается через `OnlyDetect` и блокирует
 установку кандидата. Это не полноценная проверка всех способов ручной установки
-legacy и не production cutover. Для silent upgrade с нестандартными путями и
-opt-in опциями передавайте те же свойства явно; автоматическое восстановление
-выбранных параметров следующей версией пока не реализовано и не заявлено.
+legacy и не production cutover. Legacy и Rust — отдельные MSI с разными семействами
+обновления. Исходный legacy упаковщик не изменён.
+
+## Уточнение пользователя: установка для человека без IT-навыков
+
+Удаление самой возможности force было неверным ограничением предыдущего аудита.
+Нужно устранять блокирующие установку ресурсы с явным согласием и проверять результат.
+Новая опция на странице параметров разрешает Restart Manager принудительно закрыть
+не отвечающие процессы/службы после штатного запроса и native deadlines. Она не
+сохраняется на будущее. Cancel не вызывает отдельного завершения процессов.
+Windows связывает конфликт с затрагиваемым файлом, а не с именем процесса.
+
+Class: владельцы файлов, которые заменяет/удаляет MSI; процесс с тем же именем,
+держащий чужой файл, вне класса. Inv: native RM grace/force только по текущему
+согласию; MSI success проверяется по payload и завершению блокирующего процесса.
+N+1: новые files идут через `windows-payload.json`; новый process-name rule не нужен.
+Исполняемые сценарии находятся в `Test-WindowsMsiUpgrade.ps1` и `tests/LockedFileOwner.cs`.
+
+Повторный запуск того же файла MSI восстанавливает все owned files. Стандартная
+страница maintenance предлагает repair, затем показывает сохранённые опции и force.
+Silent `/i` установленного MSI также выполняет полный repair без ручных флагов.
+Пути и последние опции восстанавливаются из MSI-owned HKLM Installer state; явные
+CLI свойства имеют приоритет. Secure marker не даёт AppSearch execute sequence
+отменить изменения, сделанные в wizard. Transitive option components применяют
+явное отключение ярлыка/autostart. Force остаётся свойством одной операции.
+
+Тесты повреждают и удаляют owned files, повторяют обычный `/i` дважды без путей и
+опций, проверяют оба mounts, Unicode-пути, настройки, один зарегистрированный
+продукт и неизменность пользовательского файла. Upgrade также запускается без
+повторного ввода путей. Отдельно проверяются явный opt-out и последующее сохранение
+этого выбора. Два test EXE одного имени держат разные файлы: закрывается только
+фактический blocker. Graceful и force различаются по записи FormClosed fixture.
+Это проверка реального Windows Installer/RM; живые iCem/Npcap/службы/другие sessions
+и first-run Host/config требуют отдельной приёмки.
+
+Если файлы не удалось заменить и Windows требует reboot, код 3010 не равен
+полностью готовой установке. Release acceptance ожидает 0 и проверяет hashes всех
+установленных файлов. Стандартный MSI сообщает о необходимой перезагрузке; нельзя
+объявлять такой результат PASS до завершения reboot/проверки. Deadlines RM — 30 s
+для unresponsive приложения и 20 s для службы; test operation ограничена 180 s.
 
 Контрактные MSI содержат тестовые байты: на Windows runtime заменён копией
 системного `where.exe` (не запускается), AddIn имеет синтетические metadata.
@@ -52,7 +89,8 @@ PASS: Shell.Application / FolderItem.GetLink подтвердил Unicode target
 
 Первичные источники: [WiX 5.0.2 InstallDir UI](https://github.com/wixtoolset/wix/blob/v5.0.2/src/ext/UI/wixlib/WixUI_InstallDir.wxs),
 [Microsoft: MSI Restart Manager](https://learn.microsoft.com/en-us/windows/win32/msi/using-windows-installer-with-restart-manager),
-[DisableShutdown](https://learn.microsoft.com/en-us/windows/win32/msi/msirestartmanagercontrol).
+[MSIRMSHUTDOWN](https://learn.microsoft.com/en-us/windows/win32/msi/msirmshutdown),
+[RM deadlines](https://learn.microsoft.com/en-us/windows/win32/api/restartmanager/nf-restartmanager-rmshutdown).
 
 Дополнительный дефект ZIP builder: цикл AddIn затенял переменную имени архива,
 поэтому checksum называл вложенный `addin-manifest.json` вместо ZIP. Переменная

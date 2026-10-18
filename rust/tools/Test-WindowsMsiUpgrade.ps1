@@ -23,6 +23,7 @@ $Marker = Join-Path $Install 'operator-not-msi-owned.ini'
 $MarkerText = 'operator-owned configuration must survive'
 [IO.Directory]::CreateDirectory($Work) | Out-Null
 $ProductCodes = [Collections.Generic.List[string]]::new()
+$FileOwners = [Collections.Generic.List[object]]::new()
 function Installed-Products {
     @(Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' | ForEach-Object {
         $Entry = Get-ItemProperty -LiteralPath $_.PSPath
@@ -48,13 +49,14 @@ function Read-MsiProperty([string] $Path, [string] $Name) {
         }
     }
 }
-function Invoke-Msi([string[]] $Arguments, [string] $Label, [int] $ExpectedExit = 0) {
+function Invoke-Msi([string[]] $Arguments, [string] $Label, [int] $ExpectedExit = 0, [switch] $InitialPaths) {
     $Log = Join-Path $Work "$Label.log"
     $Info = [Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32/msiexec.exe'))
     $Info.UseShellExecute = $false
     # Windows Installer's PROPERTY="value" grammar must keep the property name
     # outside the quotes; do not quote the whole PROPERTY=value token.
-    $Tokens = @($Arguments + @("MONITORROOT=$Install", "ICEMDIR=$IcemRoot", '/qn', '/norestart', '/l*v', $Log))
+    $Paths = if ($InitialPaths) { @("MONITORROOT=$Install", "ICEMDIR=$IcemRoot") } else { @() }
+    $Tokens = @($Arguments + $Paths + @('/qn', '/norestart', '/l*v', $Log))
     $Info.Arguments = (@($Tokens | ForEach-Object {
         if ($_.Contains('"')) { throw 'MSI test arguments cannot contain embedded quotes' }
         if ($_ -match '^([A-Z][A-Z0-9_]*)=(.*)$') { $Matches[1] + '="' + $Matches[2] + '"' }
@@ -76,6 +78,26 @@ function Invoke-Msi([string[]] $Arguments, [string] $Label, [int] $ExpectedExit 
             throw "MSI $Label exit $($Process.ExitCode), expected ${ExpectedExit}: $Tail"
         }
     } finally { $Process.Dispose() }
+}
+function Start-FileOwner([string] $Executable, [string] $Resource, [string] $Name, [string] $Mode) {
+    $Ready = Join-Path $Work ($Name + '.ready')
+    $Info = [Diagnostics.ProcessStartInfo]::new($Executable)
+    $Info.UseShellExecute = $false
+    foreach ($Argument in @($Resource, $Ready, $Mode)) { $Info.ArgumentList.Add($Argument) }
+    $Process = [Diagnostics.Process]::Start($Info)
+    $Owner = [pscustomobject]@{ process=$Process; ready=$Ready }
+    $FileOwners.Add($Owner)
+    $Clock = [Diagnostics.Stopwatch]::StartNew()
+    while (-not (Test-Path -LiteralPath $Ready)) {
+        if ($Process.HasExited -or $Clock.Elapsed.TotalSeconds -gt 10) { throw "Lock fixture $Name did not become ready" }
+        Start-Sleep -Milliseconds 50
+    }
+    return $Owner
+}
+function Assert-OwnerStopped($Owner, [bool] $Graceful) {
+    if (-not $Owner.process.WaitForExit(5000)) { throw 'MSI returned success with a live file owner' }
+    $DidClose = Test-Path -LiteralPath ($Owner.ready + '.closed')
+    if ($DidClose -ne $Graceful) { throw 'Unexpected graceful/forced shutdown path' }
 }
 function Assert-Installed([string] $Version, [string] $ProductCode) {
     $Products = @(Installed-Products)
@@ -128,12 +150,12 @@ try {
     foreach ($Path in @($Msi, $NextMsi.msi)) {
         if ([guid](Read-MsiProperty $Path 'UpgradeCode') -ne $ExpectedUpgrade) { throw 'UpgradeCode changed between N and N+1' }
     }
-    Invoke-Msi @('/i', $Msi) 'install-default-opt-out'
+    Invoke-Msi @('/i', $Msi) 'install-default-opt-out' -InitialPaths
     Assert-Installed $Version $FirstCode
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Default install enabled opt-in options' }
     Invoke-Msi @('/x', $FirstCode) 'uninstall-default-opt-out'
     if (@(Installed-Products).Count -or @(Get-ChildItem -LiteralPath $Install -Recurse -File -ErrorAction SilentlyContinue).Count) { throw 'Default uninstall left MSI-owned files/registration' }
-    Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'install-N'
+    Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'install-N' -InitialPaths
     Assert-Installed $Version $FirstCode
     if ((Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Wrong native autostart command' }
     $Shell = New-Object -ComObject Shell.Application
@@ -155,17 +177,70 @@ try {
         }
     }
     [IO.File]::WriteAllText($Marker, $MarkerText)
-    Invoke-Msi @('/i', $NextMsi.msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'upgrade-N-plus-one'
+    # A plain repeated /i must repair every owned file from the MSI, including
+    # corrupted existing files, while recovering paths/options with no CLI help.
+    Remove-Item -LiteralPath (Join-Path $Install 'icem-shell-dev.exe')
+    [IO.File]::WriteAllText((Join-Path $Install 'templates/variable_registry.json'), 'corrupted')
+    Remove-Item -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll')
+    Remove-Item -LiteralPath $Shortcut
+    Remove-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost
+    Invoke-Msi @('/i', $Msi) 'plain-repeat-repairs-complete-payload'
+    Assert-Installed $Version $FirstCode
+    if (-not (Test-Path -LiteralPath $Shortcut) -or
+        (Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Repeat install did not restore options' }
+    Invoke-Msi @('/i', $Msi) 'repeat-again-is-idempotent'
+    Assert-Installed $Version $FirstCode
+    # Real RM integration: same executable image name, distinct resource owners.
+    # Compile using the Windows .NET Framework compiler; fixtures never publish.
+    $Locks = Join-Path $Work 'lock-fixtures'
+    $ForeignDirectory = Join-Path $Locks 'foreign'
+    [IO.Directory]::CreateDirectory($ForeignDirectory) | Out-Null
+    $OwnerExe = Join-Path $Locks ('icem-lock-' + [guid]::NewGuid().ToString('N') + '.exe')
+    $Framework = Join-Path $env:SystemRoot 'Microsoft.NET/Framework64/v4.0.30319'
+    & (Join-Path $Framework 'csc.exe') /nologo /target:winexe /platform:x64 ("/out:$OwnerExe") ("/reference:$Framework/System.Windows.Forms.dll") ("/reference:$Framework/System.Drawing.dll") (Join-Path $Root 'installer/tests/LockedFileOwner.cs') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'Lock fixture compilation failed' }
+    $ForeignExe = Join-Path $ForeignDirectory ([IO.Path]::GetFileName($OwnerExe))
+    Copy-Item -LiteralPath $OwnerExe -Destination $ForeignExe
+    $ForeignFile = Join-Path $ForeignDirectory 'unrelated.dll'
+    [IO.File]::WriteAllText($ForeignFile, 'foreign resource')
+    $Foreign = Start-FileOwner $ForeignExe $ForeignFile 'foreign' 'stubborn'
+    $AddinPath = Join-Path $Modules 'Burservis.iCem.DataMonitor.dll'
+    $Graceful = Start-FileOwner $OwnerExe $AddinPath 'graceful' 'graceful'
+    Invoke-Msi @('/i', $Msi) 'repair-graceful-file-owner'
+    Assert-OwnerStopped $Graceful $true
+    Assert-Installed $Version $FirstCode
+    if ($Foreign.process.HasExited) { throw 'Installer stopped an unrelated same-name process' }
+    $Stubborn = Start-FileOwner $OwnerExe $AddinPath 'stubborn' 'stubborn'
+    $ShutdownClock = [Diagnostics.Stopwatch]::StartNew()
+    Invoke-Msi @('/i', $Msi, 'MSIRMSHUTDOWN=1') 'repair-force-unresponsive-owner'
+    if ($ShutdownClock.Elapsed.TotalSeconds -gt 90) { throw 'Force shutdown exceeded finite test deadline' }
+    Assert-OwnerStopped $Stubborn $false
+    Assert-Installed $Version $FirstCode
+    if ($Foreign.process.HasExited) { throw 'Force shutdown escaped the affected file set' }
+    Invoke-Msi @('/i', $Msi) 'force-consent-is-not-persistent'
+    $ConsentLog = Get-Content -Raw -LiteralPath (Join-Path $Work 'force-consent-is-not-persistent.log')
+    if ($ConsentLog -notmatch '(?m)Property\(S\): MSIRMSHUTDOWN = 0\r?$') { throw 'Force consent persisted into another operation' }
+    Invoke-Msi @('/i', $NextMsi.msi) 'upgrade-N-plus-one'
     Assert-Installed $Next $NextCode
     if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText) { throw 'Upgrade modified user data' }
     Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'blocked-downgrade' 1603
     Assert-Installed $Next $NextCode
+    Invoke-Msi @('/i', $NextMsi.msi, 'CREATEDESKTOPSHORTCUT=0', 'ADDAUTOSTART=0') 'explicit-options-off'
+    Assert-Installed $Next $NextCode
+    if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Explicit opt-out did not remove options' }
+    Invoke-Msi @('/i', $NextMsi.msi) 'repeat-preserves-options-off'
+    if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Repeat resurrected disabled options' }
     Invoke-Msi @('/x', $NextCode) 'uninstall'
-    if (@(Installed-Products).Count -or (Test-Path -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll'))) { throw 'Uninstall left AddIn/registration' }
+    if (@(Installed-Products).Count -or (Test-Path -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll')) -or (Test-Path -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer')) { throw 'Uninstall left AddIn/registration/saved installer state' }
     if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText -or @(Get-ChildItem -LiteralPath $Install -Recurse -File).Count -ne 1) { throw 'Uninstall changed user data or left MSI-owned files' }
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Uninstall left shortcut/autostart' }
-    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and upgrade preserves unowned data; uninstall preserves unowned data and removes all owned files/options."
+    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and upgrade preserves unowned data; RM graceful/explicit force shutdown targets only actual file owners; plain repeat repairs deleted/corrupt files and restores paths/options; explicit option changes persist; uninstall preserves unowned data and removes all owned files/options."
 } finally {
+    foreach ($Owner in $FileOwners) {
+        try {
+            if (-not $Owner.process.HasExited) { $Owner.process.Kill(); $null = $Owner.process.WaitForExit(5000) }
+        } finally { $Owner.process.Dispose() }
+    }
     foreach ($Code in $ProductCodes) {
         if (@(Installed-Products | Where-Object { $_.PSChildName -eq $Code }).Count) { Invoke-Msi @('/x', $Code) ('cleanup-' + $Code.Trim('{}')) }
     }

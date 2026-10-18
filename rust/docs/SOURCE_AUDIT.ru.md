@@ -215,3 +215,14 @@ including AddIn, not only opt-in components. Tests compare legacy/Rust GUID sets
 and relocated harvests and check opt-out/opt-in, N+1, downgrade and preservation
 of unowned data at uninstall. Original .NET sources/installer remain unchanged.
 Actual running-process/rollback/visual and SDK integration acceptance remain open.
+
+
+D39 / уточнение installer lifecycle: запрет любого force-закрытия в D38 был
+слишком широк. Пользователь требует явную force-опцию для зависших ресурсов iCem
+и повторную полную установку для оператора без IT-навыков. Rust MSI включает
+native Restart Manager (file-owner scope, не image-name), per-operation
+MSIRMSHUTDOWN checkbox, native saved-path/options recovery и repair ALL/amus только
+для установленного продукта вне uninstall/major-upgrade removal. Тесты проверяют
+missing/corrupt files, plain repeat, explicit opt-out, grace/force и foreign process
+того же имени. Свойства и mutable payload guard не ослаблены; script CAs и wipe
+по-прежнему отсутствуют. Реальные vendor/hardware/first-run gates не объявлены PASS.

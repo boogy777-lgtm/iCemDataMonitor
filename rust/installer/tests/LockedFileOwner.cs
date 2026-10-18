@@ -1,0 +1,52 @@
+// Windows Installer contract fixture only. Never shipped in a release.
+using System;
+using System.IO;
+using System.Windows.Forms;
+
+internal sealed class LockedFileOwner : Form
+{
+    private readonly FileStream held;
+    private readonly string marker;
+    private readonly bool stubborn;
+
+    private LockedFileOwner(string[] args)
+    {
+        held = new FileStream(args[0], FileMode.Open, FileAccess.Read, FileShare.Read);
+        marker = args[1];
+        stubborn = args[2] == "stubborn";
+        Text = "iCem installer lock contract";
+        ShowInTaskbar = false;
+        WindowState = FormWindowState.Minimized;
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        File.WriteAllText(marker, "ready");
+    }
+
+    protected override void WndProc(ref Message message)
+    {
+        // Refuse WM_CLOSE, WM_QUERYENDSESSION and WM_ENDSESSION. RM must need
+        // explicit force consent to terminate this fixture; no natural expiry.
+        if (stubborn && (message.Msg == 0x10 || message.Msg == 0x11 || message.Msg == 0x16))
+        {
+            message.Result = IntPtr.Zero;
+            return;
+        }
+        base.WndProc(ref message);
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        held.Dispose();
+        File.WriteAllText(marker + ".closed", "graceful");
+        base.OnFormClosed(e);
+    }
+
+    [STAThread]
+    private static void Main(string[] args)
+    {
+        Application.Run(new LockedFileOwner(args));
+    }
+}

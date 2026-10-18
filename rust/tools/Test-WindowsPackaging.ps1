@@ -60,10 +60,32 @@ try {
     # Guard the reviewed package boundary, not implementation layout: payload,
     # native shortcut/Run value and stock UI only. No elevated deletion/process
     # scripts, service ownership, hidden uninstall or forced repair policy.
-    if ($Xml.SelectNodes('//w:CustomAction | //w:Binary | //w:SetProperty | //w:RemoveFile | //w:RemoveFolder | //w:RemoveRegistryValue | //w:ServiceControl | //w:ServiceInstall', $Ns).Count -or
+    if ($Xml.SelectNodes('//w:CustomAction | //w:Binary | //w:RemoveFile | //w:RemoveFolder | //w:RemoveRegistryValue | //w:ServiceControl | //w:ServiceInstall', $Ns).Count -or
         $Xml.SelectNodes('//*[namespace-uri()="http://wixtoolset.org/schemas/v4/wxs/util"]', $Ns).Count -or
-        $Xml.SelectNodes('//w:Property[@Id="ARPSYSTEMCOMPONENT" or @Id="REINSTALLMODE"]', $Ns).Count -or
-        $Xml.SelectSingleNode('//w:Property[@Id="MSIRESTARTMANAGERCONTROL"]', $Ns).Value -cne 'DisableShutdown') { throw 'MSI exceeds reviewed native resource ownership' }
+        $Xml.SelectNodes('//w:Property[@Id="ARPSYSTEMCOMPONENT"]', $Ns).Count -or
+        $Xml.SelectSingleNode('//w:Property[@Id="MSIRESTARTMANAGERCONTROL"]', $Ns).Value -cne '0') { throw 'MSI exceeds reviewed native resource ownership' }
+    $ExpectedTransfers = @('RestoreMONITORROOT','RestoreICEMDIR','RestoreCREATEDESKTOPSHORTCUT','RestoreADDAUTOSTART','DefaultIcemDirectory','SetPREFERENCES_INITIALIZED','NormalizeCREATEDESKTOPSHORTCUT','NormalizeADDAUTOSTART','NormalizeMSIRMSHUTDOWN','SetREINSTALL','SetREINSTALLMODE')
+    $Transfers = @($Xml.SelectNodes('//w:SetProperty', $Ns))
+    $ActualTransfers = @($Transfers | ForEach-Object { if ($_.HasAttribute('Action')) { $_.Action } else { 'Set' + $_.Id } })
+    if (($ExpectedTransfers -join ',') -cne ($ActualTransfers -join ',')) { throw 'Unreviewed/missing native property transfer' }
+    $Previous = 'AppSearch'
+    foreach ($Transfer in $Transfers) {
+        if ($Transfer.After -cne $Previous) { throw 'Preference/repair sequencing is incomplete' }
+        $Previous = if ($Transfer.HasAttribute('Action')) { $Transfer.Action } else { 'Set' + $Transfer.Id }
+    }
+    if ($Xml.SelectSingleNode('//w:Property[@Id="MSIRMSHUTDOWN"]', $Ns).Value -cne '0' -or
+        $Xml.SelectSingleNode('//w:Control[@Id="ForceCloseCheck"]', $Ns).Property -cne 'MSIRMSHUTDOWN' -or
+        $Xml.SelectSingleNode('//w:Control[@Id="ForceCloseCheck"]', $Ns).CheckBoxValue -cne '1' -or
+        $Xml.SelectNodes('//w:RegistryValue[@Value="[MSIRMSHUTDOWN]"]', $Ns).Count) { throw 'Force consent is not explicit/per-operation' }
+    foreach ($Property in @('MONITORROOT','ICEMDIR','CREATEDESKTOPSHORTCUT','ADDAUTOSTART')) {
+        if ($Xml.SelectNodes('//w:Property[@Id="SAVED_' + $Property + '"]/w:RegistrySearch', $Ns).Count -ne 1 -or
+            $Xml.SelectNodes('//w:Component[@Id="Cmp.InstallState"]/w:RegistryValue[@Value="[' + $Property + ']"]', $Ns).Count -ne 1) { throw "Incomplete persisted preference $Property" }
+        $Restore = $Xml.SelectSingleNode('//w:SetProperty[@Action="Restore' + $Property + '"]', $Ns)
+        if ($Restore.Condition -cne ('NOT PREFERENCES_INITIALIZED AND NOT ' + $Property + ' AND SAVED_' + $Property)) { throw 'Saved value overrides CLI/UI input' }
+    }
+    if ($Xml.SelectSingleNode('//w:SetProperty[@Id="REINSTALLMODE"]', $Ns).Value -cne 'amus' -or
+        $Xml.SelectSingleNode('//w:SetProperty[@Id="REINSTALLMODE"]', $Ns).Condition -cne 'Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE' -or
+        $Xml.SelectNodes('//w:Component[@Transitive="yes"]', $Ns).Count -ne 2) { throw 'Repeat install/option reconciliation policy failed' }
     $InvalidNavigation = $Xml.SelectSingleNode('//w:Publish[@Dialog="InstallDirDlg" and @Value="OptionsDlg"]', $Ns)
     if (-not $InvalidNavigation.Condition.Contains('WIXUI_INSTALLDIR_VALID="1"')) { throw 'Options navigation bypasses directory validation' }
     $Ids = @($Xml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id + ':' + $_.Guid })

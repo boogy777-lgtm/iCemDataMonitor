@@ -115,3 +115,14 @@ opt-in опции сохранены. После [аудита v3.1](INSTALLER_A
 не копирует WMI/kill/wipe/hidden-ARP политику legacy: используются native MSI
 ownership и отдельный component GUID namespace; unowned данные сохраняются. Автоматический cutover установленного .NET MSI заблокирован.
 Полная M7/визуальная/аппаратная приёмка этим изменением не закрыта.
+
+
+### M7 clarification: повторный запуск и разрешённое force-закрытие
+
+Установка ориентирована на оператора без IT-навыков. MSI восстанавливает сохранённые
+пути/опции и повторным запуском ремонтирует отсутствующие/испорченные owned files.
+Native Restart Manager закрывает владельцев затрагиваемых файлов; force — явная
+несохраняемая опция, Cancel не является командой kill. Windows contracts проверяют
+same-name foreign process isolation, grace/force, plain repeat repair и opt-out.
+Реальные iCem/службы/другие sessions, reboot и first-run Host/config остаются gates.
+Legacy и Rust упаковываются в разные MSI. См. INSTALLER_AUDIT.ru.md.

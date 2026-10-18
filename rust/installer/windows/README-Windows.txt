@@ -23,10 +23,13 @@ The optional desktop shortcut targets Shell. The optional autostart entry target
 Host --autostart, never the emulator. Current Host startup needs existing config.
 Upgrade and uninstall preserve runtime-created config/data/logs; uninstall removes
 only MSI-owned files, DLL, shortcut and Run value. The candidate is visible in
-installed applications. No process-kill/service-stop or recursive wipe scripts run.
-Close iCem/monitor applications before installing; in-use file handling uses MSI.
-For silent upgrades, pass the same custom paths and chosen options explicitly;
-automatic path/preference recovery has not been implemented.
+installed applications. No recursive wipe or process-name kill scripts run.
+The installer first requests normal closure of applications/services using its
+files. Select the explicit force checkbox only after saving your work in iCem;
+unresponsive file owners may then be forcibly closed. This choice applies only to
+this operation. Follow any Windows reboot request before considering setup complete.
+Rerun the same MSI and choose Repair to restore missing/corrupt files. Saved paths
+and options are recovered automatically; explicit command-line choices win.
 
 Rust/.NET SDK is not needed to run Rust EXEs. The AddIn uses the .NET Framework
 runtime of the original iCem application. Npcap/COM drivers remain external.
