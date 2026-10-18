@@ -89,8 +89,8 @@ function New-WindowsArchive {
     [IO.Directory]::CreateDirectory($Stage) | Out-Null
     try {
         $Entries = @($Plan.files)
-        foreach ($Name in @('Burservis.iCem.DataMonitor.dll', 'addin-manifest.json')) {
-            $Entries += [pscustomobject]@{ source = (Join-Path $AddinDirectory $Name); destination = "$($Plan.addin_directory)/$Name"; binary = $true }
+        foreach ($AddinFileName in @('Burservis.iCem.DataMonitor.dll', 'addin-manifest.json')) {
+            $Entries += [pscustomobject]@{ source = (Join-Path $AddinDirectory $AddinFileName); destination = "$($Plan.addin_directory)/$AddinFileName"; binary = $true }
         }
         foreach ($Directory in $Plan.directories) {
             $Source = Join-PayloadPath $RepositoryRoot $Directory.source

@@ -38,8 +38,12 @@ opt-in опциями передавайте те же свойства явно
 Пакеты и эти DLL не публикуются. 128-byte PE parser fixture не является валидной
 целью Shell shortcut; проверка настоящего .lnk остаётся обязательной.
 Run 39103390560 уже создал .lnk, но WScript.Shell вернул кириллицу как `?`.
-Следующая проверка использует Shell.Application / FolderItem.GetLink и сохраняет
-сырые байты ярлыка и адрес в log; совпадение Unicode-пути и наличие цели обязательны.
+На `49162690d09be80709fafad7489d9cd134c58bc2` run
+[39103566447](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/39103566447)
+PASS: Shell.Application / FolderItem.GetLink подтвердил Unicode target и наличие
+цели. Сырые байты .lnk и адрес сохранены в logs. Default opt-out, оба mounts,
+ярлык/автозапуск, N→N+1, downgrade rejection и uninstall ownership прошли;
+это evidence механики MSI на fixtures, а не SDK/runtime/визуальной эквивалентности.
 
 Открыто: реальная SDK-сборка и загрузка AddIn, визуальная приёмка мастера, занятые
 файлы/перезагрузка, rollback после искусственного сбоя, offline/repair и обновление
@@ -49,3 +53,7 @@ Run 39103390560 уже создал .lnk, но WScript.Shell вернул кир
 Первичные источники: [WiX 5.0.2 InstallDir UI](https://github.com/wixtoolset/wix/blob/v5.0.2/src/ext/UI/wixlib/WixUI_InstallDir.wxs),
 [Microsoft: MSI Restart Manager](https://learn.microsoft.com/en-us/windows/win32/msi/using-windows-installer-with-restart-manager),
 [DisableShutdown](https://learn.microsoft.com/en-us/windows/win32/msi/msirestartmanagercontrol).
+
+Дополнительный дефект ZIP builder: цикл AddIn затенял переменную имени архива,
+поэтому checksum называл вложенный `addin-manifest.json` вместо ZIP. Переменная
+цикла отделена; portable contract проверяет SHA256 **и точное имя** артефакта.

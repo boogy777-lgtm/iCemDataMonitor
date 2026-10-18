@@ -82,7 +82,8 @@ try {
     Assert-Rejected { Select-WindowsReleaseVersion '0.1.10' @('rust-v0.1.10') } 'must exceed'
     Assert-Rejected { Select-WindowsReleaseVersion '0.1.9' @('rust-v0.1.10') } 'must exceed'
     Assert-Rejected { Get-NextWindowsMsiVersion '0.1.65535' } 'Patch version exhausted'
-    if ((Get-Content -Raw -LiteralPath $Result.checksum).Split(' ')[0] -ne (Get-FileHash -LiteralPath $Result.archive).Hash.ToLowerInvariant()) { throw 'Bad ZIP checksum' }
+    $ExpectedChecksum = (Get-FileHash -LiteralPath $Result.archive).Hash.ToLowerInvariant() + '  ' + [IO.Path]::GetFileName($Result.archive)
+    if ((Get-Content -Raw -LiteralPath $Result.checksum).Trim() -cne $ExpectedChecksum) { throw 'Bad ZIP checksum or artifact filename' }
     Assert-Rejected { Package '0.1.0-test' } 'already exists'
     [IO.File]::WriteAllText((Join-Path $Unpack 'assets/iCemDataMonitor.ico'), 'tampered')
     Assert-Rejected { Test-WindowsPayload $Unpack } 'hash/size mismatch'
