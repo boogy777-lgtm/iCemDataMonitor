@@ -33,7 +33,7 @@ impl std::fmt::Display for NativeError {
 }
 impl std::error::Error for NativeError {}
 impl NativeError {
-    fn last(operation: &'static str) -> Self {
+    pub(crate) fn last(operation: &'static str) -> Self {
         // SAFETY: GetLastError has no preconditions; invoked immediately after the failed FFI.
         let code = unsafe { GetLastError() };
         Self { operation, code }
@@ -304,34 +304,4 @@ impl OwnedEvent {
             _ => Err(NativeError::last("poll_event")),
         }
     }
-}
-pub fn console_visible() -> bool {
-    use windows_sys::Win32::{
-        System::Console::GetConsoleWindow, UI::WindowsAndMessaging::IsWindowVisible,
-    };
-    // SAFETY: OS-provided console HWND, checked before read-only visibility probe.
-    unsafe {
-        let window = GetConsoleWindow();
-        !window.is_null() && IsWindowVisible(window) != 0
-    }
-}
-pub fn set_console_visible(visible: bool) -> Result<bool, NativeError> {
-    use windows_sys::Win32::{
-        System::Console::{AllocConsole, GetConsoleWindow},
-        UI::WindowsAndMessaging::{SW_HIDE, SW_RESTORE, ShowWindow},
-    };
-    // SAFETY: operates only on the calling process's console, no borrowed pointers.
-    unsafe {
-        let mut window = GetConsoleWindow();
-        if window.is_null() && visible {
-            if AllocConsole() == 0 {
-                return Err(NativeError::last("allocate_console"));
-            }
-            window = GetConsoleWindow();
-        }
-        if !window.is_null() {
-            ShowWindow(window, if visible { SW_RESTORE } else { SW_HIDE });
-        }
-    }
-    Ok(console_visible())
 }

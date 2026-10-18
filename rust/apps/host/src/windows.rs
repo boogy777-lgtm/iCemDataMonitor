@@ -1,7 +1,7 @@
 //! Host-only lifecycle. The independent emulator is never spawned or signalled here.
 use icem_core::HostCommand;
 use icem_desktop::HostTray;
-use icem_windows_native::{NamedMutex, NativeError, OwnedEvent, set_console_visible};
+use icem_windows_native::{NamedMutex, NativeError, OwnedEvent};
 use std::{io, path::PathBuf, process::Command};
 pub fn singleton() -> Result<NamedMutex, NativeError> {
     NamedMutex::open_or_create(icem_platform_windows::HOST_MUTEX)
@@ -70,9 +70,6 @@ pub fn open_web(url: &str) -> io::Result<()> {
         .args(["url.dll,FileProtocolHandler", url])
         .spawn()?;
     Ok(())
-}
-pub fn console(visible: bool) -> Result<(), NativeError> {
-    set_console_visible(visible).map(|_| ())
 }
 pub fn close_shell() -> Result<(), NativeError> {
     icem_windows_native::signal_existing_event(icem_platform_windows::SHELL_SHUTDOWN).map(|_| ())

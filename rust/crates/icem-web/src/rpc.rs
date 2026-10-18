@@ -289,15 +289,7 @@ impl TelemetryService for Rpc {
         &self,
         request: Request<SetConsoleVisibleRequest>,
     ) -> Result<Response<HostStatus>, Status> {
-        #[cfg(windows)]
-        icem_platform_windows::set_console_visible(request.into_inner().visible)
-            .map_err(|e| Status::internal(e.to_string()))?;
-        #[cfg(not(windows))]
-        {
-            let _ = request;
-            return Err(Status::unimplemented("console visibility requires Windows"));
-        }
-        #[cfg(windows)]
+        self.0.set_console(request.into_inner().visible).await?;
         self.get_status(Request::new(HostStatusRequest {})).await
     }
     async fn set_autostart(

@@ -134,3 +134,9 @@ proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1
 только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
 visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
 Console-close/window lifecycle — следующий самостоятельный инкремент.
+
+## E13: консоль Host
+
+[Общий owner Show/Hide и graceful Ctrl+C](docs/HOST_E13.ru.md) подключён к tray,
+startup и прежнему RPC. Console X → hide остаётся открытым: Windows не позволяет
+отменить CTRL_CLOSE возвратом TRUE. Windows runtime/visual acceptance не доказана.

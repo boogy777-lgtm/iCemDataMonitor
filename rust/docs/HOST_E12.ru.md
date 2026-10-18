@@ -75,5 +75,8 @@ Legacy run 39137774275 не исправлялся и не перезапуск�
 Новые Windows filesystem/pipe tests **скомпилированы, но не исполнены**. Дополнительная
 попытка запуска собранного GNU test EXE через Wine остановилась до тестов:
 `wineserver: socket: Operation not permitted`. Wine не заменяет Windows acceptance.
-PR остаётся draft до реального MSVC CI. Нельзя трактовать failure до steps как
+На этом этапе PR оставался draft до реального MSVC CI. Нельзя трактовать failure до steps как
 ошибку исходников или писать PASS для этих Windows scenarios.
+
+PR #8 затем слит по отдельной команде пользователя; main cf6bc282429f8732d279b93d67e9e44bf9a8659c.
+Windows runtime gates выше остаются открытыми; продолжение — [HOST_E13](HOST_E13.ru.md).

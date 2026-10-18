@@ -71,12 +71,13 @@ pub fn emulator_mutex() -> Result<icem_windows_native::NamedMutex, icem_windows_
 
 mod lan_worker;
 pub use lan_worker::QueuedAceLanEmitter;
+pub mod console;
 pub mod sniffer;
 pub mod transport;
 pub use transport::{AceLanEmitter, ComSerialEmitter, PacketDevice, SerialDevice, burst_start_ms};
 
 #[cfg(windows)]
-pub use icem_windows_native::{console_visible, set_console_visible};
+pub use icem_windows_native::console_visible;
 
 #[cfg(windows)]
 pub fn host_autostart()

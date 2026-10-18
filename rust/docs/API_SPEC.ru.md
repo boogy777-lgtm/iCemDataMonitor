@@ -278,3 +278,10 @@ proto/web/emulator contracts неизменны; internal JSON HTTP/2 control v1
 только на существующем Host pipe. Mapping: 176 legacy + 6 explicit extensions,
 visual parity NOT_PROVEN. P27 остаётся PARTIAL до Windows/operator/hardware gates.
 Console-close/window lifecycle — следующий самостоятельный инкремент.
+
+## E13: SetConsoleVisible owner acknowledgement
+
+Frozen RPC v1 неизменён. SetConsoleVisible задаёт bool-состояние через очередь Host
+(16, deadline 5 s), затем возвращает actual HostStatus. Отмена до исполнения
+пропускает команду; timeout после начала даёт unknown outcome, без automatic retry.
+SetLayer сохраняет legacy toggle. [ADR 0009](adr/0009-console-owner.ru.md).
