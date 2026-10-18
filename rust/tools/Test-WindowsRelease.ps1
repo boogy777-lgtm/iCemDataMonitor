@@ -35,6 +35,9 @@ function Wait-Child($Child, [int] $Timeout = 15000, [int] $ExpectedExit = 0) {
     return [pscustomobject]@{ output = $Output; error = $ErrorOutput }
 }
 try {
+    # Kept only until the browser step completes. The workflow's always() cleanup
+    # owns this exact per-run directory, including failures on persistent SDK runners.
+    if ($env:GITHUB_ENV) { Add-Content -LiteralPath $env:GITHUB_ENV -Value "ICEM_RELEASE_SMOKE_DIRECTORY=$Temp" }
     [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $Package)
     $Manifest = Test-WindowsPayload $Package
     $HostTemplates = ($Manifest.binaries | Where-Object role -EQ 'host').templates_directory

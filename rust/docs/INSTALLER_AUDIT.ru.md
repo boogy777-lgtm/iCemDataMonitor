@@ -57,3 +57,8 @@ PASS: Shell.Application / FolderItem.GetLink подтвердил Unicode target
 Дополнительный дефект ZIP builder: цикл AddIn затенял переменную имени архива,
 поэтому checksum называл вложенный `addin-manifest.json` вместо ZIP. Переменная
 цикла отделена; portable contract проверяет SHA256 **и точное имя** артефакта.
+
+Release smoke передаёт owned temporary directory завершающему workflow step с
+`always()`. Он проверяет имя и temp-parent и удаляет распаковку после browser и
+evidence upload, в том числе при сбое; каталоги не накапливаются на SDK runner.
+Реальное выполнение SDK-backed release, включая этот cleanup, остаётся открытым.

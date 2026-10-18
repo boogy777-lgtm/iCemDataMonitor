@@ -165,6 +165,16 @@ jobs:
             ${{ runner.temp }}/icem-release-ui
             rust/artifacts/msi/*.log
           if-no-files-found: ignore
+      - name: Remove owned smoke extraction on persistent runners
+        if: always()
+        run: |
+          if ($env:ICEM_RELEASE_SMOKE_DIRECTORY) {
+            $Path = [IO.Path]::GetFullPath($env:ICEM_RELEASE_SMOKE_DIRECTORY)
+            $Parent = [IO.Path]::GetDirectoryName($Path)
+            $ExpectedParent = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath([IO.Path]::GetTempPath()))
+            if ($Parent -ine $ExpectedParent -or [IO.Path]::GetFileName($Path) -notmatch '^iCem release . [0-9a-f]{32}$') { throw 'Unexpected smoke cleanup directory' }
+            if (Test-Path -LiteralPath $Path) { Remove-Item -LiteralPath $Path -Recurse -Force }
+          }
   draft-release:
     needs: windows-x64
     if: github.event_name == 'workflow_dispatch' && inputs.publish
