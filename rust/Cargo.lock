@@ -2276,6 +2276,7 @@ dependencies = [
  "icem-transport",
  "icem-web",
  "icem-windows-native",
+ "serde_json",
  "tokio",
 ]
 
@@ -2301,6 +2302,7 @@ dependencies = [
 name = "icem-shell-app"
 version = "0.1.0"
 dependencies = [
+ "icem-config",
  "icem-desktop",
  "icem-platform-windows",
  "icem-transport",

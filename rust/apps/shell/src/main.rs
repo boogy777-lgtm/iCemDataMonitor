@@ -17,7 +17,10 @@ mod windows {
     }
     struct HostPort {
         pipe: String,
-        endpoint: std::net::SocketAddr,
+        endpoint: Option<std::net::SocketAddr>,
+        station_endpoint: std::sync::OnceLock<Result<std::net::SocketAddr, String>>,
+        launch: Option<icem_web::host_client::Launch>,
+        ensured: std::sync::OnceLock<Result<(), String>>,
         session: std::sync::Mutex<Option<Session>>,
     }
     impl icem_desktop::UiPort for HostPort {
@@ -41,6 +44,42 @@ mod windows {
                 metrics,
                 boot,
             } = session.as_mut().ok_or("Host UI session unavailable")?;
+            if let Some(launch) = &self.launch {
+                let startup = self.ensured.get_or_init(|| {
+                    runtime.block_on(icem_web::host_client::ensure(
+                        &self.pipe,
+                        Some(launch),
+                        icem_web::host_client::READY_TIMEOUT,
+                    ))
+                });
+                if let Err(error) = startup {
+                    // Reconnection is read-only. A failed ensure is never another spawn demand.
+                    let serving = runtime.block_on(async {
+                        tokio::time::timeout(std::time::Duration::from_secs(1), async {
+                            let mut rpc = client::connect(&self.pipe)
+                                .await
+                                .map_err(|e| e.to_string())?;
+                            rpc.get_status(HostStatusRequest {})
+                                .await
+                                .map_err(|e| e.to_string())?;
+                            Ok::<_, String>(())
+                        })
+                        .await
+                    });
+                    if !matches!(serving, Ok(Ok(()))) {
+                        let detail = icem_config::StationPaths::installed()
+                            .ok()
+                            .and_then(|paths| {
+                                let path = paths.selected().ok()?;
+                                icem_config::IniOptions::read_existing(path)
+                                    .err()
+                                    .map(|e| format!("{}: {e}", path.display()))
+                            })
+                            .unwrap_or_default();
+                        return Err(format!("{error} {detail}"));
+                    }
+                }
+            }
             let result = runtime.block_on(async {
                 if command["cmd"] == "boot" {
                     let reset = boot.is_none();
@@ -92,7 +131,15 @@ mod windows {
                     let selected = command["selected"].as_array().ok_or("missing dashboard selection")?.iter()
                         .map(|a| a.as_u64().and_then(|n|u16::try_from(n).ok()).ok_or("invalid selection"))
                         .collect::<Result<Vec<_>,_>>()?;
-                    let data = icem_web::dashboard_client::read(self.endpoint, &selected).await?;
+                    let endpoint = match self.endpoint {
+                        Some(endpoint) => endpoint,
+                        None => *self.station_endpoint.get_or_init(|| {
+                            let paths=icem_config::StationPaths::installed().map_err(|e|e.to_string())?;
+                            let settings=icem_config::IniOptions::read_existing(paths.selected().map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+                            Ok(([127,0,0,1],u16::try_from(settings.web_port).map_err(|e|e.to_string())?).into())
+                        }).as_ref().map_err(Clone::clone)?,
+                    };
+                    let data = icem_web::dashboard_client::read(endpoint, &selected).await?;
                     return Ok(json!({"ok":true,"data":data}));
                 }
                 let mut client=client::connect(&self.pipe).await.map_err(|e|e.to_string())?;
@@ -125,24 +172,37 @@ mod windows {
     }
     pub fn run() -> Result<(), String> {
         let mut pipe = icem_web::HOST_PIPE.to_owned();
-        let mut url = "http://127.0.0.1:8090".to_owned();
+        let mut url = None;
         let mut args = std::env::args().skip(1);
         while let Some(key) = args.next() {
             let value = args.next().ok_or("option requires a value")?;
             match key.as_str() {
                 "--pipe" => pipe = value,
-                "--web-url" => url = value,
+                "--web-url" => url = Some(value),
                 _ => return Err(format!("unknown option: {key}")),
             }
         }
-        // Development host URL is constrained to the local station endpoint.
         let endpoint = url
-            .strip_prefix("http://127.0.0.1:")
-            .ok_or("--web-url requires http://127.0.0.1:PORT")?;
-        let port = endpoint.parse::<u16>().map_err(|_| "invalid web port")?;
+            .map(|url| {
+                let port = url
+                    .strip_prefix("http://127.0.0.1:")
+                    .ok_or("--web-url requires http://127.0.0.1:PORT")?
+                    .parse::<u16>()
+                    .map_err(|_| "invalid web port")?;
+                Ok::<std::net::SocketAddr, String>(([127, 0, 0, 1], port).into())
+            })
+            .transpose()?;
+        // Only the installed default pipe has an automatic launch target. Custom
+        // fixture endpoints stay explicit and cannot accidentally start a station Host.
+        let launch = (pipe == icem_web::HOST_PIPE)
+            .then(icem_web::host_client::Launch::installed)
+            .transpose()?;
         icem_desktop::run_monitor(Arc::new(HostPort {
             pipe,
-            endpoint: ([127, 0, 0, 1], port).into(),
+            endpoint,
+            station_endpoint: std::sync::OnceLock::new(),
+            launch,
+            ensured: std::sync::OnceLock::new(),
             session: std::sync::Mutex::new(None),
         }))
         .map_err(|e| e.to_string())
@@ -177,7 +237,13 @@ mod windows {
             let name = format!("icem-shell-reconnect-{}", std::process::id());
             let port = HostPort {
                 pipe: name.clone(),
-                endpoint: ([127, 0, 0, 1], 8090).into(),
+                endpoint: Some(([127, 0, 0, 1], 8090).into()),
+                station_endpoint: std::sync::OnceLock::new(),
+                launch: Some(icem_web::host_client::Launch {
+                    executable: "must-never-spawn-on-reconnect.exe".into(),
+                    arguments: vec![],
+                }),
+                ensured: std::sync::OnceLock::new(),
                 session: std::sync::Mutex::new(None),
             };
             let mut model = icem_desktop::Model::default();

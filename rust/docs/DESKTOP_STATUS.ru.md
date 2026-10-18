@@ -129,3 +129,8 @@ LastError видна в status view. При потере Host last-known ост�
 Прочитаны original MainWindow.xaml, MainWindow.xaml.cs и ThemeResources.xaml.
 Mapping всё ещё 176/176 inventory; Windows visual/focus/DPI acceptance NOT_RUN.
 [Границы и проверки](HOST_E10.ru.md).
+
+E11: [первый запуск/ensure, CLI, config discovery и MSI ACL](HOST_E11.ru.md).
+Shell автоматически запускает отсутствующий Host один раз; reconnect не повторяет
+spawn. Строгая повреждённая конфигурация сохраняется и блокирует запуск; отсутствующая
+создаётся из схемы. CLI/partial software evidence не закрывают SDK/UI/hardware gates.

@@ -119,3 +119,8 @@ and the distinction between synthetic installer contracts and real release check
 [Host E10](docs/HOST_E10.ru.md): настоящий read-only Npcap capture, bounded poll,
 pause/resume, counters и actual availability через Host owner/RPC/GPUI.
 P17 остаётся PARTIAL: decode/file capture и аппаратная приёмка не закрыты.
+
+E11: [первый запуск/ensure, CLI, config discovery и MSI ACL](docs/HOST_E11.ru.md).
+Shell автоматически запускает отсутствующий Host один раз; reconnect не повторяет
+spawn. Строгая повреждённая конфигурация сохраняется и блокирует запуск; отсутствующая
+создаётся из схемы. CLI/partial software evidence не закрывают SDK/UI/hardware gates.

@@ -29,3 +29,4 @@ mod pipe;
 pub use pipe::{HOST_PIPE, LocalRpcServer};
 #[cfg(windows)]
 pub mod client;
+pub mod host_client;

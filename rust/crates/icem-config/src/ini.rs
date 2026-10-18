@@ -160,9 +160,9 @@ impl IniOptions {
             Err(ConfigError { violations: errors })
         }
     }
-    /// Explicit read-once path. No create/migration/ACL writes or hot reload in this increment.
+    /// Explicit bounded read; invalid or unreadable files are never replaced by defaults.
     pub fn read_existing(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(Self::parse(&decode_text(&std::fs::read(path)?))?)
+        Ok(Self::parse(&decode_text(&read_bytes(path)?))?)
     }
     pub fn render(&self) -> String {
         let mut result = String::new();
@@ -235,6 +235,18 @@ impl IniOptions {
         }
         errors
     }
+}
+pub(crate) fn read_bytes(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use std::io::Read;
+    const LIMIT: u64 = 1_048_576;
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)?
+        .take(LIMIT + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > LIMIT {
+        return Err("config.ini exceeds 1 MiB".into());
+    }
+    Ok(bytes)
 }
 fn value<T: FromStr>(
     values: &BTreeMap<String, String>,

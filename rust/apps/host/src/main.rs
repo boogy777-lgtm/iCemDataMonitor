@@ -14,6 +14,8 @@ use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+mod cli;
 mod layers;
 #[cfg(windows)]
 mod windows;
@@ -54,7 +56,8 @@ fn options() -> Result<Options, String> {
     let mut bind = None;
     let mut duration = 10_000;
     let mut duration_explicit = false;
-    let mut autostart = false;
+    let mut autostart = std::env::args_os().len() == 1;
+    let mut web_port = None;
     let mut web_bind = None;
     let mut theme = None;
     let mut registry = None;
@@ -71,6 +74,14 @@ fn options() -> Result<Options, String> {
             "--modbus-fixture" => fixture = Some(PathBuf::from(value)),
             "--bus-live" => live = Some(PathBuf::from(value)),
             "--station-config" => config = Some(PathBuf::from(value)),
+            "--ini" => {
+                config = Some(PathBuf::from(value));
+                autostart = true;
+            }
+            "--port" => {
+                web_port = Some(value.parse::<u16>().map_err(|_| "invalid web port")?);
+                autostart = true;
+            }
             "--bus-map" => map = Some(value),
             "--bus-mutex" => mutex = Some(value),
             "--bind" => {
@@ -103,11 +114,6 @@ fn options() -> Result<Options, String> {
         if fixture.is_some() || live.is_some() {
             return Err("--autostart requires station config".into());
         }
-        let station = PathBuf::from(
-            std::env::var_os("PROGRAMDATA").unwrap_or_else(|| r"C:\ProgramData".into()),
-        )
-        .join("Halliburton/iCem/DataMonitoring");
-        config.get_or_insert_with(|| station.join("config.ini"));
         if !duration_explicit {
             duration = 0;
         }
@@ -118,14 +124,26 @@ fn options() -> Result<Options, String> {
             );
         }
     }
-    if usize::from(fixture.is_some()) + usize::from(live.is_some()) + usize::from(config.is_some())
+    if usize::from(fixture.is_some())
+        + usize::from(live.is_some())
+        + usize::from(config.is_some() || autostart)
         != 1
     {
         return Err("choose exactly one of --modbus-fixture, --bus-live, --station-config".into());
     }
-    let settings = match &config {
-        Some(path) => IniOptions::read_existing(path).map_err(|error| error.to_string())?,
-        None => IniOptions::default(),
+    let settings = if autostart || config.is_some() {
+        let paths = match config.take() {
+            Some(path) => icem_config::StationPaths::explicit(path),
+            None => icem_config::StationPaths::installed().map_err(|e| e.to_string())?,
+        };
+        let loaded = paths.load().map_err(|e| e.to_string())?;
+        if let Some(note) = loaded.note {
+            eprintln!("{note}");
+        }
+        config = Some(loaded.path);
+        loaded.options
+    } else {
+        IniOptions::default()
     };
     let has_config = config.is_some();
     let web = web_bind.or_else(|| {
@@ -136,7 +154,7 @@ fn options() -> Result<Options, String> {
                 } else {
                     [127, 0, 0, 1]
                 },
-                settings.web_port as u16,
+                web_port.unwrap_or(settings.web_port as u16),
             ))
         })
     });
@@ -264,21 +282,6 @@ fn run(
     mut options: Options,
     boot: icem_web::BootStages,
 ) -> Result<bool, Box<dyn std::error::Error>> {
-    #[cfg(windows)]
-    let singleton = options
-        .rpc_pipe
-        .as_ref()
-        .map(|_| windows::singleton())
-        .transpose()?;
-    #[cfg(windows)]
-    let _guard = match &singleton {
-        Some(mutex) => Some(
-            mutex
-                .lock(Duration::ZERO)?
-                .ok_or("Host is already running")?,
-        ),
-        None => None,
-    };
     #[cfg(not(windows))]
     if options.tray_icon.is_some() {
         return Err("Host tray requires Windows".into());
@@ -506,6 +509,43 @@ fn run(
     Ok(restart)
 }
 fn main() -> ExitCode {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    #[cfg(windows)]
+    if let Some(code) = cli::dispatch(&arguments) {
+        return ExitCode::from(code);
+    }
+    if arguments
+        .iter()
+        .any(|a| matches!(a.as_str(), "--help" | "-h"))
+    {
+        eprintln!(
+            "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH"
+        );
+        return ExitCode::SUCCESS;
+    }
+    // The existing Host mutex is acquired BEFORE any config create/copy or service I/O.
+    // CLI dispatch never acquires this mutex. A losing launch cannot mutate station files.
+    #[cfg(windows)]
+    let singleton = match windows::singleton() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::from(1);
+        }
+    };
+    #[cfg(windows)]
+    let _guard = match singleton.lock(Duration::ZERO) {
+        Ok(Some(guard)) => guard,
+        Ok(None) => {
+            eprintln!("Host is already running or starting");
+            return ExitCode::from(73);
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::from(1);
+        }
+    };
+
     let boot = icem_web::BootStages::default();
     if let Err(error) = boot.begin("ini", "конфигурация") {
         eprintln!("{error}");
@@ -527,6 +567,8 @@ fn main() -> ExitCode {
     match run(options, boot) {
         Ok(restart) => {
             if restart {
+                #[cfg(windows)]
+                drop(_guard);
                 let result = std::env::current_exe().and_then(|exe| {
                     std::process::Command::new(exe)
                         .args(std::env::args_os().skip(1))
