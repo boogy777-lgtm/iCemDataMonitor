@@ -29,9 +29,21 @@ internal sealed class LockedFileOwner : Form
     {
         // Refuse WM_CLOSE, WM_QUERYENDSESSION and WM_ENDSESSION. RM must need
         // explicit force consent to terminate this fixture; no natural expiry.
-        if (stubborn && (message.Msg == 0x10 || message.Msg == 0x11 || message.Msg == 0x16))
+        if (message.Msg == 0x10 || message.Msg == 0x11 || message.Msg == 0x16)
         {
-            message.Result = IntPtr.Zero;
+            File.AppendAllText(marker + ".events.log", message.Msg + ": stubborn=" + stubborn + Environment.NewLine);
+            if (stubborn)
+            {
+                message.Result = IntPtr.Zero;
+                return;
+            }
+            // WM_ENDSESSION can end the process without a FormClosed event.
+            // Cooperatively release the actual resource before acknowledging;
+            // this marker therefore proves graceful handling of the RM request.
+            held.Dispose();
+            File.WriteAllText(marker + ".closed", "graceful");
+            message.Result = new IntPtr(1);
+            Application.ExitThread();
             return;
         }
         base.WndProc(ref message);
