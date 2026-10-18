@@ -104,6 +104,15 @@ PASS, Host.Tests 220/220, Emulator.Tests 101/101; другой legacy Modbus rec
 
 Web SetLayer теперь проходит через Host owner и меняет next-start session plan; startup-effective SPA/history не выключаются на лету. OPC сохраняет legacy external no-op. Ошибки операций доступны в LayerState.last_error. Подробности и уточнённый Host backlog: [HOST_E8.ru.md](HOST_E8.ru.md). GPUI controls и mapping 176 в этом этапе не менялись; visual parity остаётся NOT_PROVEN.
 
+## E9: boot/navigation faults
+
+[HOST_E9](HOST_E9.ru.md) уточняет E7: boot polling продолжается после READY, error
+снимает READY, fresh replay заменяет стадии. Shell освобождает Session/runtime при
+boot/status fault. Navigation section=0 получает один attempt per startup/show demand;
+ошибка и status reconnect не вызывают скрытый повтор consume. Новый show во время
+in-flight сохраняется. Добавлены policy/model/Host RPC faults и Windows pipe cycles;
+геометрия/стили контролов не менялись, visual acceptance остаётся NOT_PROVEN.
+
 ## Windows package sidecars
 
 Default tray icons resolve beside the EXE (`assets/`) instead of the source checkout.

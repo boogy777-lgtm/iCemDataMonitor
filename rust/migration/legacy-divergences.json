@@ -101,6 +101,26 @@
         "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
         "reason": "Synchronize serial buffer access, await actual state/data and StopAsync in finally."
       }
+    },
+    {
+      "path": "iCemEmule.Core/Control/ControlPipeServer.cs",
+      "baseline_blob_sha1": "eca06cfd407774457107c71483a8723160c28088",
+      "approved_blob_sha1": "40483a1e16d96218e8686d06f66f962a213e3bd4",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/5",
+        "commit": "c3788065909d8e60c4b45cabc38a93bdfbe0e783",
+        "reason": "User-authorized quit ACK repair: register drain ownership before command execution and synchronize shutdown tests without ThreadPool timing assumptions."
+      }
+    },
+    {
+      "path": "iCemEmule.Tests/ControlPipeServerTests.cs",
+      "baseline_blob_sha1": "921b22aba9a37cff258299a3426f3662d8bca726",
+      "approved_blob_sha1": "259145121302eab0f7419944632fb9379c45bf12",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/5",
+        "commit": "c3788065909d8e60c4b45cabc38a93bdfbe0e783",
+        "reason": "User-authorized quit ACK repair: register drain ownership before command execution and synchronize shutdown tests without ThreadPool timing assumptions."
+      }
     }
   ]
 }

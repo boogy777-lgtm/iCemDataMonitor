@@ -136,7 +136,27 @@ D28 / E8: чтение LayerRuntimeController.Toggle(OpcDa) показывает
 
 D29 / E8 audit: icem-desktop::monitor показывает активный SnifferSwitch, хотя Rust Host возвращает UNIMPLEMENTED и sniffer_available=false. Этот UI gap не исправлялся в Host-инкременте и не считается disabled-state parity. Следующий UI этап должен использовать фактическую availability, сверившись с inventory/XAML.
 
-D30 / Windows packaging: default Host/autostart and emulator tray icons used
+D30 / E9 Rust defect: monitor rearmed NavigateUi(section=0) on navigation/status
+error, хотя Host query уже мог consume pending. Исправлено at-most-one accepted attempt
+per explicit demand; lost-reply fault сохраняет следующий pending до нового show.
+Exactly-once и гарантированная доставка потерянного перехода не заявляются.
+
+D31 / E9 Rust defect: polling прекращался после READY, boot error сохранял прежние
+стадии, новый stream replay сливался со старым. Polling продолжается; error/reset
+инвалидирует прежний READY. Boot/status faults закрывают Session/runtime с transport
+handles. Model и Windows pipe restart tests проверяют отсутствие старого READY.
+
+D32 / E9 Rust defect: replay/live/lag-error send в boot RPC мог ждать заполненный
+response buffer без наблюдения shutdown. Все boot sends используют общий cancellation
+helper; fault tests проверяют полный buffer, lag/replay, stream cap и возврат permits.
+Canonical proto, Host pending semantics и legacy sources не меняются.
+
+После E9 пользователь разрешил исправить legacy quit-ACK CI failure и слить PR #5.
+Исправлены registration-before-execute и shutdown-test timing: [разбор и границы](LEGACY_QUIT_ACK.ru.md).
+Source manifest остаётся immutable; ledger дополнен двумя точными хешами и provenance.
+Это отдельное последующее разрешение на legacy maintenance, не изменение исходного scope E9.
+
+D33 / Windows packaging: default Host/autostart and emulator tray icons used
 CARGO_MANIFEST_DIR paths captured on the build machine. The common
 icem-platform-windows::application_asset resolver now requires EXE-adjacent assets
 and reports a missing resource explicitly. User settings retain their own paths;
@@ -147,23 +167,23 @@ stop/join cleanup when asset lookup fails.
 Windows release script builds a locked MSVC release payload with static CRT and
 checks its manifest/checksums after ZIP extraction. Existing Linux CI build removed
 by the user's Windows-only instruction; Chrome/theme contracts moved to Windows.
-No legacy behavior, baseline manifest, approved hashes or active endpoints changed.
+The packaging changes do not modify legacy source behavior, the baseline manifest or active endpoints.
 Legacy CI defects remain outside priority per the user's instruction.
 
 Windows installer follow-up: the verified inventory now also generates a WiX 5.0.2
-development MSI, with independent upgrade identity and path. `rust-vX.Y.Z` tags/
+development MSI, with independent upgrade identity and canonical legacy runtime path. `rust-vX.Y.Z` tags/
 release drafts define the N+1 patch sequence; the Windows workflow includes actual
 install/upgrade/downgrade/uninstall checks before uploading an MSI or creating an
 optional draft prerelease. Production MSI identity/AddIn cutover remains unaccepted.
 
-D31 / observed Windows release blocker: on head 5d464d10f711483dbec5ab6267dc806216cbdba6,
+D34 / observed Windows release blocker: on head 5d464d10f711483dbec5ab6267dc806216cbdba6,
 full Windows Rust CI run 39069337634 passed, while release run 39069337765 failed
 in unchanged icem-web/tests/windows_pipe.rs (rebind after both owners closed,
 PermissionDenied/os error 5), before release/MSI build. IOCP/runtime shutdown
 ownership is a hypothesis, not a proven cause. No test was bypassed or mutation
 retried. This remains a Rust lifecycle issue, unrelated to legacy CI priority.
 
-M7 packaging correction: schema-2 payload now requires the unchanged net48 AddIn
+D35 / M7 packaging correction: schema-2 payload now requires the unchanged net48 AddIn
 with source/SDK/DLL provenance and managed x64/net48 metadata checks. Complete
 releases cannot skip a missing SDK/DLL. Rust authoring projects the original
 installer/Product.wxs and reuses its harvester, Burservis logo generator, gate and
