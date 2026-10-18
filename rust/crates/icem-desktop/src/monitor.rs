@@ -21,8 +21,7 @@ struct Monitor {
     status_pending: bool,
     prefs_pending: bool,
     boot_pending: bool,
-    navigation_pending: bool,
-    navigation_needed: bool,
+    navigation: crate::navigation::NavigationPoll,
     metrics_page: bool,
 }
 impl Monitor {
@@ -446,8 +445,7 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                     status_pending: false,
                     prefs_pending: false,
                     boot_pending: false,
-                    navigation_pending: false,
-                    navigation_needed: true,
+                    navigation: crate::navigation::NavigationPoll::default(),
                     metrics_page: false,
                 })
             },
@@ -477,20 +475,16 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                 if handle
                     .update(cx, |v, window, cx| {
                         if show {
-                            v.navigation_needed = true;
+                            v.navigation.show();
                             window.activate_window();
                         }
                         while let Ok(reply) = v.bridge.receiver.try_recv() {
                             match reply.command.as_str() {
                                 "status" => {
                                     v.status_pending = false;
-                                    if reply.result.is_err() {
-                                        v.navigation_needed = true;
-                                    }
                                 }
                                 "navigate" => {
-                                    v.navigation_pending = false;
-                                    v.navigation_needed = reply.result.is_err();
+                                    v.navigation.complete();
                                 }
                                 "prefs" => v.prefs_pending = false,
                                 "boot" => v.boot_pending = false,
@@ -505,11 +499,10 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                             }
                         }
                         if Instant::now() >= due {
-                            if v.navigation_needed
-                                && !v.navigation_pending
-                                && v.bridge.send(json!({"cmd":"navigate"})).is_ok()
-                            {
-                                v.navigation_pending = true;
+                            if let Err(error) = v.navigation.submit(v.model.connected, || {
+                                v.bridge.send(json!({"cmd":"navigate"}))
+                            }) {
+                                v.model.note = format!("Navigation: {error}");
                             }
                             if !v.status_pending && v.bridge.send(json!({"cmd":"status"})).is_ok() {
                                 v.status_pending = true;
@@ -524,10 +517,9 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                             {
                                 v.model.dashboard.metrics_pending = true;
                             }
-                            if !v.model.boot_ready
-                                && !v.boot_pending
-                                && v.bridge.send(json!({"cmd":"boot"})).is_ok()
-                            {
+                            // Keep the stream supervised after READY: a fast Host restart
+                            // may happen entirely between successful status probes.
+                            if !v.boot_pending && v.bridge.send(json!({"cmd":"boot"})).is_ok() {
                                 v.boot_pending = true;
                             }
                             if v.panel {

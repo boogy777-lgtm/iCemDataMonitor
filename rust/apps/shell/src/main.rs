@@ -36,8 +36,9 @@ mod windows {
                 metrics,
                 boot,
             } = session.as_mut().ok_or("Host UI session unavailable")?;
-            runtime.block_on(async {
+            let result = runtime.block_on(async {
                 if command["cmd"] == "boot" {
+                    let reset = boot.is_none();
                     let result = async {
                         if boot.is_none() {
                             let mut client = client::connect(&self.pipe).await.map_err(|e|e.to_string())?;
@@ -55,7 +56,7 @@ mod windows {
                                 Err(_)=>break,
                             }
                         }
-                        Ok(json!({"ok":true,"data":{"stages":stages}}))
+                        Ok(json!({"ok":true,"data":{"stages":stages,"reset":reset}}))
                     }.await;
                     if result.is_err(){*boot=None;}
                     return result;
@@ -107,7 +108,14 @@ mod windows {
                     "autostart"=>{client.set_autostart(SetAutostartRequest{enabled:command["value"]==true}).await.map_err(|e|e.to_string())?;json!({})}
                     _=>return Err("unknown Host UI command".into()),
                 };Ok(json!({"ok":true,"data":data}))
-            })
+            });
+            if result.is_err() && matches!(command["cmd"].as_str(), Some("status" | "boot")) {
+                // Drop the runtime as well as streams: dead transport tasks can keep
+                // old pipe handles alive and prevent the next Host's exclusive bind.
+                // Both subscriptions must replay on a fresh session after disconnect.
+                *session = None;
+            }
+            result
         }
     }
     pub fn run() -> Result<(), String> {
@@ -133,6 +141,106 @@ mod windows {
             session: std::sync::Mutex::new(None),
         }))
         .map_err(|e| e.to_string())
+    }
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use icem_desktop::UiPort;
+        use icem_web::{BootStages, HostLayers, LocalRpcServer, WebState};
+        type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+        fn state(ready: bool) -> Result<WebState, String> {
+            let boot = BootStages::default();
+            boot.begin("ini", "new Host")?;
+            if ready {
+                boot.complete("ini", None)?;
+                boot.begin("ready", "ready")?;
+                boot.complete("ready", None)?;
+            }
+            let (mut state, _) = WebState::new(
+                HostLayers::default(),
+                std::path::PathBuf::new(),
+                Default::default(),
+            );
+            state.attach_boot(boot);
+            Ok(state)
+        }
+
+        #[test]
+        fn boot_and_status_faults_drop_session_allow_rebind_and_replay_without_old_ready()
+        -> TestResult {
+            let name = format!("icem-shell-reconnect-{}", std::process::id());
+            let port = HostPort {
+                pipe: name.clone(),
+                endpoint: ([127, 0, 0, 1], 8090).into(),
+                session: std::sync::Mutex::new(None),
+            };
+            let mut model = icem_desktop::Model::default();
+            for fault in ["boot", "status", "boot", "status"] {
+                let server = LocalRpcServer::bind(&name, state(true)?)?;
+                let initial = port.request(json!({"cmd":"boot"}))?;
+                assert_eq!(initial["data"]["reset"], true);
+                model.apply("boot", Ok(initial));
+                assert!(model.boot_ready);
+                server.stop()?;
+                // Fault injection happens after READY while the old Shell keeps running.
+                let failure = port.request(json!({"cmd":fault}));
+                assert!(failure.is_err());
+                model.apply(fault, failure);
+                assert!(!model.boot_ready);
+                assert!(
+                    port.session
+                        .lock()
+                        .map_err(|_| "session poisoned")?
+                        .is_none()
+                );
+                let server = LocalRpcServer::bind(&name, state(false)?)?;
+                let replay = port.request(json!({"cmd":"boot"}))?;
+                assert_eq!(replay["data"]["reset"], true);
+                model.apply("boot", Ok(replay));
+                assert!(!model.boot_ready);
+                assert_eq!(model.boot_stages.len(), 1);
+                assert_eq!(model.boot_stages[&1].id, "ini");
+                server.stop()?;
+                assert!(port.request(json!({"cmd":"boot"})).is_err());
+            }
+            Ok(())
+        }
+
+        #[test]
+        fn lost_navigation_response_after_real_host_consume_is_not_retried() -> TestResult {
+            use icem_desktop::navigation::NavigationPoll;
+            use icem_web::navigation::Navigation;
+            let host = Navigation::default();
+            host.navigate(UiSection::Web)?;
+            let mut shell = NavigationPoll::default();
+            let mut response = None;
+            shell.submit(true, || {
+                response = Some(host.navigate(UiSection::Unspecified)?);
+                Ok(())
+            })?;
+            assert_eq!(
+                response.take().ok_or("no response")?.pending,
+                UiSection::Web as i32
+            );
+            // Discard the consumed reply before Shell sees it, then observe a new
+            // pending command. Reconnect must not silently consume that command.
+            shell.complete();
+            host.navigate(UiSection::Status)?;
+            for connected in [false, true, true] {
+                shell.submit(connected, || Err("unexpected consume retry".into()))?;
+            }
+            shell.show();
+            shell.submit(true, || {
+                response = Some(host.navigate(UiSection::Unspecified)?);
+                Ok(())
+            })?;
+            assert_eq!(
+                response.ok_or("missing explicit consume")?.pending,
+                UiSection::Status as i32
+            );
+            Ok(())
+        }
     }
 }
 fn main() -> ExitCode {

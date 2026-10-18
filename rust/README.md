@@ -90,3 +90,7 @@ source-manifest не обновляется при принятых исправ
 регрессионных сценариев входят в Scaffold; CI запускается и для legacy-only изменений.
 
 [Host E8](docs/HOST_E8.ru.md): точный план пробелов, Web persist-only owner integration, OPC external no-op и отделение startup-effective web от session plan. Полная production/Windows приёмка остаётся открытой.
+
+[Host E9](docs/HOST_E9.ru.md): boot replay после reconnect, отмена при backpressure,
+освобождение Shell transport session и explicit at-most-one navigation attempt per demand.
+Потерянный consume-ответ не ретраится автоматически. Production/MSI и visual gates открыты.

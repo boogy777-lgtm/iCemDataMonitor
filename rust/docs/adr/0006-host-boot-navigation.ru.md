@@ -45,3 +45,15 @@ runtime мог удерживать transport task/handle. Тест теперь
 exclusive rebind, сохраняет все RPC/exclusive assertions и повторяет цикл 4 раза.
 ACL не менялись, повторы bind/sleep вместо устранения lifetime не добавлялись.
 Новый exact-head Windows CI должен подтвердить это объяснение; Linux его не доказывает.
+
+E9 уточнение: Monitor продолжает boot polling после READY. Новая подписка заменяет
+старый replay через внутренний UiPort reset; boot error очищает READY. Boot/status fault
+закрывает всю Shell Session с runtime/pipe handles. Все Host boot sends отменяются
+по shutdown при backpressure; после shutdown новые подписки отвергаются. Подробнее
+и fault matrix: [HOST_E9](../HOST_E9.ru.md).
+
+NavigateUi(Unspecified) считается consuming mutation: один attempt после принятия
+Bridge на startup/show demand, без rearm по error/status reconnect. Новый show во время
+in-flight не теряется; queue refusal до принятия сохраняет demand. Потерянный ответ
+имеет неопределённый исход и может потерять один переход; exactly-once не заявляется.
+Это исправляет прежний Shell rearm после ошибки, не меняя Host/proto read-and-clear.

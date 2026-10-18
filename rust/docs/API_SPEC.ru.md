@@ -104,6 +104,13 @@ Protobuf tags, enum numbers, oneof и reserved сохраняются; v1 не �
 | GetUiPrefs | Чтение station ui-theme: light=true, иначе false |
 | SetUiTheme | Записать light/dark → poke shell event → вернуть заново прочитанную правду |
 
+E9: `NavigateUi(section=0)` читает **и очищает** pending. После принятия запроса
+Bridge Shell не повторяет его автоматически при ошибке/потере ответа или reconnect;
+новый show задаёт новый demand. Исход потерянного ответа неопределённый, один переход
+может потеряться. Queue refusal до принятия сохраняет demand. Подробная fault-политика:
+[HOST_E9](HOST_E9.ru.md). Boot подписка продолжает наблюдение после READY; новый replay
+заменяет старые стадии, а error/EOF очищает READY. Внешний protobuf не изменён.
+
 GetRegisters: header 0..3 как int32 из u16, pair4 как signed Unix int32,
 остальные пары float32; один элемент на base address пары. Не весь N-element словарь.
 Unknown zone/layer → INVALID_ARGUMENT. Bus недоступна → UNAVAILABLE.

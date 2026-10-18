@@ -50,3 +50,8 @@ ACE frame/signal codec, три DFB-примитива и unit conversion. Физ
 полной DFB network пока нет. Проверки/границы: [emulator E1](EMULATOR_STATUS.ru.md).
 
 E8: baseline maintenance ledger и Host Web/OPC owner integration — [код, проверки и открытые пробелы](HOST_E8.ru.md). P16 остаётся PARTIAL: sniffer/Modbus failure rollback/busy и Windows аппаратная приёмка не доказаны. Список старых частичных реализаций выше — исторический, не текущий backlog.
+
+E9: P10/P13/P15 дополнены [boot/navigation fault checks](HOST_E9.ru.md): replay/reset,
+lag/cancel/stream permits, Shell session release и at-most-one consuming navigation
+attempt per explicit demand. Partial software evidence не закрывает Windows operator,
+startup-before-IPC, ensure-host, console, hardware или visual/MSI gates.

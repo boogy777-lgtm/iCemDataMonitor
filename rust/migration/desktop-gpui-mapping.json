@@ -45,7 +45,7 @@
       "implementation": "crates/icem-desktop/src/monitor.rs",
       "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Visual/state/keyboard acceptance pending."
+      "note": "E9 consuming navigation: at-most-one accepted attempt per startup/show demand; no retry after uncertain result; show-during-flight retained. Visual/state/keyboard acceptance pending."
     },
     {
       "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
@@ -234,7 +234,7 @@
       "implementation": "crates/icem-desktop/src/monitor.rs",
       "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Native monitor startup panel consumes real Host boot replay/live (E7). Separate legacy splash geometry/visual acceptance remains NOT RUN."
+      "note": "E9 boot error/reset invalidates old READY; fresh replay replaces stages; software fault tests. Separate splash geometry/visual acceptance remains NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml",
@@ -243,7 +243,7 @@
       "implementation": "crates/icem-desktop/src/monitor.rs",
       "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Native monitor startup panel consumes real Host boot replay/live (E7). Separate legacy splash geometry/visual acceptance remains NOT RUN."
+      "note": "E9 boot error/reset invalidates old READY; fresh replay replaces stages; software fault tests. Separate splash geometry/visual acceptance remains NOT RUN."
     },
     {
       "source": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
