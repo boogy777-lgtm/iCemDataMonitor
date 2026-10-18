@@ -23,6 +23,9 @@ public sealed class ControlPipeServer : IDisposable
     private readonly ConcurrentDictionary<Task, byte> _handlers = new();
     private Task? _acceptLoop;
 
+    internal CancellationToken Stopping => _cts.Token;
+    internal int ActiveHandlerCount => _handlers.Count;
+
     /// <param name="execute">one command line → reply (must be concurrency-safe).</param>
     /// <param name="watchTick">produces the 1 Hz watch payload (JSON status line).</param>
     public ControlPipeServer(Func<string, ControlReply> execute, Func<string> watchTick,
@@ -53,10 +56,15 @@ public sealed class ControlPipeServer : IDisposable
                 await pipe.WaitForConnectionAsync(_cts.Token).ConfigureAwait(false);
                 var handed = pipe;
                 pipe = null; // ownership moves to the client task
-                var handler = Task.Run(() => HandleClientAsync(handed));
+                // Execution may request quit immediately. Publish its drain task
+                // before allowing user code to run; Task.Run-before-register races
+                // Dispose's snapshot and can close a pipe while its ACK is in flight.
+                var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var handler = HandleRegisteredClientAsync(handed, registered.Task);
                 _handlers[handler] = 0;
                 _ = handler.ContinueWith(t => _handlers.TryRemove(t, out _),
                     CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                registered.SetResult();
             }
             catch (OperationCanceledException) { break; }
             catch (Exception)
@@ -74,6 +82,12 @@ public sealed class ControlPipeServer : IDisposable
                 }
             }
         }
+    }
+
+    private async Task HandleRegisteredClientAsync(NamedPipeServerStream pipe, Task registered)
+    {
+        await registered.ConfigureAwait(false);
+        await HandleClientAsync(pipe).ConfigureAwait(false);
     }
 
     private async Task HandleClientAsync(NamedPipeServerStream pipe)

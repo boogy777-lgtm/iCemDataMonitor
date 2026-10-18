@@ -22,58 +22,88 @@ public class ControlPipeServerTests
     /// (contract: "ACK is sent before the process exits"). Dispose must drain
     /// in-flight replies before dismantling the pipes.
     /// </summary>
-    [Fact]
-    public async Task Dispose_DrainsInFlightReply_QuitAckReachesClient()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dispose_DrainsInFlightReply_QuitAckReachesClient(bool textCommand)
     {
-        var release = new ManualResetEventSlim(false);
-        var pickedUp = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        using var pickedUp = new ManualResetEventSlim(false);
+        using var stopping = new ManualResetEventSlim(false);
         var pipeName = UniquePipe();
 
-        var server = new ControlPipeServer(
+        ControlPipeServer? server = null;
+        server = new ControlPipeServer(
             line =>
             {
+                Assert.Equal(textCommand ? "quit" : "{\"cmd\":\"quit\"}", line);
+                Assert.True(server!.ActiveHandlerCount > 0, "command ran before drain registration");
                 pickedUp.Set();
-                release.Wait(5000);   // hold the ACK mid-flight (engine acking quit)
+                Assert.True(release.Wait(5000), "test did not release the in-flight ACK");
                 return new ControlReply("quit",
                     "{\"ok\":true,\"cmd\":\"quit\",\"data\":{\"quitting\":true}}", false, true);
             },
             () => "{}",
             pipeName);
 
-        server.Start();
-
-        using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
-        await client.ConnectAsync(5000);
-
-        using (var writer = new StreamWriter(client, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true })
+        Task? disposeTask = null;
+        using var registration = server.Stopping.Register(() => stopping.Set());
+        try
         {
-            writer.WriteLine("quit");
-        }
-
-        Assert.True(pickedUp.Wait(5000), "server never picked up the command");
-
-        // Engine-shutdown interleaving: Dispose starts BEFORE the handler is
-        // allowed to write its ACK; the 200 ms head start makes the old
-        // tear-down-first behavior fail deterministically.
-        var disposeTask = Task.Run(() => server.Dispose());
-        await Task.Delay(200);
-        release.Set();
-
-        string reply;
-        using (var reader = new StreamReader(client, Encoding.UTF8, false, 4096, leaveOpen: true))
-        {
+            server.Start();
+            using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
+            await client.ConnectAsync(5000);
+            using var writer = new StreamWriter(client, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true };
+            using var reader = new StreamReader(client, Encoding.UTF8, false, 4096, leaveOpen: true);
+            await writer.WriteLineAsync(textCommand ? "quit" : "{\"cmd\":\"quit\"}");
+            Assert.True(pickedUp.Wait(5000), "server never picked up the command");
             var readTask = reader.ReadLineAsync();
-            var finished = await Task.WhenAny(readTask, Task.Delay(5000));
-            Assert.Same(readTask, finished);
-            reply = (await readTask ?? string.Empty).Trim();
+
+            // Dispose blocks synchronously, so give it a dedicated thread. A pool
+            // worker plus Task.Delay(200) can starve the releasing continuation
+            // beyond the real 1.5 s drain budget on loaded CI runners.
+            disposeTask = Task.Factory.StartNew(server.Dispose, CancellationToken.None,
+                TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            Assert.True(stopping.Wait(5000), "Dispose never started cancellation");
+            Assert.False(disposeTask.IsCompleted, "Dispose abandoned the held reply");
+            release.Set();
+
+            var reply = (await readTask.WaitAsync(TimeSpan.FromSeconds(5)) ?? string.Empty).Trim();
+            Assert.StartsWith("{", reply);
+            Assert.Contains("\"ok\":true", reply);
+            Assert.Contains("\"quitting\":true", reply);
+            await disposeTask.WaitAsync(TimeSpan.FromSeconds(5));
         }
+        finally
+        {
+            release.Set();
+            if (disposeTask is null) server.Dispose();
+            else await disposeTask.WaitAsync(TimeSpan.FromSeconds(6));
+        }
+    }
 
-        Assert.StartsWith("{", reply);
-        Assert.Contains("\"ok\":true", reply);
-        Assert.Contains("\"quitting\":true", reply);
-
-        var disposeFinished = await Task.WhenAny(disposeTask, Task.Delay(5000));
-        Assert.Same(disposeTask, disposeFinished);
+    [Fact]
+    public async Task Dispose_WithIdleConnectedClient_HasFiniteDrainBudget()
+    {
+        var pipeName = UniquePipe();
+        var server = new ControlPipeServer(_ => throw new InvalidOperationException("idle client sent a command"), () => "{}", pipeName);
+        server.Start();
+        using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
+        Task? disposeTask = null;
+        try
+        {
+            await client.ConnectAsync(5000);
+            Assert.True(SpinWait.SpinUntil(() => server.ActiveHandlerCount > 0, 5000), "idle handler was not registered");
+            disposeTask = Task.Factory.StartNew(server.Dispose, CancellationToken.None,
+                TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            await disposeTask.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            client.Dispose();
+            if (disposeTask is null) server.Dispose();
+            else await disposeTask.WaitAsync(TimeSpan.FromSeconds(6));
+        }
     }
 
     /// <summary>
