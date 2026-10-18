@@ -46,6 +46,49 @@ type SendPacket = unsafe extern "C" fn(*mut c_void, *const u8, c_int) -> c_int;
 type NextEx = unsafe extern "C" fn(*mut c_void, *mut *const PacketHeader, *mut *const u8) -> c_int;
 type GetError = unsafe extern "C" fn(*mut c_void) -> *const c_char;
 type DataLink = unsafe extern "C" fn(*mut c_void) -> c_int;
+#[repr(C)]
+struct BpfProgram {
+    len: u32,
+    instructions: *mut c_void,
+}
+type SetNonblock = unsafe extern "C" fn(*mut c_void, c_int, *mut c_char) -> c_int;
+type Compile =
+    unsafe extern "C" fn(*mut c_void, *mut BpfProgram, *const c_char, c_int, u32) -> c_int;
+type SetFilter = unsafe extern "C" fn(*mut c_void, *mut BpfProgram) -> c_int;
+type FreeCode = unsafe extern "C" fn(*mut BpfProgram);
+type SetInt = unsafe extern "C" fn(*mut c_void, c_int) -> c_int;
+struct CaptureApi {
+    set_nonblock: SetNonblock,
+    compile: Compile,
+    set_filter: SetFilter,
+    free_code: FreeCode,
+    set_buffer: SetInt,
+    set_user_buffer: SetInt,
+    set_min_to_copy: SetInt,
+}
+impl CaptureApi {
+    fn load(library: &Library) -> Result<Self, String> {
+        let module = library.0 as HMODULE;
+        macro_rules! symbol {
+            ($name:literal, $ty:ty) => {{
+                // SAFETY: owned loaded module and exact NUL-terminated ABI symbol.
+                let proc = unsafe { GetProcAddress(module, concat!($name, "\0").as_ptr()) }
+                    .ok_or_else(|| format!("Npcap missing export {}", $name))?;
+                // SAFETY: concrete signature matches the named Npcap C ABI export.
+                unsafe { std::mem::transmute::<unsafe extern "system" fn() -> isize, $ty>(proc) }
+            }};
+        }
+        Ok(Self {
+            set_nonblock: symbol!("pcap_setnonblock", SetNonblock),
+            compile: symbol!("pcap_compile", Compile),
+            set_filter: symbol!("pcap_setfilter", SetFilter),
+            free_code: symbol!("pcap_freecode", FreeCode),
+            set_buffer: symbol!("pcap_setbuff", SetInt),
+            set_user_buffer: symbol!("pcap_setuserbuffer", SetInt),
+            set_min_to_copy: symbol!("pcap_setmintocopy", SetInt),
+        })
+    }
+}
 struct Library(usize);
 impl Drop for Library {
     fn drop(&mut self) {
@@ -57,7 +100,7 @@ impl Drop for Library {
     }
 }
 pub struct Pcap {
-    _library: Library,
+    _library: Option<Library>,
     find_all: FindAll,
     free_all: FreeAll,
     open_live: OpenLive,
@@ -137,7 +180,7 @@ impl Pcap {
         let get_error = symbol!("pcap_geterr", GetError);
         let datalink = symbol!("pcap_datalink", DataLink);
         Ok(Arc::new(Self {
-            _library: library,
+            _library: Some(library),
             find_all,
             free_all,
             open_live,
@@ -187,6 +230,64 @@ impl Pcap {
         }
         Ok(result)
     }
+    /// Capture-only API: nonblocking next_ex, kernel multicast filter, no send method.
+    /// ADR 0007. All setup failures close the unique session through RAII.
+    pub fn open_capture(self: &Arc<Self>, name: &str) -> Result<CaptureSession, String> {
+        let api = CaptureApi::load(self._library.as_ref().ok_or("Npcap module unavailable")?)?;
+        self.open_capture_with(name, api)
+    }
+    fn open_capture_with(
+        self: &Arc<Self>,
+        name: &str,
+        api: CaptureApi,
+    ) -> Result<CaptureSession, String> {
+        let session = self.open(name, true)?;
+        for (set, value) in [
+            (api.set_buffer, 64 * 1024),
+            (api.set_user_buffer, 64 * 1024),
+            (api.set_min_to_copy, 1),
+        ] {
+            // SAFETY: uniquely owned active pcap_t and documented bounded integer option.
+            if unsafe { set(session.handle as *mut c_void, value) } != 0 {
+                return Err(session.error());
+            }
+        }
+        let mut error = [0i8; 256];
+        // SAFETY: unique live pcap_t, writable PCAP_ERRBUF_SIZE buffer; no pointer retained.
+        if unsafe { (api.set_nonblock)(session.handle as *mut c_void, 1, error.as_mut_ptr()) } != 0
+        {
+            return Err(format!("pcap_setnonblock failed: {}", error_buffer(&error)));
+        }
+        let mut program = BpfProgram {
+            len: 0,
+            instructions: ptr::null_mut(),
+        };
+        // SAFETY: live handle and initialized C-layout output; static NUL string,
+        // PCAP_NETMASK_UNKNOWN (filter does not inspect IPv4 netmask).
+        if unsafe {
+            (api.compile)(
+                session.handle as *mut c_void,
+                &mut program,
+                c"ether multicast".as_ptr(),
+                1,
+                u32::MAX,
+            )
+        } != 0
+        {
+            return Err(session.error());
+        }
+        // SAFETY: successful compile owns program until freecode; setfilter copies
+        // the program into the session. Both calls are synchronous on its owner.
+        let result = unsafe { (api.set_filter)(session.handle as *mut c_void, &mut program) };
+        // SAFETY: exactly one free for the successful pcap_compile allocation.
+        unsafe {
+            (api.free_code)(&mut program);
+        }
+        if result != 0 {
+            return Err(session.error());
+        }
+        Ok(CaptureSession(session))
+    }
     pub fn open(self: &Arc<Self>, name: &str, promiscuous: bool) -> Result<PacketSession, String> {
         let name = CString::new(name).map_err(|_| "Adapter name contains NUL")?;
         let mut error = [0i8; 256];
@@ -220,6 +321,12 @@ impl Pcap {
 pub struct PacketSession {
     handle: usize,
     owner: Arc<Pcap>,
+}
+pub struct CaptureSession(PacketSession);
+impl CaptureSession {
+    pub fn next_packet(&mut self) -> Result<Option<Vec<u8>>, String> {
+        self.0.next_packet()
+    }
 }
 impl PacketSession {
     pub fn send(&mut self, bytes: &[u8]) -> Result<(), String> {
@@ -347,4 +454,161 @@ pub fn adapter_mac(name: &str) -> Option<[u8; 6]> {
         next = adapter.Next;
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+    #[derive(Default)]
+    struct Trace {
+        fail: u8,
+        close: usize,
+        free: usize,
+        nonblock: i32,
+        promiscuous: i32,
+        filter: String,
+        buffers: [i32; 3],
+    }
+    thread_local! { static TRACE: RefCell<Trace> = RefCell::new(Trace::default()); }
+    unsafe extern "C" fn open(
+        _: *const c_char,
+        _: i32,
+        promiscuous: i32,
+        _: i32,
+        _: *mut c_char,
+    ) -> *mut c_void {
+        TRACE.with_borrow_mut(|t| t.promiscuous = promiscuous);
+        // Opaque sentinel is never dereferenced by these ABI shims.
+        ptr::NonNull::<u8>::dangling().as_ptr().cast()
+    }
+    unsafe extern "C" fn close(_: *mut c_void) {
+        TRACE.with_borrow_mut(|t| t.close += 1);
+    }
+    unsafe extern "C" fn buffer(_: *mut c_void, size: i32) -> i32 {
+        TRACE.with_borrow_mut(|t| {
+            t.buffers[0] = size;
+            if t.fail == 4 { -1 } else { 0 }
+        })
+    }
+    unsafe extern "C" fn user_buffer(_: *mut c_void, size: i32) -> i32 {
+        TRACE.with_borrow_mut(|t| {
+            t.buffers[1] = size;
+            if t.fail == 5 { -1 } else { 0 }
+        })
+    }
+    unsafe extern "C" fn min_to_copy(_: *mut c_void, size: i32) -> i32 {
+        TRACE.with_borrow_mut(|t| {
+            t.buffers[2] = size;
+            if t.fail == 6 { -1 } else { 0 }
+        })
+    }
+    unsafe extern "C" fn datalink(_: *mut c_void) -> i32 {
+        1
+    }
+    unsafe extern "C" fn nonblock(_: *mut c_void, mode: i32, _: *mut c_char) -> i32 {
+        TRACE.with_borrow_mut(|t| {
+            t.nonblock = mode;
+            if t.fail == 1 { -1 } else { 0 }
+        })
+    }
+    unsafe extern "C" fn compile(
+        _: *mut c_void,
+        _: *mut BpfProgram,
+        filter: *const c_char,
+        _: i32,
+        _: u32,
+    ) -> i32 {
+        // SAFETY: production open_capture passes the static NUL-terminated filter.
+        let filter = unsafe { CStr::from_ptr(filter) }
+            .to_string_lossy()
+            .into_owned();
+        TRACE.with_borrow_mut(|t| {
+            t.filter = filter;
+            if t.fail == 2 { -1 } else { 0 }
+        })
+    }
+    unsafe extern "C" fn filter(_: *mut c_void, _: *mut BpfProgram) -> i32 {
+        TRACE.with_borrow(|t| if t.fail == 3 { -1 } else { 0 })
+    }
+    unsafe extern "C" fn free(_: *mut BpfProgram) {
+        TRACE.with_borrow_mut(|t| t.free += 1);
+    }
+    unsafe extern "C" fn error(_: *mut c_void) -> *const c_char {
+        c"driver fault".as_ptr()
+    }
+    unsafe extern "C" fn next(
+        _: *mut c_void,
+        _: *mut *const PacketHeader,
+        _: *mut *const u8,
+    ) -> i32 {
+        0
+    }
+    unsafe extern "C" fn send(_: *mut c_void, _: *const u8, _: i32) -> i32 {
+        -1
+    }
+    unsafe extern "C" fn find(_: *mut *mut PcapIf, _: *mut c_char) -> i32 {
+        -1
+    }
+    unsafe extern "C" fn free_all(_: *mut PcapIf) {}
+    #[test]
+    fn capture_setup_fails_closed_and_frees_filter_exactly_once() -> Result<(), String> {
+        for fail in 0..=6 {
+            TRACE.with_borrow_mut(|t| {
+                *t = Trace {
+                    fail,
+                    ..Trace::default()
+                }
+            });
+            let pcap = Arc::new(Pcap {
+                _library: None,
+                find_all: find,
+                free_all,
+                open_live: open,
+                close,
+                send_packet: send,
+                next_ex: next,
+                get_error: error,
+                datalink,
+            });
+            let result = pcap.open_capture_with(
+                "test",
+                CaptureApi {
+                    set_nonblock: nonblock,
+                    compile,
+                    set_filter: filter,
+                    free_code: free,
+                    set_buffer: buffer,
+                    set_user_buffer: user_buffer,
+                    set_min_to_copy: min_to_copy,
+                },
+            );
+            if fail == 0 {
+                let mut session = result?;
+                assert_eq!(session.next_packet()?, None);
+                TRACE.with_borrow(|t| assert_eq!(t.close, 0));
+                drop(pcap); // session retains the loaded owner
+                drop(session);
+            } else {
+                assert!(result.is_err());
+            }
+            TRACE.with_borrow(|t| {
+                assert_eq!(t.close, 1);
+                assert_eq!(t.free, usize::from(fail == 0 || fail == 3));
+                assert_eq!(t.nonblock, i32::from(fail < 4));
+                assert_eq!(t.buffers[0], 65536);
+                if fail != 4 {
+                    assert_eq!(t.buffers[1], 65536);
+                }
+                if !matches!(fail, 4 | 5) {
+                    assert_eq!(t.buffers[2], 1);
+                }
+                assert_eq!(t.promiscuous, 1);
+                if fail != 1 && fail < 4 {
+                    assert_eq!(t.filter, "ether multicast");
+                }
+            });
+        }
+        Ok(())
+    }
 }

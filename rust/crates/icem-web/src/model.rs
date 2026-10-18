@@ -19,8 +19,25 @@ pub struct LayerRequest {
 pub struct ReadRequest {
     pub response: oneshot::Sender<BusReply>,
 }
+/// Owned Host projection. No capture handle or platform dependency enters WebState.
+#[derive(Clone, Default)]
+pub struct HostSniffer {
+    pub available: bool,
+    pub running: bool,
+    pub enabled: bool,
+    pub state: String,
+    pub adapter: String,
+    pub last_error: String,
+    pub total_frames: u64,
+    pub ace_frames: u64,
+    pub distinct_macs: usize,
+    pub mac_limit_reached: bool,
+    pub frames_per_sec: f64,
+    pub last_frame_age_sec: f64,
+}
 #[derive(Clone, Default)]
 pub struct HostLayers {
+    pub sniffer: Option<HostSniffer>,
     pub modbus_bound: bool,
     pub modbus_port: u16,
     /// Session plan for the next Host start, not the current HTTP listener.
@@ -166,6 +183,13 @@ impl WebState {
             .lock()
             .map_err(|_| "layer lock poisoned")?
             .modbus_bound = bound;
+        Ok(())
+    }
+    pub fn set_sniffer(&self, sniffer: Option<HostSniffer>) -> Result<(), &'static str> {
+        self.pub_layers
+            .lock()
+            .map_err(|_| "layer lock poisoned")?
+            .sniffer = sniffer;
         Ok(())
     }
     /// Owned projection for the serialized Host owner and RPC/REST adapters.

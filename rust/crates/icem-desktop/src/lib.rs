@@ -85,6 +85,11 @@ pub fn text(value: &Value) -> String {
     }
 }
 impl Model {
+    pub fn can_toggle_sniffer(&self) -> bool {
+        self.connected
+            && self.snapshot["layers"]["snifferAvailable"] == true
+            && self.snapshot["layers"]["busy"] != true
+    }
     pub fn flag(&self, channel: &str, field: &str) -> bool {
         self.snapshot[channel][field].as_bool() == Some(true)
     }
@@ -181,6 +186,10 @@ impl Model {
         }
         let data = &result["data"];
         match cmd {
+            "layer" => {
+                self.snapshot["layers"] = data.clone();
+                self.note = data["lastError"].as_str().unwrap_or("").to_owned();
+            }
             "status" => {
                 self.snapshot = data.clone();
                 self.connected = true;

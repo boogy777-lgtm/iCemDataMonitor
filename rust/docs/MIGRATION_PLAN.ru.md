@@ -93,3 +93,12 @@ show-during-flight сохраняется. [Политика, тесты и гр
 read-only sniffer capture owner, pause/resume/counters и actual availability projection.
 Далее production CLI/ensure-host/config recovery и console/window lifecycle; MSI после
 измеренного payload и Windows install/upgrade/uninstall. Legacy CI не приоритет миграции.
+
+## E10: read-only capture vertical
+
+[HOST_E10](HOST_E10.ru.md) реализует capture → lifecycle → actual status →
+existing SetLayer RPC → native availability → software fault tests.
+Следующий Host-инкремент: production CLI/ensure-host, затем config recovery и
+console/window lifecycle. Оставшийся sniffer backlog: decode/signals и аппаратная
+приёмка; dormant REST/file capture не считается реализованным API.
+Windows packaging остаётся в отдельном PR #4/rust/windows-release.

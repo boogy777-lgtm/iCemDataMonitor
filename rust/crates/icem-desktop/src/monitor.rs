@@ -50,13 +50,14 @@ impl Monitor {
         label: &str,
         on: bool,
         command: Value,
+        enabled: bool,
         cx: &Context<Self>,
     ) -> impl IntoElement {
         self.action_button(
             id,
             "",
             MonitorAction::Command(command),
-            self.model.connected,
+            self.model.connected && enabled,
             cx,
         )
         .flex()
@@ -228,6 +229,7 @@ impl Render for Monitor {
                 "Modbus TCP",
                 layers["modbus"] == true,
                 json!({"cmd":"layer","layer":1}),
+                true,
                 cx,
             ))
             .child(self.toggle(
@@ -235,6 +237,7 @@ impl Render for Monitor {
                 "LAN sniffer",
                 layers["sniffer"] == true,
                 json!({"cmd":"layer","layer":3}),
+                self.model.can_toggle_sniffer(),
                 cx,
             ))
             .child(format!("OPC DA: {}", crate::text(&layers["opcDa"])))
@@ -243,6 +246,7 @@ impl Render for Monitor {
                 "Консоль",
                 status["consoleVisible"] == true,
                 json!({"cmd":"console","value":status["consoleVisible"]!=true}),
+                true,
                 cx,
             ))
             .child(self.toggle(
@@ -250,8 +254,10 @@ impl Render for Monitor {
                 "Автозагрузка",
                 status["autostartEnabled"] == true,
                 json!({"cmd":"autostart","value":status["autostartEnabled"]!=true}),
+                true,
                 cx,
-            ));
+            ))
+            .child(layers["lastError"].as_str().unwrap_or("").to_owned());
         let mut root = div()
             .size_full()
             .track_focus(&self.focus)

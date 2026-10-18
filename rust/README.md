@@ -94,3 +94,7 @@ source-manifest не обновляется при принятых исправ
 [Host E9](docs/HOST_E9.ru.md): boot replay после reconnect, отмена при backpressure,
 освобождение Shell transport session и explicit at-most-one navigation attempt per demand.
 Потерянный consume-ответ не ретраится автоматически. Production/MSI и visual gates открыты.
+
+[Host E10](docs/HOST_E10.ru.md): настоящий read-only Npcap capture, bounded poll,
+pause/resume, counters и actual availability через Host owner/RPC/GPUI.
+P17 остаётся PARTIAL: decode/file capture и аппаратная приёмка не закрыты.
