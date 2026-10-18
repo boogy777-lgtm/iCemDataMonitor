@@ -136,13 +136,24 @@ try {
     Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'install-N'
     Assert-Installed $Version $FirstCode
     if ((Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Wrong native autostart command' }
-    $Wsh = New-Object -ComObject WScript.Shell
+    $Shell = New-Object -ComObject Shell.Application
+    $Folder = $null; $Item = $null; $Link = $null
     try {
         if (-not (Test-Path -LiteralPath $Shortcut -PathType Leaf)) { throw "Desktop shortcut missing: $Shortcut" }
-        $Link = $Wsh.CreateShortcut($Shortcut)
-        try { if ($Link.TargetPath -ine (Join-Path $Install 'icem-shell-dev.exe')) { throw "Wrong desktop shortcut target: <$($Link.TargetPath)>" } }
-        finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Link) }
-    } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Wsh) }
+        # Inspect the actual Shell link without following/launching its target.
+        # Preserve raw evidence if an automation adapter loses Unicode.
+        [IO.File]::WriteAllText((Join-Path $Work 'desktop-link-bytes.log'), [Convert]::ToBase64String([IO.File]::ReadAllBytes($Shortcut)))
+        $Folder = $Shell.Namespace((Split-Path $Shortcut -Parent))
+        $Item = $Folder.ParseName((Split-Path $Shortcut -Leaf))
+        $Link = $Item.GetLink
+        $Target = $Link.Path
+        [IO.File]::WriteAllText((Join-Path $Work 'desktop-link-target.log'), $Target)
+        if ($Target -ine (Join-Path $Install 'icem-shell-dev.exe') -or -not (Test-Path -LiteralPath $Target -PathType Leaf)) { throw "Wrong desktop shortcut target: <$Target>" }
+    } finally {
+        foreach ($Object in @($Link, $Item, $Folder, $Shell)) {
+            if ($Object) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Object) }
+        }
+    }
     [IO.File]::WriteAllText($Marker, $MarkerText)
     Invoke-Msi @('/i', $NextMsi.msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'upgrade-N-plus-one'
     Assert-Installed $Next $NextCode
