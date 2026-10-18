@@ -34,7 +34,7 @@ try {
         & dotnet tool restore --tool-manifest .config/dotnet-tools.json | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX tool restore failed.' }
         $WixVersion = (Get-Content -Raw .config/dotnet-tools.json | ConvertFrom-Json).tools.wix.version
-        $Extensions = @('WixToolset.UI.wixext')
+        $Extensions = @('WixToolset.UI.wixext', 'WixToolset.Util.wixext')
         $ExtensionArgs = @()
         foreach ($Extension in $Extensions) {
             & dotnet tool run wix -- extension add -g "$Extension/$WixVersion" | Out-Host
@@ -52,3 +52,4 @@ try {
     Write-Host "Windows MSI: $Msi ($Count files, version $Version)"
     return [pscustomobject]@{ msi = $Msi; checksum = "$Msi.sha256"; sha256 = $Hash; version = $Version }
 } finally { if (Test-Path -LiteralPath $Work) { Remove-Item -LiteralPath $Work -Recurse -Force } }
+

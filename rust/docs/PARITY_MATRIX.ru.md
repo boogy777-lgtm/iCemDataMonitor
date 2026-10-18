@@ -60,3 +60,8 @@ E10: P16/P17/P15 дополнены [Host capture owner](HOST_E10.ru.md): реа
 Npcap receive, pause/resume, bounded counters, actual RPC/summary, UI availability.
 Статус PARTIAL. Decode/signals/service-vectors, capture-to-file, real NIC/Npcap
 и Windows operator/visual acceptance остаются открытыми.
+
+E11: [первый запуск/ensure, CLI, config discovery и MSI ACL](HOST_E11.ru.md).
+Shell автоматически запускает отсутствующий Host один раз; reconnect не повторяет
+spawn. Строгая повреждённая конфигурация сохраняется и блокирует запуск; отсутствующая
+создаётся из схемы. CLI/partial software evidence не закрывают SDK/UI/hardware gates.

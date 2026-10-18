@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
   <!-- Rust package policy only. Payload comes from the verified manifest;
        branding comes from the original assets. File owners use native Restart Manager; no name-based kills or wipe CAs. -->
   <Package Name="RENDERED" Manufacturer="RENDERED" Version="0.0.0"
@@ -63,6 +63,8 @@
       <Directory Id="HalliburtonDataDir" Name="Halliburton">
         <Directory Id="IcemDataDir" Name="iCem">
           <Directory Id="MONITORROOT" Name="DataMonitoring" />
+          <!-- Canonical station settings stay here even when MONITORROOT is relocated. -->
+          <Directory Id="STATIONDATAROOT" Name="DataMonitoring" />
         </Directory>
       </Directory>
     </StandardDirectory>
@@ -83,6 +85,14 @@
       </Component>
     </StandardDirectory>
     <ComponentGroup Id="Setup.Options">
+      <Component Id="Cmp.StationDirectory" Directory="STATIONDATAROOT" Guid="00000000-0000-0000-0000-000000000000">
+        <CreateFolder>
+          <util:PermissionEx User="Users" Inheritable="yes"
+                             Read="yes" CreateFile="yes" CreateChild="yes" Traverse="yes" Delete="yes"
+                             ReadAttributes="yes" WriteAttributes="yes" ReadExtendedAttributes="yes"
+                             WriteExtendedAttributes="yes" ReadPermission="yes" Synchronize="yes" />
+        </CreateFolder>
+      </Component>
       <ComponentRef Id="Cmp.DesktopShortcut" />
       <Component Id="Cmp.InstallState" Directory="MONITORROOT" Guid="00000000-0000-0000-0000-000000000000">
         <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\RustDevelopment\Installer" Name="RuntimeDirectory" Type="string" Value="[MONITORROOT]" KeyPath="yes" />
@@ -131,3 +141,4 @@
     </Feature>
   </Package>
 </Wix>
+

@@ -135,3 +135,8 @@ existing SetLayer RPC → native availability → software fault tests.
 console/window lifecycle. Оставшийся sniffer backlog: decode/signals и аппаратная
 приёмка; dormant REST/file capture не считается реализованным API.
 Windows packaging остаётся в отдельном PR #4/rust/windows-release.
+
+E11: [первый запуск/ensure, CLI, config discovery и MSI ACL](HOST_E11.ru.md).
+Shell автоматически запускает отсутствующий Host один раз; reconnect не повторяет
+spawn. Строгая повреждённая конфигурация сохраняется и блокирует запуск; отсутствующая
+создаётся из схемы. CLI/partial software evidence не закрывают SDK/UI/hardware gates.

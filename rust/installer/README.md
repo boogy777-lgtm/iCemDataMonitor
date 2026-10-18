@@ -80,11 +80,11 @@ No config or Data.dat is shipped/created by packaging. Legacy .NET MSI is separa
 and unchanged.
 
 This remains a **Rust development candidate**, retaining `*-dev.exe` names.
-Production cutover is not enabled merely by adding an installer. Host restoration,
-ensure-host, existing/custom station-config startup and hardware/UI equivalence
-still need their own acceptance. Host requires an existing station configuration;
-the current Shell does not start Host automatically. Supplied PowerShell launchers
-remain available; see README-Windows.txt and the Host status documents.
+Production cutover is not enabled merely by adding an installer. [Host E11](../docs/HOST_E11.ru.md) implements automatic Shell ensure, bounded startup,
+CLI and copy-only configuration discovery/default creation. Invalid existing settings
+remain intact and block startup with diagnostics. The MSI grants inherited
+Users Modify on the canonical station directory, including relocated runtime installs, matching legacy. Supplied PowerShell
+launchers remain optional. Hardware/UI/iCem acceptance stays open.
 
 ## Payload integrity
 
@@ -146,3 +146,4 @@ failed before MSI creation in the unchanged Rust pipe rebind test; a separate fu
 Windows Rust CI passed that same head. That lifecycle race is recorded in PR #4,
 not bypassed by packaging. SDK-backed release, visual wizard acceptance, iCem DLL
 loading, production/offline/rollback/failure/running-process acceptance remain open.
+

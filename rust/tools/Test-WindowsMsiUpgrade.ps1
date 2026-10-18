@@ -103,6 +103,18 @@ function Assert-OwnerStopped($Owner, [bool] $Graceful) {
     }
 }
 function Assert-Installed([string] $Version, [string] $ProductCode) {
+    $UsersSid = 'S-1-5-32-545'
+    $Modify = [Security.AccessControl.FileSystemRights]::Modify
+    $Inheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
+    # Runtime is deliberately relocated by this test; station config remains canonical.
+    $StationData = Join-Path $env:ProgramData 'Halliburton/iCem/DataMonitoring'
+    $UsersRules = @((Get-Acl -LiteralPath $StationData).Access | Where-Object {
+        $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -eq $UsersSid -and
+        $_.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and
+        ($_.FileSystemRights -band $Modify) -eq $Modify -and
+        ($_.InheritanceFlags -band $Inheritance) -eq $Inheritance
+    })
+    if (-not $UsersRules.Count) { throw 'Ordinary station users cannot create/update config and data after MSI install/repair/upgrade' }
     $Products = @(Installed-Products)
     if ($Products.Count -ne 1 -or $Products[0].PSChildName -ne $ProductCode -or $Products[0].DisplayVersion -ne $Version) { throw 'MSI did not leave exactly one expected installed version' }
     # Reconstruct the logical archive from the two actual installation mounts.
@@ -281,3 +293,4 @@ try {
     if (Test-Path -LiteralPath $Work) { Remove-Item -LiteralPath $Work -Recurse -Force }
     Pop-Location
 }
+

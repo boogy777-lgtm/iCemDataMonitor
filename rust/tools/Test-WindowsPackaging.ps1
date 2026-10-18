@@ -58,12 +58,25 @@ try {
     if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
         $Xml.SelectSingleNode('//w:Package', $Ns).Scope -ne 'perMachine') { throw 'MSI transaction policy failed' }
     # Guard the reviewed package boundary, not implementation layout: payload,
-    # native shortcut/Run value and stock UI only. No elevated deletion/process
+    # native shortcut/Run value, stock UI and the exact additive station ACL.
+    # No elevated deletion/process
     # scripts, service ownership, hidden uninstall or forced repair policy.
     if ($Xml.SelectNodes('//w:CustomAction | //w:Binary | //w:RemoveFile | //w:RemoveFolder | //w:RemoveRegistryValue | //w:ServiceControl | //w:ServiceInstall', $Ns).Count -or
-        $Xml.SelectNodes('//*[namespace-uri()="http://wixtoolset.org/schemas/v4/wxs/util"]', $Ns).Count -or
         $Xml.SelectNodes('//w:Property[@Id="ARPSYSTEMCOMPONENT"]', $Ns).Count -or
         $Xml.SelectSingleNode('//w:Property[@Id="MSIRESTARTMANAGERCONTROL"]', $Ns).Value -cne '0') { throw 'MSI exceeds reviewed native resource ownership' }
+    # This is an exact allowlist, not permission to add arbitrary Util resources.
+    $Util = @($Xml.SelectNodes('//*[namespace-uri()="http://wixtoolset.org/schemas/v4/wxs/util"]', $Ns))
+    $ExpectedAcl = @{ User='Users'; Inheritable='yes'; Read='yes'; CreateFile='yes'; CreateChild='yes'; Traverse='yes'; Delete='yes'; ReadAttributes='yes'; WriteAttributes='yes'; ReadExtendedAttributes='yes'; WriteExtendedAttributes='yes'; ReadPermission='yes'; Synchronize='yes' }
+    if ($Util.Count -ne 1 -or $Util[0].LocalName -cne 'PermissionEx' -or
+        $Util[0].ParentNode.LocalName -cne 'CreateFolder' -or
+        $Util[0].ParentNode.ParentNode.Id -cne 'Cmp.StationDirectory' -or
+        $Util[0].ParentNode.ParentNode.Directory -cne 'STATIONDATAROOT' -or
+        $Xml.SelectSingleNode('//w:Directory[@Id="STATIONDATAROOT"]', $Ns).Name -cne 'DataMonitoring' -or
+        $Xml.SelectSingleNode('//w:Directory[@Id="STATIONDATAROOT"]', $Ns).ParentNode.Id -cne 'IcemDataDir' -or
+        $Util[0].Attributes.Count -ne $ExpectedAcl.Count) { throw 'Unreviewed/missing station ACL resource' }
+    foreach ($Name in $ExpectedAcl.Keys) {
+        if ($Util[0].GetAttribute($Name) -cne $ExpectedAcl[$Name]) { throw "Station ACL invariant failed: $Name" }
+    }
     $ExpectedTransfers = @('RestoreMONITORROOT','RestoreICEMDIR','RestoreCREATEDESKTOPSHORTCUT','RestoreADDAUTOSTART','DefaultIcemDirectory','SetPREFERENCES_INITIALIZED','ClearCREATEDESKTOPSHORTCUT','ClearADDAUTOSTART','ClearMSIRMSHUTDOWN','NormalizeCREATEDESKTOPSHORTCUT','NormalizeADDAUTOSTART','NormalizeMSIRMSHUTDOWN','SetREINSTALL','SetREINSTALLMODE')
     $Transfers = @($Xml.SelectNodes('//w:SetProperty', $Ns))
     $ActualTransfers = @($Transfers | ForEach-Object { if ($_.HasAttribute('Action')) { $_.Action } else { 'Set' + $_.Id } })
@@ -172,3 +185,4 @@ try {
     if (@(Get-ChildItem -LiteralPath $Output -Filter '*0.1.1*').Count) { throw 'Failed packaging published an archive' }
     Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture, failure cleanup; full AddIn inventory, native MSI ownership/UI/options/paths, stable option components and N+1 version selection.'
 } finally { if (Test-Path -LiteralPath $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force } }
+

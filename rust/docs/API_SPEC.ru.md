@@ -263,3 +263,8 @@ capture backend (также на PAUSED), false при startup/fault/missing own
 последней операции. Отсутствие трафика не означает отказ backend.
 Активный /api/status/summary возвращает семь прежних snifferStats полей и additive
 adapter/macLimitReached; null — capture owner не создан. Dormant REST не активирован.
+
+E11: [первый запуск/ensure, CLI, config discovery и MSI ACL](HOST_E11.ru.md).
+Shell автоматически запускает отсутствующий Host один раз; reconnect не повторяет
+spawn. Строгая повреждённая конфигурация сохраняется и блокирует запуск; отсутствующая
+создаётся из схемы. CLI/partial software evidence не закрывают SDK/UI/hardware gates.

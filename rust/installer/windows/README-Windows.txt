@@ -9,18 +9,22 @@ AddIn: selected iCem folder\Bin\Modules\Burservis.iCem.DataMonitor.dll
 The Burservis wizard branding comes from the original legacy installer assets.
 The candidate does not automatically replace a registered legacy .NET MSI.
 
-PowerShell 7.4+ launchers (Host config must already exist):
-  .\Start-Host.ps1 -StationConfig 'C:\path\to\existing\config.ini'
+Optional PowerShell 7.4+ launchers:
+  .\Start-Host.ps1   (optional: -StationConfig 'C:\path\to\config.ini')
   .\Start-Shell.ps1 -WebPort 8090
   .\Start-Emulator.ps1
 
-Start Host first. Shell does not yet implement ensure-host. Use the station
-config's actual web_port. The original AddIn owns Data.dat in the iCem process.
+Open the desktop shortcut or icem-shell-dev.exe. Shell starts an absent Host
+once and waits up to 30 seconds. Existing Host is reused. Missing config.ini is
+created with standard defaults; legacy station.ini is copied without deletion.
+Invalid existing configuration is preserved and reported; correct it before
+restarting. Repair restores program files and preserves your settings.
+Shell reads the configured web_port unless explicitly overridden. The original AddIn owns Data.dat in the iCem process.
 The emulator remains independent and fresh COM/LAN streams default OFF.
 No live config, Data.dat or proprietary SDK DLL is shipped.
 
 The optional desktop shortcut targets Shell. The optional autostart entry targets
-Host --autostart, never the emulator. Current Host startup needs existing config.
+Host --autostart, never the emulator. Host creates missing config after acquiring its existing singleton.
 Upgrade and uninstall preserve runtime-created config/data/logs; uninstall removes
 only MSI-owned files, DLL, shortcut and Run value. The candidate is visible in
 installed applications. No recursive wipe or process-name kill scripts run.
@@ -37,3 +41,4 @@ No .NET10/WinAppSDK/WebView2 runtime is bundled. Manifest hashes establish file
 integrity and source traceability, not Authenticode signing or functional parity.
 Hardware, MMF/ACL, Explorer/GPU/DPI/IME, visual and production cutover acceptance
 remain separate gates.
+
