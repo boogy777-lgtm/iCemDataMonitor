@@ -67,6 +67,20 @@ Fixture становится готовой только после показа
 Это проверка реального Windows Installer/RM; живые iCem/Npcap/службы/другие sessions
 и first-run Host/config требуют отдельной приёмки.
 
+### Checkbox representation and wizard regression
+
+Class: три native checkbox (`Product.wxs`) используют null для Off; строка `0`
+является непустым значением и не подходит для UI. Числовой backend — другой случай.
+Inv: native type-51 actions очищают сохранённый/CLI `0` до UI, а null сериализуется
+как `0` только в execute sequence. `Test-WindowsPackaging.ps1` проверяет все три
+свойства, порядок и обе фазы; initialization marker сохраняет снятые UI choices.
+N+1: следующий checkbox требует такого же преобразования и guard. Windows fixture
+`InstallerUiProbe.cs` проверяет настоящий мастер через UI Automation: saved On,
+explicit CLI zero, force Off по умолчанию, toggle On→Off, Next→Back, Cancel,
+repair с opt-out и повторный запуск с сохранённым Off. UI probe/owned msiexec имеют
+конечные deadlines. Fixture не входит в пакет. Это interaction evidence, а не
+визуальная приёмка DPI/branding/layout или проверка реального SDK.
+
 Если файлы не удалось заменить и Windows требует reboot, код 3010 не равен
 полностью готовой установке. Release acceptance ожидает 0 и проверяет hashes всех
 установленных файлов. Стандартный MSI сообщает о необходимой перезагрузке; нельзя
@@ -94,6 +108,7 @@ PASS: Shell.Application / FolderItem.GetLink подтвердил Unicode target
 [Microsoft: MSI Restart Manager](https://learn.microsoft.com/en-us/windows/win32/msi/using-windows-installer-with-restart-manager),
 [MSIRMSHUTDOWN](https://learn.microsoft.com/en-us/windows/win32/msi/msirmshutdown),
 [RM deadlines](https://learn.microsoft.com/en-us/windows/win32/api/restartmanager/nf-restartmanager-rmshutdown).
+Checkbox semantics: [Microsoft CheckBox control](https://learn.microsoft.com/en-us/windows/win32/msi/checkbox-control).
 
 Дополнительный дефект ZIP builder: цикл AddIn затенял переменную имени архива,
 поэтому checksum называл вложенный `addin-manifest.json` вместо ZIP. Переменная

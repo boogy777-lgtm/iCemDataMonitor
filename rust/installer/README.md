@@ -133,6 +133,12 @@ install N, two mounts, shortcut/autostart targets, repeated repair of missing/co
 then removal of owned resources while retaining unowned data. Default opt-out is also tested. It publishes logs, never a fixture MSI. This proves
 installer mechanics, not an actual AddIn build or Rust runtime behavior.
 
+The native wizard is also exercised through Windows UI Automation: checkbox
+defaults, saved and explicit zero choices, force on/off, Back, Cancel and a repair
+that commits opt-out, then reopens with it unchecked. UI uses null for unchecked;
+only the execute sequence converts this to numeric zero. Force consent is never
+saved. Interaction checks do not establish visual/DPI acceptance.
+
 A manually requested real release additionally requires the real SDK-built AddIn,
 full baseline/scaffold/Rust checks, optimized MSVC runtime binaries, extracted EXE
 smoke checks and Chrome/theme contracts. The prior release attempt on `5d464d1`

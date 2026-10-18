@@ -227,6 +227,11 @@ missing/corrupt files, plain repeat, explicit opt-out, grace/force и foreign pr
 того же имени. Свойства и mutable payload guard не ослаблены; script CAs и wipe
 по-прежнему отсутствуют. Реальные vendor/hardware/first-run gates не объявлены PASS.
 
+D39 дополнение: MSI checkbox Off представлен null, не строкой `0`. Все три
+checkbox проходят native UI/backend conversion; Windows UI Automation regression
+проверяет defaults/CLI/saved choices, Back/Cancel и committed repair opt-out.
+Silent MSI проверки отдельно сохраняются; GUI fixture не публикуется.
+
 ## E10: уточнение активного sniffer wiring
 
 D06 теперь охарактеризован кодом и regression: HostComposition.StartLayersAsync

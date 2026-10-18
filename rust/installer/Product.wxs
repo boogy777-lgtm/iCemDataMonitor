@@ -15,7 +15,7 @@
     <!-- 0 = graceful shutdown; 1 = force unresponsive file owners after native
          RM deadlines (30 s/application, 20 s/service). Never persist this consent. -->
     <Property Id="MSIRESTARTMANAGERCONTROL" Value="0" />
-    <Property Id="MSIRMSHUTDOWN" Value="0" Secure="yes" />
+    <Property Id="MSIRMSHUTDOWN" Secure="yes" />
     <Launch Condition='NOT MSIRMSHUTDOWN OR MSIRMSHUTDOWN="0" OR MSIRMSHUTDOWN="1"' Message="Invalid shutdown choice. Use the installer checkbox." />
     <Icon Id="MonitorIco" SourceFile="$(var.AssetsDir)\app-icon.ico" />
     <Property Id="ARPPRODUCTICON" Value="MonitorIco" />
@@ -48,9 +48,15 @@
     <SetProperty Id="ADDAUTOSTART" Action="RestoreADDAUTOSTART" Value="[SAVED_ADDAUTOSTART]" After="RestoreCREATEDESKTOPSHORTCUT" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT ADDAUTOSTART AND SAVED_ADDAUTOSTART" />
     <SetProperty Id="ICEMDIR" Action="DefaultIcemDirectory" Value="C:\Program Files\Halliburton\iCem" After="RestoreADDAUTOSTART" Sequence="both" Condition="NOT ICEMDIR" />
     <SetProperty Id="PREFERENCES_INITIALIZED" Value="1" After="DefaultIcemDirectory" Sequence="both" />
-    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="NormalizeCREATEDESKTOPSHORTCUT" Value="0" After="SetPREFERENCES_INITIALIZED" Sequence="both" Condition="NOT CREATEDESKTOPSHORTCUT" />
-    <SetProperty Id="ADDAUTOSTART" Action="NormalizeADDAUTOSTART" Value="0" After="NormalizeCREATEDESKTOPSHORTCUT" Sequence="both" Condition="NOT ADDAUTOSTART" />
-    <SetProperty Id="MSIRMSHUTDOWN" Action="NormalizeMSIRMSHUTDOWN" Value="0" After="NormalizeADDAUTOSTART" Sequence="both" Condition="NOT MSIRMSHUTDOWN" />
+    <!-- Native checkboxes use null, not the nonempty string "0", for Off.
+         Recover CLI/saved zero as null before UI; serialize null as zero only
+         in the execute sequence, after UI choices are transferred securely. -->
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="ClearCREATEDESKTOPSHORTCUT" Value="" After="SetPREFERENCES_INITIALIZED" Sequence="both" Condition='CREATEDESKTOPSHORTCUT="0"' />
+    <SetProperty Id="ADDAUTOSTART" Action="ClearADDAUTOSTART" Value="" After="ClearCREATEDESKTOPSHORTCUT" Sequence="both" Condition='ADDAUTOSTART="0"' />
+    <SetProperty Id="MSIRMSHUTDOWN" Action="ClearMSIRMSHUTDOWN" Value="" After="ClearADDAUTOSTART" Sequence="both" Condition='MSIRMSHUTDOWN="0"' />
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="NormalizeCREATEDESKTOPSHORTCUT" Value="0" After="ClearMSIRMSHUTDOWN" Sequence="execute" Condition="NOT CREATEDESKTOPSHORTCUT" />
+    <SetProperty Id="ADDAUTOSTART" Action="NormalizeADDAUTOSTART" Value="0" After="NormalizeCREATEDESKTOPSHORTCUT" Sequence="execute" Condition="NOT ADDAUTOSTART" />
+    <SetProperty Id="MSIRMSHUTDOWN" Action="NormalizeMSIRMSHUTDOWN" Value="0" After="NormalizeADDAUTOSTART" Sequence="execute" Condition="NOT MSIRMSHUTDOWN" />
     <SetProperty Id="REINSTALL" Value="ALL" After="NormalizeMSIRMSHUTDOWN" Sequence="execute" Condition="Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE" />
     <SetProperty Id="REINSTALLMODE" Value="amus" After="SetREINSTALL" Sequence="execute" Condition="Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE" />
     <StandardDirectory Id="CommonAppDataFolder">

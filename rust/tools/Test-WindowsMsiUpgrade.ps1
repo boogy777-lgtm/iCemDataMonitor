@@ -123,6 +123,18 @@ function Assert-Installed([string] $Version, [string] $ProductCode) {
     } finally { Remove-Item -LiteralPath $View -Recurse -Force }
 
 }
+function Invoke-InstallerUi([string] $Path, [string] $Label, [string] $Expected, [switch] $ExplicitZero, [switch] $ApplyOptOut) {
+    $Info = [Diagnostics.ProcessStartInfo]::new($UiProbe)
+    $Info.UseShellExecute = $false
+    foreach ($Argument in @($Path, (Join-Path $Work "$Label.log"), $Expected, ([int][bool]$ExplicitZero).ToString(), ([int][bool]$ApplyOptOut).ToString())) { $Info.ArgumentList.Add($Argument) }
+    $Process = [Diagnostics.Process]::Start($Info)
+    try {
+        if (-not $Process.WaitForExit(240000)) { $Process.Kill($true); $null = $Process.WaitForExit(5000); throw 'MSI UI probe exceeded 240 seconds; no retry' }
+        $Evidence = Get-Content -Raw -LiteralPath (Join-Path $Work "$Label.log.ui.log")
+        Write-Host $Evidence
+        if ($Process.ExitCode -ne 0) { throw "MSI UI probe failed: $Label" }
+    } finally { $Process.Dispose() }
+}
 Push-Location $Root
 try {
     $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -153,6 +165,10 @@ try {
     foreach ($Path in @($Msi, $NextMsi.msi)) {
         if ([guid](Read-MsiProperty $Path 'UpgradeCode') -ne $ExpectedUpgrade) { throw 'UpgradeCode changed between N and N+1' }
     }
+    $Framework = Join-Path $env:SystemRoot 'Microsoft.NET/Framework64/v4.0.30319'
+    $UiProbe = Join-Path $Work 'InstallerUiProbe.exe'
+    & (Join-Path $Framework 'csc.exe') /nologo /target:exe "/out:$UiProbe" "/reference:$Framework/WPF/UIAutomationClient.dll" "/reference:$Framework/WPF/UIAutomationTypes.dll" "/reference:$Framework/WPF/WindowsBase.dll" (Join-Path $Root 'installer/tests/InstallerUiProbe.cs')
+    if ($LASTEXITCODE -ne 0) { throw 'UI Automation fixture compilation failed' }
     Invoke-Msi @('/i', $Msi) 'install-default-opt-out' -InitialPaths
     Assert-Installed $Version $FirstCode
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Default install enabled opt-in options' }
@@ -179,6 +195,9 @@ try {
             if ($Object) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Object) }
         }
     }
+    Invoke-InstallerUi $Msi 'ui-saved-options-on' '1'
+    Invoke-InstallerUi $Msi 'ui-explicit-zero-is-unchecked' '0' -ExplicitZero
+    Assert-Installed $Version $FirstCode
     [IO.File]::WriteAllText($Marker, $MarkerText)
     # A plain repeated /i must repair every owned file from the MSI, including
     # corrupted existing files, while recovering paths/options with no CLI help.
@@ -228,6 +247,10 @@ try {
     if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText) { throw 'Upgrade modified user data' }
     Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'blocked-downgrade' 1603
     Assert-Installed $Next $NextCode
+    Invoke-InstallerUi $NextMsi.msi 'ui-repair-commits-opt-out' '1' -ApplyOptOut
+    Assert-Installed $Next $NextCode
+    if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'UI opt-out did not remove options' }
+    Invoke-InstallerUi $NextMsi.msi 'ui-reopened-options-stay-off' '0'
     Invoke-Msi @('/i', $NextMsi.msi, 'CREATEDESKTOPSHORTCUT=0', 'ADDAUTOSTART=0') 'explicit-options-off'
     Assert-Installed $Next $NextCode
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Explicit opt-out did not remove options' }

@@ -64,7 +64,7 @@ try {
         $Xml.SelectNodes('//*[namespace-uri()="http://wixtoolset.org/schemas/v4/wxs/util"]', $Ns).Count -or
         $Xml.SelectNodes('//w:Property[@Id="ARPSYSTEMCOMPONENT"]', $Ns).Count -or
         $Xml.SelectSingleNode('//w:Property[@Id="MSIRESTARTMANAGERCONTROL"]', $Ns).Value -cne '0') { throw 'MSI exceeds reviewed native resource ownership' }
-    $ExpectedTransfers = @('RestoreMONITORROOT','RestoreICEMDIR','RestoreCREATEDESKTOPSHORTCUT','RestoreADDAUTOSTART','DefaultIcemDirectory','SetPREFERENCES_INITIALIZED','NormalizeCREATEDESKTOPSHORTCUT','NormalizeADDAUTOSTART','NormalizeMSIRMSHUTDOWN','SetREINSTALL','SetREINSTALLMODE')
+    $ExpectedTransfers = @('RestoreMONITORROOT','RestoreICEMDIR','RestoreCREATEDESKTOPSHORTCUT','RestoreADDAUTOSTART','DefaultIcemDirectory','SetPREFERENCES_INITIALIZED','ClearCREATEDESKTOPSHORTCUT','ClearADDAUTOSTART','ClearMSIRMSHUTDOWN','NormalizeCREATEDESKTOPSHORTCUT','NormalizeADDAUTOSTART','NormalizeMSIRMSHUTDOWN','SetREINSTALL','SetREINSTALLMODE')
     $Transfers = @($Xml.SelectNodes('//w:SetProperty', $Ns))
     $ActualTransfers = @($Transfers | ForEach-Object { if ($_.HasAttribute('Action')) { $_.Action } else { 'Set' + $_.Id } })
     if (($ExpectedTransfers -join ',') -cne ($ActualTransfers -join ',')) { throw 'Unreviewed/missing native property transfer' }
@@ -73,7 +73,14 @@ try {
         if ($Transfer.After -cne $Previous) { throw 'Preference/repair sequencing is incomplete' }
         $Previous = if ($Transfer.HasAttribute('Action')) { $Transfer.Action } else { 'Set' + $Transfer.Id }
     }
-    if ($Xml.SelectSingleNode('//w:Property[@Id="MSIRMSHUTDOWN"]', $Ns).Value -cne '0' -or
+    foreach ($Property in @('CREATEDESKTOPSHORTCUT','ADDAUTOSTART','MSIRMSHUTDOWN')) {
+        $Clear = $Xml.SelectSingleNode('//w:SetProperty[@Action="Clear' + $Property + '"]', $Ns)
+        $Normalize = $Xml.SelectSingleNode('//w:SetProperty[@Action="Normalize' + $Property + '"]', $Ns)
+        if ($Xml.SelectSingleNode('//w:Property[@Id="' + $Property + '"]', $Ns).HasAttribute('Value') -or
+            $Clear.Value -cne '' -or $Clear.Condition -cne ($Property + '="0"') -or $Clear.Sequence -cne 'both' -or
+            $Normalize.Value -cne '0' -or $Normalize.Condition -cne ('NOT ' + $Property) -or $Normalize.Sequence -cne 'execute') { throw "UI/backend checkbox conversion failed: $Property" }
+    }
+    if (
         $Xml.SelectSingleNode('//w:Control[@Id="ForceCloseCheck"]', $Ns).Property -cne 'MSIRMSHUTDOWN' -or
         $Xml.SelectSingleNode('//w:Control[@Id="ForceCloseCheck"]', $Ns).CheckBoxValue -cne '1' -or
         $Xml.SelectNodes('//w:RegistryValue[@Value="[MSIRMSHUTDOWN]"]', $Ns).Count) { throw 'Force consent is not explicit/per-operation' }
