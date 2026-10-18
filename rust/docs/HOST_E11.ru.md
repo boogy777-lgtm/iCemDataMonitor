@@ -84,7 +84,7 @@ Inv: Users имеют наследуемый Modify, ACE других identities
 install/repair/upgrade. N+1: прежняя генерация GUID компонентов, без ACL-скрипта.
 
 Добавлен CreateFolder component с util PermissionEx. Группа определяется
-через WIX_ACCOUNT_USERS (SID, не язык ОС). Это соответствует legacy Users Modify
+через встроенное сопоставление Util `Users` → WinBuiltinUsersSid (не локализованное имя ОС). Это соответствует legacy Users Modify
 для общего каталога данных/приложения. Права ChangePermissions/TakeOwnership не выдаются.
 WiX Util использует существующий pin 5.0.2 (MIT); явный installer-only dependency,
 без изменения Rust unsafe boundary. WiX 5.0.2 использует SET_ACCESS для целевой Users ACE: права этой группы приводятся

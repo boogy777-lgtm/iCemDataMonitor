@@ -66,13 +66,12 @@ try {
         $Xml.SelectSingleNode('//w:Property[@Id="MSIRESTARTMANAGERCONTROL"]', $Ns).Value -cne '0') { throw 'MSI exceeds reviewed native resource ownership' }
     # This is an exact allowlist, not permission to add arbitrary Util resources.
     $Util = @($Xml.SelectNodes('//*[namespace-uri()="http://wixtoolset.org/schemas/v4/wxs/util"]', $Ns))
-    $ExpectedAcl = @{ User='[WIX_ACCOUNT_USERS]'; Inheritable='yes'; Read='yes'; CreateFile='yes'; CreateChild='yes'; Traverse='yes'; Delete='yes'; ReadAttributes='yes'; WriteAttributes='yes'; ReadExtendedAttributes='yes'; WriteExtendedAttributes='yes'; ReadPermission='yes'; Synchronize='yes' }
+    $ExpectedAcl = @{ User='Users'; Inheritable='yes'; Read='yes'; CreateFile='yes'; CreateChild='yes'; Traverse='yes'; Delete='yes'; ReadAttributes='yes'; WriteAttributes='yes'; ReadExtendedAttributes='yes'; WriteExtendedAttributes='yes'; ReadPermission='yes'; Synchronize='yes' }
     if ($Util.Count -ne 1 -or $Util[0].LocalName -cne 'PermissionEx' -or
         $Util[0].ParentNode.LocalName -cne 'CreateFolder' -or
         $Util[0].ParentNode.ParentNode.Id -cne 'Cmp.StationDirectory' -or
         $Util[0].ParentNode.ParentNode.Directory -cne 'MONITORROOT' -or
-        $Util[0].Attributes.Count -ne $ExpectedAcl.Count -or
-        $Xml.SelectNodes('//w:PropertyRef[@Id="WIX_ACCOUNT_USERS"]', $Ns).Count -ne 1) { throw 'Unreviewed/missing station ACL resource' }
+        $Util[0].Attributes.Count -ne $ExpectedAcl.Count) { throw 'Unreviewed/missing station ACL resource' }
     foreach ($Name in $ExpectedAcl.Keys) {
         if ($Util[0].GetAttribute($Name) -cne $ExpectedAcl[$Name]) { throw "Station ACL invariant failed: $Name" }
     }
