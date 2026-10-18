@@ -119,3 +119,13 @@ Default tray icons resolve beside the EXE (`assets/`) instead of the source chec
 The Windows release archive includes them, canonical templates and explicit launchers;
 see [installer/README.md](../installer/README.md). Debug desktop runs require icons in
 `target/debug/assets/`. This does not change control mapping or establish visual parity.
+
+## E10: SnifferSwitch availability
+
+Shell сохраняет snifferAvailable/busy и LayerState результата мутации. Модель
+разрешает SnifferSwitch только при связи с Host, доступном capture и !busy.
+Mouse/Enter/Space используют общий enabled path; disabled не входит в tab stops.
+LastError видна в status view. При потере Host last-known остаётся, action запрещён.
+Прочитаны original MainWindow.xaml, MainWindow.xaml.cs и ThemeResources.xaml.
+Mapping всё ещё 176/176 inventory; Windows visual/focus/DPI acceptance NOT_RUN.
+[Границы и проверки](HOST_E10.ru.md).

@@ -2,6 +2,7 @@
 //! OPC DA is the legacy external no-op, not an in-process server.
 use icem_config::IniOptions;
 use icem_core::LayerKind;
+use icem_platform_windows::sniffer::{Capture, CaptureDevice, State};
 use icem_protocols::modbus::RegisterBank;
 use icem_transport::modbus_tcp::{ModbusServer, ServerOptions};
 use icem_web::WebState;
@@ -11,26 +12,28 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub fn toggle(
+pub fn toggle<D: CaptureDevice>(
     layer: LayerKind,
     server: &mut Option<ModbusServer>,
     bind: SocketAddr,
     bank: &Arc<Mutex<RegisterBank>>,
     web: &WebState,
     station: &mut Option<(PathBuf, IniOptions)>,
+    sniffer: &mut Option<Capture<D>>,
 ) -> Result<(), &'static str> {
     // As in LayerRuntimeController, operation failures are LayerState.last_error,
     // not an RPC transport failure; the next operation clears the previous error.
-    let result = apply(layer, server, bind, bank, web, station);
+    let result = apply(layer, server, bind, bank, web, station, sniffer);
     web.set_layer_error(result.err().map(|error| error.to_string()))
 }
-fn apply(
+fn apply<D: CaptureDevice>(
     layer: LayerKind,
     server: &mut Option<ModbusServer>,
     bind: SocketAddr,
     bank: &Arc<Mutex<RegisterBank>>,
     web: &WebState,
     station: &mut Option<(PathBuf, IniOptions)>,
+    sniffer: &mut Option<Capture<D>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match layer {
         LayerKind::Modbus => {
@@ -46,7 +49,14 @@ fn apply(
         }
         LayerKind::Web => web.toggle_web_plan()?,
         LayerKind::OpcDa => return Ok(()),
-        LayerKind::LanSniffer => return Err("sniffer capture owner is not implemented".into()),
+        LayerKind::LanSniffer => {
+            let operation = sniffer
+                .as_mut()
+                .ok_or_else(|| "sniffer capture owner is unavailable".to_owned())
+                .and_then(Capture::toggle);
+            publish_sniffer(sniffer, web)?;
+            operation?;
+        }
     }
     if let Some((path, settings)) = station
         && settings.ui_set_as_default == 1
@@ -55,11 +65,35 @@ fn apply(
         let mut updated = settings.clone();
         updated.modbus_on = i32::from(plan.modbus_bound);
         updated.web_on = i32::from(plan.web);
-        // OPC and sniffer flags are startup values until their owners exist.
+        if let Some(sniffer) = plan.sniffer {
+            updated.lansniffer_on = i32::from(sniffer.enabled);
+        }
         std::fs::write(path, updated.render())?;
         *settings = updated;
     }
     Ok(())
+}
+pub fn publish_sniffer<D: CaptureDevice>(
+    sniffer: &Option<Capture<D>>,
+    web: &WebState,
+) -> Result<(), &'static str> {
+    web.set_sniffer(sniffer.as_ref().map(|s| {
+        let status = s.status();
+        icem_web::HostSniffer {
+            available: status.available,
+            running: status.state == State::Running,
+            enabled: status.enabled,
+            state: status.state.name().into(),
+            adapter: status.adapter,
+            last_error: status.last_error,
+            total_frames: status.total_frames,
+            ace_frames: status.ace_frames,
+            distinct_macs: status.distinct_macs,
+            mac_limit_reached: status.mac_limit_reached,
+            frames_per_sec: status.frames_per_sec,
+            last_frame_age_sec: status.last_frame_age_sec,
+        }
+    }))
 }
 
 #[cfg(test)]
@@ -78,6 +112,7 @@ mod tests {
         bank: Arc<Mutex<RegisterBank>>,
         server: Option<ModbusServer>,
         bind: SocketAddr,
+        sniffer: Option<Capture<icem_platform_windows::sniffer::SystemCapture>>,
     }
     impl Fixture {
         fn new(save: bool) -> Result<Self, Box<dyn std::error::Error>> {
@@ -115,6 +150,7 @@ mod tests {
                 )),
                 server: None,
                 bind: "127.0.0.1:0".parse()?,
+                sniffer: None,
             })
         }
         fn toggle(&mut self, layer: LayerKind) -> TestResult {
@@ -125,6 +161,7 @@ mod tests {
                 &self.bank,
                 &self.web,
                 &mut self.station,
+                &mut self.sniffer,
             )?;
             Ok(())
         }
@@ -199,6 +236,118 @@ mod tests {
         f.toggle(LayerKind::Modbus)?;
         assert!(f.web.layers()?.modbus_bound);
         assert!(f.web.layers()?.last_error.is_empty());
+        Ok(())
+    }
+    struct Frames {
+        fail: bool,
+        frame: Option<Vec<u8>>,
+    }
+    impl CaptureDevice for Frames {
+        fn open(&mut self, _: Option<&str>) -> Result<String, String> {
+            Ok("test-nic".into())
+        }
+        fn next_packet(&mut self) -> Result<Option<Vec<u8>>, String> {
+            if self.fail {
+                Err("device unplugged".into())
+            } else {
+                Ok(self.frame.take())
+            }
+        }
+        fn close(&mut self) {}
+    }
+    #[test]
+    fn sniffer_capture_layer_persistence_and_actual_failure_projection() -> TestResult {
+        for save in [false, true] {
+            let mut f = Fixture::new(save)?;
+            let mut capture = Some(Capture::new(
+                Frames {
+                    fail: false,
+                    frame: Some(icem_protocols::ace::build([1; 6], 17, 100, &[0; 124]).to_vec()),
+                },
+                None,
+                true,
+            ));
+            capture
+                .as_mut()
+                .ok_or("capture")?
+                .poll(std::time::Duration::ZERO);
+            publish_sniffer(&capture, &f.web)?;
+            let s = f.web.layers()?.sniffer.ok_or("missing projection")?;
+            assert!(s.available && s.running);
+            assert_eq!((s.total_frames, s.ace_frames), (1, 1));
+            for enabled in [false, true] {
+                toggle(
+                    LayerKind::LanSniffer,
+                    &mut f.server,
+                    f.bind,
+                    &f.bank,
+                    &f.web,
+                    &mut f.station,
+                    &mut capture,
+                )?;
+                let s = f.web.layers()?.sniffer.ok_or("missing projection")?;
+                assert_eq!(s.running, enabled);
+                assert!(s.available);
+                assert_eq!(f.saved()?.lansniffer_on, i32::from(!save || enabled));
+            }
+            // Persistence failure preserves runtime state and the last-saved view.
+            let path = f.root.join("config.ini");
+            std::fs::remove_file(&path)?;
+            std::fs::create_dir(&path)?;
+            toggle(
+                LayerKind::LanSniffer,
+                &mut f.server,
+                f.bind,
+                &f.bank,
+                &f.web,
+                &mut f.station,
+                &mut capture,
+            )?;
+            assert!(!f.web.layers()?.sniffer.ok_or("sniffer")?.running);
+            assert_eq!(!f.web.layers()?.last_error.is_empty(), save);
+            assert_eq!(f.station.as_ref().ok_or("station")?.1.lansniffer_on, 1);
+            // Missing owner does not flip a flag or create producer-owned Data.dat.
+            toggle(
+                LayerKind::LanSniffer,
+                &mut f.server,
+                f.bind,
+                &f.bank,
+                &f.web,
+                &mut f.station,
+                &mut f.sniffer,
+            )?;
+            assert!(!f.web.layers()?.last_error.is_empty());
+            assert!(!f.root.join("Data.dat").exists());
+            assert!(path.is_dir());
+        }
+        let mut f = Fixture::new(false)?;
+        let mut capture = Some(Capture::new(
+            Frames {
+                fail: true,
+                frame: None,
+            },
+            None,
+            true,
+        ));
+        capture
+            .as_mut()
+            .ok_or("capture")?
+            .poll(std::time::Duration::ZERO);
+        publish_sniffer(&capture, &f.web)?;
+        let s = f.web.layers()?.sniffer.ok_or("sniffer")?;
+        assert!(!s.running && !s.available);
+        assert_eq!(s.last_error, "device unplugged");
+        toggle(
+            LayerKind::LanSniffer,
+            &mut f.server,
+            f.bind,
+            &f.bank,
+            &f.web,
+            &mut f.station,
+            &mut capture,
+        )?;
+        assert!(!f.web.layers()?.sniffer.ok_or("sniffer")?.running);
+        assert_eq!(f.saved()?.lansniffer_on, 1);
         Ok(())
     }
 }

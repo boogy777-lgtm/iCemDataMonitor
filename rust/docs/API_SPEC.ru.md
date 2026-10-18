@@ -251,3 +251,15 @@ Local gRPC pipe, boot replay и NavigateUi реализуются E5–E7; ос�
 Отдельный icem-lan-dev формирует payload/ACE frames без hardware I/O.
 [Опции, JSON/hex stdout и API-гарантии](EMULATOR_E3.ru.md). Production 21 commands
 и control pipe этим EXE не заменяются.
+
+## E10: Host capture — текущая частичная реализация
+
+[HOST_E10](HOST_E10.ru.md) уточняет прежнее «sniffer не подключён». SetLayer(3)
+использует существующую Host queue: pause/resume, desired_state игнорируется, без retry.
+LayerState.sniffer — фактический RUNNING; sniffer_available — открытый исправный
+capture backend (также на PAUSED), false при startup/fault/missing owner/stop.
+Это уточнение availability относительно legacy DI-registration; wire/proto не меняются.
+Ошибка операции попадает в last_error; фоновая capture error видна, если нет ошибки
+последней операции. Отсутствие трафика не означает отказ backend.
+Активный /api/status/summary возвращает семь прежних snifferStats полей и additive
+adapter/macLimitReached; null — capture owner не создан. Dormant REST не активирован.

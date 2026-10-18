@@ -13,7 +13,7 @@ mod pcap;
 #[allow(unsafe_code)]
 mod serial;
 #[cfg(windows)]
-pub use pcap::{Adapter, PacketSession, Pcap, adapter_mac, npcap_available};
+pub use pcap::{Adapter, CaptureSession, PacketSession, Pcap, adapter_mac, npcap_available};
 #[cfg(windows)]
 pub use serial::{SerialPort, serial_ports};
 

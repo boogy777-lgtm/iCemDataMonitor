@@ -126,3 +126,12 @@ Native Restart Manager закрывает владельцев затрагив�
 same-name foreign process isolation, grace/force, plain repeat repair и opt-out.
 Реальные iCem/службы/другие sessions, reboot и first-run Host/config остаются gates.
 Legacy и Rust упаковываются в разные MSI. См. INSTALLER_AUDIT.ru.md.
+
+## E10: read-only capture vertical
+
+[HOST_E10](HOST_E10.ru.md) реализует capture → lifecycle → actual status →
+existing SetLayer RPC → native availability → software fault tests.
+Следующий Host-инкремент: production CLI/ensure-host, затем config recovery и
+console/window lifecycle. Оставшийся sniffer backlog: decode/signals и аппаратная
+приёмка; dormant REST/file capture не считается реализованным API.
+Windows packaging остаётся в отдельном PR #4/rust/windows-release.

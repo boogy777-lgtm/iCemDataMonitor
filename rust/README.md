@@ -112,6 +112,10 @@ version and create a draft prerelease after install/upgrade/uninstall checks.
 Production cutover and hardware/UI acceptance remain open.
 
 The complete installer requires the real iCem SDK or a verified SDK-built AddIn
-bundle. Missing DLL is fatal. Legacy WiX/UI/harvester logic is reused; existing
+bundle. Missing DLL is fatal. Original Burservis assets/bitmap generator and payload harvester are reused; existing
 .NET MSI cutover remains blocked. See installer/README.md for SDK runner/artifacts
 and the distinction between synthetic installer contracts and real release checks.
+
+[Host E10](docs/HOST_E10.ru.md): настоящий read-only Npcap capture, bounded poll,
+pause/resume, counters и actual availability через Host owner/RPC/GPUI.
+P17 остаётся PARTIAL: decode/file capture и аппаратная приёмка не закрыты.

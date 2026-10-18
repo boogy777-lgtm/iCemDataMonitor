@@ -3,6 +3,7 @@
 use icem_bus::Snapshot;
 use icem_config::IniOptions;
 use icem_core::{Freshness, SnapshotOrigin, SnapshotRead, SnapshotSource, SourceError};
+use icem_platform_windows::sniffer::{Capture, SystemCapture};
 use icem_protocols::modbus::{MirrorInput, RegisterBank};
 use icem_transport::modbus_tcp::{ModbusServer, ServerOptions};
 use icem_web::{BusReply, HostLayers, WebServer, WebState};
@@ -41,6 +42,7 @@ struct Options {
     rpc_pipe: Option<String>,
     tray_icon: Option<PathBuf>,
     station: Option<(PathBuf, IniOptions)>,
+    sniffer_adapter: Option<String>,
 }
 fn options() -> Result<Options, String> {
     let mut args = std::env::args().skip(1);
@@ -58,6 +60,7 @@ fn options() -> Result<Options, String> {
     let mut registry = None;
     let mut rpc_pipe = None;
     let mut tray_icon = None;
+    let mut sniffer_adapter = None;
     while let Some(key) = args.next() {
         if key == "--autostart" {
             autostart = true;
@@ -88,6 +91,7 @@ fn options() -> Result<Options, String> {
             "--tray-icon" => tray_icon = Some(PathBuf::from(value)),
             "--rpc-pipe" => rpc_pipe = Some(value),
             "--registry" => registry = Some(PathBuf::from(value)),
+            "--sniffer-adapter" => sniffer_adapter = Some(value),
             "--duration-ms" => {
                 duration = value.parse().map_err(|_| "invalid duration")?;
                 duration_explicit = true;
@@ -182,6 +186,7 @@ fn options() -> Result<Options, String> {
         rpc_pipe: rpc_pipe.or_else(|| tray_icon.as_ref().map(|_| "iCemDataMonitor.Host".into())),
         tray_icon,
         station: config.map(|path| (path, settings)),
+        sniffer_adapter,
     })
 }
 struct Fixture(Snapshot);
@@ -312,24 +317,44 @@ fn run(
             .map(|server| server.local_addr().to_string())
             .unwrap_or_else(|| "disabled by config".into())
     );
-    let names = match options.registry {
-        Some(path) => icem_web::registry::load_names(&path)?,
+    let (names, registry_loaded) = match options.registry {
+        Some(path) => (icem_web::registry::load_names(&path)?, true),
         None => {
             let path = std::env::current_exe()?
                 .parent()
                 .ok_or("missing exe directory")?
                 .join("templates/variable_registry.json");
             match icem_web::registry::load_names(&path) {
-                Ok(names) => names,
+                Ok(names) => (names, true),
                 Err(error) => {
                     if options.web.is_some() {
                         eprintln!("registry unavailable: {error}; sensor names remain null");
                     }
-                    Default::default()
+                    (Default::default(), false)
                 }
             }
         }
     };
+    // Match active legacy composition: sniffer requires the loaded registry,
+    // and StartLayersAsync starts it regardless of lansniffer_on (audit D06).
+    // Fixture-only runs never silently open a physical capture device.
+    let capture_started = Instant::now();
+    let sniffer_plan = options
+        .station
+        .as_ref()
+        .is_none_or(|(_, settings)| settings.lansniffer_on == 1);
+    let mut sniffer = (registry_loaded
+        && (options.station.is_some() || options.sniffer_adapter.is_some()))
+    .then(|| {
+        Capture::new(
+            SystemCapture::default(),
+            options.sniffer_adapter,
+            sniffer_plan,
+        )
+    });
+    if let Some(capture) = &mut sniffer {
+        capture.poll(capture_started.elapsed());
+    }
     let (mut web, requests) = WebState::new(
         HostLayers {
             modbus_bound: server.is_some(),
@@ -346,6 +371,7 @@ fn run(
     #[cfg(windows)]
     web.attach_navigation(Arc::new(windows::ShellSignals));
     let layer_requests = web.enable_layer_control();
+    layers::publish_sniffer(&sniffer, &web)?;
     web.observe(&first);
     boot.complete("layers", None)?;
     boot.begin("web", "веб-сервер")?;
@@ -384,6 +410,10 @@ fn run(
         .duration
         .is_none_or(|limit| started.elapsed() < limit)
     {
+        if let Some(capture) = &mut sniffer {
+            capture.poll(capture_started.elapsed());
+        }
+        layers::publish_sniffer(&sniffer, &web)?;
         #[cfg(windows)]
         if let Some(lifecycle) = &lifecycle
             && let Some(action) = lifecycle.poll()?
@@ -418,6 +448,7 @@ fn run(
                 &bank,
                 &web,
                 &mut options.station,
+                &mut sniffer,
             )
             .map_err(str::to_owned);
             let _ = request.response.send(result);
@@ -453,6 +484,10 @@ fn run(
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
+    if let Some(capture) = &mut sniffer {
+        capture.stop();
+    }
+    layers::publish_sniffer(&sniffer, &web)?;
     #[cfg(windows)]
     if let Some(lifecycle) = &mut lifecycle {
         lifecycle.remove_tray()?;

@@ -54,8 +54,12 @@ fn status_inner(state: &WebState, summary: bool) -> Response {
         "lan":{"active":h.zones[1].0,"ageMs":h.zones[1].1},
         "raw":{"active":h.zones[2].0,"ageMs":h.zones[2].1}},"updatedAtUtc":iso(h.at)});
     if summary {
-        result["layers"] = json!({"modbus":layers.modbus_bound,"modbusPort":layers.modbus_port,"sniffer":false,"opcDa":layers.opc_da,"setAsDefault":layers.set_as_default});
-        result["snifferStats"] = Value::Null;
+        result["layers"] = json!({"modbus":layers.modbus_bound,"modbusPort":layers.modbus_port,"sniffer":layers.sniffer.as_ref().is_some_and(|s|s.running),"opcDa":layers.opc_da,"setAsDefault":layers.set_as_default});
+        result["snifferStats"] = layers.sniffer.as_ref().map_or(Value::Null, |s| json!({
+            "up":s.available,"state":s.state,"totalFrames":s.total_frames,"aceFrames":s.ace_frames,
+            "framesPerSec":s.frames_per_sec,"lastFrameAgeSec":s.last_frame_age_sec,
+            "distinctMacs":s.distinct_macs,"macLimitReached":s.mac_limit_reached,"adapter":s.adapter
+        }));
     } else {
         result["comPort"] = json!(h.header[0]);
         result["lanStatus"] = json!(h.header[2]);

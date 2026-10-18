@@ -9,7 +9,7 @@ pub mod registry;
 mod rest;
 mod rpc;
 mod server;
-pub use model::{BusReply, HostLayers, LayerRequest, ReadRequest, WebState};
+pub use model::{BusReply, HostLayers, HostSniffer, LayerRequest, ReadRequest, WebState};
 pub use rest::router;
 pub use server::WebServer;
 // Generated from the unchanged canonical proto; these lint allowances apply only

@@ -107,18 +107,18 @@ fn grpc_host_toggle_ignores_desired_state_and_stops_listener()
             assert!(!opc.opc_da);
             assert_eq!(opc.web, expected);
         }
-        assert_eq!(
-            client
-                .set_layer(LayerControlRequest {
-                    layer: 3,
-                    desired_state: true
-                })
-                .await
-                .err()
-                .ok_or("sniffer unexpectedly implemented")?
-                .code() as i32,
-            12
-        );
+        // Fixture-only Host has no physical capture owner. A toggle is handled
+        // by the same layer queue and reports an actual unavailable state.
+        let layers = client
+            .set_layer(LayerControlRequest {
+                layer: 3,
+                desired_state: true,
+            })
+            .await?
+            .into_inner();
+        assert!(!layers.sniffer_available);
+        assert!(!layers.sniffer);
+        assert!(!layers.last_error.is_empty());
         Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     })?;
     assert!(icem_windows_native::signal_existing_event(

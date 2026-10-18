@@ -23,3 +23,9 @@
 
 Не заполненные строки = NOT RUN; при несовпадении фиксировать FAIL и ссылку на дефект.
 M3/M6/M8 считаются открытыми до устранения pending controls и Host integrations.
+
+E10 / HOST02 — NOT RUN: реальный Npcap/NIC, auto/manual adapter, empty/busy wire,
+снятие адаптера, AccessDenied, pause/resume, stop/restart. Сравнить actual RUNNING,
+availability, summary counters и PCAP; проверить отсутствие записей MMF/Data.dat.
+Измерить native enumerate/open/close latency и Host command latency под load.
+Software ABI shims/nonblocking poll не доказывают deadline внутри неисправного драйвера.

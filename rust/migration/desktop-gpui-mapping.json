@@ -153,7 +153,7 @@
       "implementation": "crates/icem-desktop/src/monitor.rs",
       "status": "partial",
       "acceptance": "NOT_RUN",
-      "note": "Visual/state/keyboard acceptance pending."
+      "note": "E10: actual snifferAvailable + Host connection/busy gate; mouse/keyboard share disabled action path. Model/RPC software tests; Windows visual/focus acceptance NOT_RUN."
     },
     {
       "source": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
