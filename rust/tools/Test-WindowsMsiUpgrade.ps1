@@ -35,12 +35,14 @@ function Read-MsiProperty([string] $Path, [string] $Name) {
     try {
         $Database = $Installer.OpenDatabase($Path, 0)
         $View = $Database.OpenView(('SELECT `Value` FROM `Property` WHERE `Property` = ''' + $Name + ''''))
-        $View.Execute()
+        $null = $View.Execute()
         $Row = $View.Fetch()
         if (-not $Row) { throw "Missing MSI property $Name" }
-        return $Row.StringData(1)
+        $Value = $Row.StringData(1)
+        if ($Value -isnot [string]) { throw "MSI property $Name must be one string, got $($Value.GetType().FullName)" }
+        return $Value
     } finally {
-        if ($View) { $View.Close() }
+        if ($View) { $null = $View.Close() }
         foreach ($Object in @($Row, $View, $Database, $Installer)) {
             if ($Object) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Object) }
         }
@@ -88,6 +90,8 @@ try {
     $Shortcut = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'iCem Data Monitor.lnk'
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Existing monitor shortcut/autostart found; refusing to touch them' }
     $Version = Read-MsiProperty $Msi 'ProductVersion'
+    if ($Version -isnot [string]) { throw "MSI ProductVersion helper returned multiple values: <$Version>" }
+    Write-Host "MSI ProductVersion: <$Version>"
     $Next = Get-NextWindowsMsiVersion $Version
     $FirstCode = Read-MsiProperty $Msi 'ProductCode'
     $ProductCodes.Add($FirstCode)
