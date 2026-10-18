@@ -266,7 +266,7 @@ fn refresh(
                 None => "recovered".into(),
             }
         );
-        logs.record(&format!("Bus state: {error:?}"));
+        logs.record_file("data-bus.log", &format!("Bus state: {error:?}"));
         *previous = error;
     }
     let mut bank = bank.lock().map_err(|_| "register mirror lock poisoned")?;
@@ -410,7 +410,18 @@ fn run(
     boot.complete("ipc", None)?;
     boot.begin("ready", "готовность")?;
     boot.complete("ready", Some("READY"))?;
-    logs.record("READY: configured layers started; local IPC bound");
+    logs.record(&format!(
+        "READY modbus={} web=:{} bus={}",
+        if options.modbus_on {
+            if server.is_some() { "bound" } else { "failed" }
+        } else {
+            "off"
+        },
+        web_server
+            .as_ref()
+            .map_or(0, |server| server.local_addr().port()),
+        if first.is_open { "open" } else { "closed" }
+    ));
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
     let mut health_due = started;
@@ -442,6 +453,7 @@ fn run(
                 Action::Close => break,
             };
             if let Err(error) = result {
+                logs.record(&format!("host action: {error}"));
                 eprintln!("host action: {error}");
             }
         }

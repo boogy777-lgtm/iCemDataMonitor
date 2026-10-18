@@ -125,4 +125,46 @@ pub async fn request(pipe: &str, action: &str, enabled: Option<bool>) -> Result<
     })
     .await
     .map_err(|_| "log request deadline exceeded; outcome unknown; no automatic retry".to_owned())?
+    .map_err(|error| {
+        if action == "get" {
+            error
+        } else {
+            format!("{error}; результат операции неизвестен, автоматического повтора нет")
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn full_control_queue_refuses_without_wait_or_automatic_retry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let (mut state, _) = WebState::new(
+            crate::HostLayers::default(),
+            std::path::PathBuf::new(),
+            Default::default(),
+        );
+        let owner = state.enable_log_control();
+        let mut waits = Vec::new();
+        for _ in 0..16 {
+            let (response, wait) = tokio::sync::oneshot::channel();
+            waits.push(wait);
+            state
+                .log_requests
+                .as_ref()
+                .ok_or("no sender")?
+                .try_send(LogRequest {
+                    action: "clear",
+                    enabled: None,
+                    response,
+                })?;
+        }
+        assert!(matches!(
+            state.logs("clear", None).await,
+            Err((StatusCode::SERVICE_UNAVAILABLE, _))
+        ));
+        assert_eq!(owner.try_iter().count(), 16);
+        Ok(())
+    }
 }

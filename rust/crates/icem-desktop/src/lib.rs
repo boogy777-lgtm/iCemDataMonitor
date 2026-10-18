@@ -88,6 +88,19 @@ pub fn text(value: &Value) -> String {
     }
 }
 impl Model {
+    pub fn can_submit_log(&self, command: &Value) -> bool {
+        let view = match command["cmd"].as_str() {
+            Some("logs") => &self.host_logs,
+            Some("local_logs") => &self.local_logs,
+            _ => return true,
+        };
+        if command["action"] == "get" {
+            !view.pending
+        } else {
+            view.actionable()
+        }
+    }
+
     pub fn can_toggle_sniffer(&self) -> bool {
         self.connected
             && self.snapshot["layers"]["snifferAvailable"] == true

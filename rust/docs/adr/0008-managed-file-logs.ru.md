@@ -77,8 +77,9 @@ enabled — настройка; recording — реально открытый, �
 | Shell | iCemDataMonitor.Shell | shell-crash.log |
 | Emulator | iCemEmulator | crash.log |
 
-Каждый Rust owner пишет первый файл списка; Host bus transition dedup остаётся на
-существующем `previous` error (data-bus.log очищается как известный legacy журнал).
+Host startup/lifecycle пишет startup.log, bus transitions — data-bus.log; остальные
+владельцы пишут свой единственный журнал. Dedup шины остаётся на `previous` error.
+Owner держит максимум один writer handle: при смене declared файла предыдущий закрывается.
 Startup/config/fatal возвращаемые ошибки Host и startup/settings diagnostics emulator
 подключены; Shell backend errors идут через LoggedPort. Полная .NET unhandled
 exception/panic equivalence **не заявляется**. CLI stdout и hardware evidence неизменны.
@@ -89,8 +90,8 @@ exception/panic equivalence **не заявляется**. CLI stdout и hardwar
 готовится во временном файле; отрезанная первая строка отбрасывается, UTF-8/строки
 не рвутся. Handle rename заменяет текущий журнал после sync, затем он переоткрывается.
 Максимум дополнительной памяти 12.5 MiB + 8 KiB, временного диска 12.5 MiB
-(для JSON <=128 bytes). Новый primary занимает <=25 MiB; сохранённый legacy
-`data-bus.log` не растёт Rust-кодом. Чужие/ранее созданные файлы в budget не включены
+(для JSON <=128 bytes). Каждый declared журнал занимает <=25 MiB: Host <=50 MiB плюс временные 12.5 MiB,
+Shell/emulator <=25 MiB плюс временные 12.5 MiB. Чужие/ранее созданные файлы в budget не включены
 и автоматически не удаляются. Для emulator старый owned crash.log >7 суток очищается
 перед первым append; глобальный sweep по *.log не переносится.
 
@@ -103,7 +104,7 @@ Clear сначала освобождает writer, затем **один раз
 allowlist файл и rust-logging.tmp; нет glob, recursion или remove_dir_all.
 Настройка, lock, соседние файлы/подкаталоги, AddIn, templates и Data.dat сохраняются.
 Каждый отказ учитывается; удаление остальных продолжается. При ON переоткрывается
-пустой primary; при OFF он не создаётся. После частичного отказа доступный writer
+пустой последний активный owned журнал; при OFF он не создаётся. После частичного отказа доступный writer
 продолжает запись по прежнему enabled, а ошибка clear остаётся видимой.
 Повторный clear — новая явная операция, не автоматический retry.
 

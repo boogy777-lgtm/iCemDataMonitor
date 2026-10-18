@@ -65,6 +65,7 @@ pub struct Logs {
     directory: Option<Directory>,
     enabled: Option<bool>,
     writer: Option<File>,
+    active_file: usize,
     error: String,
     operation: String,
     faulted: bool,
@@ -114,6 +115,7 @@ impl Logs {
             directory: None,
             enabled: None,
             writer: None,
+            active_file: 0,
             error: String::new(),
             operation: String::new(),
             faulted: false,
@@ -198,7 +200,9 @@ impl Logs {
     }
     fn prepare_writer(&mut self) -> io::Result<()> {
         if self.writer.is_none() {
-            let mut file = self.dir()?.open_file(self.owner.files()[0], true)?;
+            let mut file = self
+                .dir()?
+                .open_file(self.owner.files()[self.active_file], true)?;
             if matches!(self.owner, Owner::Emulator)
                 && file
                     .metadata()?
@@ -259,13 +263,25 @@ impl Logs {
         temp.write_all(&tail[first..])?;
         temp.sync_all()?;
         // Source was consumed by take(); no open writer blocks replacement.
-        directory.replace(&temp, self.owner.files()[0])?;
+        directory.replace(&temp, self.owner.files()[self.active_file])?;
         drop(temp);
         self.prepare_writer()
     }
     /// Diagnostic writes never propagate into the application's work or recurse.
     /// On failure pause writes until an explicit set/clear, retaining the saved preference.
     pub fn record(&mut self, message: &str) {
+        self.record_file(self.owner.files()[0], message);
+    }
+    /// Selects only an owner-declared filename; keeps at most one file handle open.
+    pub fn record_file(&mut self, name: &str, message: &str) {
+        let Some(index) = self.owner.files().iter().position(|file| *file == name) else {
+            self.error = "Журнал не принадлежит владельцу".into();
+            return;
+        };
+        if self.active_file != index {
+            self.writer = None;
+            self.active_file = index;
+        }
         if self.enabled != Some(true) || self.faulted {
             return;
         }
@@ -313,6 +329,7 @@ impl Logs {
     fn clear(&mut self) -> io::Result<()> {
         self.writer = None;
         self.faulted = false;
+        self.operation = "Очистка начата".into();
         let mut deleted = 0;
         let mut failed = Vec::new();
         for name in self.owner.files().iter().copied().chain([TEMP]) {
@@ -333,7 +350,9 @@ impl Logs {
         if !failed.is_empty() {
             return Err(io::Error::other(failed.join("; ")));
         }
-        self.error.clear();
+        if self.enabled.is_some() {
+            self.error.clear();
+        }
         Ok(())
     }
     /// Three commands shared by the internal Host RPC and local Bridge owners.
@@ -348,7 +367,11 @@ impl Logs {
         };
         if let Err(error) = result {
             self.error = format!("Логи: {error}");
-            self.operation = "Операция не завершена; возможен частичный результат".into();
+            self.operation = if action == "clear" {
+                format!("{}; очистка завершилась частично", self.operation)
+            } else {
+                "Операция не завершена; возможен частичный результат".into()
+            };
             return Err(self.error.clone());
         }
         Ok(self.status())

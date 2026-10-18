@@ -9,7 +9,10 @@ fn state_is_owner_acknowledged_disconnect_retains_facts_and_blocks_mutations() {
         Ok(json!({"ok":true,"data":{"enabled":true,"available":true,"recording":true}})),
     );
     assert!(model.host_logs.actionable());
+    assert!(model.can_submit_log(&model.host_logs.command(false, "clear")));
     model.host_logs.pending = true;
+    assert!(!model.can_submit_log(&model.host_logs.command(false, "clear")));
+    assert!(!model.can_submit_log(&model.host_logs.command(false, "set")));
     assert!(!model.host_logs.actionable());
     assert_eq!(model.host_logs.enabled(), Some(true));
     model.apply("logs", Err("response lost; outcome unknown".into()));

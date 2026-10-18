@@ -123,6 +123,46 @@ mod windows {
         Ok(())
     }
     #[test]
+    fn each_owner_restores_its_own_setting_and_caps_one_unicode_record() -> Result {
+        let root = Root::new()?;
+        for owner in [Owner::Host, Owner::Shell, Owner::Emulator] {
+            let mut logs = Logs::open(&root.0, owner);
+            logs.record(&"Ж".repeat(MAX_RECORD));
+            let bytes = fs::read(root.0.join(owner.directory()).join(owner.files()[0]))?;
+            assert!(bytes.len() <= MAX_RECORD);
+            assert!(std::str::from_utf8(&bytes)?.contains("[truncated]"));
+            logs.request("set", Some(false))?;
+            drop(logs);
+            let mut logs = Logs::open(&root.0, owner);
+            assert_eq!(logs.status()["enabled"], false);
+            logs.request("clear", None)?;
+            assert_eq!(logs.status()["enabled"], false);
+        }
+        Ok(())
+    }
+    #[test]
+    fn declared_host_files_keep_their_paths_and_unknown_names_never_write() -> Result {
+        let root = Root::new()?;
+        let mut logs = Logs::open(&root.0, Owner::Host);
+        logs.record("startup");
+        logs.record_file("data-bus.log", "bus failed");
+        logs.record("shutdown");
+        let dir = root.0.join(Owner::Host.directory());
+        assert!(content(&root)?.contains("startup"));
+        assert!(content(&root)?.contains("shutdown"));
+        assert_eq!(
+            fs::read_to_string(dir.join("data-bus.log"))?
+                .lines()
+                .count(),
+            1
+        );
+        logs.record_file("foreign.log", "forbidden");
+        assert!(!dir.join("foreign.log").exists());
+        logs.request("clear", None)?;
+        assert!(!dir.join("data-bus.log").exists());
+        Ok(())
+    }
+    #[test]
     fn concurrent_write_clear_rotation_are_serialized_and_bounded() -> Result {
         let root = Root::new()?;
         let mut logs = Logs::open(&root.0, Owner::Host);
@@ -273,6 +313,36 @@ mod windows {
                 .is_empty()
         );
         assert_eq!(fs::read(dir.join(SETTINGS))?, b"invalid");
+        logs.request("clear", None)?;
+        assert!(
+            !logs.status()["error"]
+                .as_str()
+                .ok_or("missing error")?
+                .is_empty()
+        );
+        assert_eq!(fs::read(dir.join(SETTINGS))?, b"invalid");
+        Ok(())
+    }
+    #[test]
+    fn native_directory_pins_ancestors_and_rejects_traversal_devices_and_ads() -> Result {
+        let root = Root::new()?;
+        let path = root.0.join("checked");
+        let directory = icem_windows_native::LogDirectory::open(&path)?;
+        assert!(fs::rename(&path, root.0.join("moved")).is_err());
+        for name in [
+            "../outside",
+            r"..\outside",
+            "CON",
+            "startup.log:stream",
+            "NUL.txt",
+        ] {
+            assert!(directory.open_file(name, true).is_err());
+            assert!(directory.remove_file(name).is_err());
+        }
+        drop(directory);
+        assert!(
+            icem_windows_native::LogDirectory::open(&root.0.join("..").join("escape")).is_err()
+        );
         Ok(())
     }
     #[test]

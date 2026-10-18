@@ -40,6 +40,9 @@ impl Monitor {
         )
     }
     fn send(&mut self, command: Value) {
+        if !self.model.can_submit_log(&command) {
+            return;
+        }
         let cmd = command["cmd"].as_str().unwrap_or("").to_owned();
         match self.bridge.send(command) {
             Ok(()) => match cmd.as_str() {

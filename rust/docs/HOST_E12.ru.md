@@ -53,3 +53,27 @@ job logs повторно вернули BlobNotFound. Check-runs metadata им�
 но её содержимое не доступно через имеющийся connector endpoint. Legacy
 39135015907 также завершился до steps; он не изменялся и не перезапускался.
 Причина отказа запуска **не установлена**, ошибка исходников не доказана.
+
+## Фактическая проверка PR #8
+
+Локально: Rust 1.99.1; Windows GNU `cargo check --workspace --all-targets` и
+`cargo clippy --workspace --all-targets -- -D warnings` по locked/offline graph PASS.
+41 portable тест selected `icem-logging`, `icem-desktop`, `icem-web` PASS; fmt PASS.
+PowerShell Scaffold/Chrome/MSVC runtime здесь не выполнялись. Прямое сравнение
+Git blob hashes baseline: 512/513, 12 exact approvals, без расхождений; original PCAP
+не доступен локально, но сохранён в base tree GitHub. Mapping 176 + 6 подтверждён.
+
+PR [#8](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/8), первый head
+05ddc846ebdc21ddefa90a97f34e765bdb815a5c. Windows Rust CI
+[39137774227](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/39137774227)
+снова завершился failure до steps, как на main. Одна явная повторная попытка
+(verify 117706712052) также завершилась без steps. Logs первой попытки BlobNotFound.
+Причина annotation остаётся неизвестна: connector не отдаёт её текст; cloud browser
+показывает private-repository 404 и Sign in, а не содержимое annotation.
+Legacy run 39137774275 не исправлялся и не перезапускался.
+
+Новые Windows filesystem/pipe tests **скомпилированы, но не исполнены**. Дополнительная
+попытка запуска собранного GNU test EXE через Wine остановилась до тестов:
+`wineserver: socket: Operation not permitted`. Wine не заменяет Windows acceptance.
+PR остаётся draft до реального MSVC CI. Нельзя трактовать failure до steps как
+ошибку исходников или писать PASS для этих Windows scenarios.

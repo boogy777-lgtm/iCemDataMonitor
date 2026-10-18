@@ -94,6 +94,9 @@ impl View {
         rgba(argb.rotate_left(8))
     }
     fn send(&mut self, command: Value) {
+        if !self.model.can_submit_log(&command) {
+            return;
+        }
         let logs = command["cmd"] == "local_logs";
         match self.bridge.send(command) {
             Ok(()) => {
