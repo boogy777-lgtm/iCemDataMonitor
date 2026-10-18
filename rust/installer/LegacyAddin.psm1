@@ -3,6 +3,15 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $AssemblyName = 'Burservis.iCem.DataMonitor'
 $Framework = '.NETFramework,Version=v4.8'
+function Get-LegacyAddinSdkReferences([string] $RepositoryRoot) {
+    $Project = [xml](Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot "$AssemblyName/$AssemblyName.csproj"))
+    return @($Project.SelectNodes('//*[local-name()="Reference"]') | ForEach-Object {
+        $Hint = $_.SelectSingleNode('*[local-name()="HintPath"]')
+        if ($Hint -and $Hint.InnerText -like '*Halliburton\iCem\Bin\*') {
+            [pscustomobject]@{ name = [string]$_.Include; path = $Hint.InnerText }
+        }
+    })
+}
 function Get-LegacyAddinInputs([string] $RepositoryRoot) {
     $ProjectPath = "$AssemblyName/$AssemblyName.csproj"
     $Project = [xml](Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot $ProjectPath))
@@ -59,6 +68,9 @@ function Test-LegacyAddinBundle([string] $Directory, [string] $RepositoryRoot) {
     if (@(Get-ChildItem -LiteralPath $Directory -File -Recurse -Force).Count -ne 2) { throw 'AddIn bundle must contain exactly DLL and provenance manifest; no vendor DLL redistribution' }
     Assert-LegacyAddinAssembly $Dll
     if ($RepositoryRoot) {
+        $Sdk = @(Get-LegacyAddinSdkReferences $RepositoryRoot)
+        if (-not $Sdk.Count -or $Sdk.Count -ne $Names.Count) { throw 'AddIn SDK inventory mismatch' }
+        foreach ($Reference in $Sdk) { if (-not $Names.Contains($Reference.name)) { throw "Missing AddIn SDK provenance: $($Reference.name)" } }
         $Expected = @(Get-LegacyAddinInputs $RepositoryRoot)
         if ($Expected.Count -ne $Manifest.sources.Count) { throw 'AddIn source inventory mismatch' }
         foreach ($InputFile in $Expected) {
@@ -83,4 +95,4 @@ function New-LegacyAddinBundle([string] $RepositoryRoot, [string] $Dll, [string]
     [IO.File]::WriteAllText((Join-Path $OutputDirectory 'addin-manifest.json'), ($Manifest | ConvertTo-Json -Depth 8))
     $null = Test-LegacyAddinBundle $OutputDirectory $RepositoryRoot
 }
-Export-ModuleMember -Function Get-LegacyAddinInputs, Assert-LegacyAddinAssembly, Test-LegacyAddinBundle, New-LegacyAddinBundle
+Export-ModuleMember -Function Get-LegacyAddinInputs, Get-LegacyAddinSdkReferences, Assert-LegacyAddinAssembly, Test-LegacyAddinBundle, New-LegacyAddinBundle

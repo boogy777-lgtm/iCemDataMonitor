@@ -52,10 +52,25 @@ function Invoke-Msi([string[]] $Arguments, [string] $Label, [int] $ExpectedExit 
     $Log = Join-Path $Work "$Label.log"
     $Info = [Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32/msiexec.exe'))
     $Info.UseShellExecute = $false
-    foreach ($Argument in ($Arguments + @("MONITORROOT=$Install", "ICEMDIR=$IcemRoot", '/qn', '/norestart', '/l*v', $Log))) { $Info.ArgumentList.Add($Argument) }
+    # Windows Installer's PROPERTY="value" grammar must keep the property name
+    # outside the quotes; do not quote the whole PROPERTY=value token.
+    $Tokens = @($Arguments + @("MONITORROOT=$Install", "ICEMDIR=$IcemRoot", '/qn', '/norestart', '/l*v', $Log))
+    $Info.Arguments = (@($Tokens | ForEach-Object {
+        if ($_.Contains('"')) { throw 'MSI test arguments cannot contain embedded quotes' }
+        if ($_ -match '^([A-Z][A-Z0-9_]*)=(.*)$') { $Matches[1] + '="' + $Matches[2] + '"' }
+        elseif ($_.StartsWith('/')) { $_ }
+        else { '"' + $_ + '"' }
+    }) -join ' ')
+    [IO.File]::WriteAllText((Join-Path $Work "$Label.launch.log"), $Info.FileName + ' ' + $Info.Arguments)
+    Write-Host "MSI ${Label}: $($Info.Arguments)"
     $Process = [Diagnostics.Process]::Start($Info)
     try {
-        if (-not $Process.WaitForExit(180000)) { $Process.Kill($true); throw "MSI $Label exceeded 180 seconds; no retry." }
+        if (-not $Process.WaitForExit(180000)) {
+            Get-Process msiexec -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, MainWindowTitle | Out-String | Set-Content -LiteralPath (Join-Path $Work "$Label.timeout.log")
+            $Process.Kill($true); $null = $Process.WaitForExit(5000)
+            $Tail = if (Test-Path -LiteralPath $Log) { (Get-Content -LiteralPath $Log -Tail 35) -join "`n" } else { 'No MSI log was created' }
+            throw "MSI $Label exceeded 180 seconds; no retry. $Tail"
+        }
         if ($Process.ExitCode -ne $ExpectedExit) {
             $Tail = if (Test-Path -LiteralPath $Log) { (Get-Content -LiteralPath $Log -Tail 35) -join "`n" } else { 'No MSI log' }
             throw "MSI $Label exit $($Process.ExitCode), expected ${ExpectedExit}: $Tail"
@@ -85,6 +100,10 @@ function Assert-Installed([string] $Version, [string] $ProductCode) {
 }
 Push-Location $Root
 try {
+    $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    try {
+        if (-not [Security.Principal.WindowsPrincipal]::new($Identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'MSI tests require an elevated disposable Windows runner' }
+    } finally { $Identity.Dispose() }
     if (@(Installed-Products).Count) { throw 'A Rust development MSI is already installed; refusing to touch it.' }
     $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
     $Shortcut = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'iCem Data Monitor.lnk'

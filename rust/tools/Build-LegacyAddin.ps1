@@ -7,13 +7,12 @@ if (-not $IsWindows) { throw 'Build the original net48 AddIn on Windows with the
 $RepositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Import-Module (Join-Path $RepositoryRoot 'rust/installer/LegacyAddin.psm1') -Force
 $ProjectPath = Join-Path $RepositoryRoot 'Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj'
-$Project = [xml](Get-Content -Raw -LiteralPath $ProjectPath)
-$References = @($Project.SelectNodes('//*[local-name()="Reference"]') | Where-Object { $Hint = $_.SelectSingleNode('*[local-name()="HintPath"]'); $Hint -and $Hint.InnerText -like '*Halliburton\iCem\Bin\*' })
+$References = @(Get-LegacyAddinSdkReferences $RepositoryRoot)
 $Sdk = @()
 foreach ($Reference in $References) {
-    $Path = [string]$Reference.HintPath
+    $Path = $Reference.path
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required vendor SDK reference missing: $Path. AddIn is mandatory; it is never skipped." }
-    $Sdk += [pscustomobject]@{ name = [string]$Reference.Include; sha256 = (Get-FileHash -LiteralPath $Path).Hash.ToLowerInvariant() }
+    $Sdk += [pscustomobject]@{ name = $Reference.name; sha256 = (Get-FileHash -LiteralPath $Path).Hash.ToLowerInvariant() }
 }
 if (-not $Sdk.Count) { throw 'No vendor SDK references found in original AddIn project' }
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'AddIn bundle output already exists' }

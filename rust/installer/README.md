@@ -56,6 +56,7 @@ There is no independent copy of the legacy wizard or payload harvester to drift.
 |---|---|
 | Burservis branding | Original `Burservis_logo_cyr_red.png`, regenerated banner/dialog BMPs, original app icon; stock WiX geometry, no SQL patch |
 | Runtime path | `%ProgramData%\Halliburton\iCem\DataMonitoring` (`MONITORROOT`), flat Rust EXEs/resources |
+| Registries | Host gets original root `templates/variable_registry.json` (3507 variables); emulator gets its own 140-variable registry and other files under `emulator/templates`; launchers/smoke read role paths from the manifest |
 | AddIn path | `[ICEMDIR]\Bin\Modules\Burservis.iCem.DataMonitor.dll`; provenance remains in runtime `addin/` |
 | iCem discovery | Original canonical-directory search and directory-selection wizard; explicit command-line ICEMDIR is respected |
 | Process/service gate | Original checks and close/refresh actions; runtime image names adapt from manifest roles; adapted harness must pass |

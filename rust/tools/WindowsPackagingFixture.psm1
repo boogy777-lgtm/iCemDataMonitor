@@ -29,7 +29,7 @@ function New-WindowsPackagingFixture([string] $Directory) {
     }
     $Project = Join-Path $Repo 'Burservis.iCem.DataMonitor'
     [IO.Directory]::CreateDirectory($Project) | Out-Null
-    [IO.File]::WriteAllText((Join-Path $Project 'Burservis.iCem.DataMonitor.csproj'), '<Project><ItemGroup><Compile Include="Fixture.cs" /></ItemGroup></Project>')
+    [IO.File]::WriteAllText((Join-Path $Project 'Burservis.iCem.DataMonitor.csproj'), '<Project><ItemGroup><Compile Include="Fixture.cs" /><Reference Include="SYNTHETIC_TEST_ONLY"><HintPath>C:\Program Files\Halliburton\iCem\Bin\fixture.dll</HintPath></Reference></ItemGroup></Project>')
     $Code = '[assembly:System.Runtime.Versioning.TargetFrameworkAttribute(".NETFramework,Version=v4.8")] public class InstallerFixture {}'
     [IO.File]::WriteAllText((Join-Path $Project 'Fixture.cs'), $Code)
     # Roslyn emits valid managed metadata with a fixed assembly identity. This is

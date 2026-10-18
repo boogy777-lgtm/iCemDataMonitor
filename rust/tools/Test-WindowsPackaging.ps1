@@ -33,6 +33,11 @@ try {
     [IO.Compression.ZipFile]::ExtractToDirectory($Result.archive, $Unpack)
     $Verified = Test-WindowsPayload $Unpack
     if ($Verified.files.Count -ne $ExpectedCount) { throw 'Template directory was not packaged completely' }
+    $HostRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'host').templates_directory) + '/variable_registry.json')
+    $EmulatorRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'emulator').templates_directory) + '/variable_registry.json')
+    if ((Get-FileHash $HostRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'templates/variable_registry.json')).Hash -or
+        (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemEmulator/templates/variable_registry.json')).Hash -or
+        $HostRegistry -ceq $EmulatorRegistry) { throw 'Host/emulator canonical registries were merged or substituted' }
     # The installer is rendered from the already verified inventory, including
     # the integrity manifest itself. Adding a payload file cannot miss the MSI.
     $Numeric = Package '0.1.0'

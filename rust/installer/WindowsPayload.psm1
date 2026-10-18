@@ -57,6 +57,10 @@ function Test-WindowsPayload([string] $Directory) {
     foreach ($Binary in $Manifest.binaries) {
         if (-not $Expected.Contains($Binary.destination)) { throw "Unlisted executable: $($Binary.destination)" }
         Assert-PeX64 (Join-PayloadPath $Directory $Binary.destination)
+        if ($Binary.role -in @('host', 'emulator')) {
+            $null = Join-PayloadPath $Directory $Binary.templates_directory
+            if (-not $Expected.Contains("$($Binary.templates_directory)/variable_registry.json")) { throw "Missing role registry: $($Binary.role)" }
+        }
     }
     $null = Test-LegacyAddinBundle (Join-Path $Directory $Manifest.addin_directory)
     return $Manifest

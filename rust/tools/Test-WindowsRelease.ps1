@@ -37,15 +37,17 @@ function Wait-Child($Child, [int] $Timeout = 15000, [int] $ExpectedExit = 0) {
 try {
     [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $Package)
     $Manifest = Test-WindowsPayload $Package
+    $HostTemplates = ($Manifest.binaries | Where-Object role -EQ 'host').templates_directory
+    $EmulatorTemplates = ($Manifest.binaries | Where-Object role -EQ 'emulator').templates_directory
     $HostExe = Join-Path $Package 'icem-host-dev.exe'
     $Engine = Join-Path $Package 'icem-emulator-engine-dev.exe'
     $Fixture = Join-Path $Temp 'bus.bin'
     Copy-Item -LiteralPath (Join-Path $Root 'tests/fixtures/bus-v5-minimal.bin') -Destination $Fixture
-    $HostRun = Start-Child $HostExe @('--modbus-fixture', $Fixture, '--bind', '127.0.0.1:0', '--web-bind', '127.0.0.1:0', '--duration-ms', '1000', '--registry', (Join-Path $Package 'templates/variable_registry.json'), '--theme-file', (Join-Path $Temp 'ui-theme'), '--rpc-pipe', ('icem-package-host-' + [guid]::NewGuid().ToString('N')))
+    $HostRun = Start-Child $HostExe @('--modbus-fixture', $Fixture, '--bind', '127.0.0.1:0', '--web-bind', '127.0.0.1:0', '--duration-ms', '1000', '--registry', (Join-Path $Package "$HostTemplates/variable_registry.json"), '--theme-file', (Join-Path $Temp 'ui-theme'), '--rpc-pipe', ('icem-package-host-' + [guid]::NewGuid().ToString('N')))
     $HostResult = Wait-Child $HostRun
     if ($HostResult.error -notmatch 'Web http://127\.0\.0\.1:') { throw 'Packaged Host did not bind Web' }
     $Pipe = 'icem-package-emulator-' + [guid]::NewGuid().ToString('N')
-    $EngineRun = Start-Child $Engine @('--config', (Join-Path $Temp 'emule_config.xml'), '--templates', (Join-Path $Package 'templates'), '--pipe', $Pipe, '--duration-ms', '15000')
+    $EngineRun = Start-Child $Engine @('--config', (Join-Path $Temp 'emule_config.xml'), '--templates', (Join-Path $Package $EmulatorTemplates), '--pipe', $Pipe, '--duration-ms', '15000')
     $Readiness = [Diagnostics.Stopwatch]::StartNew()
     $Status = $null
     do {
@@ -68,7 +70,7 @@ try {
     $HeldIcon = "$Icon.hold"
     Move-Item -LiteralPath $Icon -Destination $HeldIcon
     try {
-        $MissingAsset = Start-Child $Engine @('--desktop', '--config', (Join-Path $Temp 'missing-asset.xml'), '--templates', (Join-Path $Package 'templates'), '--pipe', ('icem-package-missing-' + [guid]::NewGuid().ToString('N')), '--duration-ms', '1000')
+        $MissingAsset = Start-Child $Engine @('--desktop', '--config', (Join-Path $Temp 'missing-asset.xml'), '--templates', (Join-Path $Package $EmulatorTemplates), '--pipe', ('icem-package-missing-' + [guid]::NewGuid().ToString('N')), '--duration-ms', '1000')
         $MissingResult = Wait-Child $MissingAsset 10000 1
         if ($MissingResult.error -notmatch 'application asset missing:') { throw 'Missing icon did not produce an explicit asset diagnostic' }
     } finally { Move-Item -LiteralPath $HeldIcon -Destination $Icon }

@@ -193,3 +193,11 @@ separate; a registered legacy MSI blocks candidate installation. Full uninstall
 now follows legacy runtime wipe (upgrade preserves data), replacing the earlier
 development package's preserve-on-uninstall policy. Windows fixture-MSI contracts
 do not prove SDK-backed DLL build or application behavior. See installer/README.md.
+
+D36 / packaging registry ownership: legacy merged its 3507-variable Host registry
+and 140-variable emulator registry using an explicit emulator override filename.
+The initial Rust dev plan instead shipped only emulator/templates at the shared
+Host path. Schema-2 packaging now keeps both original inputs: Host templates/
+variable_registry.json and emulator/templates/variable_registry.json. Role paths
+are manifest data consumed by launchers/release smoke; hash tests reject either
+substitution. No canonical registry contents or runtime protocol code changed.
