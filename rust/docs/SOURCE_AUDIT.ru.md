@@ -150,3 +150,8 @@ D32 / E9 Rust defect: replay/live/lag-error send в boot RPC мог ждать �
 response buffer без наблюдения shutdown. Все boot sends используют общий cancellation
 helper; fault tests проверяют полный buffer, lag/replay, stream cap и возврат permits.
 Canonical proto, Host pending semantics и legacy sources не меняются.
+
+После E9 пользователь разрешил исправить legacy quit-ACK CI failure и слить PR #5.
+Исправлены registration-before-execute и shutdown-test timing: [разбор и границы](LEGACY_QUIT_ACK.ru.md).
+Source manifest остаётся immutable; ledger дополнен двумя точными хешами и provenance.
+Это отдельное последующее разрешение на legacy maintenance, не изменение исходного scope E9.
