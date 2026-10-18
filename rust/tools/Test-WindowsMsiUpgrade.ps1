@@ -1,6 +1,7 @@
 #requires -Version 7.4
 [CmdletBinding()]
-param([Parameter(Mandatory)] [string] $Msi, [switch] $AllowMachineChanges)
+param([Parameter(Mandatory)] [string] $Msi, [switch] $AllowMachineChanges,
+    [string] $RepositoryRoot, [string] $BinaryDirectory)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows -or ($env:GITHUB_ACTIONS -ne 'true' -and -not $AllowMachineChanges)) {
@@ -9,11 +10,15 @@ if (-not $IsWindows -or ($env:GITHUB_ACTIONS -ne 'true' -and -not $AllowMachineC
 $Root = Split-Path $PSScriptRoot -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
+if (-not $RepositoryRoot) { $RepositoryRoot = Split-Path $Root -Parent }
+if (-not $BinaryDirectory) { $BinaryDirectory = Join-Path $Root 'target/x86_64-pc-windows-msvc/release' }
 $Policy = Read-WindowsInstallerPolicy
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-Content -Raw -LiteralPath "$Msi.sha256").Split(' ')[0] -ine (Get-FileHash -LiteralPath $Msi).Hash) { throw 'MSI checksum mismatch' }
 $Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-msi-upgrade-' + [guid]::NewGuid().ToString('N'))
 $Install = Join-Path $Work "installed $([char]0x0442) files"
+$IcemRoot = Join-Path $Work 'iCem target'
+$Modules = Join-Path $IcemRoot 'Bin/Modules'
 $Marker = Join-Path $Install 'operator-not-msi-owned.ini'
 $MarkerText = 'operator-owned configuration must survive'
 [IO.Directory]::CreateDirectory($Work) | Out-Null
@@ -45,7 +50,7 @@ function Invoke-Msi([string[]] $Arguments, [string] $Label, [int] $ExpectedExit 
     $Log = Join-Path $Work "$Label.log"
     $Info = [Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32/msiexec.exe'))
     $Info.UseShellExecute = $false
-    foreach ($Argument in ($Arguments + @('/qn', '/norestart', '/l*v', $Log))) { $Info.ArgumentList.Add($Argument) }
+    foreach ($Argument in ($Arguments + @("MONITORROOT=$Install", "ICEMDIR=$IcemRoot", '/qn', '/norestart', '/l*v', $Log))) { $Info.ArgumentList.Add($Argument) }
     $Process = [Diagnostics.Process]::Start($Info)
     try {
         if (-not $Process.WaitForExit(180000)) { $Process.Kill($true); throw "MSI $Label exceeded 180 seconds; no retry." }
@@ -58,24 +63,40 @@ function Invoke-Msi([string[]] $Arguments, [string] $Label, [int] $ExpectedExit 
 function Assert-Installed([string] $Version, [string] $ProductCode) {
     $Products = @(Installed-Products)
     if ($Products.Count -ne 1 -or $Products[0].PSChildName -ne $ProductCode -or $Products[0].DisplayVersion -ne $Version) { throw 'MSI did not leave exactly one expected installed version' }
-    # This deliberately unowned file lives beside payload files. Move only the
-    # test-owned marker while checking the strict, otherwise unchanged manifest.
-    $Held = Join-Path $Work 'marker-held.ini'
-    $HasMarker = Test-Path -LiteralPath $Marker
-    if ($HasMarker) { Move-Item -LiteralPath $Marker -Destination $Held }
+    # Reconstruct the logical archive from the two actual installation mounts.
+    # The DLL must exist ONLY in iCem/Bin/Modules; provenance stays with runtime.
+    $View = Join-Path $Work ('verify-' + [guid]::NewGuid().ToString('N'))
+    [IO.Directory]::CreateDirectory($View) | Out-Null
     try {
-        $Manifest = Test-WindowsPayload $Install
+        foreach ($File in Get-ChildItem -LiteralPath $Install -Recurse -File) {
+            if ($File.FullName -ceq $Marker) { continue }
+            $Destination = Join-Path $View ([IO.Path]::GetRelativePath($Install, $File.FullName))
+            [IO.Directory]::CreateDirectory((Split-Path $Destination -Parent)) | Out-Null
+            Copy-Item -LiteralPath $File.FullName -Destination $Destination
+        }
+        if (@(Get-ChildItem -LiteralPath $Modules -File -Recurse).Count -ne 1) { throw 'AddIn mount contains missing/extra files' }
+        Copy-Item -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll') -Destination (Join-Path $View 'addin/Burservis.iCem.DataMonitor.dll')
+        $Manifest = Test-WindowsPayload $View
         if ($Manifest.artifact_version -ne $Version) { throw 'Installed payload version mismatch' }
-    } finally { if ($HasMarker) { Move-Item -LiteralPath $Held -Destination $Marker } }
+    } finally { Remove-Item -LiteralPath $View -Recurse -Force }
+
 }
 Push-Location $Root
 try {
     if (@(Installed-Products).Count) { throw 'A Rust development MSI is already installed; refusing to touch it.' }
+    $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+    $Shortcut = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'iCem Data Monitor.lnk'
+    if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Existing monitor shortcut/autostart found; refusing to touch them' }
     $Version = Read-MsiProperty $Msi 'ProductVersion'
     $Next = Get-NextWindowsMsiVersion $Version
     $FirstCode = Read-MsiProperty $Msi 'ProductCode'
     $ProductCodes.Add($FirstCode)
-    $NextArchive = New-WindowsArchive -RepositoryRoot (Split-Path $Root -Parent) -BinaryDirectory (Join-Path $Root 'target/x86_64-pc-windows-msvc/release') -OutputDirectory $Work -Version $Next -Commit ((& git -C $Root rev-parse HEAD).Trim()) -Compiler ((& rustc --version).Trim())
+    $Archive = [IO.Path]::ChangeExtension($Msi, '.zip')
+    if ((Get-Content -Raw -LiteralPath "$Archive.sha256").Split(' ')[0] -ine (Get-FileHash -LiteralPath $Archive).Hash) { throw 'Probe source archive hash mismatch' }
+    $Source = Join-Path $Work 'source'
+    [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $Source)
+    $SourceManifest = Test-WindowsPayload $Source
+    $NextArchive = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $BinaryDirectory -AddinDirectory (Join-Path $Source 'addin') -OutputDirectory $Work -Version $Next -Commit $SourceManifest.source_commit -Compiler $SourceManifest.compiler
     $NextMsi = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $NextArchive.archive -OutputDirectory $Work
     $NextCode = Read-MsiProperty $NextMsi.msi 'ProductCode'
     if ($NextCode -eq $FirstCode) { throw 'N+1 must have a new ProductCode' }
@@ -84,18 +105,25 @@ try {
     foreach ($Path in @($Msi, $NextMsi.msi)) {
         if ([guid](Read-MsiProperty $Path 'UpgradeCode') -ne $ExpectedUpgrade) { throw 'UpgradeCode changed between N and N+1' }
     }
-    Invoke-Msi @('/i', $Msi, "INSTALLFOLDER=$Install") 'install-N'
+    Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'install-N'
     Assert-Installed $Version $FirstCode
+    if ((Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Wrong native autostart command' }
+    $Wsh = New-Object -ComObject WScript.Shell
+    try {
+        $Link = $Wsh.CreateShortcut($Shortcut)
+        try { if ($Link.TargetPath -ine (Join-Path $Install 'icem-shell-dev.exe')) { throw 'Wrong desktop shortcut target' } }
+        finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Link) }
+    } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Wsh) }
     [IO.File]::WriteAllText($Marker, $MarkerText)
-    Invoke-Msi @('/i', $NextMsi.msi, "INSTALLFOLDER=$Install") 'upgrade-N-plus-one'
+    Invoke-Msi @('/i', $NextMsi.msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'upgrade-N-plus-one'
     Assert-Installed $Next $NextCode
     if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText) { throw 'Upgrade modified user data' }
-    Invoke-Msi @('/i', $Msi, "INSTALLFOLDER=$Install") 'blocked-downgrade' 1603
+    Invoke-Msi @('/i', $Msi, 'CREATEDESKTOPSHORTCUT=1', 'ADDAUTOSTART=1') 'blocked-downgrade' 1603
     Assert-Installed $Next $NextCode
     Invoke-Msi @('/x', $NextCode) 'uninstall'
-    if (@(Installed-Products).Count -or @(Get-ChildItem -LiteralPath $Install -Recurse -File).Count -ne 1 -or
-        (Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText) { throw 'Uninstall left payload/registration or deleted user data' }
-    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and unowned data preserved."
+    if (@(Installed-Products).Count -or (Test-Path -LiteralPath $Install) -or (Test-Path -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll'))) { throw 'Legacy full uninstall left runtime/AddIn/registration' }
+    if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Uninstall left shortcut/autostart' }
+    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and upgrade preserves unowned data; full uninstall follows legacy runtime cleanup."
 } finally {
     foreach ($Code in $ProductCodes) {
         if (@(Installed-Products | Where-Object { $_.PSChildName -eq $Code }).Count) { Invoke-Msi @('/x', $Code) ('cleanup-' + $Code.Trim('{}')) }

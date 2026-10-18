@@ -1,35 +1,33 @@
-iCem Data Monitor - Rust development package, Windows x64
+iCem Data Monitor - Rust development candidate, Windows x64
 
-Install the MSI (or extract the complete intermediate ZIP). Keep its files together.
-PowerShell 7 is required for the launch scripts. Rust/.NET SDK is not needed to run
-the Rust EXEs. Npcap and a configured COM/com0com port are external requirements
-only when the corresponding physical emulator channel is used.
+This MSI contains the Rust Host, Shell, independent emulator and the original
+.NET Framework 4.8 Burservis.iCem.DataMonitor AddIn DLL. It is not yet a proven
+production replacement. Keep the installed EXEs/assets/templates together.
 
-Launch from PowerShell 7 (paths containing spaces/Unicode are supported):
+Runtime: %ProgramData%\Halliburton\iCem\DataMonitoring
+AddIn: selected iCem folder\Bin\Modules\Burservis.iCem.DataMonitor.dll
+The Burservis wizard branding comes from the original legacy installer assets.
+The candidate does not automatically replace a registered legacy .NET MSI.
+
+PowerShell 7.4+ launchers (Host config must already exist):
   .\Start-Host.ps1 -StationConfig 'C:\path\to\existing\config.ini'
   .\Start-Shell.ps1 -WebPort 8090
   .\Start-Emulator.ps1
 
-Start Host first; Shell does not yet implement ensure-host. Use the actual web_port
-from the existing config for Start-Shell. Host never creates the producer Data.dat;
-the unchanged .NET48 AddIn in the original application owns that bus.
-Emulator is independent; its launch script uses a separate per-user development
-XML file. COM/LAN streams default OFF on a new config. Host config is mandatory and
-is never overwritten by packaging. No live config, Data.dat or AddIn DLL is bundled.
+Start Host first. Shell does not yet implement ensure-host. Use the station
+config's actual web_port. The original AddIn owns Data.dat in the iCem process.
+The emulator remains independent and fresh COM/LAN streams default OFF.
+No live config, Data.dat or proprietary SDK DLL is shipped.
 
-The native runtime EXEs retain their *-dev names. The preview/DFB/LAN trace tools
-are not desktop applications and are deliberately excluded. Web SPA is embedded
-in Host; it does not require WebView2.
+The optional desktop shortcut targets Shell. The optional autostart entry targets
+Host --autostart, never the emulator. Current Host startup needs existing config.
+Upgrade preserves runtime-created data. FULL UNINSTALL follows legacy cleanup:
+it deletes the runtime folder, including config/data/logs. Back up required data.
+Legacy ARP hiding is retained; remove with msiexec /x <MSI-or-ProductCode>.
 
-release-manifest.json records source commit, compiler, target, file sizes and SHA256.
-The adjacent .msi.sha256 file checks the downloaded installer. These are integrity
-checks, not Authenticode signatures. Binaries use a release profile with static CRT.
-The artifact version is a package label; Cargo package versions are not rewritten.
-
-This is a development MSI for the current migration, not a production replacement. Hardware timing, MMF/ACL, tray/Explorer, GPU/DPI/IME, visual
-parity, autostart and production install/upgrade acceptance remain separate gates.
-
-Windows MSI installs this development product separately from legacy .NET.
-A higher x.y.z version upgrades the earlier development MSI; downgrades are blocked.
-Uninstall through Windows Installed apps. User-created config/data is preserved.
-PowerShell 7.4+ is required for the supplied .ps1 launchers.
+Rust/.NET SDK is not needed to run Rust EXEs. The AddIn uses the .NET Framework
+runtime of the original iCem application. Npcap/COM drivers remain external.
+No .NET10/WinAppSDK/WebView2 runtime is bundled. Manifest hashes establish file
+integrity and source traceability, not Authenticode signing or functional parity.
+Hardware, MMF/ACL, Explorer/GPU/DPI/IME, visual and production cutover acceptance
+remain separate gates.

@@ -25,11 +25,25 @@ try {
     if ((Test-Path -LiteralPath $Msi) -or (Test-Path -LiteralPath "$Msi.sha256")) { throw "Release already exists: $Msi" }
     $Source = Join-Path $Work 'Package.wxs'
     $Count = Write-WindowsInstallerSource $Payload $Version $Source
+    $RepositoryRoot = Split-Path $Root -Parent
+    $PayloadSource = Write-WindowsInstallerPayload $Payload $RepositoryRoot $Work
+    $LegacyUi = New-WindowsInstallerAssets $RepositoryRoot $Work $Manifest
+    & (Join-Path $LegacyUi 'gen-ui-bmps.ps1')
+    & cscript //nologo (Join-Path $LegacyUi 'assets/CheckConflicts.harness.js') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'Adapted legacy conflict-gate harness failed' }
     Push-Location (Join-Path $Root 'installer')
     try {
         & dotnet tool restore --tool-manifest .config/dotnet-tools.json | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX tool restore failed.' }
-        & dotnet tool run wix -- build $Source -arch x64 -wx -intermediateFolder (Join-Path $Work 'obj') -o (Join-Path $Work $Name) | Out-Host
+        $WixVersion = (Get-Content -Raw .config/dotnet-tools.json | ConvertFrom-Json).tools.wix.version
+        $Extensions = @('WixToolset.Util.wixext', 'WixToolset.UI.wixext')
+        $ExtensionArgs = @()
+        foreach ($Extension in $Extensions) {
+            & dotnet tool run wix -- extension add -g "$Extension/$WixVersion" | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "Pinned WiX extension restore failed: $Extension" }
+            $ExtensionArgs += @('-ext', "$Extension/$WixVersion")
+        }
+        & dotnet tool run wix -- build $Source $PayloadSource -arch x64 -wx -dcl high @ExtensionArgs -define "AssetsDir=$(Join-Path $LegacyUi 'assets')" -intermediateFolder (Join-Path $Work 'obj') -o (Join-Path $Work $Name) | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'WiX MSI build/validation failed.' }
     } finally { Pop-Location }
     $Built = Join-Path $Work $Name

@@ -1,6 +1,7 @@
 #requires -Version 7.4
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'LegacyAddin.psm1')
 
 function Join-PayloadPath([string] $Root, [string] $Relative) {
     $Parts = $Relative -split '[\\/]'
@@ -25,7 +26,8 @@ function Assert-PeX64([string] $Path) {
 }
 function Read-WindowsPayloadPlan([string] $RepositoryRoot) {
     $Plan = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'rust/installer/windows-payload.json') | ConvertFrom-Json
-    if ($Plan.schema_version -ne 1 -or $Plan.target -ne 'x86_64-pc-windows-msvc' -or $Plan.binaries.Count -eq 0) {
+    if ($Plan.schema_version -ne 2 -or $Plan.target -ne 'x86_64-pc-windows-msvc' -or $Plan.addin_directory -cne 'addin' -or
+        (@($Plan.binaries.role | Sort-Object) -join ',') -cne 'emulator,host,shell') {
         throw 'Invalid Windows payload schema/target/binaries'
     }
     return $Plan
@@ -33,7 +35,7 @@ function Read-WindowsPayloadPlan([string] $RepositoryRoot) {
 function Test-WindowsPayload([string] $Directory) {
     $ManifestName = 'release-manifest.json'
     $Manifest = Get-Content -Raw -LiteralPath (Join-Path $Directory $ManifestName) | ConvertFrom-Json
-    if ($Manifest.schema_version -ne 1 -or $Manifest.target -ne 'x86_64-pc-windows-msvc' -or $Manifest.readiness -ne 'development') {
+    if ($Manifest.schema_version -ne 2 -or $Manifest.target -ne 'x86_64-pc-windows-msvc' -or $Manifest.readiness -ne 'development' -or $Manifest.addin_directory -cne 'addin') {
         throw 'Invalid release manifest'
     }
     $Expected = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -44,7 +46,7 @@ function Test-WindowsPayload([string] $Directory) {
         if ((Get-Item -LiteralPath $Path).Length -ne $Entry.bytes -or
             (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ine $Entry.sha256) { throw "Payload hash/size mismatch: $($Entry.path)" }
     }
-    $Actual = @(Get-ChildItem -LiteralPath $Directory -Recurse -File | Where-Object {
+    $Actual = @(Get-ChildItem -LiteralPath $Directory -Recurse -File -Force | Where-Object {
         [IO.Path]::GetRelativePath($Directory, $_.FullName) -cne $ManifestName
     })
     if ($Actual.Count -ne $Expected.Count) { throw 'Unexpected payload file count' }
@@ -56,6 +58,7 @@ function Test-WindowsPayload([string] $Directory) {
         if (-not $Expected.Contains($Binary.destination)) { throw "Unlisted executable: $($Binary.destination)" }
         Assert-PeX64 (Join-PayloadPath $Directory $Binary.destination)
     }
+    $null = Test-LegacyAddinBundle (Join-Path $Directory $Manifest.addin_directory)
     return $Manifest
 }
 function New-WindowsArchive {
@@ -63,12 +66,14 @@ function New-WindowsArchive {
     param(
         [Parameter(Mandatory)] [string] $RepositoryRoot,
         [Parameter(Mandatory)] [string] $BinaryDirectory,
+        [Parameter(Mandatory)] [string] $AddinDirectory,
         [Parameter(Mandatory)] [string] $OutputDirectory,
         [Parameter(Mandatory)] [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')] [string] $Version,
         [Parameter(Mandatory)] [ValidatePattern('^[0-9a-f]{40}$')] [string] $Commit,
         [Parameter(Mandatory)] [string] $Compiler
     )
     $Plan = Read-WindowsPayloadPlan $RepositoryRoot
+    $null = Test-LegacyAddinBundle $AddinDirectory $RepositoryRoot
     [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
     $OutputDirectory = (Resolve-Path -LiteralPath $OutputDirectory).Path
     $Name = "iCemDataMonitor-rust-dev-$Version-windows-x64.zip"
@@ -80,6 +85,9 @@ function New-WindowsArchive {
     [IO.Directory]::CreateDirectory($Stage) | Out-Null
     try {
         $Entries = @($Plan.files)
+        foreach ($Name in @('Burservis.iCem.DataMonitor.dll', 'addin-manifest.json')) {
+            $Entries += [pscustomobject]@{ source = (Join-Path $AddinDirectory $Name); destination = "$($Plan.addin_directory)/$Name"; binary = $true }
+        }
         foreach ($Directory in $Plan.directories) {
             $Source = Join-PayloadPath $RepositoryRoot $Directory.source
             $Files = @(Get-ChildItem -LiteralPath $Source -File -Filter $Directory.pattern | Sort-Object Name)
@@ -106,7 +114,8 @@ function New-WindowsArchive {
             [ordered]@{ path = [IO.Path]::GetRelativePath($Stage, $_.FullName).Replace('\', '/'); bytes = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
         })
         $Manifest = [ordered]@{
-            schema_version = 1; artifact_version = $Version; source_commit = $Commit; compiler = $Compiler
+            schema_version = 2; artifact_version = $Version; source_commit = $Commit; compiler = $Compiler
+            addin_directory = $Plan.addin_directory
             target = $Plan.target; profile = 'release'; crt = 'static'; readiness = 'development'
             binaries = $Plan.binaries; files = $Files
             note = 'File hashes exclude this manifest. Hardware/UI/MSI parity and Authenticode signing are separate acceptance gates.'

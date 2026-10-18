@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)]
     [ValidatePattern('^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$')]
     [string] $Version,
-    [string] $OutputDirectory
+    [string] $OutputDirectory,
+    [string] $AddinDirectory
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -13,11 +14,13 @@ $Root = Split-Path $PSScriptRoot -Parent
 $RepositoryRoot = Split-Path $Root -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
+Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force
 Assert-WindowsMsiVersion $Version
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $Root 'dist' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $Plan = Read-WindowsPayloadPlan $RepositoryRoot
 $SavedFlags = [Environment]::GetEnvironmentVariable('CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS')
+$AddinWork = $null
 Push-Location $Root
 try {
     $Commit = & git rev-parse HEAD
@@ -27,6 +30,12 @@ try {
     if ($env:RUSTFLAGS -or $env:CARGO_ENCODED_RUSTFLAGS -or $SavedFlags) {
         throw 'Release requires RUSTFLAGS, CARGO_ENCODED_RUSTFLAGS and target RUSTFLAGS to be unset; static CRT flags are owned by this script.'
     }
+    if (-not $AddinDirectory) {
+        $AddinWork = Join-Path ([IO.Path]::GetTempPath()) ('icem-release-addin-' + [guid]::NewGuid().ToString('N'))
+        & (Join-Path $PSScriptRoot 'Build-LegacyAddin.ps1') -OutputDirectory $AddinWork
+        $AddinDirectory = $AddinWork
+    }
+    $null = Test-LegacyAddinBundle $AddinDirectory $RepositoryRoot
     & rustup show
     if ($LASTEXITCODE -ne 0) { throw 'Pinned toolchain installation failed.' }
     & rustup target add $Plan.target
@@ -45,12 +54,13 @@ try {
     & cargo @Build
     if ($LASTEXITCODE -ne 0) { throw 'Windows release compilation failed.' }
     $Built = Join-Path $Root "target/$($Plan.target)/release"
-    $Result = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $Built -OutputDirectory $OutputDirectory -Version $Version -Commit $Commit.Trim() -Compiler $Compiler
+    $Result = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $Built -AddinDirectory $AddinDirectory -OutputDirectory $OutputDirectory -Version $Version -Commit $Commit.Trim() -Compiler $Compiler
     Write-Host "Windows x64 archive: $($Result.archive)"
     Write-Host "SHA256: $($Result.sha256)"
     $Installer = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $Result.archive -OutputDirectory $OutputDirectory
     return [pscustomobject]@{ archive = $Result.archive; msi = $Installer.msi; checksum = $Installer.checksum; version = $Version }
 } finally {
     [Environment]::SetEnvironmentVariable('CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS', $SavedFlags)
+    if ($AddinWork -and (Test-Path -LiteralPath $AddinWork)) { Remove-Item -LiteralPath $AddinWork -Recurse -Force }
     Pop-Location
 }

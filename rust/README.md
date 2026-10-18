@@ -99,10 +99,15 @@ Windows x64, PowerShell 7.4+ and MSVC Build Tools:
 pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
-Run that command from the repository root. It creates a Windows MSI with Host, Shell, independent emulator and required
-resources plus a SHA256 file in `rust/dist/`. The verified ZIP is a build intermediate.
+Run that command from the repository root. It creates a Windows MSI with Host, Shell, independent emulator, the mandatory original
+net48 AddIn and original Burservis installer branding, plus a SHA256 file in `rust/dist/`. The verified ZIP is a build intermediate.
 [Prerequisites, contents, launch and CI artifact](installer/README.md).
 Both Rust CI and the release workflow target Windows only. Release packaging keeps
 the current `*-dev.exe` names. Manual Actions runs can choose the next `rust-vX.Y.Z`
 version and create a draft prerelease after install/upgrade/uninstall checks.
 Production cutover and hardware/UI acceptance remain open.
+
+The complete installer requires the real iCem SDK or a verified SDK-built AddIn
+bundle. Missing DLL is fatal. Legacy WiX/UI/harvester logic is reused; existing
+.NET MSI cutover remains blocked. See installer/README.md for SDK runner/artifacts
+and the distinction between synthetic installer contracts and real release checks.

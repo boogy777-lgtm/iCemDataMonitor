@@ -6,6 +6,14 @@ on:
         description: 'next = next Rust patch version, or explicit x.y.z'
         required: true
         default: 'next'
+      sdk_runner:
+        description: 'Use self-hosted Windows x64 runner labelled icem-sdk'
+        type: boolean
+        default: false
+      addin_run_id:
+        description: 'Optional rust-addin-build run ID containing net48-addin artifact'
+        type: string
+        default: ''
       publish:
         description: 'Create a draft prerelease with the verified MSI'
         type: boolean
@@ -15,14 +23,41 @@ on:
     paths:
       - 'rust/installer/**'
       - 'rust/tools/Build-Windows*.ps1'
+      - 'rust/tools/Build-LegacyAddin.ps1'
+      - 'rust/tools/WindowsPackagingFixture.psm1'
       - 'rust/tools/Test-Windows*.ps1'
       - '.github/workflows/rust-windows-release.yml'
+      - '.github/workflows/rust-addin-build.yml'
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: rust-windows-release-${{ github.event_name == 'workflow_dispatch' && 'manual' || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 jobs:
+  installer-contracts:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: rust
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Full payload, AddIn provenance and legacy projection contracts
+        run: ./tools/Test-WindowsPackaging.ps1
+      - name: Build and install fixture MSI using real legacy WiX and branding
+        run: ./tools/Test-WindowsInstaller.ps1
+      - name: Upload installer contract logs (no fixture MSI publication)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-contract-evidence
+          path: rust/artifacts/msi/*.log
+          if-no-files-found: ignore
   resolve-version:
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
@@ -47,9 +82,9 @@ jobs:
           $Version = Select-WindowsReleaseVersion $env:REQUESTED_VERSION $Tags
           Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$Version"
   windows-x64:
-    needs: resolve-version
-    if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.resolve-version.result == 'success') }}
-    runs-on: windows-latest
+    needs: [resolve-version, installer-contracts]
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && needs.resolve-version.result == 'success' && needs.installer-contracts.result == 'success' }}
+    runs-on: ${{ fromJSON(inputs.sdk_runner && '["self-hosted","Windows","X64","icem-sdk"]' || '["windows-latest"]') }}
     timeout-minutes: 90
     outputs:
       version: ${{ env.ICEM_RELEASE_VERSION }}
@@ -64,8 +99,37 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - name: Build verified Windows x64 release MSI
-        run: ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION
+      - name: Validate supplied AddIn artifact run ID
+        if: inputs.addin_run_id != ''
+        env:
+          ADDIN_RUN_ID: ${{ inputs.addin_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:ADDIN_RUN_ID -notmatch '^[1-9][0-9]*$') { throw 'AddIn run ID must be numeric' }
+          $Json = & gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:ADDIN_RUN_ID"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot verify AddIn build run' }
+          $Run = $Json | ConvertFrom-Json
+          if ($Run.path -ne '.github/workflows/rust-addin-build.yml' -or $Run.event -ne 'workflow_dispatch' -or $Run.status -ne 'completed' -or $Run.conclusion -ne 'success' -or $Run.head_repository.full_name -ne $env:GITHUB_REPOSITORY) { throw 'AddIn artifact must originate from a successful manual SDK workflow in this repository' }
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "ICEM_ADDIN_SOURCE_COMMIT=$($Run.head_sha)"
+      - uses: actions/download-artifact@v4
+        if: inputs.addin_run_id != ''
+        with:
+          name: net48-addin
+          run-id: ${{ inputs.addin_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/icem-addin
+      - name: Build verified Windows x64 release MSI (mandatory real AddIn)
+        env:
+          ADDIN_RUN_ID: ${{ inputs.addin_run_id }}
+        run: |
+          if ($env:ADDIN_RUN_ID) {
+            Import-Module ./installer/LegacyAddin.psm1 -Force
+            $Bundle = Test-LegacyAddinBundle (Join-Path $env:RUNNER_TEMP 'icem-addin') (Split-Path $PWD -Parent)
+            if ($Bundle.source_commit -cne $env:ICEM_ADDIN_SOURCE_COMMIT) { throw 'AddIn manifest commit differs from SDK workflow run' }
+            ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION -AddinDirectory (Join-Path $env:RUNNER_TEMP 'icem-addin')
+          } else {
+            ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION
+          }
       - name: Smoke test extracted release outside checkout
         run: |
           $Archive = Join-Path $PWD "dist/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
@@ -125,6 +189,6 @@ jobs:
           $Msi = Join-Path $PWD "release/$Name"
           $Checksum = "$Msi.sha256"
           if ((Get-Content -Raw -LiteralPath $Checksum).Split(' ')[0] -ine (Get-FileHash -LiteralPath $Msi).Hash) { throw 'Downloaded MSI checksum mismatch' }
-          $Notes = "Windows x64 Rust development installer. Source: $env:GITHUB_SHA. Installation, N to N+1 upgrade, downgrade rejection, uninstall, executable smoke and browser contracts passed in Actions run $env:GITHUB_RUN_ID. Hardware/UI equivalence and production cutover remain open. Unsigned MSI; no AddIn replacement."
+          $Notes = "Windows x64 Rust development installer. Source: $env:GITHUB_SHA. Installation, N to N+1 upgrade, downgrade rejection, uninstall, executable smoke and browser contracts passed in Actions run $env:GITHUB_RUN_ID. Hardware/UI equivalence and production cutover remain open. Unsigned development candidate with verified net48 AddIn. Legacy .NET MSI cutover is blocked."
           & gh release create "rust-v$env:RELEASE_VERSION" $Msi $Checksum --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "iCem Data Monitor Rust $env:RELEASE_VERSION (Windows x64)" --notes $Notes
           if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed; no mutation retry or overwrite.' }

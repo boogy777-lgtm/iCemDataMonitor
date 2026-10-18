@@ -155,3 +155,21 @@ development MSI, with independent upgrade identity and path. `rust-vX.Y.Z` tags/
 release drafts define the N+1 patch sequence; the Windows workflow includes actual
 install/upgrade/downgrade/uninstall checks before uploading an MSI or creating an
 optional draft prerelease. Production MSI identity/AddIn cutover remains unaccepted.
+
+D31 / observed Windows release blocker: on head 5d464d10f711483dbec5ab6267dc806216cbdba6,
+full Windows Rust CI run 39069337634 passed, while release run 39069337765 failed
+in unchanged icem-web/tests/windows_pipe.rs (rebind after both owners closed,
+PermissionDenied/os error 5), before release/MSI build. IOCP/runtime shutdown
+ownership is a hypothesis, not a proven cause. No test was bypassed or mutation
+retried. This remains a Rust lifecycle issue, unrelated to legacy CI priority.
+
+M7 packaging correction: schema-2 payload now requires the unchanged net48 AddIn
+with source/SDK/DLL provenance and managed x64/net48 metadata checks. Complete
+releases cannot skip a missing SDK/DLL. Rust authoring projects the original
+installer/Product.wxs and reuses its harvester, Burservis logo generator, gate and
+harness without modifying the legacy sources. Runtime and AddIn use the original
+ProgramData / iCem Bin/Modules mounts. Rust option GUIDs/UpgradeCode remain
+separate; a registered legacy MSI blocks candidate installation. Full uninstall
+now follows legacy runtime wipe (upgrade preserves data), replacing the earlier
+development package's preserve-on-uninstall policy. Windows fixture-MSI contracts
+do not prove SDK-backed DLL build or application behavior. See installer/README.md.

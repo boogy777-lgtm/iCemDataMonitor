@@ -31,65 +31,106 @@ function Select-WindowsReleaseVersion([string] $Requested = 'next', [string[]] $
 function Read-WindowsInstallerPolicy {
     $Policy = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'windows-installer.json') | ConvertFrom-Json
     if ($Policy.schema_version -ne 1 -or [guid]$Policy.upgrade_code -eq [guid]::Empty -or
-        $Policy.upgrade_code -eq '34A0FD7C-EBD5-4E28-BA96-AE6575896F32' -or
-        $Policy.directory_name -ne 'iCemDataMonitor Rust Development') { throw 'Invalid/separation-violating Rust MSI policy' }
+        [guid]$Policy.upgrade_code -eq [guid]'34A0FD7C-EBD5-4E28-BA96-AE6575896F32' -or
+        $Policy.product_name -notlike '*Rust Development') { throw 'Invalid/separation-violating Rust MSI policy' }
     return $Policy
 }
-function Write-WindowsInstallerSource([string] $PayloadDirectory, [string] $Version, [string] $OutputFile) {
+function Write-WindowsInstallerSource([string] $PayloadDirectory, [string] $Version, [string] $OutputFile,
+    [string] $RepositoryRoot = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent)) {
     Assert-WindowsMsiVersion $Version
-    $PayloadDirectory = (Resolve-Path -LiteralPath $PayloadDirectory).Path
     $Manifest = Test-WindowsPayload $PayloadDirectory
     if ($Manifest.artifact_version -cne $Version) { throw 'MSI version must match the verified payload version.' }
     $Policy = Read-WindowsInstallerPolicy
-    $Xml = [xml]::new()
-    $Namespace = 'http://wixtoolset.org/schemas/v4/wxs'
-    function Add-WixElement($Parent, [string] $Name, [hashtable] $Attributes = @{}) {
-        $Element = $Xml.CreateElement($Name, $Namespace)
-        foreach ($Key in $Attributes.Keys) { $Element.SetAttribute($Key, [string]$Attributes[$Key]) }
-        $null = $Parent.AppendChild($Element)
-        return $Element
+    $Xml = [xml](Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'installer/Product.wxs'))
+    $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable)
+    $Ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
+    $Package = $Xml.SelectSingleNode('/w:Wix/w:Package', $Ns)
+    $Package.SetAttribute('Name', $Policy.product_name)
+    $Package.SetAttribute('Version', $Version)
+    $Package.SetAttribute('UpgradeCode', $Policy.upgrade_code)
+    $Package.SelectSingleNode('w:SummaryInformation', $Ns).SetAttribute('Description', 'Rust development candidate with the original net48 AddIn; production cutover is not approved.')
+    $Upgrade = $Package.SelectSingleNode('w:MajorUpgrade', $Ns)
+    $Upgrade.RemoveAttribute('AllowDowngrades')
+    $Upgrade.SetAttribute('Schedule', 'afterInstallInitialize')
+    $Upgrade.SetAttribute('DowngradeErrorMessage', 'A newer Rust candidate is already installed.')
+    # Detect, never remove a legacy product. Production cutover is a separate gate.
+    $Legacy = $Xml.CreateElement('Upgrade', $Ns.LookupNamespace('w'))
+    $Legacy.SetAttribute('Id', '34A0FD7C-EBD5-4E28-BA96-AE6575896F32')
+    $VersionRow = $Xml.CreateElement('UpgradeVersion', $Ns.LookupNamespace('w'))
+    foreach ($Pair in @{ Minimum='0.0.0'; IncludeMinimum='yes'; OnlyDetect='yes'; Property='LEGACY_MONITOR_PRESENT' }.GetEnumerator()) { $VersionRow.SetAttribute($Pair.Key, $Pair.Value) }
+    $null = $Legacy.AppendChild($VersionRow); $null = $Package.AppendChild($Legacy)
+    $Launch = $Xml.CreateElement('Launch', $Ns.LookupNamespace('w'))
+    $Launch.SetAttribute('Condition', 'NOT LEGACY_MONITOR_PRESENT')
+    $Launch.SetAttribute('Message', 'Legacy .NET MSI is installed. Automatic production cutover to the Rust candidate is not supported.')
+    $null = $Package.AppendChild($Launch)
+    # CLI ICEMDIR must remain authoritative on disposable test VMs/custom installs.
+    # The separate ICEMDIR_FOUND search still discovers the canonical iCem folder.
+    foreach ($Search in @($Xml.SelectNodes('//w:Property[@Id="ICEMDIR"]/w:DirectorySearch', $Ns))) { $null = $Search.ParentNode.RemoveChild($Search) }
+    $WipePath = $Xml.SelectSingleNode('//w:SetProperty[@Id="WipeMonitorRoot"]', $Ns)
+    $WipePath.SetAttribute('Value', '[MONITORROOT]')
+    $RoleMap = @{
+        'iCemDataMonitor.Host.exe' = 'host'
+        'iCemDataMonitor.WinUI.exe' = 'shell'
+        'iCemEmulator.exe' = 'emulator'
     }
-    function Path-Id([string] $Prefix, [string] $Path) {
-        $Hash = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Path.ToLowerInvariant()))
-        return $Prefix + [Convert]::ToHexString($Hash).Substring(0, 32)
-    }
-    $Wix = Add-WixElement $Xml 'Wix'
-    $Package = Add-WixElement $Wix 'Package' @{
-        Name = $Policy.product_name; Manufacturer = $Policy.manufacturer; Version = $Version
-        UpgradeCode = $Policy.upgrade_code; ProductCode = '*'; Scope = 'perMachine'
-        Compressed = 'yes'; InstallerVersion = '500'
-    }
-    $null = Add-WixElement $Package 'MajorUpgrade' @{
-        DowngradeErrorMessage = 'A newer Rust development version is already installed.'
-        Schedule = 'afterInstallInitialize'
-    }
-    $null = Add-WixElement $Package 'MediaTemplate' @{ EmbedCab = 'yes' }
-    $ProgramFiles = Add-WixElement $Package 'StandardDirectory' @{ Id = 'ProgramFiles64Folder' }
-    $Vendor = Add-WixElement $ProgramFiles 'Directory' @{ Id = 'RustVendor'; Name = $Policy.manufacturer }
-    $Install = Add-WixElement $Vendor 'Directory' @{ Id = 'INSTALLFOLDER'; Name = $Policy.directory_name }
-    $Directories = @{ '' = $Install }
-    $Feature = Add-WixElement $Package 'Feature' @{ Id = 'Runtime'; Title = $Policy.product_name; Level = '1' }
-    $Files = @($Manifest.files.path) + @('release-manifest.json')
-    foreach ($Relative in ($Files | Sort-Object)) {
-        $Parent = $Install
-        $Prefix = ''
-        $Parts = $Relative.Split('/')
-        for ($Index = 0; $Index -lt $Parts.Length - 1; $Index++) {
-            $Prefix = if ($Prefix) { "$Prefix/$($Parts[$Index])" } else { $Parts[$Index] }
-            if (-not $Directories.ContainsKey($Prefix)) {
-                $Directories[$Prefix] = Add-WixElement $Parent 'Directory' @{ Id = (Path-Id 'd' $Prefix); Name = $Parts[$Index] }
-            }
-            $Parent = $Directories[$Prefix]
+    foreach ($Role in $RoleMap.GetEnumerator()) {
+        $Binary = @($Manifest.binaries | Where-Object role -CEQ $Role.Value)
+        if ($Binary.Count -ne 1) { throw "Missing/duplicate runtime role $($Role.Value)" }
+        foreach ($Attribute in @($Xml.SelectNodes('//@*'))) {
+            if ($Attribute.Value.Contains($Role.Key)) { $Attribute.Value = $Attribute.Value.Replace($Role.Key, $Binary[0].destination) }
         }
-        $ComponentId = Path-Id 'c' $Relative
-        $Component = Add-WixElement $Parent 'Component' @{ Id = $ComponentId; Guid = '*'; Bitness = 'always64' }
-        $null = Add-WixElement $Component 'File' @{
-            Id = (Path-Id 'f' $Relative); Source = (Join-Path $PayloadDirectory $Relative)
-            Name = $Parts[-1]; KeyPath = 'yes'
-        }
-        $null = Add-WixElement $Feature 'ComponentRef' @{ Id = $ComponentId }
+    }
+    # Distinct ownership from the corresponding legacy option components.
+    foreach ($Component in $Xml.SelectNodes('//w:Component[@Guid]', $Ns)) {
+        $Hash = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes("$($Policy.upgrade_code):$($Component.Id)"))
+        $Component.SetAttribute('Guid', [guid]::new([byte[]]$Hash[0..15]).ToString('B'))
     }
     $Xml.Save($OutputFile)
-    return $Files.Count
+    return @($Manifest.files).Count + 1
 }
-Export-ModuleMember -Function Assert-WindowsMsiVersion, Get-NextWindowsMsiVersion, Select-WindowsReleaseVersion, Read-WindowsInstallerPolicy, Write-WindowsInstallerSource
+function Write-WindowsInstallerPayload([string] $PayloadDirectory, [string] $RepositoryRoot, [string] $WorkDirectory) {
+    if (-not $IsWindows) { throw 'The unchanged legacy payload harvester requires Windows paths.' }
+    $Manifest = Test-WindowsPayload $PayloadDirectory
+    $Stage = Join-Path $WorkDirectory 'stage'
+    foreach ($Relative in (@($Manifest.files.path) + @('release-manifest.json'))) {
+        $Target = if ($Relative -ceq 'addin/Burservis.iCem.DataMonitor.dll') { Join-Path $Stage $Relative }
+                  else { Join-Path $Stage "runtime/$Relative" }
+        [IO.Directory]::CreateDirectory((Split-Path $Target -Parent)) | Out-Null
+        Copy-Item -LiteralPath (Join-Path $PayloadDirectory $Relative) -Destination $Target
+    }
+    $Wxs = Join-Path $WorkDirectory 'payload.wxs'
+    & (Join-Path $RepositoryRoot 'installer/gen-payload.ps1') -StageRoot $Stage -OutputPath $Wxs -RootFolders @('runtime') -EmulatorFolder '' | Out-Host
+    $Xml = [xml](Get-Content -Raw -LiteralPath $Wxs)
+    $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable); $Ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
+    $Files = @($Xml.SelectNodes('//w:File', $Ns))
+    $Sources = @($Files | ForEach-Object { (Resolve-Path -LiteralPath $_.Source).Path } | Sort-Object -Unique)
+    $Expected = @(Get-ChildItem -LiteralPath $Stage -Recurse -File)
+    if ($Files.Count -ne $Manifest.files.Count + 1 -or $Sources.Count -ne $Expected.Count -or
+        $Xml.SelectNodes('//w:ComponentGroup[@Id="Payload.Addin"]/w:Component/w:File', $Ns).Count -ne 1) { throw 'Legacy harvester omitted/duplicated payload files or AddIn mount' }
+    foreach ($File in $Expected) { if ($Sources -cnotcontains $File.FullName) { throw "Unharvested file: $($File.FullName)" } }
+    return $Wxs
+}
+function New-WindowsInstallerAssets([string] $RepositoryRoot, [string] $WorkDirectory, $Manifest) {
+    $Legacy = Join-Path $RepositoryRoot 'installer'
+    $Adapter = Join-Path $WorkDirectory 'legacy-ui'
+    $Assets = Join-Path $Adapter 'assets'
+    [IO.Directory]::CreateDirectory($Assets) | Out-Null
+    foreach ($Name in @('Burservis_logo_cyr_red.png', 'app-icon.ico', 'CheckConflicts.js', 'CheckConflicts.harness.js')) {
+        Copy-Item -LiteralPath (Join-Path $Legacy "assets/$Name") -Destination (Join-Path $Assets $Name)
+    }
+    Copy-Item -LiteralPath (Join-Path $Legacy 'gen-ui-bmps.ps1') -Destination $Adapter
+    # Rewrite only image-name adapter data, including the original harness cases.
+    $Names = @{ 'icemdatamonitor.host.exe'='host'; 'icemdatamonitor.winui.exe'='shell'; 'icememulator.exe'='emulator' }
+    foreach ($File in @('CheckConflicts.js', 'CheckConflicts.harness.js')) {
+        $Path = Join-Path $Assets $File
+        $Text = Get-Content -Raw -LiteralPath $Path
+        foreach ($Name in $Names.GetEnumerator()) {
+            $Binary = @($Manifest.binaries | Where-Object role -CEQ $Name.Value)
+            if ($Binary.Count -ne 1) { throw 'Incomplete conflict process mapping' }
+            $Text = [regex]::Replace($Text, [regex]::Escape($Name.Key), $Binary[0].destination, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        }
+        [IO.File]::WriteAllText($Path, $Text)
+    }
+    return $Adapter
+}
+Export-ModuleMember -Function Assert-WindowsMsiVersion, Get-NextWindowsMsiVersion, Select-WindowsReleaseVersion, Read-WindowsInstallerPolicy, Write-WindowsInstallerSource, Write-WindowsInstallerPayload, New-WindowsInstallerAssets
