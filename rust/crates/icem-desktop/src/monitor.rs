@@ -1,19 +1,20 @@
 //! Native GPUI monitor. Host owns telemetry, history and station preferences.
 #[path = "dashboard_view.rs"]
 mod dashboard_view;
-use crate::{Bridge, Model, UiPort, theme};
+use crate::{Model, host, theme};
 use gpui::{
     App, Application, Bounds, Context, Window, WindowBounds, WindowOptions, div, prelude::*, px,
     rgba, size,
 };
-use serde_json::{Value, json};
+use icem_web::shell::{Layer, LogCommand, Operation, Request, Selection};
+use serde_json::Value;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
 struct Monitor {
     model: Model,
-    bridge: Bridge,
+    bridge: host::Bridge,
     panel: bool,
     focus: gpui::FocusHandle,
     selection_path: Option<std::path::PathBuf>,
@@ -39,18 +40,55 @@ impl Monitor {
                 .unwrap_or(0x808080ff),
         )
     }
-    fn send(&mut self, command: Value) {
-        if !self.model.can_submit_log(&command) {
-            return;
+    fn send(&mut self, command: Request) {
+        let view = match &command {
+            Request::Logs(_) => Some(&self.model.host_logs),
+            Request::LocalLogs(_) => Some(&self.model.local_logs),
+            _ => None,
+        };
+        if let Some(view) = view {
+            let get = matches!(
+                command,
+                Request::Logs(LogCommand::Get) | Request::LocalLogs(LogCommand::Get)
+            );
+            if if get {
+                view.pending
+            } else {
+                !view.actionable()
+            } {
+                return;
+            }
         }
-        let cmd = command["cmd"].as_str().unwrap_or("").to_owned();
+        let operation = command.operation();
         match self.bridge.send(command) {
-            Ok(()) => match cmd.as_str() {
-                "logs" => self.model.host_logs.pending = true,
-                "local_logs" => self.model.local_logs.pending = true,
+            Ok(()) => match operation {
+                Operation::Logs => self.model.host_logs.pending = true,
+                Operation::LocalLogs => self.model.local_logs.pending = true,
                 _ => {}
             },
             Err(error) => self.model.note = format!("⚠ {error}"),
+        }
+    }
+    // Existing logging renderer adapter; typed owner API is the next increment.
+    fn send_log(&mut self, value: Value) {
+        let result = (|| {
+            let action = match value["action"].as_str() {
+                Some("get") => LogCommand::Get,
+                Some("set") => {
+                    LogCommand::SetEnabled(value["enabled"].as_bool().ok_or("missing enabled")?)
+                }
+                Some("clear") => LogCommand::Clear,
+                _ => return Err("invalid log command"),
+            };
+            match value["cmd"].as_str() {
+                Some("logs") => Ok(Request::Logs(action)),
+                Some("local_logs") => Ok(Request::LocalLogs(action)),
+                _ => Err("invalid log owner"),
+            }
+        })();
+        match result {
+            Ok(command) => self.send(command),
+            Err(error) => self.model.note = error.into(),
         }
     }
     fn toggle(
@@ -58,7 +96,7 @@ impl Monitor {
         id: &'static str,
         label: &str,
         on: bool,
-        command: Value,
+        command: Request,
         enabled: bool,
         cx: &Context<Self>,
     ) -> impl IntoElement {
@@ -94,7 +132,7 @@ impl Monitor {
 enum MonitorAction {
     Page(bool),
     DashboardStatus,
-    Command(Value),
+    Command(Request),
     Select(u16),
     Clear,
     Collapse(String),
@@ -148,7 +186,10 @@ impl Monitor {
         if self.model.dashboard.pending {
             return;
         }
-        match self.bridge.send(self.model.dashboard.request()) {
+        match Selection::new(self.model.dashboard.selected.iter().copied().collect())
+            .map_err(str::to_owned)
+            .and_then(|selected| self.bridge.send(Request::Dashboard(selected)))
+        {
             Ok(()) => self.model.dashboard.pending = true,
             Err(error) => self.model.dashboard.error = Some(error),
         }
@@ -197,7 +238,7 @@ impl Monitor {
 }
 impl Render for Monitor {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let status = &self.model.snapshot;
+        let status = self.model.host.as_ref();
         let mut facts = div()
             .flex()
             .flex_col()
@@ -207,73 +248,81 @@ impl Render for Monitor {
             .bg(self.color("MacSurfaceColor"))
             .child(format!(
                 "Шина: {} · AddIn: {} · heartbeat: {}",
-                if status["busOpen"] == true {
+                if status.is_some_and(|s| s.bus_open) {
                     "открыта"
                 } else {
                     "нет данных"
                 },
-                if status["addinAlive"] == true {
+                if status.is_some_and(|s| s.addin_alive) {
                     "активен"
                 } else {
                     "не активен"
                 },
-                crate::text(&status["heartbeat"])
+                status
+                    .map(|s| s.heartbeat.to_string())
+                    .unwrap_or_else(|| "—".into())
             ));
         for (index, label) in ["COM", "LAN", "RAW"].iter().enumerate() {
-            let zone = &status["zones"][index];
+            let zone = status.map(|s| &s.zones[index]);
             facts = facts.child(format!(
                 "{label}: {} · возраст {} ms",
-                if zone["active"] == true {
+                if zone.is_some_and(|z| z.active) {
                     "активна"
                 } else {
                     "нет свежих данных"
                 },
-                crate::text(&zone["ageMs"])
+                zone.map(|z| z.age_ms.to_string())
+                    .unwrap_or_else(|| "—".into())
             ));
         }
-        let layers = &status["layers"];
+        let layers = status.map(|s| &s.layers);
         facts = facts
             .child(self.toggle(
                 "ModbusSwitch",
                 "Modbus TCP",
-                layers["modbus"] == true,
-                json!({"cmd":"layer","layer":1}),
+                layers.is_some_and(|s| s.modbus_bound),
+                Request::Layer(Layer::Modbus),
                 true,
                 cx,
             ))
             .child(self.toggle(
                 "SnifferSwitch",
                 "LAN sniffer",
-                layers["sniffer"] == true,
-                json!({"cmd":"layer","layer":3}),
+                layers.is_some_and(|s| s.sniffer),
+                Request::Layer(Layer::LanSniffer),
                 self.model.can_toggle_sniffer(),
                 cx,
             ))
-            .child(format!("OPC DA: {}", crate::text(&layers["opcDa"])))
+            .child(format!(
+                "OPC DA: {}",
+                layers
+                    .map(|s| s.opc_da.to_string())
+                    .unwrap_or_else(|| "—".into())
+            ))
             .child(self.toggle(
                 "ConsoleSwitch",
                 "Консоль",
-                status["consoleVisible"] == true,
-                json!({"cmd":"console","value":status["consoleVisible"]!=true}),
+                status.is_some_and(|s| s.console_visible),
+                Request::Console(!status.is_some_and(|s| s.console_visible)),
                 true,
                 cx,
             ))
             .child(self.toggle(
                 "AutostartSwitch",
                 "Автозагрузка",
-                status["autostartEnabled"] == true,
-                json!({"cmd":"autostart","value":status["autostartEnabled"]!=true}),
+                status.is_some_and(|s| s.autostart_enabled),
+                Request::Autostart(!status.is_some_and(|s| s.autostart_enabled)),
                 true,
                 cx,
             ))
-            .child(layers["lastError"].as_str().unwrap_or("").to_owned())
+            .child(layers.map(|s| s.last_error.clone()).unwrap_or_default())
             .child(crate::logs::controls(
                 &self.model.host_logs,
                 "HostLogs",
                 false,
                 "Логи Host",
                 self.model.light,
-                Self::send,
+                Self::send_log,
                 cx,
             ))
             .child(crate::logs::controls(
@@ -282,7 +331,7 @@ impl Render for Monitor {
                 true,
                 "Логи оболочки",
                 self.model.light,
-                Self::send,
+                Self::send_log,
                 cx,
             ));
         let mut root = div()
@@ -364,9 +413,7 @@ impl Render for Monitor {
                                 } else {
                                     "Светлая тема"
                                 },
-                                MonitorAction::Command(
-                                    json!({"cmd":"theme","value":!self.model.light}),
-                                ),
+                                MonitorAction::Command(Request::Theme(!self.model.light)),
                                 self.model.connected,
                                 cx,
                             )),
@@ -418,7 +465,7 @@ impl Render for Monitor {
         root
     }
 }
-pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
+pub fn run_monitor(port: Arc<dyn host::Port>) -> std::io::Result<()> {
     let singleton =
         icem_windows_native::NamedMutex::open_or_create(icem_platform_windows::SHELL_MUTEX)
             .map_err(std::io::Error::other)?;
@@ -437,10 +484,7 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
             .map_err(std::io::Error::other)?;
     let theme = icem_windows_native::OwnedEvent::create_reset(icem_platform_windows::THEME_CHANGED)
         .map_err(std::io::Error::other)?;
-    let (bridge, completion) = Bridge::start(Arc::new(crate::logs::LoggedPort {
-        inner: port,
-        logs: Arc::new(icem_logging::SharedLogs::new(icem_logging::Owner::Shell)),
-    }))?;
+    let (bridge, completion) = host::start(port)?;
     let selection_path = std::env::var_os("LOCALAPPDATA")
         .map(std::path::PathBuf::from)
         .map(|p| {
@@ -514,19 +558,19 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                             v.navigation.show();
                             window.activate_window();
                         }
-                        while let Ok(reply) = v.bridge.receiver.try_recv() {
-                            match reply.command.as_str() {
-                                "status" => {
+                        while let Ok(reply) = v.bridge.try_recv() {
+                            match reply.operation {
+                                Operation::Status => {
                                     v.status_pending = false;
                                 }
-                                "navigate" => {
+                                Operation::Navigate => {
                                     v.navigation.complete();
                                 }
-                                "prefs" => v.prefs_pending = false,
-                                "boot" => v.boot_pending = false,
+                                Operation::Prefs => v.prefs_pending = false,
+                                Operation::Boot => v.boot_pending = false,
                                 _ => {}
                             }
-                            v.model.apply(&reply.command, reply.result);
+                            v.model.apply_host(reply.operation, reply.result);
                             if let Some(panel) = v.model.navigation.take() {
                                 v.panel = panel;
                                 if panel {
@@ -536,32 +580,33 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                         }
                         if Instant::now() >= due {
                             if !v.model.local_logs.pending {
-                                v.send(json!({"cmd":"local_logs","action":"get"}));
+                                v.send(Request::LocalLogs(LogCommand::Get));
                             }
                             if v.model.connected && !v.model.host_logs.pending {
-                                v.send(json!({"cmd":"logs","action":"get"}));
+                                v.send(Request::Logs(LogCommand::Get));
                             }
-                            if let Err(error) = v.navigation.submit(v.model.connected, || {
-                                v.bridge.send(json!({"cmd":"navigate"}))
-                            }) {
+                            if let Err(error) = v
+                                .navigation
+                                .submit(v.model.connected, || v.bridge.send(Request::Navigate))
+                            {
                                 v.model.note = format!("Navigation: {error}");
                             }
-                            if !v.status_pending && v.bridge.send(json!({"cmd":"status"})).is_ok() {
+                            if !v.status_pending && v.bridge.send(Request::Status).is_ok() {
                                 v.status_pending = true;
                             }
-                            if !v.prefs_pending && v.bridge.send(json!({"cmd":"prefs"})).is_ok() {
+                            if !v.prefs_pending && v.bridge.send(Request::Prefs).is_ok() {
                                 v.prefs_pending = true;
                             }
                             if v.panel
                                 && v.metrics_page
                                 && !v.model.dashboard.metrics_pending
-                                && v.bridge.send(json!({"cmd":"metrics"})).is_ok()
+                                && v.bridge.send(Request::Metrics).is_ok()
                             {
                                 v.model.dashboard.metrics_pending = true;
                             }
                             // Keep the stream supervised after READY: a fast Host restart
                             // may happen entirely between successful status probes.
-                            if !v.boot_pending && v.bridge.send(json!({"cmd":"boot"})).is_ok() {
+                            if !v.boot_pending && v.bridge.send(Request::Boot).is_ok() {
                                 v.boot_pending = true;
                             }
                             if v.panel {
@@ -569,10 +614,7 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
                             }
                             due = Instant::now() + Duration::from_secs(1);
                         }
-                        if prefs
-                            && !v.prefs_pending
-                            && v.bridge.send(json!({"cmd":"prefs"})).is_ok()
-                        {
+                        if prefs && !v.prefs_pending && v.bridge.send(Request::Prefs).is_ok() {
                             v.prefs_pending = true;
                         }
                         cx.notify();

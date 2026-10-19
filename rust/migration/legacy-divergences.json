@@ -131,6 +131,16 @@
         "commit": "e4a17b9c93009865eefde9f74048016d5b10b362",
         "reason": "User-authorized Legacy CI repair: Wait for the actual MongoDown health event within a bounded async-operation budget, retain exact DbOk assertion and always stop/join/dispose the loop."
       }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/UiNavigationServiceTests.cs",
+      "baseline_blob_sha1": "cd63ce5bde8d413fda1e13dffab850721f8cba07",
+      "approved_blob_sha1": "a19e1c02224cbfd26843e0bb7c3c5f355c311e8f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/14",
+        "commit": "03c27552bb7fc3af2e70cf0842a4c1fa39f5bdb7",
+        "reason": "User-authorized Legacy CI repair: replace three ThreadPool/sleep mutex holders with one dedicated-thread fixture using acquisition acknowledgement, explicit release and bounded join; retain navigation assertions and add ownership/release regression. Production navigation is unchanged."
+      }
     }
   ]
 }

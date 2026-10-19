@@ -3,6 +3,7 @@
 mod boot;
 pub mod dashboard_client;
 pub mod navigation;
+pub mod shell;
 pub use boot::BootStages;
 pub mod log_control;
 mod model;

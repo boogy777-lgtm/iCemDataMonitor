@@ -12,6 +12,69 @@ public class UiNavigationServiceTests
         ($@"Local\test_nav_mutex_{Guid.NewGuid():N}",
          $@"Local\test_nav_event_{Guid.NewGuid():N}");
 
+    // These tests synchronously probe an OS mutex. Their holder must not depend
+    // on ThreadPool availability, or on a fixed sleep outlasting the test.
+    private sealed class HeldMutex : IDisposable
+    {
+        private readonly ManualResetEventSlim _ready = new(false);
+        private readonly ManualResetEventSlim _release = new(false);
+        private readonly Thread _thread;
+        private Exception? _failure;
+        private bool _disposed;
+
+        public HeldMutex(string name)
+        {
+            _thread = new Thread(() =>
+            {
+                try
+                {
+                    using var mutex = new Mutex(false, name);
+                    if (!mutex.WaitOne(TimeSpan.FromSeconds(5)))
+                        throw new TimeoutException("navigation fixture mutex acquisition timed out");
+                    try
+                    {
+                        _ready.Set();
+                        if (!_release.Wait(TimeSpan.FromSeconds(30)))
+                            throw new TimeoutException("navigation fixture release was not requested");
+                    }
+                    finally { mutex.ReleaseMutex(); }
+                }
+                catch (Exception error)
+                {
+                    _failure = error;
+                    _ready.Set();
+                }
+            }) { IsBackground = true, Name = "navigation-test-mutex" };
+            _thread.Start();
+            if (!_ready.Wait(TimeSpan.FromSeconds(5)) || _failure is not null)
+            {
+                Dispose();
+                throw new InvalidOperationException("holder thread failed to take the mutex", _failure);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _release.Set();
+            Assert.True(_thread.Join(TimeSpan.FromSeconds(5)), "navigation fixture holder did not stop");
+            _disposed = true;
+            _ready.Dispose();
+            _release.Dispose();
+            Assert.Null(_failure);
+        }
+    }
+
+    [Fact]
+    public void HeldMutex_OwnsOnDedicatedThread_AndReleasesBeforeDisposeReturns()
+    {
+        var (name, _) = UniqueNames();
+        Assert.False(MutexProbe.IsTaken(name));
+        using (var holder = new HeldMutex(name))
+            Assert.True(MutexProbe.IsTaken(name));
+        Assert.False(MutexProbe.IsTaken(name));
+    }
+
     [Fact]
     public void Navigate_DeadUi_StoresPending_ReportsHonestAliveFalse()
     {
@@ -29,21 +92,13 @@ public class UiNavigationServiceTests
     }
 
     [Fact]
-    public async Task Navigate_AliveUi_SignalsShowEvent()
+    public void Navigate_AliveUi_SignalsShowEvent()
     {
         var (m, e) = UniqueNames();
         // A mutex is REENTRANT per thread — if THIS test thread owned it,
         // MutexProbe would see "free". Hold it from another thread instead.
-        using var held = new ManualResetEventSlim(false);
-        var holder = Task.Run(() =>
+        using var holder = new HeldMutex(m);
         {
-            using var m2 = new Mutex(true, m, out _);
-            held.Set();
-            Thread.Sleep(10_000); // lives for the duration of the test only
-        });
-        try
-        {
-            Assert.True(held.Wait(TimeSpan.FromSeconds(5)), "holder thread failed to take the mutex");
             using var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, e);
             var nav = new UiNavigationService(m, e);
 
@@ -55,26 +110,14 @@ public class UiNavigationServiceTests
             Assert.True(showEvent.WaitOne(TimeSpan.Zero)); // the shell wake-up signal fired
             Assert.Equal(UiSection.Status, nav.TakePending()); // still stored for late consumers
         }
-        finally
-        {
-            await holder.WaitAsync(TimeSpan.FromSeconds(15));
-        }
     }
 
     [Fact]
-    public async Task Navigate_Unspecified_IsQueryArm_DoesNotSignal()
+    public void Navigate_Unspecified_IsQueryArm_DoesNotSignal()
     {
         var (m, e) = UniqueNames();
-        using var held = new ManualResetEventSlim(false);
-        var holder = Task.Run(() =>
+        using var holder = new HeldMutex(m);
         {
-            using var m2 = new Mutex(true, m, out _);
-            held.Set();
-            Thread.Sleep(10_000);
-        });
-        try
-        {
-            Assert.True(held.Wait(TimeSpan.FromSeconds(5)), "holder thread failed to take the mutex");
             using var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, e);
             var nav = new UiNavigationService(m, e);
             nav.Navigate(UiSection.Status); // store pending (shell "alive" here)
@@ -86,10 +129,6 @@ public class UiNavigationServiceTests
             Assert.Equal(UiSection.Status, q.Pending);      // returns stored pending
             Assert.Equal(UiSection.Unspecified, nav.TakePending()); // and CLEARS it
             Assert.False(showEvent.WaitOne(TimeSpan.Zero));         // query arm never signals
-        }
-        finally
-        {
-            await holder.WaitAsync(TimeSpan.FromSeconds(15));
         }
     }
 
@@ -114,19 +153,11 @@ public class UiNavigationServiceTests
     // arm additionally reports the HONEST live probe (was unconditional true).
 
     [Fact]
-    public async Task Navigate_WakeConsume_FullCycle_StoreSignalQueryConsume()
+    public void Navigate_WakeConsume_FullCycle_StoreSignalQueryConsume()
     {
         var (m, e) = UniqueNames();
-        using var held = new ManualResetEventSlim(false);
-        var holder = Task.Run(() =>
+        using var holder = new HeldMutex(m);
         {
-            using var m2 = new Mutex(true, m, out _);
-            held.Set();
-            Thread.Sleep(10_000); // lives for the duration of the test only
-        });
-        try
-        {
-            Assert.True(held.Wait(TimeSpan.FromSeconds(5)), "holder thread failed to take the mutex");
             using var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, e);
             var nav = new UiNavigationService(m, e);
 
@@ -142,10 +173,6 @@ public class UiNavigationServiceTests
             Assert.Equal(UiSection.Status, consumed.Pending);
             Assert.Equal(UiSection.Unspecified, nav.TakePending()); // read-and-clear
             Assert.False(showEvent.WaitOne(TimeSpan.Zero));         // query never signals
-        }
-        finally
-        {
-            await holder.WaitAsync(TimeSpan.FromSeconds(15));
         }
     }
 

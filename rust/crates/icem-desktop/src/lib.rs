@@ -12,11 +12,10 @@ use icem_emulation::{
     },
 };
 use serde_json::Value;
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-    mpsc,
-};
+use std::sync::Arc;
+pub mod host;
+pub mod worker;
+pub use worker::WorkerCompletion;
 
 /// Implementations must bound I/O time and return owned values.
 pub trait UiPort: Send + Sync + 'static {
@@ -80,6 +79,7 @@ pub struct Model {
     pub connected: bool,
     pub note: String,
     pub snapshot: Value,
+    pub host: Option<icem_web::shell::Status>,
     pub com_variables: Vec<VariableRow>,
     pub lan_variables: Vec<VariableRow>,
     pub profiles: Vec<ProfileChoice>,
@@ -121,8 +121,10 @@ impl Model {
 
     pub fn can_toggle_sniffer(&self) -> bool {
         self.connected
-            && self.snapshot["layers"]["snifferAvailable"] == true
-            && self.snapshot["layers"]["busy"] != true
+            && self
+                .host
+                .as_ref()
+                .is_some_and(|s| s.layers.sniffer_available && !s.layers.busy)
     }
     pub fn flag(&self, channel: &str, field: &str) -> bool {
         self.snapshot[channel][field].as_bool() == Some(true)
@@ -239,6 +241,14 @@ impl Model {
                 self.note = data["lastError"].as_str().unwrap_or("").to_owned();
             }
             "status" => {
+                if !data.is_object() {
+                    self.connected = false;
+                    self.host_logs.fresh = false;
+                    self.boot_stages.clear();
+                    self.boot_ready = false;
+                    self.note = "⚠ invalid status data".into();
+                    return;
+                }
                 self.snapshot = data.clone();
                 self.connected = true;
             }
@@ -377,110 +387,41 @@ pub struct Reply {
     pub command: String,
     pub result: Result<Value, String>,
 }
-/// One worker; queues bounded, UI never blocks on backend I/O.
 enum Request {
     Presentation(Value),
     Emulator(Command),
 }
 pub struct Bridge {
-    sender: mpsc::SyncSender<Request>,
-    receiver: mpsc::Receiver<Reply>,
-    stopping: Arc<AtomicBool>,
-}
-/// Kept outside the view. Finish only AFTER the UI event loop has returned.
-#[must_use = "finish the worker after the UI loop to preserve in-flight writes"]
-pub struct WorkerCompletion {
-    worker: std::thread::JoinHandle<()>,
-    stopping: Arc<AtomicBool>,
-}
-impl WorkerCompletion {
-    pub fn finish(self) -> std::io::Result<()> {
-        self.stopping.store(true, Ordering::Release);
-        self.worker.thread().unpark();
-        self.worker
-            .join()
-            .map_err(|_| std::io::Error::other("desktop worker panicked"))
-    }
+    worker: worker::Worker<Request, Reply>,
 }
 impl Bridge {
     pub fn start(port: Arc<dyn UiPort>) -> std::io::Result<(Self, WorkerCompletion)> {
-        let (sender, requests) = mpsc::sync_channel::<Request>(16);
-        let (responses, receiver) = mpsc::sync_channel(16);
-        let stopping = Arc::new(AtomicBool::new(false));
-        let stop = stopping.clone();
-        let worker = std::thread::Builder::new()
-            .name("desktop-control".into())
-            .spawn(move || {
-                'requests: while !stop.load(Ordering::Acquire) {
-                    let request = match requests.recv_timeout(std::time::Duration::from_millis(50))
-                    {
-                        Ok(request) => request,
-                        Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                        Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                    };
-                    if stop.load(Ordering::Acquire) {
-                        break;
-                    }
-                    let (command, result) = match request {
-                        Request::Presentation(value) => (
-                            value["cmd"].as_str().unwrap_or("").to_owned(),
-                            port.request(value),
-                        ),
-                        Request::Emulator(command) => {
-                            let name = command.name().to_owned();
-                            (name, Ok(port.emulator(command).ui_value()))
-                        }
-                    };
-                    let mut reply = Reply { command, result };
-                    loop {
-                        if stop.load(Ordering::Acquire) {
-                            break 'requests;
-                        }
-                        match responses.try_send(reply) {
-                            Ok(()) => break,
-                            Err(mpsc::TrySendError::Disconnected(_)) => break 'requests,
-                            Err(mpsc::TrySendError::Full(returned)) => {
-                                reply = returned;
-                                std::thread::park_timeout(std::time::Duration::from_millis(50));
-                            }
-                        }
-                    }
-                }
-            })?;
-        Ok((
-            Self {
-                sender,
-                receiver,
-                stopping: stopping.clone(),
-            },
-            WorkerCompletion { worker, stopping },
-        ))
+        let (worker, completion) = worker::Worker::start(move |request| {
+            let (command, result) = match request {
+                Request::Presentation(value) => (
+                    value["cmd"].as_str().unwrap_or("").to_owned(),
+                    port.request(value),
+                ),
+                Request::Emulator(command) => (
+                    command.name().to_owned(),
+                    Ok(port.emulator(command).ui_value()),
+                ),
+            };
+            Reply { command, result }
+        })?;
+        Ok((Self { worker }, completion))
     }
     pub fn send(&self, command: Value) -> Result<(), String> {
-        self.sender
-            .try_send(Request::Presentation(command))
-            .map_err(|e| format!("очередь команд: {e}"))
+        self.worker.send(Request::Presentation(command))
     }
     pub fn send_emulator(&self, command: Command) -> Result<(), String> {
         command.validate_budget().map_err(str::to_owned)?;
-        self.sender
-            .try_send(Request::Emulator(command))
-            .map_err(|e| format!("очередь команд: {e}"))
+        self.worker.send(Request::Emulator(command))
     }
     pub fn drain(&self, model: &mut Model) {
-        while let Ok(reply) = self.receiver.try_recv() {
+        while let Ok(reply) = self.worker.try_recv() {
             model.apply(&reply.command, reply.result);
         }
-    }
-}
-impl Drop for Bridge {
-    fn drop(&mut self) {
-        self.stopping.store(true, Ordering::Release);
-        let (_, empty) = mpsc::channel();
-        drop(std::mem::replace(&mut self.receiver, empty));
-        // Never join backend I/O from a window-close callback. The worker owns
-        // only the port/queues/stop flag; backpressure observes cancellation within 50 ms.
-        // A request already in progress may finish; the queue is never replayed.
     }
 }
 
