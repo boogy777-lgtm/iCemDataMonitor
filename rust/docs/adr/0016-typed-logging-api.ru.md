@@ -42,3 +42,7 @@ Dependencies/pins/lints прежние; icem-web → icem-logging теперь p
 
 Успешный v1 Set подтверждается только при enabled==requested; ON также требует
 recording=true, как гарантирует owner. Противоречивый ACK становится Unknown.
+
+Shell `host::start` продолжает записывать Host transport failures, включая nested
+Response::Logs(Err), в свой diagnostic logger. LocalLogs/Incomplete не логируются
+повторно; typed ControlError передаётся UI неизменным, без рекурсии logger failures.

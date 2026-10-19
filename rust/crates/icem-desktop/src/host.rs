@@ -24,8 +24,12 @@ pub fn start(port: Arc<dyn Port>) -> std::io::Result<(Bridge, WorkerCompletion)>
             Ok(Response::LocalLogs(logs.request(command)))
         } else {
             let result = port.request(request);
-            if let Err(error) = &result {
-                logs.record(error);
+            match &result {
+                Err(error) => logs.record(error),
+                // Host log transport failures remain Shell diagnostics. Local logger
+                // failures and owner Incomplete replies must never recurse into logging.
+                Ok(Response::Logs(Err(error))) => logs.record(&error.message),
+                _ => {}
             }
             result
         };
