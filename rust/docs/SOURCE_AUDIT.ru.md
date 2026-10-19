@@ -433,3 +433,28 @@ N+1: existing StatusView derives from the already checked Host status; no new RP
 listener, Engine, dispatcher or queue. Layout/controls/palette unchanged; physical
 UI acceptance remains NOT_RUN. Dead Model.snapshot/JSON Model.apply removed; old
 Host fixture assertions now exercise apply_host instead of that inactive dispatcher.
+
+
+## D50 / E20 — units display order depended on JSON map feature unification
+
+PR17 Rust/MSVC run 39265963972 / job 118105477073, exact head
+c4bbc1fa16a8d341c6d8f30684375959fd519c86, failed
+`typed_display_retains_nonfinite_and_escaped_units_policy` at model.rs:379.
+BTreeMap display sorted keys; the Windows GPUI graph enables serde_json/preserve_order,
+so the legacy Value display retained insertion order. Escaping matched. Linux's
+sorted Value accidentally concealed the production display order regression.
+The failed expected fixture itself put density before temperature, also differing
+from E19 production; its order is not used as a new contract.
+
+Source: rust/crates/icem-emulation/src/runtime.rs:324–327 at E19 head
+400cdc6c6ef77602cae6b48584b5b95afb850486 / production tree
+8b70979f512a5e0daeac3025a6d4a97d3d4199c9: preset, flowOverride,
+temperatureOverride, densityOverride, volumeOverride, levelOverride, pressureOverride.
+Class: seven scalar unit-summary display fields in desktop/emulator.rs, not pipe
+response JSON or dashboard REST. Inv: private ordered Serialize subject preserves
+that exact string order plus standard serde escaping with and without preserve_order;
+full literal-string regressions include all seven values and null/control/Unicode.
+N+1: exhaustive UnitStatus destructuring fails compilation for an unreviewed field;
+no dispatcher/Engine/worker changes. Direct desktop → existing serde std/derive edge
+only; dependency packages/versions and unsafe/pins unchanged. Physical appearance
+acceptance remains NOT_RUN; actual Windows regression requires the new exact-head CI.

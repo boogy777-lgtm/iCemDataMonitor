@@ -38,7 +38,8 @@ Status retains raw f64, включая nonfinite; finite-only NativeValue input 
 NaN/Infinity/fractional/bool coercions не меняются. В `control/v1.rs` прежний serializer
 проецирует nonfinite в null. Display policy null/nonfinite → «—» применяется только
 при построении UI; исходные IEEE bits остаются в typed data. Scalar Number formatting
-и sorted seven-scalar units summary используют прежний serializer display policy,
+и seven-scalar units summary используют прежний serializer display policy
+с явным E19 Windows порядком полей (исправление D50),
 без чтения или roundtrip JSON ответа. `selfTest:null` остаётся adapter constant;
 нового selftest result/status предположения нет.
 
@@ -75,3 +76,20 @@ Windows/MSVC/original C#/native process/pipe/mapping/MSI результаты ф
 Physical UI drafts/scroll/keyboard/focus/DPI/session, iCem/AddIn/COM/Npcap, true SDK
 release/install остаются NOT_RUN. Selftest/landiag, dormant capture-to-file, D22 и
 external OPC DA no-op не расширяются этим решением.
+
+
+D50 / PR17: Windows run 39265963972 / job 118105477073 на c4bbc1fa16a8d341c6d8f30684375959fd519c86
+обнаружил sorted BTreeMap display regression: GPUI включает serde_json/preserve_order,
+поэтому прежний Value сохранял insertion order, тогда как BTreeMap сортировал keys.
+Первый новый expected fixture также ошибочно ставил density перед temperature;
+канон — E19 runtime.rs:324–327 на 400cdc6c6ef77602cae6b48584b5b95afb850486:
+preset, flow, temperature, density, volume, level, pressure. Private Serialize
+UnitsSummary задаёт этот порядок declaration order независимо от map features;
+UnitStatus destructuring exhaustive, новый field требует review formatter.
+Regression сравнивает literal full string (nulls, escaping, DEL/C1/Unicode) и все
+семь distinct values; expected не зависит от Value/map feature unification.
+
+Добавлен только desktop → уже locked serde 1.0.229 (MIT OR Apache-2.0, std/derive);
+serde_derive и features уже были в Windows graph/lockfile. Cargo.lock меняет только
+существующий desktop dependency edge, packages/versions/unsafe policy прежние.
+Это derived scalar display serialization; emulator wire adapter и его golden не меняются.

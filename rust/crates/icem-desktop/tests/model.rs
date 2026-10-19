@@ -10,7 +10,6 @@ use icem_web::{
     proto,
     shell::{BootBatch, Operation, Response},
 };
-use serde_json::json;
 fn boot(model: &mut Model, reset: bool, stages: &[(u32, &str, &str, bool)]) {
     model.apply_host(
         Operation::Boot,
@@ -376,7 +375,14 @@ fn typed_display_retains_nonfinite_and_escaped_units_policy() {
             .as_ref()
             .is_some_and(|s| s.com.lines_per_sec == f64::INFINITY)
     );
-    assert_eq!(model.emulator.units,json!({"preset":"Metric","flowOverride":odd,"densityOverride":null,"temperatureOverride":null,"volumeOverride":null,"levelOverride":null,"pressureOverride":null}).to_string());
+    assert_eq!(
+        model.emulator.units,
+        concat!(
+            "{\"preset\":\"Metric\",\"flowOverride\":\"quote\\\"slash\\\\newline\\nnull\\u0000DEL",
+            "\u{7f}C1\u{85}Ж\",\"temperatureOverride\":null,\"densityOverride\":null,",
+            "\"volumeOverride\":null,\"levelOverride\":null,\"pressureOverride\":null}"
+        )
+    );
     apply(
         &mut model,
         Payload::Variables(Variables {
@@ -516,4 +522,28 @@ fn all_21_payload_families_are_accepted_by_typed_presentation() {
         }
     }
     assert_eq!(seen, icem_emulation::COMMANDS.iter().copied().collect());
+}
+
+#[test]
+fn units_summary_has_frozen_native_field_order_for_all_seven_values() {
+    let mut model = Model::default();
+    apply(
+        &mut model,
+        Payload::Status(Box::new(Status {
+            units: UnitStatus {
+                preset: "Metric".into(),
+                flow_override: Some("m3/min".into()),
+                temperature_override: Some("°C".into()),
+                density_override: Some("kg/m3".into()),
+                volume_override: Some("m3".into()),
+                level_override: Some("m".into()),
+                pressure_override: Some("kPa".into()),
+            },
+            ..Default::default()
+        })),
+    );
+    assert_eq!(
+        model.emulator.units,
+        r#"{"preset":"Metric","flowOverride":"m3/min","temperatureOverride":"°C","densityOverride":"kg/m3","volumeOverride":"m3","levelOverride":"m","pressureOverride":"kPa"}"#
+    );
 }

@@ -42,3 +42,18 @@ colors/geometry неизменны; PowerShell mapping guard выполняет�
 Physical drafts/scroll/keyboard/focus/DPI/session, real iCem/AddIn/COM/Npcap и SDK
 release/install NOT_RUN. D22, capture-to-file, external OPC DA no-op остаются прежними.
 Следующие отдельные инкременты: selftest/landiag и dashboard REST payload.
+
+
+D50 / PR17 Windows follow-up: first exact-head MSVC run 39265963972 failed only the
+unit-summary order regression before the remaining gate completed; its FAIL remains
+recorded. Legacy 39265964072 (941 tests + MSI smoke) and installer contracts
+39265964048 passed on c4bbc1fa. Typed display now uses an ordered private Serialize
+subject matching E19 Windows source order, not a sorted map; literal-string tests
+cover escaping/nulls/all fields independently of serde_json/preserve_order. See
+[SOURCE_AUDIT D50](SOURCE_AUDIT.ru.md) and ADR0017. Wire payload/golden and existing
+E20 proofs are unchanged. Corrected exact-head Windows verdict remains a separate gate.
+
+Локальный D50 gate (Rust1.99.1 Linux, locked/offline): desktop model tests 13/13
+в default graph и 13/13 с serde_json/preserve_order; desktop Clippy --all-targets
+с preserve_order / -D warnings и workspace fmt --check PASS. Это проверка обеих
+formatter configurations, не подмена нового Windows/MSVC exact-head gate.

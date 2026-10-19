@@ -57,6 +57,19 @@ fn optional(value: Option<&str>) -> String {
 fn number(value: f64) -> String {
     serde_json::Number::from_f64(value).map_or_else(|| "—".into(), |v| v.to_string())
 }
+/// Preserve E19 Windows display field order independently of serde_json map features.
+/// This is a seven-scalar display subject, not an emulator wire response.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UnitsSummary<'a> {
+    preset: &'a str,
+    flow_override: Option<&'a str>,
+    temperature_override: Option<&'a str>,
+    density_override: Option<&'a str>,
+    volume_override: Option<&'a str>,
+    level_override: Option<&'a str>,
+    pressure_override: Option<&'a str>,
+}
 impl View {
     pub fn streaming(&self, channel: Channel) -> bool {
         match channel {
@@ -113,17 +126,27 @@ impl View {
         self.pid = s.pid.to_string();
         self.uptime = number(s.uptime_sec);
         self.preset = s.units.preset.clone();
-        // Preserve the previous compact, sorted-key units summary without a JSON payload seam.
-        let u = &s.units;
-        let units = std::collections::BTreeMap::from([
-            ("densityOverride", u.density_override.as_deref()),
-            ("flowOverride", u.flow_override.as_deref()),
-            ("levelOverride", u.level_override.as_deref()),
-            ("preset", Some(u.preset.as_str())),
-            ("pressureOverride", u.pressure_override.as_deref()),
-            ("temperatureOverride", u.temperature_override.as_deref()),
-            ("volumeOverride", u.volume_override.as_deref()),
-        ]);
+        // A struct serializer preserves native Windows E19 order with or without
+        // serde_json/preserve_order; serde supplies the established escaping policy.
+        // Exhaustive destructuring makes a new unit fact require display review.
+        let UnitStatus {
+            preset,
+            flow_override,
+            temperature_override,
+            density_override,
+            volume_override,
+            level_override,
+            pressure_override,
+        } = &s.units;
+        let units = UnitsSummary {
+            preset,
+            flow_override: flow_override.as_deref(),
+            temperature_override: temperature_override.as_deref(),
+            density_override: density_override.as_deref(),
+            volume_override: volume_override.as_deref(),
+            level_override: level_override.as_deref(),
+            pressure_override: pressure_override.as_deref(),
+        };
         self.units = serde_json::to_string(&units).unwrap_or_else(|_| "—".into());
 
         self.status = Some(s);
