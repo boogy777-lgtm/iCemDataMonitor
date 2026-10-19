@@ -180,19 +180,22 @@ impl LogDirectory {
         const _: () = assert!(
             std::mem::offset_of!(Rename, name) == std::mem::offset_of!(FILE_RENAME_INFO, FileName)
         );
-        let path: Vec<u16> = self.path(target)?.as_os_str().encode_wide().collect();
+        self.path(target)?; // Validate the single-component name before the FFI call.
+        let directory = self._pins.last().ok_or_else(|| denied("log directory pin missing"))?;
+        let path: Vec<u16> = std::ffi::OsStr::new(target).encode_wide().collect();
         if path.len() >= 1024 {
             return Err(denied("log path too long"));
         }
         let mut info = Rename {
             flags: 1,
-            root: std::ptr::null_mut(),
+            root: directory.as_raw_handle() as HANDLE,
             length: (path.len() * 2) as u32,
             name: [0; 1024],
         };
         info.name[..path.len()].copy_from_slice(&path);
         // SAFETY: repr(C) buffer has FILE_RENAME_INFO layout (offset checked), initialized
-        // UTF-16 array and bounded length. Source is a live DELETE-capable owned handle.
+        // UTF-16 array and bounded length. Source is a live DELETE-capable owned handle;
+        // RootDirectory is our live pinned directory and FileName is one validated component.
         if unsafe {
             SetFileInformationByHandle(
                 source.as_raw_handle() as HANDLE,

@@ -90,3 +90,15 @@ Rust format strings обнаружил только поддерживаемый
 [Исправление наблюдения retry snapshots](LEGACY_CI_E15.ru.md) меняет только
 Legacy test helper и его точный ledger hash. Production COM tee не активирован.
 Source-fix commit: `d29180be0b55c200ad4902394f725e41aa242ce1`. Merge PR #11 допускается после новых проверок.
+
+## Windows E12 rename failure
+
+Новая MSVC runtime проверка подтвердила Host console lifecycle, затем обнаружила
+sharing violation E12 на replace existing destination. Native boundary regression
+проверяет write/read-live/replace/reopen/delete и sibling pins. Replace использует
+проверенный pinned directory handle в FILE_RENAME_INFO.RootDirectory и одно
+валидированное имя вместо повторного разрешения полного destination path.
+Ancestor pins, share modes, source-handle ownership, reparse/hardlink checks,
+partial clear reporting и запрет automatic retry сохранены. Ранний logger gate
+до GPUI build даёт отдельный Windows verdict; полный Scaffold не сокращён.
+Источник API: https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info

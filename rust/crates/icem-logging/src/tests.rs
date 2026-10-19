@@ -252,12 +252,13 @@ mod windows {
         let dir = root.0.join(Owner::Host.directory());
         let outside = root.0.join("outside.txt");
         fs::write(&outside, b"must survive")?;
-        fs::hard_link(&outside, dir.join("data-bus.log"))?;
+        fs::hard_link(&outside, dir.join("data-bus.log"))
+            .map_err(|e| format!("hardlink fixture creation: {e}"))?;
         assert!(logs.request("clear", None).is_err());
         assert_eq!(fs::read(&outside)?, b"must survive");
         drop(logs);
         let renamed = root.0.join("old");
-        fs::rename(&dir, &renamed)?;
+        fs::rename(&dir, &renamed).map_err(|e| format!("rename after owner drop: {e}"))?;
         let result = std::process::Command::new("cmd")
             .args(["/C", "mklink", "/J"])
             .arg(&dir)
