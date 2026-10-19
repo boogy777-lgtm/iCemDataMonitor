@@ -22,6 +22,8 @@ Ctrl+C в собственном окне запрашивает прежний 
 Native child tests используют настоящий Windows HWND/message pump: X/Show/Hide ×3,
 тот же HWND, minimize/restore, Ctrl+C input message ×2, owner collision, transcript
 overflow, потеря window loop и повторный owner после cleanup, Quit hidden/visible.
+Контролируемый Win32 ERROR_CLASS_ALREADY_EXISTS проверяет startup refusal,
+освобождение owner/отсутствие HWND и recovery после снятия собственной test registration.
 Host process test: headless start → RPC Show → X ×3 → Host/Modbus/pipe живы →
 новый client/reconnect без spawn → actual state → restore → Ctrl+C → exit 0 и
 освобождённые pipe/socket. Дополнительно: manual CREATE_NEW_CONSOLE, explicit

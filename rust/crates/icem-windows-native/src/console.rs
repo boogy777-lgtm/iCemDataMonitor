@@ -551,6 +551,30 @@ mod tests {
             let mut last = ConsoleControl::install_visible(true)?;
             last.finish()?; // visible Quit, whereas first owner finished hidden.
             assert!(!OWNER.load(Ordering::Acquire));
+            // Exercise an actual OS startup refusal without touching another process:
+            // this isolated child temporarily owns the same class registration.
+            // SAFETY: static class/callback and process module, no HWND or borrowed payload.
+            let instance = unsafe { GetModuleHandleW(std::ptr::null()) };
+            // SAFETY: optional Win32 fields accept zero; required fields assigned below.
+            let mut class: WNDCLASSW = unsafe { std::mem::zeroed() };
+            class.hInstance = instance;
+            class.lpszClassName = CLASS;
+            class.lpfnWndProc = Some(procedure);
+            // SAFETY: exclusively test-owned class registration, after prior owner joined.
+            assert_ne!(unsafe { RegisterClassW(&class) }, 0);
+            let failure = ConsoleControl::install_visible(true)
+                .err()
+                .ok_or("OS refusal missing")?;
+            assert_eq!(failure.operation, "register_console_window");
+            assert_eq!(failure.code, 1410); // ERROR_CLASS_ALREADY_EXISTS from Win32.
+            assert_eq!(console_state(), (false, false));
+            assert!(!OWNER.load(Ordering::Acquire));
+            // SAFETY: remove only the registration this child test just acquired.
+            assert_ne!(unsafe { UnregisterClassW(CLASS, instance) }, 0);
+            let mut recovered = ConsoleControl::install_visible(true)?;
+            recovered.finish()?;
+            assert_eq!(console_state(), (false, false));
+            assert!(!OWNER.load(Ordering::Acquire));
             return Ok(());
         }
         let mut child = Command::new(std::env::current_exe()?)
