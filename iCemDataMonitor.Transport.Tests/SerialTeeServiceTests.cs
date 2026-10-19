@@ -326,12 +326,8 @@ public class SerialTeeServiceTests
         await service.StartAsync(cts.Token);
         try
         {
-            await WaitUntilAsync(() =>
-            {
-                var status = service.GetStatus();
-                return status.PhysicalPortBusy && status.State == "PORT_BUSY";
-            });
-            var status = service.GetStatus();
+            var status = await WaitUntilAsync(service.GetStatus,
+                snapshot => snapshot.PhysicalPortBusy && snapshot.State == "PORT_BUSY");
             Assert.True(status.PhysicalPortBusy);
             Assert.Equal("PORT_BUSY", status.State);
 
@@ -367,9 +363,8 @@ public class SerialTeeServiceTests
         await service.StartAsync(cts.Token);
         try
         {
-            await WaitUntilAsync(() => service.GetStatus().State == "PORT_BUSY");
-
-            var status = service.GetStatus();
+            var status = await WaitUntilAsync(service.GetStatus,
+                snapshot => snapshot.State == "PORT_BUSY");
             Assert.True(status.PhysicalPortBusy);
             Assert.Equal("PORT_BUSY", status.State);
 
@@ -450,9 +445,8 @@ public class SerialTeeServiceTests
         await service.StartAsync(cts.Token);
         try
         {
-            await WaitUntilAsync(() => service.GetStatus().State == "PAIR_MISSING");
-
-            var status = service.GetStatus();
+            var status = await WaitUntilAsync(service.GetStatus,
+                snapshot => snapshot.State == "PAIR_MISSING");
             Assert.False(status.Com0comPairOk);
             Assert.Equal("PAIR_MISSING", status.State);
 
@@ -501,11 +495,33 @@ public class SerialTeeServiceTests
         }
     }
 
+    [Fact]
+    public async Task WaitUntil_ReturnsTheMatchingSnapshot_WhenSourceHasAlreadyAdvanced()
+    {
+        int reads = 0;
+        ComTeeStatus Observe() => new() { State = ++reads == 1 ? "PAIR_MISSING" : "STARTING" };
+        var observed = await WaitUntilAsync(Observe, snapshot => snapshot.State == "PAIR_MISSING");
+        Assert.Equal("STARTING", Observe().State);
+        Assert.Equal("PAIR_MISSING", observed.State);
+        Assert.Equal(2, reads);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
+        await WaitUntilAsync(condition, matched => matched);
+    }
+
+    // Return the evidence that met the predicate. A fresh read after await can
+    // already belong to the next retry phase, even though this wait succeeded.
+    private static async Task<T> WaitUntilAsync<T>(Func<T> observe, Func<T, bool> predicate)
+    {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        while (!condition())
+        while (true)
+        {
+            var snapshot = observe();
+            if (predicate(snapshot)) return snapshot;
             await Task.Delay(20, deadline.Token);
+        }
     }
 
     // ── Helpers ──

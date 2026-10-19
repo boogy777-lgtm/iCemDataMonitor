@@ -230,9 +230,7 @@ fn manual_restart_and_autostart_quit(
 async fn ready(pipe: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let deadline = Instant::now() + Duration::from_secs(12);
     loop {
-        if let Ok(mut rpc) = client::connect(pipe).await
-            && rpc.get_status(HostStatusRequest {}).await.is_ok()
-        {
+        if icem_web::host_client::probe(pipe).await == icem_web::host_client::Presence::Ready {
             return Ok(());
         }
         if Instant::now() >= deadline {
