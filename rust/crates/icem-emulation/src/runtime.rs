@@ -2,7 +2,7 @@
 //! commands/ticks; this module owns no timer, thread, pipe or filesystem handle.
 use crate::{
     cement::Context,
-    control::{ControlResult, EmuControl},
+    control::{ControlResult, EmuControl, payload::*},
     lan::{BaseProvider, SignalDef},
     lan_pipeline::LanPipeline,
     runtime_ports::{ComEmitter, LanEmitter},
@@ -11,7 +11,8 @@ use crate::{
 };
 use icem_config::emulator::EmuSettings;
 use icem_protocols::ace::decode_native;
-use serde_json::{Map, Value, json};
+use std::collections::BTreeMap;
+use crate::Channel;
 
 pub const ERR_NO_COM_PORT: &str = "no COM port configured (ComPort setting is empty)";
 pub const ERR_NO_LAN_ADAPTER: &str = "no LAN adapter configured (LanAdapter setting is empty)";
@@ -37,15 +38,7 @@ pub struct Engine<C: ComEmitter, L: LanEmitter> {
     quit_requested: bool,
 }
 
-fn data(value: Value) -> Map<String, Value> {
-    match value {
-        Value::Object(map) => map,
-        _ => Map::new(),
-    }
-}
-fn ok(value: Value) -> ControlResult {
-    ControlResult::success(Some(data(value)))
-}
+fn ok<T>(value: T) -> ControlResult<T> {ControlResult::success(Some(value))}
 fn sv_text(sv: u32) -> String {
     format!("0x{sv:08X}")
 }
@@ -275,7 +268,7 @@ impl<C: ComEmitter, L: LanEmitter> Engine<C, L> {
 }
 
 impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
-    fn get_status(&mut self) -> Map<String, Value> {
+    fn get_status(&mut self) -> Status {
         let dt = (self.now - self.previous_sample).max(0.001);
         let com_lines = self.com_emitter.lines_sent();
         let lan_frames = self.lan_emitter.frames_sent();
@@ -289,50 +282,44 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         let lan_overrides = self.lan.snapshot_overrides();
         let mut overrides = Vec::new();
         for (name, value) in &com_overrides {
-            overrides.push(json!({"channel":"com","name":name,"value":value}));
+            overrides.push(Override {signal:Signal::Com {name:name.clone()},value:*value});
         }
         for ((sv, name), value) in lan_overrides {
-            overrides.push(json!({"channel":"lan","sv":sv_text(sv),"name":name,"value":value}));
+            overrides.push(Override {signal:Signal::Lan {sv,name},value});
         }
-        let mut com_values = Map::new();
+        let mut com_values = BTreeMap::new();
         if let Some(template) = template {
             for (variable, value) in template.variables.iter().zip(self.com.last_values()) {
                 if !variable.exclude {
-                    com_values.insert(variable.name.clone(), json!(value));
+                    com_values.insert(variable.name.clone(), *value);
                 }
             }
         }
-        let override_of = |group| self.lan.settings.overrides.get(&group);
+        let override_of = |group| self.lan.settings.overrides.get(&group).cloned();
         let svs = self.lan.active_sv_numbers();
-        data(json!({
-            "uptimeSec": rounded(self.now-self.started_at,1), "pid":std::process::id(), "version":env!("CARGO_PKG_VERSION"), "selfTest":null,
-            "com":{
-                "streaming":self.com_enabled&&self.com_emitter.is_open(), "emulating":self.com_emulating,
-                "portOpen":self.com_emitter.is_open(), "port":self.com_emitter.port_name().or_else(|| (!self.settings.com_port.is_empty()).then_some(self.settings.com_port.as_str())),
-                "baud":9600,"linesSent":com_lines,"linesPerSec":rounded(com_rate,2),
-                "deviceType":template.map(|t|&t.device_type),"template":template.map(|t|&t.name),
-                "variableCount":template.map_or(0,|t|t.variables.len()),"values":com_values
+        Status {
+            uptime_sec:rounded(self.now-self.started_at,1),pid:std::process::id(),version:env!("CARGO_PKG_VERSION").into(),
+            com:ComStatus {
+                streaming:self.com_enabled&&self.com_emitter.is_open(),emulating:self.com_emulating,
+                port_open:self.com_emitter.is_open(),port:self.com_emitter.port_name().or_else(|| (!self.settings.com_port.is_empty()).then_some(self.settings.com_port.as_str())).map(str::to_owned),
+                baud:9600,lines_sent:com_lines,lines_per_sec:rounded(com_rate,2),
+                device_type:template.map(|t|t.device_type.clone()),template:template.map(|t|t.name.clone()),variable_count:template.map_or(0,|t|t.variables.len()),values:com_values,
             },
-            "lan":{
-                "streaming":self.lan_enabled&&self.lan_emitter.is_open(),"emulating":self.lan_emulating,
-                "adapterOpen":self.lan_emitter.is_open(),"adapter":self.lan_emitter.adapter_name().or_else(|| (!self.settings.lan_adapter.is_empty()).then_some(self.settings.lan_adapter.as_str())),
-                "framesSent":lan_frames,"framesPerSec":rounded(lan_rate,2),
-                "npcapAvailable":self.lan_emitter.is_open()||self.lan_emitter.npcap_available(),
-                "equipment":sv_text(self.settings.lan_equipment),"svCount":svs.len(),"firmwareSv":self.lan.base.include_firmware_tables,
-                "svs":svs.iter().map(|sv|sv_text(*sv)).collect::<Vec<_>>(),"targets":["03:00:01:00:00:20"]
+            lan:LanStatus {
+                streaming:self.lan_enabled&&self.lan_emitter.is_open(),emulating:self.lan_emulating,
+                adapter_open:self.lan_emitter.is_open(),adapter:self.lan_emitter.adapter_name().or_else(|| (!self.settings.lan_adapter.is_empty()).then_some(self.settings.lan_adapter.as_str())).map(str::to_owned),
+                frames_sent:lan_frames,frames_per_sec:rounded(lan_rate,2),npcap_available:self.lan_emitter.is_open()||self.lan_emitter.npcap_available(),
+                equipment:self.settings.lan_equipment,sv_count:svs.len(),firmware_sv:self.lan.base.include_firmware_tables,svs,targets:vec!["03:00:01:00:00:20".into()],
             },
-            "units":{"preset":preset_name(self.lan.settings.preset),
-                "flowOverride":override_of(Group::Flow),"temperatureOverride":override_of(Group::Temperature),
-                "densityOverride":override_of(Group::Density),"volumeOverride":override_of(Group::Volume),
-                "levelOverride":override_of(Group::Level),"pressureOverride":override_of(Group::Pressure)},
-            "overrides":overrides
-        }))
+            units:UnitStatus {preset:preset_name(self.lan.settings.preset).into(),flow_override:override_of(Group::Flow),temperature_override:override_of(Group::Temperature),density_override:override_of(Group::Density),volume_override:override_of(Group::Volume),level_override:override_of(Group::Level),pressure_override:override_of(Group::Pressure)},overrides,
+        }
     }
-    fn start_channel(&mut self, channel: &str) -> ControlResult {
+
+    fn start_channel(&mut self, channel: &str) -> ControlResult<Start> {
         if channel.eq_ignore_ascii_case("com") {
             if self.com_enabled && self.com_emitter.is_open() {
                 return ok(
-                    json!({"channel":"com","already":true,"port":self.com_emitter.port_name(),"streaming":true}),
+                    Start::Com {port:self.com_emitter.port_name().map(str::to_owned),already:true},
                 );
             }
             if self.settings.com_port.is_empty() {
@@ -344,11 +331,11 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             self.com.reset_clock();
             self.com_enabled = true;
             self.settings.com_enabled = true;
-            return ok(json!({"channel":"com","port":self.settings.com_port,"streaming":true}));
+            return ok(Start::Com {port:Some(self.settings.com_port.clone()),already:false});
         }
         if self.lan_enabled && self.lan_emitter.is_open() {
             return ok(
-                json!({"channel":"lan","already":true,"adapter":self.lan_emitter.adapter_name(),"streaming":true}),
+                Start::Lan {adapter:self.lan_emitter.adapter_name().map(str::to_owned),already:true},
             );
         }
         if self.settings.lan_adapter.is_empty() {
@@ -359,21 +346,21 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         }
         self.lan_enabled = true;
         self.settings.lan_enabled = true;
-        ok(json!({"channel":"lan","adapter":self.settings.lan_adapter,"streaming":true}))
+        ok(Start::Lan {adapter:Some(self.settings.lan_adapter.clone()),already:false})
     }
-    fn stop_channel(&mut self, channel: &str) -> ControlResult {
+    fn stop_channel(&mut self, channel: &str) -> ControlResult<Stop> {
         if channel.eq_ignore_ascii_case("com") {
             let was = self.com_enabled || self.com_emitter.is_open();
             self.com_enabled = false;
             self.settings.com_enabled = false;
             self.com_emitter.close();
-            return ok(json!({"channel":"com","wasStreaming":was,"streaming":false}));
+            return ok(Stop {channel:Channel::Com,was_streaming:was});
         }
         let was = self.lan_enabled || self.lan_emitter.is_open();
         self.lan_enabled = false;
         self.settings.lan_enabled = false;
         self.lan_emitter.close();
-        ok(json!({"channel":"lan","wasStreaming":was,"streaming":false}))
+        ok(Stop {channel:Channel::Lan,was_streaming:was})
     }
     fn set_variable(
         &mut self,
@@ -381,13 +368,13 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         name: &str,
         value: f64,
         sv: Option<u32>,
-    ) -> ControlResult {
+    ) -> ControlResult<Set> {
         let mut applied = Vec::new();
         if matches_channel(channel, "com") {
             if let Some((_, variable)) = self.com.find_variable(name) {
                 let variable = variable.clone();
                 self.com.set_override(&variable.name, value);
-                applied.push(json!({"channel":"com","name":variable.name,"uom":variable.unit}));
+                applied.push(AppliedSignal {signal:Signal::Com {name:variable.name},uom:variable.unit});
             } else if channel.is_some() {
                 return ControlResult::fail(format!(
                     "COM variable '{name}' not in template '{}' (see 'vars com')",
@@ -415,7 +402,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
                 }
                 self.lan.set_override(*sv, &signal.name, value);
                 applied.push(
-                    json!({"channel":"lan","sv":sv_text(*sv),"name":signal.name,"uom":signal.uom}),
+                    AppliedSignal {signal:Signal::Lan {sv:*sv,name:signal.name.clone()},uom:signal.uom.clone()},
                 );
             } else if channel.is_some() {
                 return ControlResult::fail(format!(
@@ -427,7 +414,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             return ControlResult::fail(format!("variable '{name}' not found on com or lan"));
         }
         ok(
-            json!({"applied":applied,"value":value,"units":"native","note":"LAN overrides are pre-unit-conversion (native); the wire value follows the Units preset"}),
+            Set {applied,value},
         )
     }
     fn clear_variable(
@@ -435,7 +422,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         channel: Option<&str>,
         name: &str,
         sv: Option<u32>,
-    ) -> ControlResult {
+    ) -> ControlResult<Clear> {
         let mut cleared = Vec::new();
         let mut known = false;
         if matches_channel(channel, "com")
@@ -444,7 +431,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             let name = variable.name.clone();
             known = true;
             if self.com.clear_override(&name) {
-                cleared.push("com");
+                cleared.push(Channel::Com);
             }
         }
         if matches_channel(channel, "lan") {
@@ -459,7 +446,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             if let Some((sv, signal)) = candidates.first() {
                 known = true;
                 self.lan.clear_override(*sv, &signal.name);
-                cleared.push("lan");
+                cleared.push(Channel::Lan);
             }
         }
         if !known {
@@ -468,14 +455,14 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
                 channel.unwrap_or("com or lan")
             ));
         }
-        ok(json!({"cleared":cleared}))
+        ok(Clear {cleared})
     }
     fn get_variable(
         &mut self,
         channel: Option<&str>,
         name: &str,
         sv: Option<u32>,
-    ) -> ControlResult {
+    ) -> ControlResult<Get> {
         let com_variable = if matches_channel(channel, "com") {
             self.com.find_variable(name).map(|(i, v)| (i, v.clone()))
         } else {
@@ -505,7 +492,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
                     .unwrap_or(variable.base)
             });
             return ok(
-                json!({"channel":"com","name":variable.name,"value":value,"uom":variable.unit,"overridden":manual.is_some(),"excludeFromTelemetry":variable.exclude}),
+                Get::Com(ComVariable {name:variable.name,uom:variable.unit,value,overridden:manual.is_some(),exclude_from_telemetry:variable.exclude}),
             );
         }
         if candidates.len() > 1 {
@@ -538,7 +525,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
                 .snapshot_overrides()
                 .contains_key(&(*sv, signal.name.clone()));
             return ok(
-                json!({"channel":"lan","sv":sv_text(*sv),"name":signal.name,"value":value,"uom":signal.uom,"native":true,"overridden":overridden}),
+                Get::Lan {sv:*sv,name:signal.name.clone(),value,uom:signal.uom.clone(),overridden},
             );
         }
         ControlResult::fail(format!(
@@ -546,13 +533,13 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             channel.unwrap_or("com or lan")
         ))
     }
-    fn get_profiles(&mut self) -> ControlResult {
+    fn get_profiles(&mut self) -> ControlResult<Vec<ProfileInfo>> {
         let current = self.com.current();
         ok(
-            json!({"profiles":self.com.templates().iter().map(|t|json!({"deviceType":t.device_type,"name":t.name,"variableCount":t.variables.len(),"active":current.is_some_and(|c|std::ptr::eq(c,t))})).collect::<Vec<_>>()}),
+            self.com.templates().iter().map(|t|ProfileInfo {profile:Profile {device_type:t.device_type.clone(),name:t.name.clone()},variable_count:t.variables.len(),active:current.is_some_and(|c|std::ptr::eq(c,t))}).collect(),
         )
     }
-    fn set_profile(&mut self, device_type: Option<&str>, name: &str) -> ControlResult {
+    fn set_profile(&mut self, device_type: Option<&str>, name: &str) -> ControlResult<Profile> {
         let matches = self
             .com
             .templates()
@@ -573,20 +560,17 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         let template = matches[0].clone();
         self.com.set_template(&template.device_type, &template.name);
         ok(
-            json!({"deviceType":template.device_type,"name":template.name,"note":"template swap is on-the-fly; COM stream not interrupted"}),
+            Profile {device_type:template.device_type,name:template.name},
         )
     }
-    fn get_variables(&mut self, channel: Option<&str>) -> ControlResult {
-        let mut result = Map::new();
+    fn get_variables(&mut self, channel: Option<&str>) -> ControlResult<Variables> {
+        let mut result = Variables::default();
         let com_overrides = self.com.snapshot_overrides();
         let lan_overrides = self.lan.snapshot_overrides();
         if matches_channel(channel, "com") {
             let template = self.com.current();
-            let variables=template.map(|t|t.variables.iter().enumerate().map(|(i,v)|json!({"name":v.name,"uom":v.unit,"value":self.com.last_values().get(i).copied().unwrap_or(v.base),"overridden":com_overrides.keys().any(|name|name.eq_ignore_ascii_case(&v.name)),"excludeFromTelemetry":v.exclude})).collect::<Vec<_>>()).unwrap_or_default();
-            result.insert(
-                "com".into(),
-                json!({"template":template.map(|t|&t.name),"variables":variables}),
-            );
+            let variables=template.map(|t|t.variables.iter().enumerate().map(|(i,v)|ComVariable {name:v.name.clone(),uom:v.unit.clone(),value:self.com.last_values().get(i).copied().unwrap_or(v.base),overridden:com_overrides.keys().any(|name|name.eq_ignore_ascii_case(&v.name)),exclude_from_telemetry:v.exclude}).collect::<Vec<_>>()).unwrap_or_default();
+            result.com = Some(ComVariables {template:template.map(|t|t.name.clone()),variables});
         }
         if matches_channel(channel, "lan") {
             let mut variables = Vec::new();
@@ -608,25 +592,25 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
                             signal.das_factor,
                         )
                     });
-                    variables.push(json!({"sv":sv_text(sv),"name":signal.name,"uom":signal.uom,"value":value,"valueType":signal.value_type,"byteOffset":signal.byte_offset,"size":signal.size,"transmittable":self.lan.can_transmit(sv,&signal.name).is_ok(),"overridden":lan_overrides.contains_key(&(sv,signal.name.clone()))}));
+                    variables.push(LanVariable {sv,name:signal.name.clone(),uom:signal.uom.clone(),value,value_type:signal.value_type.clone(),byte_offset:signal.byte_offset,size:signal.size,transmittable:self.lan.can_transmit(sv,&signal.name).is_ok(),overridden:lan_overrides.contains_key(&(sv,signal.name.clone()))});
                 }
             }
-            result.insert("lan".into(), json!({"variables":variables}));
+            result.lan = Some(variables);
         }
         ControlResult::success(Some(result))
     }
-    fn get_ports(&mut self) -> ControlResult {
+    fn get_ports(&mut self) -> ControlResult<Vec<Endpoint>> {
         ok(
-            json!({"ports":self.com_emitter.ports().iter().map(|name|json!({"name":name,"open":self.com_emitter.is_open()&&self.com_emitter.port_name()==Some(name.as_str())})).collect::<Vec<_>>()}),
+            self.com_emitter.ports().iter().map(|name|Endpoint {name:name.clone(),open:self.com_emitter.is_open()&&self.com_emitter.port_name()==Some(name.as_str())}).collect(),
         )
     }
-    fn get_adapters(&mut self) -> ControlResult {
+    fn get_adapters(&mut self) -> ControlResult<Adapters> {
         let list = self.lan_emitter.adapters();
         ok(
-            json!({"adapters":list.iter().map(|name|json!({"name":name,"open":self.lan_emitter.is_open()&&self.lan_emitter.adapter_name()==Some(name.as_str())})).collect::<Vec<_>>(),"npcapAvailable":!list.is_empty()||self.lan_emitter.is_open()||self.lan_emitter.npcap_available()}),
+            Adapters {adapters:list.iter().map(|name|Endpoint {name:name.clone(),open:self.lan_emitter.is_open()&&self.lan_emitter.adapter_name()==Some(name.as_str())}).collect(),npcap_available:!list.is_empty()||self.lan_emitter.is_open()||self.lan_emitter.npcap_available()},
         )
     }
-    fn set_port(&mut self, port: &str) -> ControlResult {
+    fn set_port(&mut self, port: &str) -> ControlResult<PortChanged> {
         if port.trim().is_empty() {
             return ControlResult::fail("empty port name");
         }
@@ -647,9 +631,9 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             self.com_enabled = true;
         }
         self.save_requested();
-        ok(json!({"port":port,"streaming":self.com_enabled}))
+        ok(PortChanged {port:port.into(),streaming:self.com_enabled})
     }
-    fn set_adapter(&mut self, adapter: &str) -> ControlResult {
+    fn set_adapter(&mut self, adapter: &str) -> ControlResult<AdapterChanged> {
         if adapter.trim().is_empty() {
             return ControlResult::fail("empty adapter name");
         }
@@ -669,22 +653,22 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             self.lan_enabled = true;
         }
         self.save_requested();
-        ok(json!({"adapter":adapter,"streaming":self.lan_enabled}))
+        ok(AdapterChanged {adapter:adapter.into(),streaming:self.lan_enabled})
     }
-    fn set_equipment(&mut self, equipment: u32) -> ControlResult {
+    fn set_equipment(&mut self, equipment: u32) -> ControlResult<u32> {
         self.settings.lan_equipment = equipment;
         if let Some(network) = &mut self.lan.network {
             network.sequencer.parameters.unit_number_value = equipment;
         }
         self.save_requested();
-        ok(json!({"equipment":sv_text(equipment)}))
+        ok(equipment)
     }
-    fn set_firmware(&mut self, on: bool) -> ControlResult {
+    fn set_firmware(&mut self, on: bool) -> ControlResult<bool> {
         self.settings.lan_firmware_sv_enabled = on;
         self.save_requested();
-        ok(json!({"firmwareSv":on}))
+        ok(on)
     }
-    fn set_emulation(&mut self, channel: &str, on: bool) -> ControlResult {
+    fn set_emulation(&mut self, channel: &str, on: bool) -> ControlResult<Emulation> {
         if channel.eq_ignore_ascii_case("com") {
             self.com_emulating = on;
             self.settings.com_emule_enabled = on;
@@ -696,18 +680,18 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             return ControlResult::fail(format!("unknown channel '{channel}' (com|lan)"));
         }
         self.save_requested();
-        ok(json!({"channel":channel.to_ascii_lowercase(),"emulating":on}))
+        ok(Emulation {channel:if channel.eq_ignore_ascii_case("com") {Channel::Com} else {Channel::Lan},emulating:on})
     }
-    fn set_preset(&mut self, preset: i32) -> ControlResult {
+    fn set_preset(&mut self, preset: i32) -> ControlResult<String> {
         if !(0..=3).contains(&preset) {
             return ControlResult::fail(format!("preset index {preset} out of range 0..3"));
         }
         self.settings.unit_preset = preset;
         self.apply_units();
         self.save_requested();
-        ok(json!({"preset":preset_name(self.lan.settings.preset)}))
+        ok(preset_name(self.lan.settings.preset).into())
     }
-    fn set_unit(&mut self, group: &str, unit: Option<&str>) -> ControlResult {
+    fn set_unit(&mut self, group: &str, unit: Option<&str>) -> ControlResult<UnitChanged> {
         let g = group.trim().to_ascii_lowercase();
         let unit = unit.unwrap_or("").trim();
         let target = match g.as_str() {
@@ -726,7 +710,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         *target = unit.into();
         self.apply_units();
         self.save_requested();
-        ok(json!({"group":g,"unit":(!unit.is_empty()).then_some(unit)}))
+        ok(UnitChanged {group:g,unit:(!unit.is_empty()).then(||unit.to_owned())})
     }
     fn request_quit(&mut self) {
         self.quit_requested = true;

@@ -5,27 +5,31 @@ use application::{ChannelName, Equipment, NativeValue, Scope, Variable};
 pub use application::{Command, Execution, execute};
 pub const PROTO_VERSION: u16 = crate::PROTOCOL_VERSION;
 pub const COMMAND_NAMES: &[&str] = crate::COMMANDS;
-pub type Data = Map<String, Value>;
+pub mod payload;
+use payload::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FailureEffect {
     None,
     Applied,
 }
 #[derive(Debug, Clone, PartialEq)]
-pub struct ControlResult {
+pub struct ControlResult<T = Payload> {
     pub ok: bool,
     pub failure_effect: FailureEffect,
     pub error: Option<String>,
-    pub data: Option<Data>,
+    pub data: Option<T>,
 }
-impl ControlResult {
-    pub fn success(data: Option<Data>) -> Self {
+impl<T> ControlResult<T> {
+    pub fn success(data: Option<T>) -> Self {
         Self {
             ok: true,
             failure_effect: FailureEffect::None,
             error: None,
             data,
         }
+    }
+    pub fn map_data<U>(self, map: impl FnOnce(T) -> U) -> ControlResult<U> {
+        ControlResult {ok:self.ok,failure_effect:self.failure_effect,error:self.error,data:self.data.map(map)}
     }
     pub fn fail_after_effect(error: impl Into<String>) -> Self {
         Self {
@@ -43,36 +47,36 @@ impl ControlResult {
     }
 }
 pub trait EmuControl {
-    fn get_status(&mut self) -> Data;
-    fn start_channel(&mut self, channel: &str) -> ControlResult;
-    fn stop_channel(&mut self, channel: &str) -> ControlResult;
+    fn get_status(&mut self) -> Status;
+    fn start_channel(&mut self, channel: &str) -> ControlResult<Start>;
+    fn stop_channel(&mut self, channel: &str) -> ControlResult<Stop>;
     fn set_variable(
         &mut self,
         channel: Option<&str>,
         name: &str,
         value: f64,
         sv: Option<u32>,
-    ) -> ControlResult;
+    ) -> ControlResult<Set>;
     fn clear_variable(
         &mut self,
         channel: Option<&str>,
         name: &str,
         sv: Option<u32>,
-    ) -> ControlResult;
+    ) -> ControlResult<Clear>;
     fn get_variable(&mut self, channel: Option<&str>, name: &str, sv: Option<u32>)
-    -> ControlResult;
-    fn get_profiles(&mut self) -> ControlResult;
-    fn set_profile(&mut self, device_type: Option<&str>, name: &str) -> ControlResult;
-    fn get_variables(&mut self, channel: Option<&str>) -> ControlResult;
-    fn get_ports(&mut self) -> ControlResult;
-    fn get_adapters(&mut self) -> ControlResult;
-    fn set_port(&mut self, port: &str) -> ControlResult;
-    fn set_adapter(&mut self, adapter: &str) -> ControlResult;
-    fn set_equipment(&mut self, equipment: u32) -> ControlResult;
-    fn set_firmware(&mut self, on: bool) -> ControlResult;
-    fn set_emulation(&mut self, channel: &str, on: bool) -> ControlResult;
-    fn set_preset(&mut self, preset_index: i32) -> ControlResult;
-    fn set_unit(&mut self, group: &str, unit: Option<&str>) -> ControlResult;
+    -> ControlResult<Get>;
+    fn get_profiles(&mut self) -> ControlResult<Vec<ProfileInfo>>;
+    fn set_profile(&mut self, device_type: Option<&str>, name: &str) -> ControlResult<Profile>;
+    fn get_variables(&mut self, channel: Option<&str>) -> ControlResult<Variables>;
+    fn get_ports(&mut self) -> ControlResult<Vec<Endpoint>>;
+    fn get_adapters(&mut self) -> ControlResult<Adapters>;
+    fn set_port(&mut self, port: &str) -> ControlResult<PortChanged>;
+    fn set_adapter(&mut self, adapter: &str) -> ControlResult<AdapterChanged>;
+    fn set_equipment(&mut self, equipment: u32) -> ControlResult<u32>;
+    fn set_firmware(&mut self, on: bool) -> ControlResult<bool>;
+    fn set_emulation(&mut self, channel: &str, on: bool) -> ControlResult<Emulation>;
+    fn set_preset(&mut self, preset_index: i32) -> ControlResult<String>;
+    fn set_unit(&mut self, group: &str, unit: Option<&str>) -> ControlResult<UnitChanged>;
     /// Mark shutdown; the transport flushes the ACK before final teardown.
     fn request_quit(&mut self);
 }
@@ -83,16 +87,16 @@ pub struct ControlReply {
     pub start_watch: bool,
     pub quit: bool,
 }
-pub fn to_json(ok: bool, cmd: &str, data: Option<Data>, error: Option<&str>) -> String {
+pub fn to_json(ok: bool, cmd: &str, data: Option<Payload>, error: Option<&str>) -> String {
     to_value(ok, cmd, data, error).to_string()
 }
-pub fn to_value(ok: bool, cmd: &str, data: Option<Data>, error: Option<&str>) -> Value {
+pub fn to_value(ok: bool, cmd: &str, data: Option<Payload>, error: Option<&str>) -> Value {
     let mut value = Map::new();
     value.insert("ok".into(), json!(ok));
     value.insert("cmd".into(), json!(cmd));
     if ok {
         if let Some(data) = data {
-            value.insert("data".into(), Value::Object(data));
+            value.insert("data".into(), v1_data(data));
         }
     } else {
         value.insert("error".into(), json!(error.unwrap_or("error")));
@@ -522,3 +526,6 @@ pub fn parse_line(line: &str) -> Result<Command, ControlReply> {
     };
     Ok(result)
 }
+
+mod v1;
+use v1::data as v1_data;
