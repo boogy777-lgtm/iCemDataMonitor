@@ -44,8 +44,46 @@ struct View {
     equipment: Entity<TextInput>,
     unit: Entity<TextInput>,
     popup: Option<&'static str>,
+    opened_at: Instant,
+    visibility: Option<crate::window_visibility::Request>,
 }
 impl View {
+    fn request_visibility(
+        &mut self,
+        window: &Window,
+        visible: bool,
+    ) -> Result<(), icem_windows_native::NativeError> {
+        icem_windows_native::request_window_visible(window, visible)?;
+        self.visibility = Some(crate::window_visibility::Request::new(
+            visible,
+            self.opened_at.elapsed(),
+        ));
+        Ok(())
+    }
+    fn observe_visibility(&mut self, window: &mut Window) {
+        let Some(request) = &self.visibility else {
+            return;
+        };
+        let observation =
+            icem_windows_native::window_visibility(window).map(|(actual, minimized)| {
+                request.observe(actual, minimized, self.opened_at.elapsed())
+            });
+        use crate::window_visibility::Observation;
+        match observation {
+            Ok(Observation::Waiting) => return,
+            Ok(Observation::Confirmed(true)) => {
+                window.refresh();
+                window.activate_window();
+            }
+            Ok(Observation::Confirmed(false)) => {}
+            Ok(Observation::TimedOut) => {
+                self.model.note =
+                    "Видимость окна не подтверждена за 2 с; автоматического повтора нет".into()
+            }
+            Err(error) => self.model.note = format!("Видимость окна: {error}"),
+        }
+        self.visibility = None;
+    }
     fn value_input(&self, lan: bool) -> Entity<TextInput> {
         if lan {
             self.lan_value.clone()
@@ -683,16 +721,35 @@ fn open(view: Entity<View>, cx: &mut App) -> gpui::Result<gpui::WindowHandle<Vie
             }),
             ..Default::default()
         },
-        move |_, _| view,
+        move |window, cx| {
+            let closing = view.clone();
+            window.on_window_should_close(cx, move |window, cx| {
+                closing.update(cx, |view, cx| {
+                    if let Err(error) = view.request_visibility(window, false) {
+                        view.model.note = format!("Не удалось скрыть окно: {error}");
+                    }
+                    cx.notify();
+                });
+                // X/Alt+F4 only hide this window. Explicit engine quit uses cx.quit().
+                false
+            });
+            view
+        },
     )
 }
-/// The engine remains alive when X closes the window. Tray open recreates the same view.
+fn reveal(handle: gpui::WindowHandle<View>, cx: &mut App) -> gpui::Result<()> {
+    handle.update(cx, |view, window, _| {
+        view.request_visibility(window, true)?;
+        Ok(())
+    })?
+}
+/// X hides the live window; the independent engine and tray remain active.
 pub fn run_emulator(
     port: Arc<dyn UiPort>,
     should_stop: Arc<dyn Fn() -> bool + Send + Sync>,
     icon: PathBuf,
 ) -> std::io::Result<()> {
-    let bridge = Bridge::start(port)?;
+    let (bridge, completion) = Bridge::start(port)?;
     let outcome = std::rc::Rc::new(std::cell::RefCell::new(None));
     let failure = outcome.clone();
     Application::new().run(move |cx: &mut App| {
@@ -705,6 +762,8 @@ pub fn run_emulator(
             equipment: input::new_input("0x00A86F46", "Оборудование", cx),
             unit: input::new_input("", "gpm, bar…", cx),
             popup: None,
+            opened_at: Instant::now(),
+            visibility: None,
         });
         view.update(cx, |v, _| {
             for command in ["profiles", "ports", "adapters"] {
@@ -713,7 +772,7 @@ pub fn run_emulator(
             v.poll();
         });
         let window = match open(view.clone(), cx) {
-            Ok(window) => Some(window),
+            Ok(window) => window,
             Err(e) => {
                 *failure.borrow_mut() = Some(format!("GPUI window: {e}"));
                 cx.quit();
@@ -728,20 +787,15 @@ pub fn run_emulator(
                 return;
             }
         };
-        let handle = std::rc::Rc::new(std::cell::Cell::new(window));
-        let showing = handle.clone();
         let showing_view = view.clone();
         cx.on_action(move |_: &OpenEmulator, cx| {
-            let active = showing.get().is_some_and(|handle| {
-                handle
-                    .update(cx, |_, window, _| window.activate_window())
-                    .is_ok()
-            });
-            if !active {
-                match open(showing_view.clone(), cx) {
-                    Ok(window) => showing.set(Some(window)),
-                    Err(error) => eprintln!("GPUI reopen: {error}"),
-                };
+            // Reuse the exact HWND/view, including input, popup and scroll state.
+            if let Err(error) = reveal(window, cx) {
+                showing_view.update(cx, |view, cx| {
+                    view.model.note = format!("Не удалось открыть окно: {error}");
+                    cx.notify();
+                });
+                eprintln!("GPUI show: {error}");
             }
             cx.activate(true);
         });
@@ -767,6 +821,8 @@ pub fn run_emulator(
                 }
                 if cx
                     .update(|cx| {
+                        let _ =
+                            window.update(cx, |view, window, _| view.observe_visibility(window));
                         view.update(cx, |v, cx| {
                             let first = v.model.snapshot.is_null();
                             v.bridge.drain(&mut v.model);
@@ -797,6 +853,7 @@ pub fn run_emulator(
         })
         .detach();
     });
+    completion.finish()?;
     let failure = outcome.borrow_mut().take();
     failure.map_or(Ok(()), |error| Err(std::io::Error::other(error)))
 }

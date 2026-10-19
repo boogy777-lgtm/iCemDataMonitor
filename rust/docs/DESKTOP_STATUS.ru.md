@@ -151,3 +151,10 @@ Console-close/window lifecycle — следующий самостоятельн
 visibility остаётся источником статуса. Контролы/appearance/mapping 176 + 6 не менялись.
 [HOST_E13](HOST_E13.ru.md): Ctrl+C идёт в graceful teardown, console X → hide OPEN.
 Native focus, DPI, sessions и поведение всех окон остаются operator gates.
+
+## E14: окно emulator и UI shutdown
+
+[HOST_E14](HOST_E14.ru.md): X/Alt+F4 скрывает тот же HWND; Open проверяет actual
+visible/restored, deadline 2 s без retry. Bridge Drop не ждёт I/O в callback;
+WorkerCompletion завершает in-flight после UI loop. Shell close policy прежняя.
+Mapping/appearance 176 + 6 не менялись; Windows operator acceptance NOT_RUN.

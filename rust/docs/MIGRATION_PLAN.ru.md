@@ -157,3 +157,9 @@ Console-close/window lifecycle — следующий самостоятельн
 actual acknowledgement и graceful Ctrl+C. Console X → hide требует отдельной
 архитектуры окна: legacy callback не отменяет CTRL_CLOSE. Этот gate и оставшиеся
 window lifecycle/operator сценарии открыты; весь P10/P15 не объявляется завершённым.
+
+## E14: emulator window lifecycle
+
+[HOST_E14](HOST_E14.ru.md): X/Open сохраняет HWND; UI close не ждёт backend
+в callback, in-flight завершается владельцем после UI loop. Windows operator gate
+остаётся открытым; Console Host X → hide требует ADR 0009. P10/P15 остаются PARTIAL.

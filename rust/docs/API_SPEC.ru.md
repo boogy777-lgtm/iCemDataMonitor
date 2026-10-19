@@ -285,3 +285,6 @@ Frozen RPC v1 неизменён. SetConsoleVisible задаёт bool-состо
 (16, deadline 5 s), затем возвращает actual HostStatus. Отмена до исполнения
 пропускает команду; timeout после начала даёт unknown outcome, без automatic retry.
 SetLayer сохраняет legacy toggle. [ADR 0009](adr/0009-console-owner.ru.md).
+
+E14: wire API/версии прежние. Async request/probe owned GPUI window и
+WorkerCompletion — внутренние Rust способности; [ADR 0010](adr/0010-desktop-window-lifecycle.ru.md).

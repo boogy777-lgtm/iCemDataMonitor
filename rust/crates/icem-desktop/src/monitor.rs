@@ -437,7 +437,7 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
             .map_err(std::io::Error::other)?;
     let theme = icem_windows_native::OwnedEvent::create_reset(icem_platform_windows::THEME_CHANGED)
         .map_err(std::io::Error::other)?;
-    let bridge = Bridge::start(Arc::new(crate::logs::LoggedPort {
+    let (bridge, completion) = Bridge::start(Arc::new(crate::logs::LoggedPort {
         inner: port,
         logs: Arc::new(icem_logging::SharedLogs::new(icem_logging::Owner::Shell)),
     }))?;
@@ -585,5 +585,6 @@ pub fn run_monitor(port: Arc<dyn UiPort>) -> std::io::Result<()> {
         })
         .detach();
     });
+    completion.finish()?;
     Ok(())
 }

@@ -140,3 +140,8 @@ Console-close/window lifecycle — следующий самостоятельн
 [Общий owner Show/Hide и graceful Ctrl+C](docs/HOST_E13.ru.md) подключён к tray,
 startup и прежнему RPC. Console X → hide остаётся открытым: Windows не позволяет
 отменить CTRL_CLOSE возвратом TRUE. Windows runtime/visual acceptance не доказана.
+
+## E14: lifecycle окон
+
+[Emulator X → Hide/Open и завершение UI](docs/HOST_E14.ru.md): тот же HWND, actual
+visibility и завершение in-flight после UI loop. Actions пропущены из-за лимита владельца.

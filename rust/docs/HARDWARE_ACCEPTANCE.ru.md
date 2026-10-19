@@ -45,3 +45,7 @@ minimize/restore, tray и desktop disconnect/reconnect; Ctrl+C должен за
 DPI/focus, elevated/non-elevated и разные sessions. X → hide сейчас OPEN: закрытие
 нативной консоли завершает Host по OS default. Не принимать этот сценарий за PASS
 на основании callback или cross-build. [Подробности E13](HOST_E13.ru.md).
+
+E14 [window operator gate](HOST_E14.ru.md): X/Open ×3 с несохранённым input, scroll,
+selection/размером; restore; tray/pipe Quit; Shell close/reopen при живом независимом
+Host; focus/DPI/sessions и отказ tray. NOT_RUN до Windows стенда.
