@@ -57,3 +57,21 @@ E20 proofs are unchanged. Corrected exact-head Windows verdict remains a separat
 в default graph и 13/13 с serde_json/preserve_order; desktop Clippy --all-targets
 с preserve_order / -D warnings и workspace fmt --check PASS. Это проверка обеих
 formatter configurations, не подмена нового Windows/MSVC exact-head gate.
+
+
+D46 recurrence on exact 1111e3c9c7bb56ad123e7c254bb1b621ad05a640:
+Rust/MSVC 39268706746 (Scaffold, C# differential and Chrome) and installer contracts
+39268706847 PASS; Legacy 39268707217 / job 118115014371 FAIL at the virtual-port
+retry wait. State RUNNING / attempt 2 at catch does not establish retry timing before
+the 15s deadline. [SOURCE_AUDIT D46 follow-up](SOURCE_AUDIT.ru.md) records the original
+failure, controlled runtime 10.0.13 completion-race experiment and separate Linux
+focused passes. Same-stack fixture cancellation follows the expected second signal,
+retaining actual 8s retry, original assertions and 15s/10s bounds, plus no-third-attempt
+assertion and precise recurrence diagnostics. Production .NET remains unchanged;
+existing 14-entry ledger cites source commit b4211289e6f94fb5a09f493563bf1fa12e92d0f0.
+This is fixture cleanup with demonstrated mechanism, not proof of the exact CI
+scheduling cause. All Windows gates must pass again on the final amended PR17 head.
+
+Local focused Linux checks on runtime 10.0.13: baseline and cancellation comparison
+passed with actual retry near 8s; the exact staged SerialTee test also passed once,
+including no-third-attempt assertion. These are not Windows integration verdicts.

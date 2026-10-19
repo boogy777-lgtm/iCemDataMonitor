@@ -95,11 +95,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
       "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
-      "approved_blob_sha1": "43bf35c289524bf8b7ea2a99df6de7f633050171",
+      "approved_blob_sha1": "22ab3d12fa03aa94b673ca6c621f2d8ddca3d3f6",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/15",
-        "commit": "6d2d87c2ac8daaad555e886bb5f673bc531aa30a",
-        "reason": "User-authorized E19/D46 diagnostic-only change: retain exact PAIR_MISSING/attempt=2 assertions and original 15s/10s deadlines; on Timeout report actual state, attempts, ExecuteTask status/exception and elapsed time. Cause of CI retry timeout remains unknown; production COM tee unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/17",
+        "commit": "b4211289e6f94fb5a09f493563bf1fa12e92d0f0",
+        "reason": "User-authorized D46 follow-up: cancel the retry-only fixture on the same factory call stack after its expected second-attempt signal, preserving actual production retry, PAIR_MISSING/pair=false, exact attempt2 and 15s/10s bounds; assert no third attempt after Stop. Add monotonic signal/wait/deadline timestamps, signal result and source TCS status. Controlled runtime10.0.13 experiment proves deferred WaitAsync completion can lose to timeout and same-stack cleanup releases it; exact Windows CI timing cause remains unproved. Production .NET unchanged."
       }
     },
     {
