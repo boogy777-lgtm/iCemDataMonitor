@@ -105,6 +105,19 @@ impl<C: ComEmitter, L: LanEmitter> Engine<C, L> {
     pub fn settings(&self) -> &EmuSettings {
         &self.settings
     }
+    /// Serialized application execution. Persistence stays with the caller, under the same gate.
+    pub fn execute_application(
+        &mut self,
+        command: crate::control::Command,
+        save: impl FnOnce(&EmuSettings) -> Result<(), String>,
+    ) -> crate::control::Execution {
+        let revision = self.settings_revision;
+        let mut reply = crate::control::execute(command, self);
+        if self.settings_revision != revision {
+            reply.saved(save(&self.settings));
+        }
+        reply
+    }
     /// Incremented exactly where the original calls Save; start/stop stream
     /// updates are retained until another save or shutdown, as in the original.
     pub fn settings_revision(&self) -> u64 {
@@ -385,11 +398,20 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         if matches_channel(channel, "lan") {
             let candidates = self.find_lan_signals(name, sv);
             if candidates.len() > 1 {
-                return ControlResult::fail(Self::ambiguity(name, &candidates, true));
+                return if applied.is_empty() {
+                    ControlResult::fail(Self::ambiguity(name, &candidates, true))
+                } else {
+                    ControlResult::fail_after_effect(Self::ambiguity(name, &candidates, true))
+                };
             }
             if let Some((sv, signal)) = candidates.first() {
                 if let Err(reason) = self.lan.can_transmit(*sv, &signal.name) {
-                    return ControlResult::fail(format!("lan signal '{}': {reason}", signal.name));
+                    let error = format!("lan signal '{}': {reason}", signal.name);
+                    return if applied.is_empty() {
+                        ControlResult::fail(error)
+                    } else {
+                        ControlResult::fail_after_effect(error)
+                    };
                 }
                 self.lan.set_override(*sv, &signal.name, value);
                 applied.push(
@@ -428,7 +450,11 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
         if matches_channel(channel, "lan") {
             let candidates = self.find_lan_signals(name, sv);
             if candidates.len() > 1 {
-                return ControlResult::fail(Self::ambiguity(name, &candidates, false));
+                return if cleared.is_empty() {
+                    ControlResult::fail(Self::ambiguity(name, &candidates, false))
+                } else {
+                    ControlResult::fail_after_effect(Self::ambiguity(name, &candidates, false))
+                };
             }
             if let Some((sv, signal)) = candidates.first() {
                 known = true;
@@ -615,7 +641,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             if let Err(error) = self.com_emitter.open(port) {
                 self.com_emitter.close();
                 self.settings.com_port = old;
-                return ControlResult::fail(error);
+                return ControlResult::fail_after_effect(error);
             }
             self.com.reset_clock();
             self.com_enabled = true;
@@ -638,7 +664,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             if let Err(error) = self.lan_emitter.open(adapter) {
                 self.lan_emitter.close();
                 self.settings.lan_adapter = old;
-                return ControlResult::fail(error);
+                return ControlResult::fail_after_effect(error);
             }
             self.lan_enabled = true;
         }

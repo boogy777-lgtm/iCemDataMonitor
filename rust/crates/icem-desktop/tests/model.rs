@@ -1,4 +1,11 @@
 use icem_desktop::{Model, VariableRow, equipment_command, unit_command};
+use icem_emulation::{
+    Channel,
+    control::{
+        Command,
+        application::{Equipment, NativeValue, Scope, Variable},
+    },
+};
 use serde_json::json;
 #[test]
 fn manual_value_commands_preserve_sv_native_names_and_finite_numbers() -> Result<(), String> {
@@ -13,23 +20,36 @@ fn manual_value_commands_preserve_sv_native_names_and_finite_numbers() -> Result
     };
     assert_eq!(
         model.edit_command(true, Some("1,25"))?,
-        json!({"cmd":"set","channel":"lan","sv":"0x0137","name":"Discharge pressure","value":1.25})
+        Command::Set(
+            Variable {
+                scope: Scope::channel(Channel::Lan),
+                name: "Discharge pressure".into(),
+                sv: Some(0x137)
+            },
+            NativeValue::finite(1.25).map_err(str::to_owned)?
+        )
     );
     for bad in ["NaN", "inf", "1e999", "invalid"] {
         assert!(model.edit_command(true, Some(bad)).is_err());
     }
     assert_eq!(
         equipment_command("0xFFFFFFFF")?,
-        json!({"cmd":"setequipment","value":u32::MAX})
+        Command::SetEquipment(Equipment(u32::MAX))
     );
     assert!(equipment_command("4294967296").is_err());
     assert_eq!(
         unit_command(5, Some(" bar ")),
-        json!({"cmd":"setunit","channel":"pressure","name":"bar"})
+        Command::SetUnit {
+            group: "pressure".into(),
+            unit: Some("bar".into())
+        }
     );
     assert_eq!(
         unit_command(0, None),
-        json!({"cmd":"setunit","channel":"flow"})
+        Command::SetUnit {
+            group: "flow".into(),
+            unit: None
+        }
     );
     Ok(())
 }
@@ -79,7 +99,10 @@ fn profile_choices_keep_device_identity_and_variable_clicks_keep_signal_identity
     model.apply("profiles",Ok(json!({"ok":true,"data":{"profiles":[{"name":"Shared","deviceType":"A"},{"name":"Shared","deviceType":"B"}]}})));
     assert_eq!(
         model.profiles[1].command(),
-        json!({"cmd":"profile","name":"Shared","deviceType":"B"})
+        Command::Profile {
+            name: "Shared".into(),
+            device_type: Some("B".into())
+        }
     );
     model.lan_variables = vec![
         VariableRow {
@@ -99,7 +122,10 @@ fn profile_choices_keep_device_identity_and_variable_clicks_keep_signal_identity
         model.select_variable(true, "0x1", "Pressure"),
         Some("12".into())
     );
-    assert_eq!(model.edit_command(true, Some("14"))?["sv"], "0x1");
+    assert!(matches!(
+        model.edit_command(true, Some("14"))?,
+        Command::Set(Variable { sv: Some(1), .. }, _)
+    ));
     assert_eq!(model.select_variable(true, "0x999", "Pressure"), None);
     assert!(model.edit_command(true, Some("14")).is_err());
     Ok(())
@@ -178,4 +204,20 @@ fn navigation_uses_contract_sections_without_changing_connection_truth() {
     m.apply("navigate", Err("unavailable".into()));
     assert!(m.connected);
     assert!(m.note.contains("unavailable"));
+}
+
+#[test]
+fn save_failure_is_visible_after_application_and_does_not_look_like_rejection() {
+    let mut model = Model::default();
+    model.apply("setequipment", Ok(json!({"ok":true,"data":{"equipment":"0x0000002A"},"application":{"outcome":"AppliedNotPersisted","category":"persistence","message":"disk full"}})));
+    assert!(model.note.contains("применено в памяти"));
+    assert!(model.note.contains("disk full"));
+    model.apply(
+        "status",
+        Ok(json!({"ok":true,"data":{"lan":{"equipment":"0x0000002A"}}})),
+    );
+    assert!(
+        model.note.contains("disk full"),
+        "routine status cannot erase mutation diagnostics"
+    );
 }

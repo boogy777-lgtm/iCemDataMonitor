@@ -21,6 +21,11 @@ on:
   pull_request:
     branches: [main]
     paths:
+      # Runtime/dependency changes alter the payload and must retain native MSI contracts.
+      - 'rust/apps/**'
+      - 'rust/crates/**'
+      - 'rust/Cargo.*'
+      - 'rust/rust-toolchain.toml'
       - 'rust/installer/**'
       - 'rust/tools/Build-Windows*.ps1'
       - 'rust/tools/Build-LegacyAddin.ps1'

@@ -73,6 +73,71 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
         serde_json::from_str(&request(&pipe, "status", Duration::from_secs(3))?)?;
     assert_eq!(updated["data"]["lan"]["equipment"], "0x12345678");
     assert!(std::fs::read_to_string(&config)?.contains("0x12345678"));
+    // CLI uses the same subscription consumer for text and JSON, without a second engine.
+    for command in ["watch", r#"{"cmd":"watch"}"#] {
+        use std::io::BufRead;
+        let mut cli = Command::new(exe)
+            .args(["--pipe", &pipe, "--cli", command])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .spawn()?;
+        let output = cli.stdout.take().ok_or("CLI stdout missing")?;
+        let (sent, received) = std::sync::mpsc::sync_channel(1);
+        let reader = std::thread::spawn(move || {
+            let lines = std::io::BufReader::new(output)
+                .lines()
+                .take(3)
+                .collect::<std::io::Result<Vec<_>>>();
+            let _ = sent.send(lines);
+        });
+        let lines = received.recv_timeout(Duration::from_secs(7));
+        let _ = cli.kill();
+        let _ = cli.wait();
+        reader.join().map_err(|_| "CLI reader panicked")?;
+        let lines = lines??;
+        assert_eq!(lines.len(), 3);
+        for (line, expected) in lines.iter().zip(["watch", "status", "status"]) {
+            let value: serde_json::Value = serde_json::from_str(line)?;
+            assert_eq!(value["ok"], true);
+            assert_eq!(value["cmd"], expected);
+        }
+        assert!(request(&pipe, "status", Duration::from_secs(3)).is_ok());
+    }
+    let rejected = Command::new(exe)
+        .args(["--pipe", &pipe, "--cli", "setpreset", "4"])
+        .output()?;
+    assert_eq!(rejected.status.code(), Some(1));
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&rejected.stdout)?["ok"],
+        false
+    );
+    let absent_pipe = format!("{pipe}-absent");
+    let absent = Command::new(exe)
+        .args(["--pipe", &absent_pipe, "--cli", "status"])
+        .output()?;
+    assert_eq!(absent.status.code(), Some(1));
+    let absent_json: serde_json::Value = serde_json::from_slice(&absent.stdout)?;
+    assert_eq!(absent_json["ok"], false);
+    assert!(
+        absent_json["error"]
+            .as_str()
+            .is_some_and(|e| e.contains("unavailable"))
+    );
+    let usage = Command::new(exe)
+        .args(["--pipe", &absent_pipe, "--cli"])
+        .output()?;
+    assert_eq!(usage.status.code(), Some(2));
+    // Persistence fails after applying; v1 stays compatible and status reports actual memory.
+    std::fs::remove_file(&config)?;
+    std::fs::create_dir(&config)?;
+    let partial: serde_json::Value =
+        serde_json::from_str(&request(&pipe, "setequipment 42", Duration::from_secs(3))?)?;
+    assert_eq!(partial["ok"], true);
+    let changed: serde_json::Value =
+        serde_json::from_str(&request(&pipe, "status", Duration::from_secs(3))?)?;
+    assert_eq!(changed["data"]["lan"]["equipment"], "0x0000002A");
+    std::fs::remove_dir(&config)?;
+    request(&pipe, "setequipment 42", Duration::from_secs(3))?;
     let second = spawn()?.wait()?;
     assert!(!second.success(), "singleton must reject a second engine");
     let quit: serde_json::Value =

@@ -120,3 +120,10 @@ Code 441de1a, Windows/Linux CI 38968834214 PASS: 72 Windows tests + doctest,
 61 Linux tests + Chrome. Original C# LAN oracle .NET 10.0.12 сравнил полные payload
 побайтово, все cases PASS. Artifact получен; данные migration/validation-emulator-e3.json.
 Hardware/IPC/GPUI/tray остаются отдельными этапами.
+
+
+E17: [типизированный application API emulator и общий watch client](EMULATOR_E17.ru.md),
+[ADR 0014](adr/0014-emulator-application-api.ru.md). GPUI передаёт Command напрямую;
+pipe v1 остаётся compatibility adapter, включая coercions и исторический save ACK.
+Внутренний результат отделяет apply/save failure; CLI text/JSON watch получает поток,
+а не только ACK. Software CI не закрывает operator/SDK/hardware gates.

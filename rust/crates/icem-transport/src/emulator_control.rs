@@ -1,6 +1,11 @@
 //! Emulator protocol v1, bounded JSON-lines framing and Windows named pipe.
 //! The application supplies one serialized engine; transport owns no domain state.
-use icem_emulation::control::ControlReply;
+use icem_emulation::control::{
+    Command, ControlReply,
+    application::{ErrorCategory, Outcome},
+    parse_line,
+};
+use std::ops::ControlFlow;
 use std::{io, sync::Arc, time::Duration};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::watch;
@@ -17,12 +22,24 @@ pub trait Executor: Send + Sync + 'static {
     fn reply_flushed(&self, _reply: &ControlReply) {}
 }
 async fn line(reader: &mut (impl AsyncBufRead + Unpin)) -> io::Result<Option<String>> {
+    bounded_line(reader, MAX_LINE_BYTES, false).await
+}
+async fn bounded_line(
+    reader: &mut (impl AsyncBufRead + Unpin),
+    limit: usize,
+    require_newline: bool,
+) -> io::Result<Option<String>> {
     let mut result = Vec::new();
     loop {
         let buffer = reader.fill_buf().await?;
         if buffer.is_empty() {
             return if result.is_empty() {
                 Ok(None)
+            } else if require_newline {
+                Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "incomplete control reply",
+                ))
             } else {
                 decode_line(result).map(Some)
             };
@@ -31,10 +48,10 @@ async fn line(reader: &mut (impl AsyncBufRead + Unpin)) -> io::Result<Option<Str
             .iter()
             .position(|b| *b == b'\n')
             .map_or(buffer.len(), |i| i + 1);
-        if result.len() + count > MAX_LINE_BYTES {
+        if result.len() + count > limit {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "control line exceeds 65536 bytes",
+                "control line exceeds byte limit",
             ));
         }
         let complete = buffer[count - 1] == b'\n';
@@ -113,13 +130,158 @@ pub async fn serve_session<S: AsyncRead + AsyncWrite + Unpin>(
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientEnd {
+    Reply { ok: bool },
+    Cancelled,
+}
+#[derive(Debug)]
+pub struct ClientError {
+    pub category: ErrorCategory,
+    pub outcome: Outcome,
+    pub message: String,
+}
+impl std::fmt::Display for ClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {} ({:?})",
+            self.category.code(),
+            self.message,
+            self.outcome
+        )
+    }
+}
+impl std::error::Error for ClientError {}
+impl ClientError {
+    fn io(error: io::Error, unknown: bool) -> Self {
+        let category = match error.kind() {
+            io::ErrorKind::TimedOut => ErrorCategory::Deadline,
+            io::ErrorKind::InvalidInput => ErrorCategory::InvalidInput,
+            io::ErrorKind::InvalidData => ErrorCategory::Protocol,
+            io::ErrorKind::UnexpectedEof
+            | io::ErrorKind::BrokenPipe
+            | io::ErrorKind::ConnectionReset => ErrorCategory::Disconnected,
+            _ => ErrorCategory::Unavailable,
+        };
+        Self {
+            category,
+            outcome: if unknown {
+                Outcome::Unknown
+            } else {
+                Outcome::Rejected
+            },
+            message: error.to_string(),
+        }
+    }
+}
+fn validate_command(command: &str) -> io::Result<()> {
+    if command.len() + 2 > MAX_LINE_BYTES || command.contains(['\r', '\n']) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "invalid command framing",
+        ));
+    }
+    Ok(())
+}
+async fn reply_line(reader: &mut (impl AsyncBufRead + Unpin)) -> io::Result<String> {
+    bounded_line(reader, MAX_REPLY_BYTES, true)
+        .await?
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "connection closed before reply",
+            )
+        })
+}
+fn reply_ok(line: &str, expected: Option<&str>) -> io::Result<bool> {
+    let value: serde_json::Value =
+        serde_json::from_str(line).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let ok = value["ok"]
+        .as_bool()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "reply has no boolean ok"))?;
+    let cmd = value["cmd"]
+        .as_str()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "reply has no command"))?;
+    if expected.is_some_and(|expected| expected != cmd) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "unexpected stream reply",
+        ));
+    }
+    Ok(ok)
+}
+/// Shared one-shot/subscription consumer. The first deadline includes write + ACK;
+/// Windows supplies a deadline established BEFORE connect. No mutation is retried.
+pub async fn client_session<S: AsyncRead + AsyncWrite + Unpin>(
+    stream: S,
+    command: &str,
+    deadline: tokio::time::Instant,
+    idle: Duration,
+    mut cancel: watch::Receiver<bool>,
+    mut receive: impl FnMut(&str) -> io::Result<ControlFlow<()>>,
+) -> Result<ClientEnd, ClientError> {
+    validate_command(command).map_err(|e| ClientError::io(e, false))?;
+    if *cancel.borrow() {
+        return Ok(ClientEnd::Cancelled);
+    }
+    let parsed = parse_line(command).ok();
+    let mutation = parsed.as_ref().is_none_or(Command::is_mutation);
+    let watching = matches!(parsed, Some(Command::Watch));
+    let expected = parsed.as_ref().map(Command::name);
+    let (input, mut output) = tokio::io::split(stream);
+    let mut input = BufReader::new(input);
+    let mut attempted = false;
+    let first = tokio::select! {
+        biased;
+        _ = cancel.changed() => return if attempted && mutation { Err(ClientError { category: ErrorCategory::Cancelled, outcome: Outcome::Unknown, message: "request cancelled after write attempt".into() }) } else { Ok(ClientEnd::Cancelled) },
+        first = tokio::time::timeout_at(deadline, async {
+            attempted = true; // even a failed/partial write cannot prove absence of effect
+            write_line(&mut output, command).await?;
+            reply_line(&mut input).await
+        }) => first.map_err(|_| ClientError::io(io::Error::new(io::ErrorKind::TimedOut, "control request deadline"), attempted && mutation))?
+            .map_err(|e| ClientError::io(e, attempted && mutation))?,
+    };
+    let ok = reply_ok(&first, expected).map_err(|e| ClientError::io(e, mutation))?;
+    if receive(&first)
+        .map_err(|e| ClientError::io(e, mutation))?
+        .is_break()
+    {
+        return Ok(ClientEnd::Cancelled);
+    }
+    if !ok || !watching {
+        return Ok(ClientEnd::Reply { ok });
+    }
+    loop {
+        if *cancel.borrow() {
+            return Ok(ClientEnd::Cancelled);
+        }
+        let next = tokio::select! {
+            biased;
+            _ = cancel.changed() => return Ok(ClientEnd::Cancelled),
+            next = tokio::time::timeout(idle, reply_line(&mut input)) => next
+                .map_err(|_| ClientError::io(io::Error::new(io::ErrorKind::TimedOut, "watch data deadline"), false))?
+                .map_err(|e| ClientError::io(e, false))?,
+        };
+        let ok = reply_ok(&next, Some("status")).map_err(|e| ClientError::io(e, false))?;
+        if receive(&next)
+            .map_err(|e| ClientError::io(e, false))?
+            .is_break()
+        {
+            return Ok(ClientEnd::Cancelled);
+        }
+        if !ok {
+            return Ok(ClientEnd::Reply { ok: false });
+        }
+    }
+}
 #[cfg(windows)]
-pub use windows::{ControlServer, request};
+pub use windows::{ControlServer, cli_request, request, stream_request};
 #[cfg(windows)]
 mod windows {
     use super::*;
     use std::thread::{self, JoinHandle};
-    use tokio::io::AsyncReadExt;
     use tokio::{
         net::windows::named_pipe::{ClientOptions, ServerOptions},
         runtime::Builder,
@@ -213,52 +375,113 @@ mod windows {
             let _ = self.stop_inner();
         }
     }
-    /// One round trip; timeout includes busy-pipe connect, write and response.
-    /// Never retries an accepted command (toggle/start commands may have effects).
-    pub fn request(name: &str, command: &str, timeout: Duration) -> io::Result<String> {
-        let path = pipe_path(name)?;
-        if command.len() + 2 > MAX_LINE_BYTES || command.contains(['\r', '\n']) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "invalid command framing",
-            ));
+
+    async fn connect_and_exchange(
+        path: &str,
+        command: &str,
+        timeout: Duration,
+        idle: Duration,
+        mut cancel: watch::Receiver<bool>,
+        receive: impl FnMut(&str) -> io::Result<ControlFlow<()>>,
+    ) -> Result<ClientEnd, ClientError> {
+        validate_command(command).map_err(|e| ClientError::io(e, false))?;
+        let deadline = tokio::time::Instant::now() + timeout;
+        let connect = async {
+            loop {
+                match ClientOptions::new().open(path) {
+                    Ok(pipe) => return Ok(pipe),
+                    Err(error) if error.raw_os_error() == Some(231) => {
+                        tokio::time::sleep(Duration::from_millis(10)).await
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+        };
+        if *cancel.borrow() {
+            return Ok(ClientEnd::Cancelled);
         }
+        let pipe = tokio::select! {
+            biased;
+            _ = cancel.changed() => return Ok(ClientEnd::Cancelled),
+            pipe = tokio::time::timeout_at(deadline, connect) => pipe
+                .map_err(|_| ClientError::io(io::Error::new(io::ErrorKind::TimedOut, "control connect deadline"), false))?
+                .map_err(|e| ClientError::io(e, false))?,
+        };
+        client_session(pipe, command, deadline, idle, cancel, receive).await
+    }
+    /// Common client: callback sees validated ACK followed by bounded status lines.
+    /// Cancellation drops the existing pipe; never launches/reconnects/replays.
+    pub fn stream_request(
+        name: &str,
+        command: &str,
+        timeout: Duration,
+        idle: Duration,
+        cancel: watch::Receiver<bool>,
+        receive: impl FnMut(&str) -> io::Result<ControlFlow<()>>,
+    ) -> Result<ClientEnd, ClientError> {
+        let path = pipe_path(name).map_err(|e| ClientError::io(e, false))?;
         Builder::new_current_thread()
             .enable_all()
-            .build()?
+            .build()
+            .map_err(|e| ClientError::io(e, false))?
+            .block_on(connect_and_exchange(
+                &path, command, timeout, idle, cancel, receive,
+            ))
+    }
+    /// CLI watch additionally observes Ctrl+C. One-shot calls preserve the same client path.
+    pub fn cli_request(
+        name: &str,
+        command: &str,
+        receive: impl FnMut(&str) -> io::Result<ControlFlow<()>>,
+    ) -> Result<ClientEnd, ClientError> {
+        let path = pipe_path(name).map_err(|e| ClientError::io(e, false))?;
+        let (_cancel, cancelled) = watch::channel(false);
+        Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| ClientError::io(e, false))?
             .block_on(async {
-                tokio::time::timeout(timeout, async {
-                    let pipe = loop {
-                        match ClientOptions::new().open(&path) {
-                            Ok(pipe) => break pipe,
-                            Err(error) if error.raw_os_error() == Some(231) => {
-                                tokio::time::sleep(Duration::from_millis(10)).await
-                            }
-                            Err(error) => return Err(error),
+                let exchange = connect_and_exchange(
+                    &path,
+                    command,
+                    Duration::from_secs(3),
+                    Duration::from_secs(3),
+                    cancelled,
+                    receive,
+                );
+                if matches!(parse_line(command), Ok(Command::Watch)) {
+                    tokio::select! {
+                        result = exchange => result,
+                        signal = tokio::signal::ctrl_c() => {
+                            signal.map_err(|e| ClientError::io(e, false))?;
+                            Ok(ClientEnd::Cancelled)
                         }
-                    };
-                    let (read, mut write) = tokio::io::split(pipe);
-                    write_line(&mut write, command).await?;
-                    // Full vars/status replies need a larger limit than requests.
-                    let mut reader = BufReader::new(read).take(MAX_REPLY_BYTES as u64 + 1);
-                    let mut response = String::new();
-                    let count = reader.read_line(&mut response).await?;
-                    if count == 0 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "connection closed before reply",
-                        ));
                     }
-                    if count > MAX_REPLY_BYTES || !response.ends_with('\n') {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid control reply",
-                        ));
-                    }
-                    Ok(response.trim_end_matches(['\r', '\n']).into())
-                })
-                .await
-                .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "control request timeout"))?
+                } else {
+                    exchange.await
+                }
             })
+    }
+    /// Compatibility one-response helper, including watch ACK only. Whole-operation deadline preserved.
+    pub fn request(name: &str, command: &str, timeout: Duration) -> io::Result<String> {
+        let (_cancel, cancelled) = watch::channel(false);
+        let mut response = None;
+        stream_request(name, command, timeout, timeout, cancelled, |line| {
+            response = Some(line.to_owned());
+            Ok(ControlFlow::Break(()))
+        })
+        .map_err(|e| {
+            io::Error::new(
+                match e.category {
+                    ErrorCategory::Deadline => io::ErrorKind::TimedOut,
+                    ErrorCategory::InvalidInput => io::ErrorKind::InvalidInput,
+                    ErrorCategory::Protocol => io::ErrorKind::InvalidData,
+                    ErrorCategory::Disconnected => io::ErrorKind::UnexpectedEof,
+                    _ => io::ErrorKind::Other,
+                },
+                e,
+            )
+        })?;
+        response.ok_or_else(|| io::Error::other("request cancelled"))
     }
 }

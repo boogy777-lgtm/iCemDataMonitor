@@ -9,7 +9,11 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+serde_json = "=1.0.154"
 icem-core = { path = "../icem-core" }
 icem-protocols = { path = "../icem-protocols" }
 icem-emulation = { path = "../icem-emulation" }
 tokio = { version = "1", features = ["rt", "net", "sync", "time", "macros", "io-util"] }
+
+[target.'cfg(windows)'.dependencies]
+tokio = { version = "1", features = ["signal"] }

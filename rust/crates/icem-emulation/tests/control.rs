@@ -168,3 +168,118 @@ fn original_dotnet_dispatch() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     Ok(())
 }
+
+#[test]
+fn all_21_typed_commands_and_v1_adapter_use_the_same_execution_path()
+-> Result<(), Box<dyn std::error::Error>> {
+    use control::{
+        Command,
+        application::{Equipment, NativeValue, Scope, Variable},
+    };
+    use icem_emulation::{Channel, units::Preset};
+    let variable = || Variable {
+        scope: Scope::channel(Channel::Com),
+        name: "X".into(),
+        sv: None,
+    };
+    let cases = [
+        (Command::Status, "status"),
+        (Command::Start(Channel::Com.into()), "start com"),
+        (Command::Stop(Channel::Lan.into()), "stop lan"),
+        (
+            Command::Set(variable(), NativeValue::finite(1.5)?),
+            "set com.X 1.5",
+        ),
+        (Command::Get(variable()), "get com.X"),
+        (Command::Clear(variable()), "clear com.X"),
+        (Command::Profiles, "profiles"),
+        (
+            Command::Profile {
+                device_type: None,
+                name: "A".into(),
+            },
+            "profile A",
+        ),
+        (Command::Variables(Scope::default()), "vars"),
+        (Command::Watch, "watch"),
+        (Command::Quit, "quit"),
+        (Command::Help, "help"),
+        (Command::Ports, "ports"),
+        (Command::Adapters, "adapters"),
+        (Command::SetPort("COM12".into()), "setport COM12"),
+        (
+            Command::SetAdapter("Ethernet".into()),
+            "setadapter Ethernet",
+        ),
+        (
+            Command::SetEquipment(Equipment(u32::MAX)),
+            "setequipment 0xFFFFFFFF",
+        ),
+        (Command::SetFirmware(true), "setfirmware 1"),
+        (
+            Command::SetEmulation(Channel::Lan.into(), false),
+            "setemulate lan 0",
+        ),
+        (Command::SetPreset(Preset::Metric), "setpreset 2"),
+        (
+            Command::SetUnit {
+                group: "pressure".into(),
+                unit: Some("bar".into()),
+            },
+            "setunit pressure bar",
+        ),
+    ];
+    let mut visited = std::collections::BTreeSet::new();
+    for (typed, line) in cases {
+        visited.insert(typed.name());
+        let mut direct = Fake::default();
+        let mut legacy = Fake::default();
+        let result = control::execute(typed, &mut direct);
+        let reply = control::process_line(line, &mut legacy);
+        assert_eq!(result.v1(), reply, "{line}");
+        assert_eq!(direct.calls, legacy.calls, "{line}");
+        assert_eq!(
+            result.ui_value()["data"],
+            serde_json::from_str::<Value>(&reply.json)?["data"]
+        );
+    }
+    assert_eq!(visited, control::COMMAND_NAMES.iter().copied().collect());
+    Ok(())
+}
+#[test]
+fn strict_native_values_do_not_change_v1_coercion_policy() -> Result<(), Box<dyn std::error::Error>>
+{
+    use control::{
+        Command,
+        application::{Equipment, NativeValue},
+    };
+    assert!(NativeValue::finite(f64::NAN).is_err());
+    assert!(NativeValue::finite(f64::INFINITY).is_err());
+    assert_eq!(
+        NativeValue::finite(-0.0)?.get().to_bits(),
+        (-0.0_f64).to_bits()
+    );
+    assert_eq!(
+        control::parse_line("setfirmware 2").map_err(|r| r.json)?,
+        Command::SetFirmware(true)
+    );
+    assert_eq!(
+        control::parse_line("setequipment 2.9").map_err(|r| r.json)?,
+        Command::SetEquipment(Equipment(2))
+    );
+    assert_eq!(actual("setpreset NaN")?["calls"][0]["args"][0], 0);
+    assert_eq!(actual("setequipment NaN")?["calls"][0]["args"][0], 0);
+    assert_eq!(actual("setfirmware NaN")?["calls"][0]["args"][0], true);
+    Ok(())
+}
+#[test]
+fn typed_budget_rejects_before_backend_effect() {
+    let mut ctl = Fake::default();
+    let result = control::execute(control::Command::SetAdapter("x".repeat(65_537)), &mut ctl);
+    assert_eq!(result.outcome, control::application::Outcome::Rejected);
+    assert_eq!(
+        result.error.as_ref().map(|e| e.category),
+        Some(control::application::ErrorCategory::InvalidInput)
+    );
+    assert!(ctl.calls.is_empty());
+}

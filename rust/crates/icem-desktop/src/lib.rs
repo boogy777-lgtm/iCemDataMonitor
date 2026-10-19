@@ -4,7 +4,14 @@ pub mod dashboard;
 pub mod logs;
 pub mod navigation;
 pub mod window_visibility;
-use serde_json::{Value, json};
+use icem_emulation::{
+    Channel,
+    control::{
+        Command, Execution,
+        application::{Equipment, ErrorCategory, NativeValue, Scope, Variable},
+    },
+};
+use serde_json::Value;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -14,6 +21,13 @@ use std::sync::{
 /// Implementations must bound I/O time and return owned values.
 pub trait UiPort: Send + Sync + 'static {
     fn request(&self, command: Value) -> Result<Value, String>;
+    fn emulator(&self, command: Command) -> Execution {
+        Execution::rejected(
+            command.name(),
+            ErrorCategory::Unavailable,
+            "emulator API unavailable",
+        )
+    }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Page {
@@ -38,8 +52,11 @@ pub struct ProfileChoice {
     pub device_type: String,
 }
 impl ProfileChoice {
-    pub fn command(&self) -> Value {
-        json!({"cmd":"profile","name":self.name,"deviceType":self.device_type})
+    pub fn command(&self) -> Command {
+        Command::Profile {
+            name: self.name.clone(),
+            device_type: Some(self.device_type.clone()),
+        }
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -207,7 +224,12 @@ impl Model {
             }
         };
         if result["ok"] != true {
-            self.note = format!("⚠ {}", text(&result["error"]));
+            let effect = if result["application"]["outcome"] == "AppliedWithError" {
+                "Состояние частично изменено; "
+            } else {
+                ""
+            };
+            self.note = format!("⚠ {effect}{}", text(&result["error"]));
             return;
         }
         let data = &result["data"];
@@ -256,6 +278,12 @@ impl Model {
             }
             _ => self.note = format!("✓ {cmd}"),
         }
+        if result["application"]["outcome"] == "AppliedNotPersisted" {
+            self.note = format!(
+                "⚠ {cmd}: применено в памяти, не сохранено: {}",
+                text(&result["application"]["message"])
+            );
+        }
     }
     pub fn selected(&self, lan: bool) -> Option<&VariableRow> {
         if lan {
@@ -279,25 +307,38 @@ impl Model {
         }
         value
     }
-    pub fn edit_command(&self, lan: bool, value: Option<&str>) -> Result<Value, String> {
+    pub fn edit_command(&self, lan: bool, value: Option<&str>) -> Result<Command, String> {
         let row = self
             .selected(lan)
             .ok_or_else(|| "выберите переменную в списке слева".to_owned())?;
-        let mut command = json!({"cmd":if value.is_some(){"set"}else{"clear"},"channel":if lan{"lan"}else{"com"},"name":row.name});
-        if lan {
-            command["sv"] = row.sv.clone().into();
-        }
+        let variable = Variable {
+            scope: Scope::channel(if lan { Channel::Lan } else { Channel::Com }),
+            name: row.name.clone(),
+            sv: if lan {
+                Some(
+                    u32::from_str_radix(
+                        row.sv.trim_start_matches("0x").trim_start_matches("0X"),
+                        16,
+                    )
+                    .map_err(|_| "неверный SV")?,
+                )
+            } else {
+                None
+            },
+        };
         if let Some(value) = value {
             let number = value
                 .trim()
                 .replace(',', ".")
                 .parse::<f64>()
-                .map_err(|_| "ожидается числовое значение".to_owned())?;
-            command["value"] = serde_json::Number::from_f64(number)
-                .map(Value::Number)
-                .ok_or_else(|| "значение должно быть конечным".to_owned())?;
+                .map_err(|_| "ожидается числовое значение")?;
+            Ok(Command::Set(
+                variable,
+                NativeValue::finite(number).map_err(str::to_owned)?,
+            ))
+        } else {
+            Ok(Command::Clear(variable))
         }
-        Ok(command)
     }
     pub fn lan_header(&self) -> String {
         if self.snapshot["lan"]["npcapAvailable"] == false {
@@ -337,8 +378,12 @@ pub struct Reply {
     pub result: Result<Value, String>,
 }
 /// One worker; queues bounded, UI never blocks on backend I/O.
+enum Request {
+    Presentation(Value),
+    Emulator(Command),
+}
 pub struct Bridge {
-    sender: mpsc::SyncSender<Value>,
+    sender: mpsc::SyncSender<Request>,
     receiver: mpsc::Receiver<Reply>,
     stopping: Arc<AtomicBool>,
 }
@@ -359,7 +404,7 @@ impl WorkerCompletion {
 }
 impl Bridge {
     pub fn start(port: Arc<dyn UiPort>) -> std::io::Result<(Self, WorkerCompletion)> {
-        let (sender, requests) = mpsc::sync_channel::<Value>(16);
+        let (sender, requests) = mpsc::sync_channel::<Request>(16);
         let (responses, receiver) = mpsc::sync_channel(16);
         let stopping = Arc::new(AtomicBool::new(false));
         let stop = stopping.clone();
@@ -376,8 +421,16 @@ impl Bridge {
                     if stop.load(Ordering::Acquire) {
                         break;
                     }
-                    let command = request["cmd"].as_str().unwrap_or("").to_owned();
-                    let result = port.request(request);
+                    let (command, result) = match request {
+                        Request::Presentation(value) => (
+                            value["cmd"].as_str().unwrap_or("").to_owned(),
+                            port.request(value),
+                        ),
+                        Request::Emulator(command) => {
+                            let name = command.name().to_owned();
+                            (name, Ok(port.emulator(command).ui_value()))
+                        }
+                    };
                     let mut reply = Reply { command, result };
                     loop {
                         if stop.load(Ordering::Acquire) {
@@ -405,7 +458,13 @@ impl Bridge {
     }
     pub fn send(&self, command: Value) -> Result<(), String> {
         self.sender
-            .try_send(command)
+            .try_send(Request::Presentation(command))
+            .map_err(|e| format!("очередь команд: {e}"))
+    }
+    pub fn send_emulator(&self, command: Command) -> Result<(), String> {
+        command.validate_budget().map_err(str::to_owned)?;
+        self.sender
+            .try_send(Request::Emulator(command))
             .map_err(|e| format!("очередь команд: {e}"))
     }
     pub fn drain(&self, model: &mut Model) {
@@ -434,7 +493,7 @@ mod windows;
 #[cfg(windows)]
 pub use windows::run_emulator;
 
-pub fn equipment_command(value: &str) -> Result<Value, String> {
+pub fn equipment_command(value: &str) -> Result<Command, String> {
     let value = value.trim();
     let number = if let Some(hex) = value
         .strip_prefix("0x")
@@ -445,15 +504,15 @@ pub fn equipment_command(value: &str) -> Result<Value, String> {
         value.parse::<u32>()
     }
     .map_err(|_| "ожидается uint32: 0x… или десятичное число".to_owned())?;
-    Ok(json!({"cmd":"setequipment","value":number}))
+    Ok(Command::SetEquipment(Equipment(number)))
 }
-pub fn unit_command(group: usize, unit: Option<&str>) -> Value {
-    let mut command =
-        json!({"cmd":"setunit","channel":UNIT_GROUPS.get(group).map(|g|g.0).unwrap_or("")});
-    if let Some(unit) = unit.filter(|u| !u.trim().is_empty()) {
-        command["name"] = unit.trim().into();
+pub fn unit_command(group: usize, unit: Option<&str>) -> Command {
+    Command::SetUnit {
+        group: UNIT_GROUPS.get(group).map(|g| g.0).unwrap_or("").into(),
+        unit: unit
+            .filter(|u| !u.trim().is_empty())
+            .map(|u| u.trim().to_owned()),
     }
-    command
 }
 #[cfg(windows)]
 mod monitor;

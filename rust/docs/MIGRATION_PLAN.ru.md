@@ -176,3 +176,10 @@ E15: [Host console X → Hide](HOST_E15.ru.md), [ADR 0011](adr/0011-host-diagnos
 E16: [Host passive decode/catalog](HOST_E16.ru.md). Capture owner выполняет
 Host-specific decode и bounded cache/tracking; periodic witness идёт в общий logger.
 Dormant REST/file capture не активированы; hardware/visual parity не объявляется.
+
+
+E17: [типизированный application API emulator и общий watch client](EMULATOR_E17.ru.md),
+[ADR 0014](adr/0014-emulator-application-api.ru.md). GPUI передаёт Command напрямую;
+pipe v1 остаётся compatibility adapter, включая coercions и исторический save ACK.
+Внутренний результат отделяет apply/save failure; CLI text/JSON watch получает поток,
+а не только ACK. Software CI не закрывает operator/SDK/hardware gates.
