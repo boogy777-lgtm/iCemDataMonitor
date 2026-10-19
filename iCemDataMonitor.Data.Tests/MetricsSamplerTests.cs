@@ -173,50 +173,58 @@ public sealed class MetricsSamplerTests : IDisposable
     public async Task DropOldest_SlowConsumerLosesSamples_BacklogNeverAccumulates()
     {
         using var reader = CreateOpenBus(out var writer);
+        using var producer = writer;
         writer.WriteFloat(200, 1.0f);
         WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 1);
 
         var sampler = new MetricsSampler(reader);
-        using var stop = new CancellationTokenSource();
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var subscription = sampler.Subscribe(intervalMs: 200, stop.Token);
-
-        try
+        // The initial full sample can be evicted before this consumer runs.
+        // Retry only observed initial loss; wrong values on a loss-free attempt fail.
+        while (true)
         {
-            MetricsSample first = await FirstSampleAsync(subscription, deadline.Token);
-            Assert.Equal(1.0f, first.Deltas.First(d => d.Addr == 200).FloatValue, 3);
+            deadline.Token.ThrowIfCancellationRequested();
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+            var subscription = sampler.Subscribe(intervalMs: 200, stop.Token);
+            try
+            {
+                MetricsSample first = await FirstSampleAsync(subscription, deadline.Token);
+                if (subscription.DroppedCount != 0) continue;
+                Assert.Equal(1.0f, first.Deltas.First(d => d.Addr == 200).FloatValue, 3);
 
-            // Mark later samples, then wait for actual overflow while the
-            // consumer is paused. Runner speed is not the verdict.
-            WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 2);
-            long baseline = subscription.DroppedCount;
-            while (subscription.DroppedCount < baseline + 2)
-                await Task.Delay(20, deadline.Token);
+                // Mark later samples, then wait for actual overflow while the
+                // consumer is paused. Runner speed is not the verdict.
+                WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 2);
+                long baseline = subscription.DroppedCount;
+                while (subscription.DroppedCount < baseline + 2)
+                    await Task.Delay(20, deadline.Token);
 
-            // Change the marker AFTER the queue is full. DropNewest would
-            // retain heartbeat 2; DropOldest must replace it with heartbeat 3.
-            WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 3);
-            long markedBaseline = subscription.DroppedCount;
-            while (subscription.DroppedCount < markedBaseline + 2)
-                await Task.Delay(20, deadline.Token);
+                // Change the marker AFTER the queue is full. DropNewest would
+                // retain heartbeat 2; DropOldest must replace it with heartbeat 3.
+                WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 3);
+                long markedBaseline = subscription.DroppedCount;
+                while (subscription.DroppedCount < markedBaseline + 2)
+                    await Task.Delay(20, deadline.Token);
 
-            // Stop production before draining. Exactly ONE retained sample
-            // must be the newer heartbeat; a FIFO/backlog or DropNewest
-            // implementation fails without relying on timestamp age.
-            stop.Cancel();
-            await subscription.ProducerCompletion.WaitAsync(deadline.Token);
-            var retained = new List<MetricsSample>();
-            await foreach (var sample in subscription.WithCancellation(deadline.Token))
-                retained.Add(sample);
+                // Stop production before draining. Exactly ONE retained sample
+                // must be the newer heartbeat; a FIFO/backlog or DropNewest
+                // implementation fails without relying on timestamp age.
+                stop.Cancel();
+                await subscription.ProducerCompletion.WaitAsync(deadline.Token);
+                var retained = new List<MetricsSample>();
+                await foreach (var sample in subscription.WithCancellation(deadline.Token))
+                    retained.Add(sample);
 
-            var resumed = Assert.Single(retained);
-            Assert.Equal(3, resumed.Heartbeat);
-            Assert.True(subscription.DroppedCount >= markedBaseline + 2);
-        }
-        finally
-        {
-            stop.Cancel();
-            await subscription.ProducerCompletion.WaitAsync(TimeSpan.FromSeconds(10));
+                var resumed = Assert.Single(retained);
+                Assert.Equal(3, resumed.Heartbeat);
+                Assert.True(subscription.DroppedCount >= markedBaseline + 2);
+                break;
+            }
+            finally
+            {
+                stop.Cancel();
+                await subscription.ProducerCompletion.WaitAsync(TimeSpan.FromSeconds(10));
+            }
         }
     }
 
