@@ -275,15 +275,20 @@ impl WindowHelper {
             std::env::var_os("WINDIR").ok_or("missing WINDIR for Framework fixture compiler")?,
         )
         .join("Microsoft.NET/Framework64/v4.0.30319/csc.exe");
-        let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests/windows/OwnedConsoleProbe.cs");
+        let source_directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(std::path::Path::parent)
+            .ok_or("missing Rust workspace for console fixture source")?
+            .join("tests")
+            .join("windows");
         let mut output = std::ffi::OsString::from("/out:");
         output.push(helper.0.join("OwnedConsoleProbe.exe"));
         let mut compiler = Owned(
             Command::new(compiler)
+                .current_dir(source_directory)
                 .args(["/nologo", "/target:exe", "/platform:x64"])
                 .arg(output)
-                .arg(source)
+                .arg("OwnedConsoleProbe.cs")
                 .creation_flags(0x0800_0000)
                 .stdin(Stdio::null())
                 .spawn()?,

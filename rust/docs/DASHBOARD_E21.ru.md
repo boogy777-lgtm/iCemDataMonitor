@@ -59,3 +59,11 @@ actions keep 10s, state waits 2s and teardown 5s, with original PID/HWND checks,
 actions and assertions. [Audit D52](SOURCE_AUDIT.ru.md) preserves failure evidence.
 Windows execution must pass again at the amended exact head; portable checks do
 not establish console/UI parity. Dashboard Rust behavior is unchanged.
+
+
+D52 follow-up: 956498ab Rust run 39313953787 failed before Host startup with
+Framework csc CS1504/source-not-found. The compiler now runs in the checked source
+directory and receives literal `OwnedConsoleProbe.cs`; helper bytes, timeouts,
+actions and assertions remain unchanged. Local source identity, relative-input
+compile and missing-source/invalid-invocation checks PASS; actual Framework/Windows
+execution remains pending. [Evidence and limits](SOURCE_AUDIT.ru.md).

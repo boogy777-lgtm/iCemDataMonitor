@@ -627,3 +627,35 @@ Validation limits: local Linux checks do not compile cfg(windows) Rust or execut
 user32/Framework/msiexec; the SDK compiler check does not establish the Framework
 compiler/runtime result. Real Windows exact-head execution remains mandatory;
 no passing UI/teardown result is inferred from source inspection or prior CI.
+
+
+### D52 follow-up — Framework compiler source argument
+
+Head 956498ab3d5412d4dc04d7caa519afd073b520af, Rust run 39313953787 /
+job 118270460165: FAIL before Host startup. At 19:56:43.008 Framework csc
+reported CS1504: source `d:\a\iCemDataMonitor\iCemDataMonitor\rust\apps\host\OwnedConsoleProbe.cs`
+could not be opened (missing file). The fixture had passed an absolute source
+argument constructed with `../../tests/windows/OwnedConsoleProbe.cs`; the reported
+path differs from that intended location. This establishes failed source resolution,
+not the exact internals of the older compiler's mixed-slash argument parser.
+Installer 39313953824 and Legacy 39313953790 (941/941) passed at the same head.
+The Rust failure remains recorded and all checks must run on the amended head.
+
+The compiler now runs with current_dir=`rust/tests/windows` derived through the
+manifest directory's two parents and explicit `tests`/`windows` components. Its
+source argument is the literal basename `OwnedConsoleProbe.cs`. No canonicalize/
+verbatim path prefix is introduced. Output path, compiler/setup/action/state/
+teardown limits and every assertion/action remain unchanged. Literal comparison
+verified that only source-directory construction and compiler arguments changed;
+the C# helper remains byte-identical, SHA256
+3a375e1eece42d3f43fe052b3cf1b078173b66035cfcbed9076ad1c24a3ff71e.
+
+Local Linux: invocation-layout/source-identity checks and diff/fmt PASS; host
+--tests check/Clippy locked/offline / -D warnings PASS (cfg(windows) excluded).
+Direct SDK10.0.402 Roslyn compilation from the actual source directory with the
+literal basename passed in C#5 mode under a 10s subprocess limit. The same command
+with `AbsentConsoleProbe.cs` failed (CS2001/exit1); no-args/unknown-action/malformed-PID
+helper invocations again returned 2/2/1 with empty stdout. These prove the checked
+layout, source identity and fail-closed local behavior, not Framework path handling,
+Windows Rust compilation or user32 behavior. Actual Framework/Windows exact-head
+execution is still mandatory; no production/dependency/ledger/workflow change.
