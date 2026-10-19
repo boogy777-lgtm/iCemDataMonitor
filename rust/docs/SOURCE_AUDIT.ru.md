@@ -317,3 +317,9 @@ D43 / E18: Shell HostPort подставлял false/0 для отсутству
 а Model::apply("status", Ok({ok:true})) подтверждал связь без data. Typed Request
 исключает missing bool/invalid layer/selection; Status требует layers и три distinct
 zones. Mismatch/malformed status не подтверждает freshness. См. ADR 0015.
+
+D44 / E18 Legacy CI: три UiNavigationServiceTests синхронно ждали mutex holder,
+запущенный через Task.Run, затем holder жил fixed sleep 10 s. Windows run
+39221977532 не дождался старта holder. Общий dedicated-thread fixture подтверждает
+acquisition и держит mutex до explicit release; bounded join и ownership regression
+проверяют teardown. Assertions и production navigation неизменны; hash ledger точный.

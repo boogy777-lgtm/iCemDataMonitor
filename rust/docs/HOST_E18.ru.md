@@ -22,3 +22,15 @@ dashboard snapshots; затем app --selftest/--landiag и stdin/REPL character
 D22, dormant capture-to-file и external no-op OPC DA остаются открытыми решениями.
 SDK/AddIn/COM/Npcap, Windows X/Open drafts/scroll/selection, physical input/DPI/session,
 install/reboot/rollback/offline и measurements — отдельные NOT_RUN gates.
+
+## Legacy CI fixture failure
+
+На head 76f73b2a Legacy run 39221977532 завершился FAIL:
+UiNavigationServiceTests.Navigate_AliveUi_SignalsShowEvent не получил сигнал
+holder Task.Run за 5 s. Тот же ThreadPool + fixed 10 s sleep использовался в трёх
+сценариях. Fixture теперь держит mutex на выделенном Thread, подтверждает acquisition,
+ждёт explicit release и joins с deadline. Mutex освобождается на owning thread.
+Все navigation assertions сохранены; добавлен ownership/release regression.
+Production .NET не меняется. Source fix 03c27552bb7fc3af2e70cf0842a4c1fa39f5bdb7
+учтён точным baseline/approved hash в существующем ledger (14 approvals).
+Полный следующий Legacy/Windows run обязателен; прежний FAIL не переименован в PASS.
