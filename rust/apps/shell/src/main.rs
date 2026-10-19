@@ -78,10 +78,9 @@ mod windows {
             let operation = command.operation();
             let result = runtime.block_on(async {
                 if let Request::Logs(action) = &command {
-                    let (action, enabled) = action.v1();
-                    return icem_web::log_control::request(&self.pipe, action, enabled)
-                        .await
-                        .map(Response::Logs);
+                    return Ok(Response::Logs(
+                        icem_web::log_control::request(&self.pipe, *action).await,
+                    ));
                 }
                 if matches!(command, Request::Boot) {
                     let reset = boot.is_none();

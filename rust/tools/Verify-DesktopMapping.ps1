@@ -33,10 +33,17 @@ if ($Extensions.Count -ne 6) { throw 'Expected six logging extension controls' }
 $Keys = @($Extensions | ForEach-Object { "$($_.surface)|$($_.index)" })
 if (@($Keys | Sort-Object -Unique).Count -ne $Keys.Count) { throw 'Duplicate native extension identity' }
 foreach ($Control in $Extensions) {
-    if ($Control.action -notin @('set','clear') -or $Control.index -notin @(0,1)) { throw 'Invalid logging extension action/index' }
+    $Actions = @('set','clear')
+    if ($Control.index -notin @(0,1) -or $Control.action -cne $Actions[$Control.index]) { throw 'Invalid logging extension action/index pairing' }
     $Implementation = Get-Content -Raw (Join-Path $Root $Control.implementation)
     $Composition = Get-Content -Raw (Join-Path $Root $Control.composition)
-    if (-not $Composition.Contains('"' + $Control.surface + '"') -or -not $Implementation.Contains('"' + $Control.action + '"')) { throw "Unimplemented native extension: $($Control.name)" }
+    if (-not $Composition.Contains('"' + $Control.surface + '"')) { throw "Unimplemented native extension: $($Control.name)" }
+    # Read the actual enumerated button array: index 0 is SetEnabled, index 1 Clear.
+    # Wire action strings no longer belong to the typed renderer.
+    $Loop = [regex]::Match($Implementation, '(?s)for\s*\(index,\s*\(label,\s*action\)\)\s+in\s+\[(?<actions>.*?)\]\s*\.into_iter\(\)\s*\.enumerate\(\)')
+    if (-not $Loop.Success) { throw 'Missing typed logging renderer action array' }
+    $Commands = @([regex]::Matches($Loop.Groups['actions'].Value, 'Command::(?<command>[A-Za-z_][A-Za-z0-9_]*)') | ForEach-Object { $_.Groups['command'].Value })
+    if (($Commands -join ',') -cne 'SetEnabled,Clear') { throw 'Invalid typed logging renderer action/index pairing' }
 }
 Write-Host 'Native logging extensions: 6; visual acceptance NOT_RUN.'
 

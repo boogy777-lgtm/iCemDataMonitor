@@ -457,6 +457,7 @@ public class SerialTeeServiceTests
         owner = service;
 
         using var cts = new CancellationTokenSource();
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
         await service.StartAsync(cts.Token);
         try
         {
@@ -469,6 +470,16 @@ public class SerialTeeServiceTests
 
             cts.Cancel();
             await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        catch (TimeoutException error)
+        {
+            var actual = service.GetStatus();
+            throw new TimeoutException(
+                $"Virtual-port recovery timed out after {elapsed.Elapsed}; " +
+                $"virtualAttempts={Volatile.Read(ref virtualAttempts)}; " +
+                $"state={actual.State}; pairOk={actual.Com0comPairOk}; up={actual.Up}; " +
+                $"executeTask={service.ExecuteTask?.Status}; " +
+                $"executeException={service.ExecuteTask?.Exception}", error);
         }
         finally
         {

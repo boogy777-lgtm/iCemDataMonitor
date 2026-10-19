@@ -14,7 +14,6 @@ use icem_emulation::{
     control::{Command, application::Scope},
     units::Preset,
 };
-use serde_json::{Value, json};
 use std::{
     path::PathBuf,
     sync::Arc,
@@ -140,12 +139,12 @@ impl View {
             .unwrap_or(0xff808080);
         rgba(argb.rotate_left(8))
     }
-    fn send_logs(&mut self, command: Value) {
+    fn send_logs(&mut self, command: crate::logs::Request) {
         if !self.model.can_submit_log(&command) {
             return;
         }
-        let logs = command["cmd"] == "local_logs";
-        match self.bridge.send(command) {
+        let logs = command.local;
+        match self.bridge.send_logs(command) {
             Ok(()) => {
                 if logs {
                     self.model.local_logs.pending = true;
@@ -161,7 +160,10 @@ impl View {
     }
     fn poll(&mut self) {
         if !self.model.local_logs.pending {
-            self.send_logs(json!({"cmd":"local_logs","action":"get"}));
+            self.send_logs(crate::logs::Request {
+                local: true,
+                command: icem_logging::Command::Get,
+            });
         }
         self.send(Command::Status);
         self.send(Command::Variables(Scope::default()));

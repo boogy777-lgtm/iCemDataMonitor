@@ -33,14 +33,11 @@ mod windows {
         quit_requested_at: Mutex<Option<Instant>>,
     }
     impl icem_desktop::UiPort for Service {
-        fn request(&self, command: serde_json::Value) -> Result<serde_json::Value, String> {
-            if command["cmd"] == "local_logs" {
-                return self.logs.request(
-                    command["action"].as_str().unwrap_or("get"),
-                    command["enabled"].as_bool(),
-                );
-            }
-            Err("use the typed emulator API".into())
+        fn logs(
+            &self,
+            command: icem_logging::Command,
+        ) -> Result<icem_logging::Reply, icem_logging::ControlError> {
+            self.logs.request(command)
         }
         fn emulator(&self, command: Command) -> Execution {
             let reply = self.execute_application(command);

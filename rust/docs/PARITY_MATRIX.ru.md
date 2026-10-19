@@ -107,3 +107,17 @@ pipe v1 остаётся compatibility adapter, включая coercions и ис
 E18: [типизированный Shell → Host](HOST_E18.ru.md). Проверенные параметры/status,
 generated replies, общий bounded worker. Logging/dashboard JSON — следующие
 границы; visual/SDK/hardware gates остаются открытыми.
+
+
+E19: [типизированное управление логами](HOST_E19.ru.md): Command/Status/Reply,
+Incomplete effects и Unknown без retry, строгий неизменённый internal v1 adapter.
+Локальные clear counts не выводятся из v1 текста; GPUI получает typed facts.
+176+6 mapping прежний; Windows exact-head и operator/SDK/hardware gates отдельно.
+
+
+E19 D45/D46: legacy CI 39249279178 retains two original FAIL results. Freshness test
+now respects capacity-one DropOldest delivery and always stops its producer;
+virtual-port retry timeout gains diagnostics only (cause unknown). Original
+assertions/deadlines remain; no production parity row is upgraded by test changes.
+[Audit/evidence](SOURCE_AUDIT.ru.md) and exact ledger preserve immutable baseline
+and 14 existing approvals. New exact-head Windows results are a separate gate.

@@ -323,3 +323,66 @@ D44 / E18 Legacy CI: три UiNavigationServiceTests синхронно ждал
 39221977532 не дождался старта holder. Общий dedicated-thread fixture подтверждает
 acquisition и держит mutex до explicit release; bounded join и ownership regression
 проверяют teardown. Assertions и production navigation неизменны; hash ledger точный.
+
+
+E19: [типизированное управление логами](HOST_E19.ru.md): Command/Status/Reply,
+Incomplete effects и Unknown без retry, строгий неизменённый internal v1 adapter.
+Локальные clear counts не выводятся из v1 текста; GPUI получает typed facts.
+176+6 mapping прежний; Windows exact-head и operator/SDK/hardware gates отдельно.
+
+
+## D45 / E19 — legacy freshness test assumes delivery of the first sample
+
+Legacy run 39249279178, job 118048857901, head ba61f4262aac5fe10e5a9868feea22190c50fee1:
+`Freshness_ValueChangesBetweenSamples_HeaderAndZone` FAIL, line127, first consumed
+sample has no addr200. Producer capacity-one DropOldest can evict the full sample
+before consumer execution; first consumed is not guaranteed to be first produced.
+The fixture has 10001 words, so the actual initial full sample includes addr200.
+This is a confirmed harness assumption, not evidence of a production sampler defect.
+
+Class: freshness test in `iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs`, not
+production sampling/backpressure. Inv: original float type/1→2 and heartbeat 100→101
+assertions remain; only observed sample loss permits another bounded attempt.
+N+1: reuse the adjacent delta test's bounded loss-free pattern; cancel/join every
+subscription and dispose the SectionWriter. Mutation of words 200/201/heartbeat 3 is
+one real mutex-guarded MMF transaction. Budget 15s and producer join 10s bound cleanup.
+Original FAIL remains evidence. Source-only provenance commit
+6d2d87c2ac8daaad555e886bb5f673bc531aa30a; PR15, exact ledger approval replaces the prior
+approved blob, with immutable baseline unchanged.
+
+## D46 / E19 — legacy virtual-port retry timeout, cause unknown
+
+Same run/job/head: `TeeLoop_VirtualPortMissing_RetriesConnection` FAIL after 17s,
+line468 (second-attempt wait). PAIR_MISSING/pair=false assertions completed; the
+second virtual factory invocation was not observed within 15s. Production path
+awaits 5s in catch and 3s in finally before retry. These facts do not prove scheduler
+starvation, a production defect, or another race; root cause remains unknown.
+
+Class: timeout diagnostics in `iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs`;
+production retry timing is outside this edit. Inv: exact state/attempt=2 assertions
+and 15s/10s waits unchanged; timeout reports elapsed, actual state/pair/up,
+virtualAttempts, ExecuteTask status/exception. N+1: existing catch preserves the
+original TimeoutException as inner evidence and existing finally performs cleanup.
+NullLogger remains; no new event recorder or behavioral retry was introduced.
+Source-only provenance is the same 6d2d87c commit. Ledger still contains 14 existing
+approvals, baseline hashes/source manifest unchanged. Windows verdict requires a
+new exact-head CI run; neither patch turns the original FAIL into PASS by itself.
+
+
+## D47 / E19 — mapping guard still expected wire action strings
+
+Rust run 39249279337 / job 118048857814 on ba61f4262aac5fe10e5a9868feea22190c50fee1
+failed at Verify-DesktopMapping.ps1:39: `Unimplemented native extension: HostLogsSwitch`.
+The renderer correctly moved to Command::SetEnabled/Command::Clear; the guard still
+searched for removed literal wire strings. This was a guard defect, not missing UI.
+
+Class: native logging extension source mapping (`tools/Verify-DesktopMapping.ps1`),
+not the frozen 176 controls or HTTP grammar. Inv: all six surface/composition and
+unique identity checks remain; index 0 must be set/SetEnabled, index 1 clear/Clear.
+The guard reads the real enumerated renderer array and rejects other command order.
+N+1: the existing fixture mutation pattern now runs eight mapping cases from Scaffold:
+actual mapping, missing SetEnabled, missing Clear, swapped renderer order, swapped
+mapping indices, unknown action, missing composition surface, duplicate identity.
+No dummy wire strings were added to the renderer. Python-equivalent validation is
+local evidence only; actual PowerShell and Windows exact-head acceptance remain
+separate. The original FAIL remains in the evidence history.

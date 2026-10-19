@@ -306,3 +306,20 @@ pipe v1 остаётся compatibility adapter, включая coercions и ис
 E18: [типизированный Shell → Host](HOST_E18.ru.md). Проверенные параметры/status,
 generated replies, общий bounded worker. Logging/dashboard JSON — следующие
 границы; visual/SDK/hardware gates остаются открытыми.
+
+
+## E19: внутреннее управление логами
+
+`icem-logging::Command::{Get,SetEnabled(bool),Clear}` и typed Status/Reply проходят
+через существующих Host/Shell/emulator owners. Reply: Completed/Applied/Incomplete;
+ControlError: Rejected до вызова owner, Unknown при неопределённом результате.
+Автоматического retry нет; GET может успешно вернуть diagnostic error.
+Сериализация — только прежний local HTTP/2 `/internal/desktop/v1/logs`: GET/PUT
+`{enabled:bool}`/DELETE, `{ok,data}` и ровно семь прежних status keys. Decoder требует
+все типы, сохраняет enabled=null и recording ⇒ available && enabled=true.
+Нативный clear имеет counts/reopened; v1 их не содержит, поэтому decoded clear=None.
+Frozen protobuf, активный web API и emulator pipe grammar не меняются.
+[ADR0016](adr/0016-typed-logging-api.ru.md), [E19](HOST_E19.ru.md).
+
+Успешный v1 Set подтверждается только при enabled==requested; ON также требует
+recording=true, как гарантирует owner. Противоречивый ACK становится Unknown.

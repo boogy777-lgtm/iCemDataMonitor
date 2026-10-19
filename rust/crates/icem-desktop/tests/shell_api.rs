@@ -81,7 +81,10 @@ fn invalid_parameters_are_rejected_before_transport() -> Result<(), String> {
             .len(),
         298
     );
-    assert_eq!(LogCommand::SetEnabled(false).v1(), ("set", Some(false)));
+    assert!(matches!(
+        LogCommand::SetEnabled(false),
+        icem_logging::Command::SetEnabled(false)
+    ));
     Ok(())
 }
 #[test]
@@ -129,11 +132,11 @@ fn all_shell_operations_have_distinct_checked_response_pairs() -> Result<(), Str
         ),
         (
             Request::Logs(LogCommand::Get),
-            Response::Logs(json!({"ok":true,"data":{}})),
+            Response::Logs(Err(icem_logging::ControlError::rejected("unavailable"))),
         ),
         (
             Request::LocalLogs(LogCommand::Clear),
-            Response::LocalLogs(json!({"ok":true,"data":{}})),
+            Response::LocalLogs(Err(icem_logging::ControlError::rejected("unavailable"))),
         ),
     ];
     let mut seen = std::collections::HashSet::new();

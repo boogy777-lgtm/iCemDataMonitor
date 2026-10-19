@@ -102,23 +102,47 @@ public sealed class MetricsSamplerTests : IDisposable
     public async Task Freshness_ValueChangesBetweenSamples_HeaderAndZone()
     {
         using var reader = CreateOpenBus(out var writer);
-        writer.WriteFloat(200, 1.0f);
+        using var producer = writer;
         WriteHeader(comPort: 1, caseState: 2, caseLanState: 0, heartbeat: 100);
 
         var sampler = new MetricsSampler(reader);
-        var subscription = sampler.Subscribe(intervalMs: 200);
-
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var samples = new List<MetricsSample>();
-        await foreach (var sample in subscription)
+        // A capacity-one DropOldest stream may lose its first full sample before
+        // the consumer runs. Only observed loss makes an attempt inconclusive;
+        // wrong values on a loss-free stream still fail the original assertions.
+        while (true)
         {
-            samples.Add(sample);
-            if (samples.Count == 1)
+            deadline.Token.ThrowIfCancellationRequested();
+            WriteFreshnessState(1.0f, 100);
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+            var subscription = sampler.Subscribe(intervalMs: 200, stop.Token);
+            try
             {
-                // Mutate BETWEEN samples: happens ms after sample 1, far before tick 2.
-                writer.WriteFloat(200, 2.0f);
-                WriteHeader(comPort: 1, caseState: 2, caseLanState: 0, heartbeat: 101);
+                await using var stream = subscription.GetAsyncEnumerator(deadline.Token);
+                Assert.True(await stream.MoveNextAsync(), "stream ended before initial sample");
+                var initial = stream.Current;
+                // Change value and heartbeat in ONE real producer transaction.
+                WriteFreshnessState(2.0f, 101);
+                MetricsSample changed;
+                do
+                {
+                    Assert.True(await stream.MoveNextAsync(), "stream ended before changed sample");
+                    changed = stream.Current;
+                }
+                while (changed.Heartbeat != 101 && subscription.DroppedCount == 0);
+                if (subscription.DroppedCount == 0)
+                {
+                    samples.Add(initial);
+                    samples.Add(changed);
+                    break;
+                }
             }
-            else break;
+            finally
+            {
+                stop.Cancel();
+                await subscription.ProducerCompletion.WaitAsync(TimeSpan.FromSeconds(10));
+            }
         }
 
         Assert.Equal(2, samples.Count);
@@ -134,6 +158,13 @@ public sealed class MetricsSamplerTests : IDisposable
         // NOT a cached first read): heartbeat advanced 100 → 101 between samples.
         Assert.Equal(100, samples[0].Heartbeat);
         Assert.Equal(101, samples[1].Heartbeat);
+    }
+
+    private void WriteFreshnessState(float value, ushort heartbeat)
+    {
+        uint bits = BitConverter.SingleToUInt32Bits(value);
+        WriteRawWords((200, (ushort)(bits & 0xffff)), (201, (ushort)(bits >> 16)),
+            (BusLayout.RegHeartbeat, heartbeat));
     }
 
     // ═══ (б) drop-oldest: медленный consumer теряет сэмплы, очередь не копится ═══

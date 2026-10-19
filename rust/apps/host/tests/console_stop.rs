@@ -15,17 +15,22 @@ impl Drop for Owned {
 fn wait(
     child: &mut Child,
     limit: Duration,
+    stage: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let deadline = Instant::now() + limit;
     loop {
         if let Some(status) = child.try_wait()? {
             if !status.success() {
-                return Err(format!("child exited {status}").into());
+                return Err(format!("{stage}: child PID {} exited {status}", child.id()).into());
             }
             return Ok(());
         }
         if Instant::now() >= deadline {
-            return Err("child deadline exceeded".into());
+            return Err(format!(
+                "{stage}: child PID {} deadline exceeded after {limit:?}",
+                child.id()
+            )
+            .into());
         }
         std::thread::sleep(Duration::from_millis(20));
     }
@@ -52,7 +57,7 @@ fn headless_console_rpc_reconnect_ctrl_c_tears_down_host()
             .creation_flags(0x0800_0000) // CREATE_NO_WINDOW: exercise demand-attach, not inherited console.
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stderr(Stdio::inherit())
             .spawn()?,
     );
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -119,7 +124,11 @@ fn headless_console_rpc_reconnect_ctrl_c_tears_down_host()
     })?;
     // Real message-level Ctrl+C input to the Host-owned diagnostic window.
     window_action(host.0.id(), "CtrlC", 0)?;
-    wait(&mut host.0, Duration::from_secs(5))?;
+    wait(
+        &mut host.0,
+        Duration::from_secs(5),
+        "Host teardown after CtrlC",
+    )?;
     assert!(std::net::TcpStream::connect_timeout(&port, Duration::from_secs(1)).is_err());
     runtime.block_on(async {
         assert!(client::connect(&pipe).await.is_err());
@@ -184,7 +193,11 @@ fn manual_restart_and_autostart_quit(
                 assert!(icem_windows_native::signal_existing_event(
                     icem_platform_windows::HOST_RESTART
                 )?);
-                wait(&mut child.0, Duration::from_secs(5))?;
+                wait(
+                    &mut child.0,
+                    Duration::from_secs(5),
+                    "Host exit after explicit restart/quit",
+                )?;
                 ready(&pipe).await?;
                 assert!(
                     client::connect(&pipe)
@@ -221,7 +234,11 @@ fn manual_restart_and_autostart_quit(
             Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
         })?;
         if autostart {
-            wait(&mut child.0, Duration::from_secs(5))?;
+            wait(
+                &mut child.0,
+                Duration::from_secs(5),
+                "Host exit after explicit restart/quit",
+            )?;
         }
     }
     std::fs::remove_dir_all(root)?;
@@ -269,7 +286,15 @@ fn window_action(
             .stdout(Stdio::piped())
             .spawn()?,
     );
-    wait(&mut helper.0, Duration::from_secs(10))?;
+    eprintln!(
+        "window helper PID {}: target PID {pid}, action {action}, expected HWND {handle}",
+        helper.0.id()
+    );
+    wait(
+        &mut helper.0,
+        Duration::from_secs(10),
+        &format!("window helper target PID {pid}, action {action}, expected HWND {handle}"),
+    )?;
     let mut bytes = Vec::new();
     helper
         .0

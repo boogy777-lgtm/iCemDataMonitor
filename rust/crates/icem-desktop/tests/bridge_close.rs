@@ -1,5 +1,6 @@
+use icem_desktop::logs::Request as LogRequest;
 use icem_desktop::{Bridge, UiPort};
-use serde_json::{Value, json};
+use icem_logging::{Command as LogCommand, ControlError, Reply as LogReply};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicUsize, Ordering},
@@ -22,28 +23,30 @@ impl UiPort for Port {
             ControlResult, Execution,
             application::{ErrorCategory, Outcome},
         };
-        match self.request(Value::Null) {
+        match self.logs(LogCommand::Get) {
             Ok(_) => Execution {
                 command: command.name(),
                 result: ControlResult::success(None),
                 outcome: Outcome::Applied,
                 error: None,
             },
-            Err(e) => Execution::rejected(command.name(), ErrorCategory::Internal, e),
+            Err(e) => Execution::rejected(command.name(), ErrorCategory::Internal, e.to_string()),
         }
     }
 
-    fn request(&self, _: Value) -> Result<Value, String> {
+    fn logs(&self, _: LogCommand) -> Result<LogReply, ControlError> {
         self.calls.fetch_add(1, Ordering::AcqRel);
-        self.started.send(()).map_err(|e| e.to_string())?;
+        self.started
+            .send(())
+            .map_err(|e| ControlError::rejected(e.to_string()))?;
         if let Some(release) = &self.release {
             release
                 .lock()
-                .map_err(|e| e.to_string())?
+                .map_err(|e| ControlError::rejected(e.to_string()))?
                 .recv_timeout(DEADLINE)
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| ControlError::rejected(e.to_string()))?;
         }
-        Ok(json!({"ok":true}))
+        Err(ControlError::rejected("fixture"))
     }
 }
 impl Drop for Port {
@@ -64,11 +67,15 @@ fn close_does_not_wait_for_inflight_io_and_never_executes_queued_mutations()
         finished,
         calls: calls.clone(),
     }))?;
-    bridge.send_emulator(icem_emulation::control::Command::SetEquipment(
-        icem_emulation::control::application::Equipment(42),
-    ))?;
+    bridge.send_logs(LogRequest {
+        local: true,
+        command: LogCommand::SetEnabled(false),
+    })?;
     began.recv_timeout(DEADLINE)?;
-    bridge.send(json!({"cmd":"local_logs","action":"clear"}))?;
+    bridge.send_logs(LogRequest {
+        local: true,
+        command: LogCommand::Clear,
+    })?;
     bridge.send_emulator(icem_emulation::control::Command::SetFirmware(true))?;
     let (closed, close_done) = mpsc::channel();
     let closer = std::thread::spawn(move || {
@@ -99,10 +106,16 @@ fn close_releases_response_backpressure_and_skips_later_commands()
     }))?;
     // Fill all 16 replies, then leave the worker trying to deliver reply 17.
     for _ in 0..17 {
-        bridge.send(json!({"cmd":"status"}))?;
+        bridge.send_logs(LogRequest {
+            local: true,
+            command: LogCommand::Get,
+        })?;
         began.recv_timeout(DEADLINE)?;
     }
-    bridge.send(json!({"cmd":"local_logs","action":"clear"}))?;
+    bridge.send_logs(LogRequest {
+        local: true,
+        command: LogCommand::Clear,
+    })?;
     drop(bridge);
     completion.finish()?;
     ended.recv_timeout(DEADLINE)?;
@@ -122,7 +135,10 @@ fn explicit_completion_releases_backpressure_even_if_a_view_handle_is_retained()
         calls: calls.clone(),
     }))?;
     for _ in 0..17 {
-        bridge.send(json!({"cmd":"status"}))?;
+        bridge.send_logs(LogRequest {
+            local: true,
+            command: LogCommand::Get,
+        })?;
         began.recv_timeout(DEADLINE)?;
     }
     let (done, stopped) = mpsc::channel();
@@ -134,7 +150,10 @@ fn explicit_completion_releases_backpressure_even_if_a_view_handle_is_retained()
     ended.recv_timeout(DEADLINE)?;
     assert!(
         bridge
-            .send(json!({"cmd":"local_logs","action":"clear"}))
+            .send_logs(LogRequest {
+                local: true,
+                command: LogCommand::Clear
+            })
             .is_err()
     );
     assert_eq!(calls.load(Ordering::Acquire), 17);

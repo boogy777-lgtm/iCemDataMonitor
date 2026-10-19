@@ -7,7 +7,6 @@ use gpui::{
     rgba, size,
 };
 use icem_web::shell::{Layer, LogCommand, Operation, Request, Selection};
-use serde_json::Value;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -69,27 +68,12 @@ impl Monitor {
             Err(error) => self.model.note = format!("⚠ {error}"),
         }
     }
-    // Existing logging renderer adapter; typed owner API is the next increment.
-    fn send_log(&mut self, value: Value) {
-        let result = (|| {
-            let action = match value["action"].as_str() {
-                Some("get") => LogCommand::Get,
-                Some("set") => {
-                    LogCommand::SetEnabled(value["enabled"].as_bool().ok_or("missing enabled")?)
-                }
-                Some("clear") => LogCommand::Clear,
-                _ => return Err("invalid log command"),
-            };
-            match value["cmd"].as_str() {
-                Some("logs") => Ok(Request::Logs(action)),
-                Some("local_logs") => Ok(Request::LocalLogs(action)),
-                _ => Err("invalid log owner"),
-            }
-        })();
-        match result {
-            Ok(command) => self.send(command),
-            Err(error) => self.model.note = error.into(),
-        }
+    fn send_log(&mut self, request: crate::logs::Request) {
+        self.send(if request.local {
+            Request::LocalLogs(request.command)
+        } else {
+            Request::Logs(request.command)
+        });
     }
     fn toggle(
         &self,
