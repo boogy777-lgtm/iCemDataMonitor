@@ -37,6 +37,10 @@ impl Owner {
 }
 #[cfg(windows)]
 use icem_windows_native::LogDirectory as Directory;
+#[cfg(windows)]
+use icem_windows_native::LogFile as OwnedFile;
+#[cfg(not(windows))]
+type OwnedFile = File;
 #[cfg(not(windows))]
 struct Directory;
 #[cfg(not(windows))]
@@ -64,7 +68,7 @@ pub struct Logs {
     owner: Owner,
     directory: Option<Directory>,
     enabled: Option<bool>,
-    writer: Option<File>,
+    writer: Option<OwnedFile>,
     active_file: usize,
     error: String,
     operation: String,
@@ -218,7 +222,7 @@ impl Logs {
         Ok(())
     }
     // Recover a partial last write from a previous crash, preserving complete records.
-    fn recover_tail(&self, file: &mut File) -> io::Result<()> {
+    fn recover_tail(&self, file: &mut OwnedFile) -> io::Result<()> {
         let length = file.metadata()?.len();
         if length == 0 {
             return Ok(());
@@ -381,6 +385,15 @@ trait RecordFile: Write + Seek {
     fn sync(&mut self) -> io::Result<()>;
 }
 impl RecordFile for File {
+    fn resize(&mut self, length: u64) -> io::Result<()> {
+        self.set_len(length)
+    }
+    fn sync(&mut self) -> io::Result<()> {
+        self.sync_data()
+    }
+}
+#[cfg(windows)]
+impl RecordFile for OwnedFile {
     fn resize(&mut self, length: u64) -> io::Result<()> {
         self.set_len(length)
     }

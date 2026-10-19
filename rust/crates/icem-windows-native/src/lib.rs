@@ -39,7 +39,7 @@ pub use autostart::AutostartEntry;
 #[allow(unsafe_code)]
 mod log_directory;
 #[cfg(windows)]
-pub use log_directory::LogDirectory;
+pub use log_directory::{LogDirectory, LogFile};
 
 #[cfg(windows)]
 #[allow(unsafe_code)]

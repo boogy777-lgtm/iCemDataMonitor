@@ -2,16 +2,22 @@
 use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 use std::{
     fs::{File, OpenOptions},
-    io,
+    io::{self, Read, Seek, SeekFrom, Write},
     path::{Component, Path, PathBuf},
+    sync::Arc,
 };
-use windows_sys::Win32::{
-    Foundation::HANDLE,
-    Storage::FileSystem::{
-        BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_DISPOSITION_INFO,
-        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_RENAME_INFO,
-        FILE_SHARE_READ, FileDispositionInfo, FileRenameInfo, GetFileInformationByHandle,
-        SetFileInformationByHandle,
+use windows_sys::{
+    Wdk::Storage::FileSystem::{
+        FILE_RENAME_INFORMATION, FileRenameInformation, NtSetInformationFile,
+    },
+    Win32::{
+        Foundation::{HANDLE, RtlNtStatusToDosError},
+        Storage::FileSystem::{
+            BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_DISPOSITION_INFO,
+            FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_READ,
+            FileDispositionInfo, GetFileInformationByHandle, SetFileInformationByHandle,
+        },
+        System::IO::IO_STATUS_BLOCK,
     },
 };
 
@@ -37,9 +43,50 @@ fn regular(file: &File) -> io::Result<()> {
 /// Pins every ancestor against replacement and reparse mutation for its lifetime.
 /// Only local absolute disk paths and single-component filenames are accepted.
 pub struct LogDirectory {
+    root: Arc<Root>,
+}
+struct Root {
     path: PathBuf,
     _pins: Vec<File>,
     _owner: File,
+}
+/// Synchronous owned file capability. Construction and raw handle stay in this module.
+/// Retains directory pins and the exclusive owner lock until the file is closed.
+pub struct LogFile {
+    file: File,
+    root: Arc<Root>,
+}
+impl LogFile {
+    pub fn metadata(&self) -> io::Result<std::fs::Metadata> {
+        self.file.metadata()
+    }
+    pub fn set_len(&self, length: u64) -> io::Result<()> {
+        self.file.set_len(length)
+    }
+    pub fn sync_all(&self) -> io::Result<()> {
+        self.file.sync_all()
+    }
+    pub fn sync_data(&self) -> io::Result<()> {
+        self.file.sync_data()
+    }
+}
+impl Read for LogFile {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        self.file.read(buffer)
+    }
+}
+impl Write for LogFile {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        self.file.write(buffer)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.file.flush()
+    }
+}
+impl Seek for LogFile {
+    fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+        self.file.seek(position)
+    }
 }
 impl LogDirectory {
     pub fn open(path: &Path) -> io::Result<Self> {
@@ -97,9 +144,11 @@ impl LogDirectory {
             .open(path.join("rust-logger.lock"))?;
         regular(&owner)?;
         Ok(Self {
-            path: path.to_owned(),
-            _pins: pins,
-            _owner: owner,
+            root: Arc::new(Root {
+                path: path.to_owned(),
+                _pins: pins,
+                _owner: owner,
+            }),
         })
     }
     fn path(&self, name: &str) -> io::Result<PathBuf> {
@@ -124,9 +173,9 @@ impl LogDirectory {
         {
             return Err(denied("invalid log filename"));
         }
-        Ok(self.path.join(name))
+        Ok(self.root.path.join(name))
     }
-    pub fn open_file(&self, name: &str, create: bool) -> io::Result<File> {
+    pub fn open_file(&self, name: &str, create: bool) -> io::Result<LogFile> {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -137,7 +186,10 @@ impl LogDirectory {
             .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
             .open(self.path(name)?)?;
         regular(&file)?;
-        Ok(file)
+        Ok(LogFile {
+            file,
+            root: Arc::clone(&self.root),
+        })
     }
     /// Deletes the validated identity, never a path reopened after validation.
     pub fn remove_file(&self, name: &str) -> io::Result<bool> {
@@ -169,7 +221,11 @@ impl LogDirectory {
         Ok(true)
     }
     /// Renames the checked source handle, never reopening its path.
-    pub fn replace(&self, source: &File, target: &str) -> io::Result<()> {
+    pub fn replace(&self, source: &LogFile, target: &str) -> io::Result<()> {
+        if !Arc::ptr_eq(&self.root, &source.root) {
+            return Err(denied("log source belongs to another directory owner"));
+        }
+        regular(&source.file)?;
         #[repr(C)]
         struct Rename {
             flags: u32,
@@ -178,34 +234,40 @@ impl LogDirectory {
             name: [u16; 1024],
         }
         const _: () = assert!(
-            std::mem::offset_of!(Rename, name) == std::mem::offset_of!(FILE_RENAME_INFO, FileName)
+            std::mem::offset_of!(Rename, name)
+                == std::mem::offset_of!(FILE_RENAME_INFORMATION, FileName)
         );
-        self.path(target)?; // Validate the single-component name before the FFI call.
-        let directory = self._pins.last().ok_or_else(|| denied("log directory pin missing"))?;
+        self.path(target)?; // Single component only; NT rename keeps the source parent.
         let path: Vec<u16> = std::ffi::OsStr::new(target).encode_wide().collect();
         if path.len() >= 1024 {
             return Err(denied("log path too long"));
         }
         let mut info = Rename {
             flags: 1,
-            root: directory.as_raw_handle() as HANDLE,
+            root: std::ptr::null_mut(),
             length: (path.len() * 2) as u32,
             name: [0; 1024],
         };
         info.name[..path.len()].copy_from_slice(&path);
-        // SAFETY: repr(C) buffer has FILE_RENAME_INFO layout (offset checked), initialized
-        // UTF-16 array and bounded length. Source is a live DELETE-capable owned handle;
-        // RootDirectory is our live pinned directory and FileName is one validated component.
-        if unsafe {
-            SetFileInformationByHandle(
-                source.as_raw_handle() as HANDLE,
-                FileRenameInfo,
+        let mut completed = IO_STATUS_BLOCK::default();
+        // SAFETY: repr(C) layout is checked against the SDK. The private LogFile
+        // is always synchronous (no OVERLAPPED flag), so NT completes before these
+        // stack buffers go out of scope. Root=NULL + one component is documented
+        // in-place rename: no CWD/full-path resolution or ancestor pin release.
+        let status = unsafe {
+            NtSetInformationFile(
+                source.file.as_raw_handle() as HANDLE,
+                &mut completed,
                 &info as *const _ as *const _,
-                (std::mem::offset_of!(Rename, name) + path.len() * 2 + 2) as u32,
+                std::mem::size_of::<Rename>() as u32,
+                FileRenameInformation,
             )
-        } == 0
-        {
-            return Err(io::Error::last_os_error());
+        };
+        if status < 0 {
+            // SAFETY: conversion of an NTSTATUS value, no pointers or effects.
+            return Err(io::Error::from_raw_os_error(
+                unsafe { RtlNtStatusToDosError(status) }.cast_signed(),
+            ));
         }
         Ok(())
     }
@@ -232,27 +294,72 @@ mod tests {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos()
         )));
         let first = step("first directory", LogDirectory::open(&root.0.join("first")))?;
-        let sibling = step("sibling directory", LogDirectory::open(&root.0.join("sibling")))?;
+        let sibling = step(
+            "sibling directory",
+            LogDirectory::open(&root.0.join("sibling")),
+        )?;
         let mut writer = step("writer open", first.open_file("owned.log", true))?;
         step("writer write", writer.write_all(b"old\r\n"))?;
         step("writer sync", writer.sync_all())?;
-        assert_eq!(step("read while writer lives", std::fs::read(root.0.join("first/owned.log")))?, b"old\r\n");
+        assert_eq!(
+            step(
+                "read while writer lives",
+                std::fs::read(root.0.join("first/owned.log"))
+            )?,
+            b"old\r\n"
+        );
         drop(writer);
+        let mut foreign = step("sibling file", sibling.open_file("neighbor.log", true))?;
+        step("sibling write", foreign.write_all(b"neighbor"))?;
+        assert!(first.replace(&foreign, "owned.log").is_err());
+        assert_eq!(
+            step(
+                "foreign source unchanged",
+                std::fs::read(root.0.join("sibling/neighbor.log"))
+            )?,
+            b"neighbor"
+        );
+        drop(foreign);
         for record in [b"new\r\n", b"end\r\n"] {
             let mut temp = step("temp open", first.open_file("temp.tmp", true))?;
             step("temp truncate", temp.set_len(0))?;
             step("temp write", temp.write_all(record))?;
             step("temp sync", temp.sync_all())?;
-            step("replace existing destination", first.replace(&temp, "owned.log"))?;
+            step(
+                "replace existing destination",
+                first.replace(&temp, "owned.log"),
+            )?;
             drop(temp);
-            let file = step("reopen replaced destination", first.open_file("owned.log", false))?;
-            assert_eq!(step("read replaced destination", std::fs::read(root.0.join("first/owned.log")))?, record);
+            let file = step(
+                "reopen replaced destination",
+                first.open_file("owned.log", false),
+            )?;
+            assert_eq!(
+                step(
+                    "read replaced destination",
+                    std::fs::read(root.0.join("first/owned.log"))
+                )?,
+                record
+            );
             drop(file);
         }
-        assert!(step("delete checked destination", first.remove_file("owned.log"))?);
+        assert!(step(
+            "delete checked destination",
+            first.remove_file("owned.log")
+        )?);
         drop(first);
-        step("rename with sibling pins", std::fs::rename(root.0.join("first"), root.0.join("moved")))?;
+        let retained = step("retained file", sibling.open_file("retained.log", true))?;
         drop(sibling);
+        assert!(LogDirectory::open(&root.0.join("sibling")).is_err());
+        drop(retained);
+        drop(step(
+            "owner released with final file",
+            LogDirectory::open(&root.0.join("sibling")),
+        )?);
+        step(
+            "rename after all pins released",
+            std::fs::rename(root.0.join("first"), root.0.join("moved")),
+        )?;
         Ok(())
     }
 }

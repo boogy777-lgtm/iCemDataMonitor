@@ -91,14 +91,16 @@ Rust format strings обнаружил только поддерживаемый
 Legacy test helper и его точный ledger hash. Production COM tee не активирован.
 Source-fix commit: `d29180be0b55c200ad4902394f725e41aa242ce1`. Merge PR #11 допускается после новых проверок.
 
+
 ## Windows E12 rename failure
 
 Новая MSVC runtime проверка подтвердила Host console lifecycle, затем обнаружила
 sharing violation E12 на replace existing destination. Native boundary regression
-проверяет write/read-live/replace/reopen/delete и sibling pins. Replace использует
-проверенный pinned directory handle в FILE_RENAME_INFO.RootDirectory и одно
-валидированное имя вместо повторного разрешения полного destination path.
-Ancestor pins, share modes, source-handle ownership, reparse/hardlink checks,
-partial clear reporting и запрет automatic retry сохранены. Ранний logger gate
-до GPUI build даёт отдельный Windows verdict; полный Scaffold не сокращён.
-Источник API: https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info
+проверяет write/read-live/replace/reopen/delete, работу с sibling owner, запрет
+foreign-source и удержание owner/pins до закрытия последнего LogFile.
+
+[ADR 0013](adr/0013-owned-log-file-rename.ru.md) обосновывает единственный NT
+in-place rename над typed synchronous LogFile. Win32 full-path rename дал OS 32;
+вариант RootDirectory был отвергнут Win32 wrapper (OS 87). Pins/share restrictions
+не ослаблены. Kernel получает один filename, не CWD/full path. Source handle не
+переоткрывается, automatic retry отсутствует. E12 suite остаётся обязательным.
