@@ -163,3 +163,9 @@ window lifecycle/operator сценарии открыты; весь P10/P15 не
 [HOST_E14](HOST_E14.ru.md): X/Open сохраняет HWND; UI close не ждёт backend
 в callback, in-flight завершается владельцем после UI loop. Windows operator gate
 остаётся открытым; Console Host X → hide требует ADR 0009. P10/P15 остаются PARTIAL.
+
+
+E15: [Host console X → Hide](HOST_E15.ru.md), [ADR 0011](adr/0011-host-diagnostic-window.ru.md).
+Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
+окну Host, после detach родительский терминал не адресует Host. Windows/operator
+результаты фиксируются по exact head; полная parity не объявляется.

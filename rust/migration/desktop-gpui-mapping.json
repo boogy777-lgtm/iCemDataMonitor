@@ -1648,5 +1648,21 @@
       "acceptance": "NOT_RUN",
       "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
     }
+  ],
+  "host_console": [
+    {
+      "name": "HostDiagnosticWindow",
+      "kind": "native_window",
+      "implementation": "crates/icem-windows-native/src/console.rs",
+      "acceptance": "NOT_RUN",
+      "behavior": "WM_CLOSE hides same HWND; Ctrl+C requests graceful stop"
+    },
+    {
+      "name": "HostDiagnosticTranscript",
+      "kind": "readonly_edit",
+      "implementation": "crates/icem-windows-native/src/console.rs",
+      "acceptance": "NOT_RUN",
+      "behavior": "Bounded screen transcript, selection and scrollbars; separate from E12 file logs"
+    }
   ]
 }

@@ -35,6 +35,12 @@ pub trait Device {
     fn attach(&mut self) -> Result<(), String>;
     fn show(&mut self) -> Result<(), String>;
     fn hide(&mut self) -> Result<(), String>;
+    fn restored(&self) -> bool {
+        true
+    }
+    fn check(&self) -> Result<(), String> {
+        Ok(())
+    }
     fn take_stop(&mut self) -> bool {
         false
     }
@@ -53,7 +59,13 @@ impl<D: Device> Controller<D> {
         self.device.probe() == Presence::Visible
     }
     pub fn set_visible(&mut self, visible: bool) -> Result<bool, String> {
-        match decide(self.device.probe(), visible) {
+        self.device.check()?;
+        let action = if visible && !self.device.restored() {
+            Action::Show
+        } else {
+            decide(self.device.probe(), visible)
+        };
+        match action {
             Action::Nothing => {}
             Action::AttachAndShow => {
                 self.device.attach()?;
@@ -94,6 +106,16 @@ impl Device for icem_windows_native::ConsoleControl {
     }
     fn hide(&mut self) -> Result<(), String> {
         self.hide().map_err(|e| e.to_string())
+    }
+    fn restored(&self) -> bool {
+        icem_windows_native::console_restored()
+    }
+    fn check(&self) -> Result<(), String> {
+        if icem_windows_native::console_state().0 {
+            Ok(())
+        } else {
+            Err("console window lost".into())
+        }
     }
     fn take_stop(&mut self) -> bool {
         self.take_ctrl_c()

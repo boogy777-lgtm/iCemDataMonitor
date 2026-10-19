@@ -288,3 +288,9 @@ SetLayer сохраняет legacy toggle. [ADR 0009](adr/0009-console-owner.ru.
 
 E14: wire API/версии прежние. Async request/probe owned GPUI window и
 WorkerCompletion — внутренние Rust способности; [ADR 0010](adr/0010-desktop-window-lifecycle.ru.md).
+
+
+E15: [Host console X → Hide](HOST_E15.ru.md), [ADR 0011](adr/0011-host-diagnostic-window.ru.md).
+Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
+окну Host, после detach родительский терминал не адресует Host. Windows/operator
+результаты фиксируются по exact head; полная parity не объявляется.

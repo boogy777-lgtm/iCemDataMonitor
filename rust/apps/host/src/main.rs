@@ -14,6 +14,16 @@ use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+// CLI retains stdout/exit semantics. Service diagnostics feed a bounded screen
+// transcript; redirected stderr is best effort after process-local detachment.
+macro_rules! diagnostic {
+    ($($argument:tt)*) => {{
+        let message = format!($($argument)*);
+        #[cfg(windows)]
+        icem_windows_native::console_diagnostic(&message);
+        let _ = std::io::Write::write_fmt(&mut std::io::stderr(), format_args!("{message}\n"));
+    }};
+}
 #[cfg(windows)]
 mod cli;
 mod layers;
@@ -138,7 +148,7 @@ fn options() -> Result<Options, String> {
         };
         let loaded = paths.load().map_err(|e| e.to_string())?;
         if let Some(note) = loaded.note {
-            eprintln!("{note}");
+            diagnostic!("{note}");
         }
         config = Some(loaded.path);
         loaded.options
@@ -259,7 +269,7 @@ fn refresh(
     let read = source.snapshot();
     let error = source.last_error().or_else(|| read.as_ref().err().copied());
     if *previous != error {
-        eprintln!(
+        diagnostic!(
             "Bus state: {}",
             match error {
                 Some(error) => format!("{error:?}"),
@@ -317,7 +327,7 @@ fn run<D: icem_platform_windows::console::Device>(
     } else {
         None
     };
-    eprintln!(
+    diagnostic!(
         "DEVELOPMENT HOST; full Host/UI acceptance pending. Modbus {}",
         server
             .as_ref()
@@ -335,7 +345,7 @@ fn run<D: icem_platform_windows::console::Device>(
                 Ok(names) => (names, true),
                 Err(error) => {
                     if options.web.is_some() {
-                        eprintln!("registry unavailable: {error}; sensor names remain null");
+                        diagnostic!("registry unavailable: {error}; sensor names remain null");
                     }
                     (Default::default(), false)
                 }
@@ -389,7 +399,7 @@ fn run<D: icem_platform_windows::console::Device>(
         .map(|address| WebServer::bind(address, web.clone()))
         .transpose()?;
     if let Some(server) = &web_server {
-        eprintln!("Web http://{}", server.local_addr());
+        diagnostic!("Web http://{}", server.local_addr());
     }
     boot.complete("web", None)?;
     boot.begin("ipc", "локальный канал и lifecycle")?;
@@ -463,7 +473,7 @@ fn run<D: icem_platform_windows::console::Device>(
             };
             if let Err(error) = result {
                 logs.record(&format!("host action: {error}"));
-                eprintln!("host action: {error}");
+                diagnostic!("host action: {error}");
             }
         }
         for request in console_requests.try_iter().take(16) {
@@ -551,7 +561,7 @@ fn run<D: icem_platform_windows::console::Device>(
         web.stop()?;
     }
     if let Some(server) = server {
-        eprintln!("Stopped: {:?}", server.stop()?);
+        diagnostic!("Stopped: {:?}", server.stop()?);
     }
     Ok(restart)
 }
@@ -565,7 +575,7 @@ fn main() -> ExitCode {
         .iter()
         .any(|a| matches!(a.as_str(), "--help" | "-h"))
     {
-        eprintln!(
+        diagnostic!(
             "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH"
         );
         return ExitCode::SUCCESS;
@@ -576,7 +586,7 @@ fn main() -> ExitCode {
     let singleton = match windows::singleton() {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("{e}");
+            diagnostic!("{e}");
             return ExitCode::from(1);
         }
     };
@@ -584,20 +594,24 @@ fn main() -> ExitCode {
     let _guard = match singleton.lock(Duration::ZERO) {
         Ok(Some(guard)) => guard,
         Ok(None) => {
-            eprintln!("Host is already running or starting");
+            diagnostic!("Host is already running or starting");
             return ExitCode::from(icem_web::host_client::ALREADY_RUNNING);
         }
         Err(e) => {
-            eprintln!("{e}");
+            diagnostic!("{e}");
             return ExitCode::from(1);
         }
     };
 
     #[cfg(windows)]
-    let console_device = match icem_windows_native::ConsoleControl::install() {
+    let console_device = match icem_windows_native::ConsoleControl::install_visible(
+        std::env::var_os("ICEM_HOST_CONSOLE_VISIBLE").is_some_and(|v| v == "1")
+            || (!arguments.iter().any(|a| a == "--autostart")
+                && icem_windows_native::inherited_console_visible()),
+    ) {
         Ok(device) => device,
         Err(error) => {
-            eprintln!("{error}");
+            diagnostic!("{error}");
             return ExitCode::from(1);
         }
     };
@@ -606,37 +620,38 @@ fn main() -> ExitCode {
     let mut console = icem_platform_windows::console::Controller::new(console_device);
     let mut logs = icem_logging::Logs::installed(icem_logging::Owner::Host);
     logs.record("Host startup");
-    if arguments.iter().any(|argument| argument == "--autostart")
-        && let Err(error) = console.set_visible(false)
-    {
-        logs.record(&format!("Startup console hide failed: {error}"));
-        eprintln!("{error}");
-        return ExitCode::from(1);
-    }
     let boot = icem_web::BootStages::default();
     if let Err(error) = boot.begin("ini", "конфигурация") {
-        eprintln!("{error}");
+        diagnostic!("{error}");
         return ExitCode::from(1);
     }
     let options = match options() {
         Ok(options) => options,
         Err(error) => {
             logs.record(&format!("Configuration failed: {error}"));
-            eprintln!(
+            diagnostic!(
                 "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH]"
             );
             return ExitCode::from(2);
         }
     };
     if let Err(error) = boot.complete("ini", None) {
-        eprintln!("{error}");
+        diagnostic!("{error}");
         return ExitCode::from(1);
     }
     if console.take_stop() {
         logs.record("Ctrl+C: Host stopped during startup");
         return ExitCode::SUCCESS;
     }
-    match run(options, boot, &mut logs, &mut console) {
+    let result = run(options, boot, &mut logs, &mut console);
+    let restart_console_visible = console.visible();
+    #[cfg(windows)]
+    if let Err(error) = console.device_mut().finish() {
+        logs.record(&format!("Console shutdown failed: {error}"));
+        diagnostic!("{error}");
+        return ExitCode::from(1);
+    }
+    match result {
         Ok(restart) => {
             logs.record("Host stopping");
             drop(logs);
@@ -646,10 +661,14 @@ fn main() -> ExitCode {
                 let result = std::env::current_exe().and_then(|exe| {
                     std::process::Command::new(exe)
                         .args(std::env::args_os().skip(1))
+                        .env(
+                            "ICEM_HOST_CONSOLE_VISIBLE",
+                            if restart_console_visible { "1" } else { "0" },
+                        )
                         .spawn()
                 });
                 if let Err(error) = result {
-                    eprintln!("Host restart: {error}");
+                    diagnostic!("Host restart: {error}");
                     return ExitCode::from(1);
                 }
             }
@@ -657,7 +676,7 @@ fn main() -> ExitCode {
         }
         Err(error) => {
             logs.record(&format!("Host failed: {error}"));
-            eprintln!("{error}");
+            diagnostic!("{error}");
             ExitCode::from(1)
         }
     }

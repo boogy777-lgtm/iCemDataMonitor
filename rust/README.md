@@ -145,3 +145,9 @@ startup и прежнему RPC. Console X → hide остаётся откры�
 
 [Emulator X → Hide/Open и завершение UI](docs/HOST_E14.ru.md): тот же HWND, actual
 visibility и завершение in-flight после UI loop. Actions пропущены из-за лимита владельца.
+
+
+E15: [Host console X → Hide](docs/HOST_E15.ru.md), [ADR 0011](docs/adr/0011-host-diagnostic-window.ru.md).
+Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
+окну Host, после detach родительский терминал не адресует Host. Windows/operator
+результаты фиксируются по exact head; полная parity не объявляется.

@@ -84,3 +84,9 @@ CTRL_CLOSE TRUE не является гарантией Windows. Visual/window 
 E14: [emulator X/Hide/Open и UI shutdown](HOST_E14.ru.md) реализованы без новых
 контролов. Windows UI/process gates NOT_RUN; window/visual parity PARTIAL.
 Console Host X → hide отдельно OPEN.
+
+
+E15: [Host console X → Hide](HOST_E15.ru.md), [ADR 0011](adr/0011-host-diagnostic-window.ru.md).
+Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
+окну Host, после detach родительский терминал не адресует Host. Windows/operator
+результаты фиксируются по exact head; полная parity не объявляется.

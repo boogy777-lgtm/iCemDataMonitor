@@ -158,3 +158,9 @@ Native focus, DPI, sessions и поведение всех окон остают
 visible/restored, deadline 2 s без retry. Bridge Drop не ждёт I/O в callback;
 WorkerCompletion завершает in-flight после UI loop. Shell close policy прежняя.
 Mapping/appearance 176 + 6 не менялись; Windows operator acceptance NOT_RUN.
+
+
+E15: [Host console X → Hide](HOST_E15.ru.md), [ADR 0011](adr/0011-host-diagnostic-window.ru.md).
+Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
+окну Host, после detach родительский терминал не адресует Host. Windows/operator
+результаты фиксируются по exact head; полная parity не объявляется.
