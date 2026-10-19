@@ -90,20 +90,29 @@ mod windows {
     fn off_on_write_off_restart_clear_both_states() -> Result {
         let root = Root::new()?;
         let mut logs = Logs::open(&root.0, Owner::Host);
-        assert_eq!(logs.status()["enabled"], true);
-        logs.request("set", Some(false))?;
+        assert_eq!(logs.status().enabled, Some(true));
+        assert_eq!(
+            logs.request(Command::SetEnabled(false)).outcome,
+            Outcome::Applied
+        );
         logs.record("must not appear");
         assert_eq!(logs.written, 0);
-        logs.request("set", Some(true))?;
+        assert_eq!(
+            logs.request(Command::SetEnabled(true)).outcome,
+            Outcome::Applied
+        );
         logs.record("first");
         assert!(content(&root)?.contains("first"));
-        logs.request("set", Some(false))?;
+        assert_eq!(
+            logs.request(Command::SetEnabled(false)).outcome,
+            Outcome::Applied
+        );
         logs.record("must not appear");
         assert!(!content(&root)?.contains("must not appear"));
         drop(logs);
         let mut logs = Logs::open(&root.0, Owner::Host);
-        assert_eq!(logs.status()["enabled"], false);
-        logs.request("clear", None)?;
+        assert_eq!(logs.status().enabled, Some(false));
+        assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
         assert!(
             !root
                 .0
@@ -111,15 +120,60 @@ mod windows {
                 .join("startup.log")
                 .exists()
         );
-        logs.request("set", Some(true))?;
+        assert_eq!(
+            logs.request(Command::SetEnabled(true)).outcome,
+            Outcome::Applied
+        );
         logs.record("before clear");
-        logs.request("clear", None)?;
+        assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
         assert_eq!(content(&root)?, "");
         logs.record("after clear");
         assert!(content(&root)?.contains("after clear"));
-        logs.request("clear", None)?;
-        logs.request("clear", None)?;
-        assert_eq!(logs.status()["enabled"], true);
+        assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
+        assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
+        assert_eq!(logs.status().enabled, Some(true));
+        Ok(())
+    }
+    #[test]
+    fn all_typed_commands_report_actual_state_and_clear_facts() -> Result {
+        let root = Root::new()?;
+        let mut logs = Logs::open(&root.0, Owner::Host);
+        let read = logs.request(Command::Get);
+        assert_eq!(read.outcome, Outcome::Completed);
+        assert!(read.status.consistent());
+        assert_eq!(read.status.enabled, Some(true));
+        assert_eq!(read.clear, None);
+        let off = logs.request(Command::SetEnabled(false));
+        assert_eq!(off.outcome, Outcome::Applied);
+        assert_eq!(off.status.enabled, Some(false));
+        assert!(!off.status.recording);
+        let clear = logs.request(Command::Clear);
+        assert_eq!(clear.outcome, Outcome::Applied);
+        assert_eq!(
+            clear.clear,
+            Some(ClearReport {
+                deleted: 0,
+                absent: 3,
+                failed: 0,
+                reopened: false
+            })
+        );
+        assert_eq!(
+            logs.request(Command::SetEnabled(true)).outcome,
+            Outcome::Applied
+        );
+        let clear = logs.request(Command::Clear);
+        assert_eq!(clear.outcome, Outcome::Applied);
+        assert!(clear.status.recording);
+        assert_eq!(
+            clear.clear,
+            Some(ClearReport {
+                deleted: 1,
+                absent: 2,
+                failed: 0,
+                reopened: true
+            })
+        );
         Ok(())
     }
     #[test]
@@ -131,12 +185,15 @@ mod windows {
             let bytes = fs::read(root.0.join(owner.directory()).join(owner.files()[0]))?;
             assert!(bytes.len() <= MAX_RECORD);
             assert!(std::str::from_utf8(&bytes)?.contains("[truncated]"));
-            logs.request("set", Some(false))?;
+            assert_eq!(
+                logs.request(Command::SetEnabled(false)).outcome,
+                Outcome::Applied
+            );
             drop(logs);
             let mut logs = Logs::open(&root.0, owner);
-            assert_eq!(logs.status()["enabled"], false);
-            logs.request("clear", None)?;
-            assert_eq!(logs.status()["enabled"], false);
+            assert_eq!(logs.status().enabled, Some(false));
+            assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
+            assert_eq!(logs.status().enabled, Some(false));
         }
         Ok(())
     }
@@ -158,7 +215,7 @@ mod windows {
         );
         logs.record_file("foreign.log", "forbidden");
         assert!(!dir.join("foreign.log").exists());
-        logs.request("clear", None)?;
+        assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
         assert!(!dir.join("data-bus.log").exists());
         Ok(())
     }
@@ -185,7 +242,7 @@ mod windows {
                     let _ = cleaner
                         .lock()
                         .unwrap_or_else(std::sync::PoisonError::into_inner)
-                        .request("clear", None);
+                        .request(Command::Clear);
                 }
             });
         });
@@ -198,7 +255,7 @@ mod windows {
             text.lines()
                 .all(|line| line.contains("Z ") && line.contains("record"))
         );
-        assert_eq!(logs.status()["error"], "");
+        assert_eq!(logs.status().error, "");
         Ok(())
     }
     #[test]
@@ -218,13 +275,20 @@ mod windows {
             .read(true)
             .share_mode(1)
             .open(dir.join("data-bus.log"))?;
-        assert!(logs.request("clear", None).is_err());
-        assert_eq!(content(&root)?, "");
-        assert!(
-            logs.status()["error"]
-                .as_str()
-                .is_some_and(|e| e.contains("data-bus.log"))
+        let reply = logs.request(Command::Clear);
+        assert_eq!(reply.outcome, Outcome::Incomplete);
+        assert_eq!(
+            reply.clear,
+            Some(ClearReport {
+                deleted: 1,
+                absent: 1,
+                failed: 1,
+                reopened: true
+            })
         );
+        assert!(reply.status.recording);
+        assert_eq!(content(&root)?, "");
+        assert!(logs.status().error.contains("data-bus.log"));
         logs.record("continues despite partial clear");
         assert!(content(&root)?.contains("continues"));
         for name in [
@@ -237,7 +301,7 @@ mod windows {
         }
         assert!(!dir.join(SETTINGS).exists()); // absent setting still means default ON
         drop(busy);
-        logs.request("clear", None)?;
+        assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
         assert!(!dir.join("data-bus.log").exists());
         Ok(())
     }
@@ -254,9 +318,9 @@ mod windows {
         let mut logs = Logs::open(&root.0, Owner::Host);
         logs.record("owner");
         let competing = Logs::open(&root.0, Owner::Host);
-        assert_eq!(competing.status()["available"], false);
+        assert!(!competing.status().available);
         drop(competing);
-        assert!(logs.request("clear", None).is_err());
+        assert!(logs.request(Command::Clear).outcome == Outcome::Incomplete);
         assert_eq!(fs::read(&outside)?, b"must survive");
         drop(logs);
         let renamed = root.0.join("old");
@@ -272,13 +336,13 @@ mod windows {
             String::from_utf8_lossy(&result.stderr)
         );
         let logs = Logs::open(&root.0, Owner::Host);
-        assert_eq!(logs.status()["available"], false);
+        assert!(!logs.status().available);
         drop(logs);
         fs::remove_dir(&dir)?;
         let file_root = root.0.join("file-root");
         fs::write(&file_root, b"file")?;
         let mut logs = Logs::open(&file_root, Owner::Host);
-        assert!(logs.request("set", Some(true)).is_err());
+        assert!(logs.request(Command::SetEnabled(true)).outcome == Outcome::Incomplete);
         assert_eq!(fs::read(file_root)?, b"file");
         Ok(())
     }
@@ -287,42 +351,41 @@ mod windows {
         use std::os::windows::fs::OpenOptionsExt;
         let root = Root::new()?;
         let mut logs = Logs::open(&root.0, Owner::Host);
-        logs.request("set", Some(false))?;
+        assert_eq!(
+            logs.request(Command::SetEnabled(false)).outcome,
+            Outcome::Applied
+        );
         let dir = root.0.join(Owner::Host.directory());
         fs::write(dir.join("startup.log"), b"old\r\n")?;
         let mut permissions = fs::metadata(dir.join("startup.log"))?.permissions();
         let original_permissions = permissions.clone();
         permissions.set_readonly(true);
         fs::set_permissions(dir.join("startup.log"), permissions)?;
-        assert!(logs.request("set", Some(true)).is_err());
-        assert_eq!(logs.status()["enabled"], false);
+        assert!(logs.request(Command::SetEnabled(true)).outcome == Outcome::Incomplete);
+        assert_eq!(logs.status().enabled, Some(false));
         fs::set_permissions(dir.join("startup.log"), original_permissions)?;
         let locked = fs::OpenOptions::new()
             .read(true)
             .share_mode(1)
             .open(dir.join(SETTINGS))?;
-        assert!(logs.request("set", Some(true)).is_err());
-        assert_eq!(logs.status()["enabled"], false);
+        // Writer preparation repairs the tail BEFORE the preference publication is refused.
+        fs::write(dir.join("startup.log"), b"old\r\npartial")?;
+        let refused = logs.request(Command::SetEnabled(true));
+        assert_eq!(refused.outcome, Outcome::Incomplete);
+        assert_eq!(refused.status.enabled, Some(false));
+        assert!(!refused.status.recording);
+        assert!(refused.status.operation.contains("частичный результат"));
+        assert_eq!(fs::read(dir.join("startup.log"))?, b"old\r\n");
         drop(locked);
         drop(logs);
         fs::write(dir.join(SETTINGS), b"invalid")?;
         let mut logs = Logs::open(&root.0, Owner::Host);
         logs.record("forbidden");
-        assert_eq!(logs.status()["enabled"], Value::Null);
-        assert!(
-            !logs.status()["error"]
-                .as_str()
-                .ok_or("missing error")?
-                .is_empty()
-        );
+        assert_eq!(logs.status().enabled, None);
+        assert!(!logs.status().error.is_empty());
         assert_eq!(fs::read(dir.join(SETTINGS))?, b"invalid");
-        logs.request("clear", None)?;
-        assert!(
-            !logs.status()["error"]
-                .as_str()
-                .ok_or("missing error")?
-                .is_empty()
-        );
+        assert_eq!(logs.request(Command::Clear).outcome, Outcome::Applied);
+        assert!(!logs.status().error.is_empty());
         assert_eq!(fs::read(dir.join(SETTINGS))?, b"invalid");
         Ok(())
     }

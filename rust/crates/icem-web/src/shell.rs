@@ -47,22 +47,7 @@ impl Selection {
         &self.0
     }
 }
-/// Compatibility seam until the logging owner API is typed; no missing bool/default.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LogCommand {
-    Get,
-    SetEnabled(bool),
-    Clear,
-}
-impl LogCommand {
-    pub fn v1(self) -> (&'static str, Option<bool>) {
-        match self {
-            Self::Get => ("get", None),
-            Self::SetEnabled(v) => ("set", Some(v)),
-            Self::Clear => ("clear", None),
-        }
-    }
-}
+pub use icem_logging::Command as LogCommand;
 #[derive(Clone, Debug)]
 pub enum Request {
     Status,
@@ -171,8 +156,8 @@ pub enum Response {
     Metrics(proto::MetricsSample),
     // Isolated adapter payloads for the next separate refactoring increments.
     Dashboard(Value),
-    Logs(Value),
-    LocalLogs(Value),
+    Logs(Result<icem_logging::Reply, icem_logging::ControlError>),
+    LocalLogs(Result<icem_logging::Reply, icem_logging::ControlError>),
 }
 impl Response {
     pub fn status(value: proto::HostStatus) -> Result<Self, String> {

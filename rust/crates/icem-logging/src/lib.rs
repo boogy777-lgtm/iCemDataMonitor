@@ -13,6 +13,81 @@ pub const MAX_RECORD: usize = 8192;
 const SETTINGS: &str = "rust-logging-v1.json";
 const TEMP: &str = "rust-logging.tmp";
 
+/// Subject commands; a set without a preference is not representable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Command {
+    Get,
+    SetEnabled(bool),
+    Clear,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Status {
+    pub enabled: Option<bool>,
+    pub available: bool,
+    pub recording: bool,
+    pub directory: String,
+    pub error: String,
+    pub operation: String,
+    pub written: u64,
+}
+impl Status {
+    pub fn consistent(&self) -> bool {
+        !self.recording || (self.available && self.enabled == Some(true))
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Outcome {
+    Completed,
+    Applied,
+    Incomplete,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct ClearReport {
+    pub deleted: usize,
+    pub absent: usize,
+    pub failed: usize,
+    /// Actual writer presence after clear; false also covers OFF/unknown (no reopen attempted).
+    pub reopened: bool,
+}
+#[must_use = "inspect incomplete effects and the owner status"]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Reply {
+    pub outcome: Outcome,
+    pub status: Status,
+    /// None across v1: that contract carries no structured counts.
+    pub clear: Option<ClearReport>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ErrorKind {
+    Rejected,
+    Unknown,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ControlError {
+    pub kind: ErrorKind,
+    pub message: String,
+}
+impl ControlError {
+    pub fn rejected(message: impl Into<String>) -> Self {
+        Self {
+            kind: ErrorKind::Rejected,
+            message: message.into(),
+        }
+    }
+    pub fn unknown(message: impl Into<String>) -> Self {
+        Self {
+            kind: ErrorKind::Unknown,
+            message: message.into(),
+        }
+    }
+}
+impl std::fmt::Display for ControlError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+impl std::error::Error for ControlError {}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Owner {
     Host,
@@ -89,11 +164,14 @@ impl SharedLogs {
             logs: std::sync::Mutex::new(None),
         }
     }
-    pub fn request(&self, action: &str, enabled: Option<bool>) -> Result<Value, String> {
-        let mut logs = self.logs.lock().map_err(|_| "log owner poisoned")?;
-        let logs = logs.get_or_insert_with(|| Logs::installed(self.owner));
-        let ok = logs.request(action, enabled).is_ok();
-        Ok(json!({"ok":ok,"data":logs.status()}))
+    pub fn request(&self, command: Command) -> Result<Reply, ControlError> {
+        let mut logs = self
+            .logs
+            .lock()
+            .map_err(|_| ControlError::rejected("log owner poisoned"))?;
+        Ok(logs
+            .get_or_insert_with(|| Logs::installed(self.owner))
+            .request(command))
     }
     pub fn record(&self, message: &str) {
         if let Ok(mut logs) = self.logs.lock() {
@@ -166,9 +244,16 @@ impl Logs {
             .as_bool()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "enabled должен быть bool"))
     }
-    pub fn status(&self) -> Value {
-        json!({"enabled":self.enabled,"available":self.directory.is_some(),"recording":self.enabled==Some(true)&&!self.faulted&&self.writer.is_some(),
-            "directory":self.path.to_string_lossy(),"error":self.error,"operation":self.operation,"written":self.written})
+    pub fn status(&self) -> Status {
+        Status {
+            enabled: self.enabled,
+            available: self.directory.is_some(),
+            recording: self.enabled == Some(true) && !self.faulted && self.writer.is_some(),
+            directory: self.path.to_string_lossy().into_owned(),
+            error: self.error.clone(),
+            operation: self.operation.clone(),
+            written: self.written,
+        }
     }
     /// Idempotent set; result confirms durable preference and writer readiness.
     fn set_enabled(&mut self, enabled: bool) -> io::Result<()> {
@@ -328,17 +413,20 @@ impl Logs {
         Ok(())
     }
     /// Close writer first, attempt every allowlisted identity once; no traversal or retry.
-    fn clear(&mut self) -> io::Result<()> {
+    fn clear(&mut self, report: &mut ClearReport) -> io::Result<()> {
         self.writer = None;
         self.faulted = false;
         self.operation = "Очистка начата".into();
-        let mut deleted = 0;
+
         let mut failed = Vec::new();
         for name in self.owner.files().iter().copied().chain([TEMP]) {
             match self.dir()?.remove_file(name) {
-                Ok(true) => deleted += 1,
-                Ok(false) => {}
-                Err(e) => failed.push(format!("{name}: {e}")),
+                Ok(true) => report.deleted += 1,
+                Ok(false) => report.absent += 1,
+                Err(e) => {
+                    report.failed += 1;
+                    failed.push(format!("{name}: {e}"));
+                }
             }
         }
         // Reopen only for the currently saved setting. No record is written by clear itself.
@@ -348,7 +436,12 @@ impl Logs {
             self.faulted = true;
             failed.push(format!("переоткрытие: {e}"));
         }
-        self.operation = format!("Удалено файлов: {deleted}; ошибок: {}", failed.len());
+        report.reopened = self.writer.is_some();
+        self.operation = format!(
+            "Удалено файлов: {}; ошибок: {}",
+            report.deleted,
+            failed.len()
+        );
         if !failed.is_empty() {
             return Err(io::Error::other(failed.join("; ")));
         }
@@ -358,25 +451,40 @@ impl Logs {
         Ok(())
     }
     /// Three commands shared by the internal Host RPC and local Bridge owners.
-    pub fn request(&mut self, action: &str, enabled: Option<bool>) -> Result<Value, String> {
-        let result = match action {
-            "get" => return Ok(self.status()),
-            "set" => enabled
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "enabled missing"))
-                .and_then(|v| self.set_enabled(v)),
-            "clear" => self.clear(),
-            _ => return Err("unknown logging action".into()),
+    pub fn request(&mut self, command: Command) -> Reply {
+        let mut clear = None;
+        let result = match command {
+            Command::Get => {
+                return Reply {
+                    outcome: Outcome::Completed,
+                    status: self.status(),
+                    clear,
+                };
+            }
+            Command::SetEnabled(enabled) => self.set_enabled(enabled),
+            Command::Clear => {
+                let mut report = ClearReport::default();
+                let result = self.clear(&mut report);
+                clear = Some(report);
+                result
+            }
         };
-        if let Err(error) = result {
+        let outcome = if let Err(error) = result {
             self.error = format!("Логи: {error}");
-            self.operation = if action == "clear" {
+            self.operation = if command == Command::Clear {
                 format!("{}; очистка завершилась частично", self.operation)
             } else {
                 "Операция не завершена; возможен частичный результат".into()
             };
-            return Err(self.error.clone());
+            Outcome::Incomplete
+        } else {
+            Outcome::Applied
+        };
+        Reply {
+            outcome,
+            status: self.status(),
+            clear,
         }
-        Ok(self.status())
     }
 }
 /// Roll back a failed append to its previous complete boundary. No recursive diagnostics.

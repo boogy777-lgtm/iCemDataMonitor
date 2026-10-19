@@ -1,44 +1,58 @@
 //! Log state is acknowledged by its owner, never toggled optimistically by GPUI.
-use serde_json::{Value, json};
+use icem_logging::{Command, ControlError, Outcome, Reply, Status};
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Request {
+    pub local: bool,
+    pub command: Command,
+}
 #[derive(Default)]
 pub struct LogView {
-    pub data: Value,
+    pub data: Option<Status>,
     pub fresh: bool,
     pub pending: bool,
     pub note: String,
 }
 impl LogView {
     pub fn enabled(&self) -> Option<bool> {
-        self.data["enabled"].as_bool()
+        self.data.as_ref().and_then(|s| s.enabled)
     }
     pub fn actionable(&self) -> bool {
-        self.fresh && !self.pending && self.data["available"] == true
+        self.fresh && !self.pending && self.data.as_ref().is_some_and(|s| s.available)
     }
-    pub fn command(&self, local: bool, action: &str) -> Value {
-        json!({"cmd":if local {"local_logs"} else {"logs"},"action":action,"enabled":self.enabled()!=Some(true)})
+    pub fn command(&self, local: bool, command: Command) -> Request {
+        Request { local, command }
     }
-    pub fn apply(&mut self, result: Result<Value, String>) {
+    pub fn apply(&mut self, result: Result<Reply, ControlError>) {
         self.pending = false;
         match result {
-            Ok(value) if value["data"].is_object() => {
+            Ok(reply) if reply.status.consistent() => {
                 self.fresh = true;
-                self.data = value["data"].clone();
-                self.note = if value["ok"] == true {
-                    String::new()
-                } else {
+                self.data = Some(reply.status);
+                self.note = if reply.outcome == Outcome::Incomplete {
                     "Операция не завершена; возможен частичный результат".into()
+                } else {
+                    String::new()
                 };
             }
             other => {
                 self.fresh = false;
                 self.note = match other {
-                    Err(e) => e,
+                    Err(e) => match e.kind {
+                        icem_logging::ErrorKind::Rejected => {
+                            format!("Операция отклонена: {}", e.message)
+                        }
+                        icem_logging::ErrorKind::Unknown => format!(
+                            "{}; результат операции неизвестен, автоматического повтора нет",
+                            e.message
+                        ),
+                    },
                     _ => "Неверный ответ владельца логов".into(),
                 };
             }
         }
     }
     pub fn description(&self) -> String {
+        let data = self.data.as_ref();
         format!(
             "{} · {}\n{}\n{} {} {}",
             match self.enabled() {
@@ -50,36 +64,16 @@ impl LogView {
                 "нет актуальной связи"
             } else if self.pending {
                 "выполняется…"
-            } else if self.data["recording"] == true {
+            } else if data.is_some_and(|s| s.recording) {
                 "writer готов"
             } else {
                 "writer остановлен"
             },
-            self.data["directory"].as_str().unwrap_or(""),
-            self.data["error"].as_str().unwrap_or(""),
-            self.data["operation"].as_str().unwrap_or(""),
+            data.map_or("", |s| s.directory.as_str()),
+            data.map_or("", |s| s.error.as_str()),
+            data.map_or("", |s| s.operation.as_str()),
             self.note
         )
-    }
-}
-pub struct LoggedPort {
-    pub inner: std::sync::Arc<dyn crate::UiPort>,
-    pub logs: std::sync::Arc<icem_logging::SharedLogs>,
-}
-impl crate::UiPort for LoggedPort {
-    fn request(&self, command: Value) -> Result<Value, String> {
-        if command["cmd"] == "local_logs" {
-            return self.logs.request(
-                command["action"].as_str().unwrap_or("get"),
-                command["enabled"].as_bool(),
-            );
-        }
-        // Logger errors are never sent back into the logger.
-        let result = self.inner.request(command);
-        if let Err(error) = &result {
-            self.logs.record(error);
-        }
-        result
     }
 }
 
@@ -90,7 +84,7 @@ pub fn controls<T: 'static>(
     local: bool,
     title: &str,
     light: bool,
-    send: fn(&mut T, Value),
+    send: fn(&mut T, Request),
     cx: &gpui::Context<T>,
 ) -> gpui::Div {
     use gpui::{div, prelude::*, px, rgba};
@@ -118,12 +112,18 @@ pub fn controls<T: 'static>(
     });
     let enabled = view.actionable();
     let mut root = div().flex().flex_col().gap(px(8.)).child(title.to_owned());
-    for (index, (label, action)) in [("Записывать логи", "set"), ("Очистить логи", "clear")]
-        .into_iter()
-        .enumerate()
+    for (index, (label, action)) in [
+        (
+            "Записывать логи",
+            Command::SetEnabled(view.enabled() != Some(true)),
+        ),
+        ("Очистить логи", Command::Clear),
+    ]
+    .into_iter()
+    .enumerate()
     {
         let command = view.command(local, action);
-        let key_command = command.clone();
+        let key_command = command;
         let mut button = div()
             .id((id, index))
             .tab_index(0)
@@ -146,18 +146,18 @@ pub fn controls<T: 'static>(
             .focus(move |s| s.border_color(focus))
             .on_click(cx.listener(move |v, _, _, cx| {
                 if enabled {
-                    send(v, command.clone());
+                    send(v, command);
                     cx.notify();
                 }
             }))
             .on_key_down(cx.listener(move |v, event: &gpui::KeyDownEvent, _, cx| {
                 if enabled && matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    send(v, key_command.clone());
+                    send(v, key_command);
                     cx.notify();
                     cx.stop_propagation();
                 }
             }));
-        if action == "set" {
+        if matches!(action, Command::SetEnabled(_)) {
             button = button.child(
                 div()
                     .w(px(32.))

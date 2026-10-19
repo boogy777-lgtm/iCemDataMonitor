@@ -323,3 +323,9 @@ D44 / E18 Legacy CI: три UiNavigationServiceTests синхронно ждал
 39221977532 не дождался старта holder. Общий dedicated-thread fixture подтверждает
 acquisition и держит mutex до explicit release; bounded join и ownership regression
 проверяют teardown. Assertions и production navigation неизменны; hash ledger точный.
+
+
+E19: [типизированное управление логами](HOST_E19.ru.md): Command/Status/Reply,
+Incomplete effects и Unknown без retry, строгий неизменённый internal v1 adapter.
+Локальные clear counts не выводятся из v1 текста; GPUI получает typed facts.
+176+6 mapping прежний; Windows exact-head и operator/SDK/hardware gates отдельно.

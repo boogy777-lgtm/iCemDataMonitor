@@ -512,10 +512,8 @@ fn run<D: icem_platform_windows::console::Device>(
             if request.response.is_closed() {
                 continue;
             }
-            let ok = logs.request(request.action, request.enabled).is_ok();
-            let _ = request
-                .response
-                .send(serde_json::json!({"ok":ok,"data":logs.status()}));
+            let reply = logs.request(request.command);
+            let _ = request.response.send(reply);
         }
         while let Ok(request) = layer_requests.try_recv() {
             if request.response.is_closed() {

@@ -19,7 +19,10 @@ pub use worker::WorkerCompletion;
 
 /// Implementations must bound I/O time and return owned values.
 pub trait UiPort: Send + Sync + 'static {
-    fn request(&self, command: Value) -> Result<Value, String>;
+    fn logs(
+        &self,
+        command: icem_logging::Command,
+    ) -> Result<icem_logging::Reply, icem_logging::ControlError>;
     fn emulator(&self, command: Command) -> Execution {
         Execution::rejected(
             command.name(),
@@ -106,13 +109,13 @@ pub fn text(value: &Value) -> String {
     }
 }
 impl Model {
-    pub fn can_submit_log(&self, command: &Value) -> bool {
-        let view = match command["cmd"].as_str() {
-            Some("logs") => &self.host_logs,
-            Some("local_logs") => &self.local_logs,
-            _ => return true,
+    pub fn can_submit_log(&self, request: &logs::Request) -> bool {
+        let view = if request.local {
+            &self.local_logs
+        } else {
+            &self.host_logs
         };
-        if command["action"] == "get" {
+        if request.command == icem_logging::Command::Get {
             !view.pending
         } else {
             view.actionable()
@@ -133,14 +136,6 @@ impl Model {
         text(&self.snapshot[channel][field])
     }
     pub fn apply(&mut self, cmd: &str, response: Result<Value, String>) {
-        if cmd == "logs" {
-            self.host_logs.apply(response);
-            return;
-        }
-        if cmd == "local_logs" {
-            self.local_logs.apply(response);
-            return;
-        }
         if cmd == "navigate" {
             self.navigation = None;
             match response {
@@ -383,12 +378,18 @@ fn update_rows(rows: &mut Vec<VariableRow>, value: &Value) {
         row.overridden = v["overridden"] == true;
     }
 }
-pub struct Reply {
-    pub command: String,
-    pub result: Result<Value, String>,
+pub enum Reply {
+    Logs(
+        logs::Request,
+        Result<icem_logging::Reply, icem_logging::ControlError>,
+    ),
+    Emulator {
+        command: String,
+        result: Result<Value, String>,
+    },
 }
 enum Request {
-    Presentation(Value),
+    Logs(logs::Request),
     Emulator(Command),
 }
 pub struct Bridge {
@@ -396,23 +397,17 @@ pub struct Bridge {
 }
 impl Bridge {
     pub fn start(port: Arc<dyn UiPort>) -> std::io::Result<(Self, WorkerCompletion)> {
-        let (worker, completion) = worker::Worker::start(move |request| {
-            let (command, result) = match request {
-                Request::Presentation(value) => (
-                    value["cmd"].as_str().unwrap_or("").to_owned(),
-                    port.request(value),
-                ),
-                Request::Emulator(command) => (
-                    command.name().to_owned(),
-                    Ok(port.emulator(command).ui_value()),
-                ),
-            };
-            Reply { command, result }
+        let (worker, completion) = worker::Worker::start(move |request| match request {
+            Request::Logs(request) => Reply::Logs(request, port.logs(request.command)),
+            Request::Emulator(command) => Reply::Emulator {
+                command: command.name().to_owned(),
+                result: Ok(port.emulator(command).ui_value()),
+            },
         })?;
         Ok((Self { worker }, completion))
     }
-    pub fn send(&self, command: Value) -> Result<(), String> {
-        self.worker.send(Request::Presentation(command))
+    pub fn send_logs(&self, request: logs::Request) -> Result<(), String> {
+        self.worker.send(Request::Logs(request))
     }
     pub fn send_emulator(&self, command: Command) -> Result<(), String> {
         command.validate_budget().map_err(str::to_owned)?;
@@ -420,7 +415,16 @@ impl Bridge {
     }
     pub fn drain(&self, model: &mut Model) {
         while let Ok(reply) = self.worker.try_recv() {
-            model.apply(&reply.command, reply.result);
+            match reply {
+                Reply::Logs(request, result) => {
+                    if request.local {
+                        model.local_logs.apply(result)
+                    } else {
+                        model.host_logs.apply(result)
+                    }
+                }
+                Reply::Emulator { command, result } => model.apply(&command, result),
+            }
         }
     }
 }

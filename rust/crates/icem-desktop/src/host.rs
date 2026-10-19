@@ -21,8 +21,7 @@ pub fn start(port: Arc<dyn Port>) -> std::io::Result<(Bridge, WorkerCompletion)>
     Worker::start(move |request: Request| {
         let operation = request.operation();
         let result = if let Request::LocalLogs(command) = request {
-            let (action, enabled) = command.v1();
-            logs.request(action, enabled).map(Response::LocalLogs)
+            Ok(Response::LocalLogs(logs.request(command)))
         } else {
             let result = port.request(request);
             if let Err(error) = &result {
@@ -72,8 +71,12 @@ impl Model {
                         self.dashboard.pending = false;
                         self.dashboard.error = Some(error);
                     }
-                    Operation::Logs => self.host_logs.apply(Err(error)),
-                    Operation::LocalLogs => self.local_logs.apply(Err(error)),
+                    Operation::Logs => self
+                        .host_logs
+                        .apply(Err(icem_logging::ControlError::unknown(error))),
+                    Operation::LocalLogs => self
+                        .local_logs
+                        .apply(Err(icem_logging::ControlError::unknown(error))),
                     Operation::Prefs | Operation::Theme | Operation::Layer => {
                         self.note = format!("⚠ {error}")
                     }
@@ -175,8 +178,8 @@ impl Model {
             Response::Dashboard(data) => self
                 .dashboard
                 .apply(Ok(serde_json::json!({"ok":true,"data":data}))),
-            Response::Logs(value) => self.host_logs.apply(Ok(value)),
-            Response::LocalLogs(value) => self.local_logs.apply(Ok(value)),
+            Response::Logs(value) => self.host_logs.apply(value),
+            Response::LocalLogs(value) => self.local_logs.apply(value),
         }
     }
 }

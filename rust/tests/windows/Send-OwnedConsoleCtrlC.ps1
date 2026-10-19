@@ -4,6 +4,7 @@ param(
     [long]$ExpectedWindowHandle = 0
 )
 $ErrorActionPreference = 'Stop'
+[Console]::Error.WriteLine("window helper started: PID $PID, target $TargetProcessId, action $Action; compiling interop")
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
@@ -33,6 +34,7 @@ public static class OwnedHostWindowSignal {
     }
 }
 '@
+[Console]::Error.WriteLine('window helper interop compiled; finding target window')
 # Test fixture only. Caller owns the child PID. Never attach to or alter conhost.
 $window = [OwnedHostWindowSignal]::FindOwned($TargetProcessId)
 if ($window -eq [IntPtr]::Zero) { throw "Owned Host diagnostic window not found for PID $TargetProcessId" }
@@ -42,6 +44,7 @@ switch ($Action) {
     'Minimize' { if (![OwnedHostWindowSignal]::ShowWindowAsync($window, 6)) { throw 'Minimize failed' } }
     'CtrlC' { if (![OwnedHostWindowSignal]::PostCtrlC($window)) { throw 'Host Ctrl+C input failed' } }
 }
+[Console]::Error.WriteLine("window helper action $Action posted; checking state")
 $deadline = [DateTime]::UtcNow.AddSeconds(2)
 if ($Action -in @('Close','Minimize')) {
     while (($Action -eq 'Close' -and [OwnedHostWindowSignal]::IsWindowVisible($window)) -or ($Action -eq 'Minimize' -and ![OwnedHostWindowSignal]::IsIconic($window))) {

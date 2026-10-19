@@ -176,3 +176,9 @@ pipe v1 остаётся compatibility adapter, включая coercions и ис
 E18: [типизированный Shell → Host](HOST_E18.ru.md). Проверенные параметры/status,
 generated replies, общий bounded worker. Logging/dashboard JSON — следующие
 границы; visual/SDK/hardware gates остаются открытыми.
+
+
+E19: [типизированное управление логами](HOST_E19.ru.md): Command/Status/Reply,
+Incomplete effects и Unknown без retry, строгий неизменённый internal v1 adapter.
+Локальные clear counts не выводятся из v1 текста; GPUI получает typed facts.
+176+6 mapping прежний; Windows exact-head и operator/SDK/hardware gates отдельно.

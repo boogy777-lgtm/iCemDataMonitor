@@ -9,6 +9,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+icem-logging = { path = "../icem-logging" }
 icem-bus = { path = "../icem-bus" }
 icem-core = { path = "../icem-core" }
 axum = { version = "=0.8.9", default-features = false, features = ["http1", "http2", "json", "tokio"] }
@@ -32,7 +33,6 @@ tonic-prost-build = { version = "=0.14.6", default-features = false }
 protoc-bin-vendored = "=3.3.0"
 
 [dev-dependencies]
-icem-logging = { path = "../icem-logging" }
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 
