@@ -105,8 +105,6 @@ impl<C: ComEmitter, L: LanEmitter> Engine<C, L> {
     pub fn settings(&self) -> &EmuSettings {
         &self.settings
     }
-    /// Incremented exactly where the original calls Save; start/stop stream
-    /// updates are retained until another save or shutdown, as in the original.
     /// Serialized application execution. Persistence stays with the caller, under the same gate.
     pub fn execute_application(
         &mut self,
@@ -120,6 +118,8 @@ impl<C: ComEmitter, L: LanEmitter> Engine<C, L> {
         }
         reply
     }
+    /// Incremented exactly where the original calls Save; start/stop stream
+    /// updates are retained until another save or shutdown, as in the original.
     pub fn settings_revision(&self) -> u64 {
         self.settings_revision
     }

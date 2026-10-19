@@ -15,6 +15,9 @@ struct Com {
 }
 impl ComEmitter for Com {
     fn open(&mut self, name: &str) -> Result<(), String> {
+        if name == "FAIL" {
+            return Err("injected open failure".into());
+        }
         self.name = Some(name.into());
         self.lines.clear();
         Ok(())
@@ -50,6 +53,9 @@ impl LanEmitter for Lan {
         self.busy.load(std::sync::atomic::Ordering::Acquire)
     }
     fn open(&mut self, name: &str) -> Result<(), String> {
+        if name == "FAIL" {
+            return Err("injected open failure".into());
+        }
         self.name = Some(name.into());
         self.frames = 0;
         Ok(())
@@ -79,6 +85,9 @@ impl LanEmitter for Lan {
 }
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn engine() -> TestResult<Engine<Com, Lan>> {
+    engine_with_registry(Registry::default())
+}
+fn engine_with_registry(registry: Registry) -> TestResult<Engine<Com, Lan>> {
     let template = Template {
         name: "test".into(),
         device_type: "FLECS".into(),
@@ -91,7 +100,7 @@ fn engine() -> TestResult<Engine<Com, Lan>> {
         ..Default::default()
     };
     let base = BaseProvider::load(
-        Registry::default(),
+        registry,
         Path::new("/__icem_absent_runtime_test__/variables.json"),
         None,
     )?;
@@ -268,5 +277,108 @@ fn applied_settings_survive_save_failure_and_do_not_claim_rejection_or_rollback(
     });
     assert_eq!(saved.outcome, Outcome::Applied);
     assert_eq!(saves, 2);
+    Ok(())
+}
+
+#[test]
+fn live_endpoint_replacement_failure_reports_the_prior_close_effect() -> TestResult {
+    use icem_emulation::control::{Command, application::Outcome};
+    let mut e = engine()?;
+    for (setup, start, change) in [
+        (
+            "setport COM12",
+            "start com",
+            Command::SetPort("FAIL".into()),
+        ),
+        (
+            "setadapter Ethernet",
+            "start lan",
+            Command::SetAdapter("FAIL".into()),
+        ),
+    ] {
+        command(&mut e, setup)?;
+        command(&mut e, start)?;
+        let old = e.settings().clone();
+        let mut saved = false;
+        let reply = e.execute_application(change, |_| {
+            saved = true;
+            Ok(())
+        });
+        assert_eq!(reply.outcome, Outcome::AppliedWithError);
+        assert!(!reply.result.ok);
+        assert_eq!(
+            e.settings(),
+            &old,
+            "settings restoration does not restore physical endpoints"
+        );
+        assert!(!e.com_emitter().is_open());
+        assert!(!e.lan_emitter().is_open());
+        assert!(!saved);
+    }
+    Ok(())
+}
+#[test]
+fn cross_channel_override_failure_reports_applied_com_effect_without_rollback() -> TestResult {
+    use icem_emulation::{
+        Channel,
+        control::{
+            Command,
+            application::{NativeValue, Outcome, Scope, Variable},
+        },
+        lan::{LEGACY_SVS, SignalDef, VectorDef},
+    };
+    let registry = Registry::from_vectors(
+        LEGACY_SVS[..2]
+            .iter()
+            .map(|&sv| VectorDef {
+                sv_number: sv,
+                name: "test".into(),
+                equipment_type: "test".into(),
+                signals: vec![SignalDef {
+                    byte_offset: 4,
+                    size: 4,
+                    value_type: "FF".into(),
+                    das_factor: 1.,
+                    name: "Pressure".into(),
+                    uom: "psi".into(),
+                }],
+            })
+            .collect(),
+    );
+    let mut e = engine_with_registry(registry)?;
+    let target = Variable {
+        scope: Scope::default(),
+        name: "Pressure".into(),
+        sv: None,
+    };
+    let mut saves = 0;
+    let set = e.execute_application(
+        Command::Set(target.clone(), NativeValue::finite(17.)?),
+        |_| {
+            saves += 1;
+            Ok(())
+        },
+    );
+    assert_eq!(set.outcome, Outcome::AppliedWithError);
+    let read = e.execute_application(
+        Command::Get(Variable {
+            scope: Scope::channel(Channel::Com),
+            ..target.clone()
+        }),
+        |_| {
+            saves += 1;
+            Ok(())
+        },
+    );
+    assert_eq!(
+        read.result.data.as_ref().and_then(|d| d.get("value")),
+        Some(&serde_json::json!(17.))
+    );
+    let clear = e.execute_application(Command::Clear(target), |_| {
+        saves += 1;
+        Ok(())
+    });
+    assert_eq!(clear.outcome, Outcome::AppliedWithError);
+    assert_eq!(saves, 0);
     Ok(())
 }
