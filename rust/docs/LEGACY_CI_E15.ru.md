@@ -46,3 +46,18 @@ SerialTee 84/84 PASS; обнаружены ещё два независимых 
 не отключение parallel tests и не автоматический retry CI. Baseline ledger получает
 точные новые hashes для MetricsSamplerTests и Core ContractTests; frozen surfaces
 и baseline manifest не меняются. Следующий Windows run обязан проверить оба suite.
+
+## One-shot PAIR_MISSING: capture на test-side lifecycle boundary
+
+Run 39194010566 выявил оставшуюся гонку: polling мог полностью пропустить единственный
+PAIR_MISSING между первой ошибкой virtual factory и успешной второй попыткой. Даже
+возврат matching snapshot не помогает, если predicate ни разу не был выполнен.
+
+InMemorySerialPort получил optional test-only onDispose callback. В этом сценарии
+production RunTeeLoopAsync вызывает physicalPort.Dispose сразу после SetState
+PAIR_MISSING, до первого await; callback сохраняет настоящий GetStatus на том же
+стеке в TaskCompletionSource. Snapshot переживает любые задержки test continuation.
+Exact Com0comPairOk=false/State assertions прежние. Дополнительно TCS второй virtual
+factory attempt подтверждает настоящий watchdog retry после прежних 5+3 s delays.
+Оба ожидания конечны (15 s каждое); production state machine/delays/порты не меняются.
+Generic polling helper и regression matching-snapshot остаются для остальных tests.
