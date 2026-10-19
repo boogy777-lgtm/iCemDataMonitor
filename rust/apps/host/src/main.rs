@@ -369,6 +369,21 @@ fn run<D: icem_platform_windows::console::Device>(
             sniffer_plan,
         )
     });
+    if let Some(capture) = sniffer.take() {
+        let path = std::env::current_exe()?
+            .with_file_name("templates")
+            .join("lantable_registry.json");
+        sniffer = Some(
+            match icem_platform_windows::sniffer_catalog::Catalog::load(&path) {
+                Ok(catalog) => capture.with_catalog(catalog),
+                Err(error) => {
+                    logs.record(&format!("Host decode catalog unavailable: {error}"));
+                    diagnostic!("Host decode catalog unavailable: {error}");
+                    capture
+                }
+            },
+        );
+    }
     if let Some(capture) = &mut sniffer {
         capture.poll(capture_started.elapsed());
     }
@@ -447,7 +462,12 @@ fn run<D: icem_platform_windows::console::Device>(
             break;
         }
         if let Some(capture) = &mut sniffer {
-            capture.poll(capture_started.elapsed());
+            let now = capture_started.elapsed();
+            capture.poll(now);
+            if let Some(witness) = capture.take_witness(now) {
+                logs.record(&witness);
+                diagnostic!("{witness}");
+            }
         }
         layers::publish_sniffer(&sniffer, &web)?;
         #[cfg(windows)]

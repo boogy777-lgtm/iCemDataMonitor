@@ -151,3 +151,8 @@ E15: [Host console X → Hide](docs/HOST_E15.ru.md), [ADR 0011](docs/adr/0011-ho
 Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
 окну Host, после detach родительский терминал не адресует Host. Windows/operator
 результаты фиксируются по exact head; полная parity не объявляется.
+
+
+E16: [Host passive decode/catalog](docs/HOST_E16.ru.md). Capture owner выполняет
+Host-specific decode и bounded cache/tracking; periodic witness идёт в общий logger.
+Dormant REST/file capture не активированы; hardware/visual parity не объявляется.

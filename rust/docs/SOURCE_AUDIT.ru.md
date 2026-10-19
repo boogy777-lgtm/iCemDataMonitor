@@ -276,3 +276,17 @@ owned window. GPUI 0.2.2 App::hide на Windows пуст. Bridge join перен
 View Drop во владельца после UI loop, сохраняя in-flight запись. [ADR 0010](adr/0010-desktop-window-lifecycle.ru.md).
 Владелец сообщил об исчерпанном лимите Actions; failure до steps не считается
 ошибкой исходников и не переписывается как PASS.
+
+
+D40 / E16: Host decoder отличается от emulator SignalWireCodec: FF применяет factor,
+тип имеет fixed width, HX/UC — text, sentinel после scaling. E16 сохраняет active
+Host semantics в отдельном pure codec и проверяет оригинальным C# oracle. Checked
+negative/overflow spans и catalog/tracking budgets — explicit safety/resource deltas;
+D22 loader limits и deferred firmware ace_full не закрываются. См. ADR 0012.
+
+### D41 — valid JSON decimal precision (E16)
+
+Штатный serde_json float_roundtrip включён явно после Windows oracle 1 ULP failure.
+Общий JSON parser workspace получает корректное round-trip f64 parsing; это не
+изменение D22 malformed DTO/encoding/Unicode policy. Versions/dependencies прежние.
+Factor IEEE-bit oracle и decimal regression обязательны; float comparisons не ослаблены.

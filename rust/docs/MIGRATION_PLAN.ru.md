@@ -171,3 +171,8 @@ E15: [Host console X → Hide](HOST_E15.ru.md), [ADR 0011](adr/0011-host-diagnos
 результаты фиксируются по exact head; полная parity не объявляется.
 
 Актуальный порядок оставшегося кода и scope decisions: [HOST_E15, следующая работа](HOST_E15.ru.md#следующие-работы-код-и-отдельные-gates). В legacy status selfTest тоже null; пробел — app --selftest/--landiag, а не сам JSON null. Capture-to-file production wiring не найден; dormant endpoints не активируются.
+
+
+E16: [Host passive decode/catalog](HOST_E16.ru.md). Capture owner выполняет
+Host-specific decode и bounded cache/tracking; periodic witness идёт в общий logger.
+Dormant REST/file capture не активированы; hardware/visual parity не объявляется.

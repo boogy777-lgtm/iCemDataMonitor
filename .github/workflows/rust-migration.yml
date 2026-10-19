@@ -85,4 +85,5 @@ jobs:
             rust/target/emu-differential-report.json
             rust/target/dfb-differential-report.json
             rust/target/lan-differential-report.json
+            rust/target/host-sniffer-differential-report.json
           if-no-files-found: ignore

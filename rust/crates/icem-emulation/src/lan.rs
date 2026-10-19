@@ -71,11 +71,19 @@ impl Registry {
     pub fn all(&self) -> &BTreeMap<u32, VectorDef> {
         &self.by_sv
     }
+    /// Same DTO/first-wins rules, without choosing or reading a file. D22 remains explicit.
+    pub fn from_json(json: &str) -> Result<Self> {
+        let mut result = Self::default();
+        result.load_value(serde_json::from_str(json.trim_start_matches('\u{feff}'))?)?;
+        Ok(result)
+    }
     fn load_file(&mut self, path: &Path) -> Result<()> {
         if !path.is_file() {
             return Ok(());
         }
-        let root = read_json(path)?;
+        self.load_value(read_json(path)?)
+    }
+    fn load_value(&mut self, root: Value) -> Result<()> {
         for vector in array(&root, "serviceVectors")? {
             let sv_number = u32::try_from(
                 vector

@@ -166,3 +166,25 @@ fn override_lookup_priority_and_firmware_alias_order() -> Result<(), Box<dyn Err
     std::fs::remove_dir_all(root)?;
     Ok(())
 }
+
+#[test]
+fn decimal_catalog_factors_preserve_ieee_roundtrip() -> Result<(), Box<dyn Error>> {
+    for decimal in [
+        "6.36962437673933e-7",
+        "0.000214019379058442",
+        "0.0584415584415584",
+        "7.27595761418e-12",
+    ] {
+        let json = format!(
+            r#"{{"serviceVectors":[{{"svNumber":1,"name":"test","signals":[{{"name":"factor","byteOffset":4,"size":4,"valueType":"FF","dasFactor":{decimal}}}]}}]}}"#
+        );
+        let registry = Registry::from_json(&json)?;
+        let actual = registry.get(1).ok_or("vector missing")?.signals[0].das_factor;
+        assert_eq!(
+            actual.to_bits(),
+            decimal.parse::<f64>()?.to_bits(),
+            "{decimal}"
+        );
+    }
+    Ok(())
+}
