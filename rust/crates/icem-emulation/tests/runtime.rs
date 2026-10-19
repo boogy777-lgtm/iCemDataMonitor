@@ -217,3 +217,56 @@ fn busy_lan_burst_holds_model_clock_and_keeps_com_commands_running() -> TestResu
     assert!(e.lan_emitter().frames_sent() > frames);
     Ok(())
 }
+
+#[test]
+fn applied_settings_survive_save_failure_and_do_not_claim_rejection_or_rollback() -> TestResult {
+    use icem_emulation::control::{
+        Command,
+        application::{Equipment, ErrorCategory, Outcome},
+    };
+    let mut e = engine()?;
+    let mut saves = 0;
+    let result = e.execute_application(Command::SetEquipment(Equipment(42)), |_| {
+        saves += 1;
+        Err("disk full: \"test\"\\path".into())
+    });
+    assert_eq!(saves, 1);
+    assert_eq!(e.settings().lan_equipment, 42);
+    assert_eq!(result.outcome, Outcome::AppliedNotPersisted);
+    assert_eq!(
+        result.error.as_ref().map(|e| e.category),
+        Some(ErrorCategory::Persistence)
+    );
+    assert_eq!(
+        result.ui_value()["application"]["outcome"],
+        "AppliedNotPersisted"
+    );
+    assert!(
+        result.result.ok,
+        "frozen v1 historically acknowledges memory application"
+    );
+    let wire: serde_json::Value = serde_json::from_str(&result.v1().json)?;
+    assert_eq!(
+        wire,
+        serde_json::json!({"ok":true,"cmd":"setequipment","data":{"equipment":"0x0000002A"}})
+    );
+    let status = e.execute_application(Command::Status, |_| {
+        saves += 1;
+        Ok(())
+    });
+    assert_eq!(status.outcome, Outcome::Completed);
+    assert_eq!(saves, 1, "a read must not retry a failed save");
+    let rejected = e.execute_application(Command::SetPort(" ".into()), |_| {
+        saves += 1;
+        Ok(())
+    });
+    assert_eq!(rejected.outcome, Outcome::Rejected);
+    assert_eq!(saves, 1);
+    let saved = e.execute_application(Command::SetEquipment(Equipment(43)), |_| {
+        saves += 1;
+        Ok(())
+    });
+    assert_eq!(saved.outcome, Outcome::Applied);
+    assert_eq!(saves, 2);
+    Ok(())
+}

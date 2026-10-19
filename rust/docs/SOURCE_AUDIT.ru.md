@@ -290,3 +290,24 @@ D22 loader limits и deferred firmware ace_full не закрываются. С�
 Общий JSON parser workspace получает корректное round-trip f64 parsing; это не
 изменение D22 malformed DTO/encoding/Unicode policy. Versions/dependencies прежние.
 Factor IEEE-bit oracle и decimal regression обязательны; float comparisons не ослаблены.
+
+
+## D42 / E17 — emulator control audit
+
+Legacy EmuSettings.Save подавляет исключения. Прежний Rust Service логировал save
+failure, но возвращал обычный ok:true. Application API теперь возвращает
+AppliedNotPersisted отдельно от frozen v1 projection. GPUI получает результат без
+JSON string roundtrip. Failed live endpoint replacement и COM-before-LAN partial
+override отмечаются AppliedWithError, без выдуманного rollback. Реальные I/O эффекты
+не следует объявлять отсутствующими по одному false envelope.
+
+CLI watch определялся legacy по первому text token; JSON watch завершался после ACK.
+Прежний Rust CLI получал только ACK для обеих форм. Общий consumer теперь принимает
+text/JSON watch, ACK/status, cancellation и finite deadlines. Потерянный mutation
+reply даёт Unknown и не повторяет команду. CLI transport error теперь exit1, usage2
+(раньше Rust смешивал их в exit2). Client errors сериализуются, не конкатенируются
+в JSON. 2/2.9/NaN coercions остаются в compatibility adapter. Внешний v2 не введён.
+
+[ADR 0014](adr/0014-emulator-application-api.ru.md) определяет границы и intentional
+client/resource deltas. SelfTest:null не меняется; app selftest/landiag — следующий
+кодовый инкремент. D22, dormant capture-to-file и software/hardware gates прежние.

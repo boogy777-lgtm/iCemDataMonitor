@@ -14,6 +14,25 @@ struct Port {
     calls: Arc<AtomicUsize>,
 }
 impl UiPort for Port {
+    fn emulator(
+        &self,
+        command: icem_emulation::control::Command,
+    ) -> icem_emulation::control::Execution {
+        use icem_emulation::control::{
+            ControlResult, Execution,
+            application::{ErrorCategory, Outcome},
+        };
+        match self.request(Value::Null) {
+            Ok(_) => Execution {
+                command: command.name(),
+                result: ControlResult::success(None),
+                outcome: Outcome::Applied,
+                error: None,
+            },
+            Err(e) => Execution::rejected(command.name(), ErrorCategory::Internal, e),
+        }
+    }
+
     fn request(&self, _: Value) -> Result<Value, String> {
         self.calls.fetch_add(1, Ordering::AcqRel);
         self.started.send(()).map_err(|e| e.to_string())?;
@@ -45,10 +64,12 @@ fn close_does_not_wait_for_inflight_io_and_never_executes_queued_mutations()
         finished,
         calls: calls.clone(),
     }))?;
-    bridge.send(json!({"cmd":"status"}))?;
+    bridge.send_emulator(icem_emulation::control::Command::SetEquipment(
+        icem_emulation::control::application::Equipment(42),
+    ))?;
     began.recv_timeout(DEADLINE)?;
     bridge.send(json!({"cmd":"local_logs","action":"clear"}))?;
-    bridge.send(json!({"cmd":"layer","layer":1}))?;
+    bridge.send_emulator(icem_emulation::control::Command::SetFirmware(true))?;
     let (closed, close_done) = mpsc::channel();
     let closer = std::thread::spawn(move || {
         drop(bridge);

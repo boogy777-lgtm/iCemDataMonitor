@@ -1,11 +1,20 @@
 //! Pure operator protocol v1. Framing, watch timers and ACK drain belong to transports.
 use serde_json::{Map, Value, json};
+pub mod application;
+use application::{ChannelName, Equipment, NativeValue, Scope, Variable};
+pub use application::{Command, Execution, execute};
 pub const PROTO_VERSION: u16 = crate::PROTOCOL_VERSION;
 pub const COMMAND_NAMES: &[&str] = crate::COMMANDS;
 pub type Data = Map<String, Value>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FailureEffect {
+    None,
+    Applied,
+}
 #[derive(Debug, Clone, PartialEq)]
 pub struct ControlResult {
     pub ok: bool,
+    pub failure_effect: FailureEffect,
     pub error: Option<String>,
     pub data: Option<Data>,
 }
@@ -13,13 +22,21 @@ impl ControlResult {
     pub fn success(data: Option<Data>) -> Self {
         Self {
             ok: true,
+            failure_effect: FailureEffect::None,
             error: None,
             data,
+        }
+    }
+    pub fn fail_after_effect(error: impl Into<String>) -> Self {
+        Self {
+            failure_effect: FailureEffect::Applied,
+            ..Self::fail(error)
         }
     }
     pub fn fail(error: impl Into<String>) -> Self {
         Self {
             ok: false,
+            failure_effect: FailureEffect::None,
             error: Some(error.into()),
             data: None,
         }
@@ -67,6 +84,9 @@ pub struct ControlReply {
     pub quit: bool,
 }
 pub fn to_json(ok: bool, cmd: &str, data: Option<Data>, error: Option<&str>) -> String {
+    to_value(ok, cmd, data, error).to_string()
+}
+pub fn to_value(ok: bool, cmd: &str, data: Option<Data>, error: Option<&str>) -> Value {
     let mut value = Map::new();
     value.insert("ok".into(), json!(ok));
     value.insert("cmd".into(), json!(cmd));
@@ -77,7 +97,7 @@ pub fn to_json(ok: bool, cmd: &str, data: Option<Data>, error: Option<&str>) -> 
     } else {
         value.insert("error".into(), json!(error.unwrap_or("error")));
     }
-    Value::Object(value).to_string()
+    Value::Object(value)
 }
 fn reply(cmd: &str, r: ControlResult) -> ControlReply {
     ControlReply {
@@ -89,9 +109,6 @@ fn reply(cmd: &str, r: ControlResult) -> ControlReply {
 }
 fn error(cmd: &str, msg: impl Into<String>) -> ControlReply {
     reply(cmd, ControlResult::fail(msg))
-}
-fn ok(cmd: &str, data: Value) -> ControlReply {
-    reply(cmd, ControlResult::success(data.as_object().cloned()))
 }
 fn whitespace(c: char) -> bool {
     matches!(c,'\u{9}'..='\u{d}'|'\u{20}'|'\u{85}'|'\u{a0}'|'\u{1680}'|'\u{2000}'..='\u{200a}'|'\u{2028}'|'\u{2029}'|'\u{202f}'|'\u{205f}'|'\u{3000}')
@@ -314,19 +331,23 @@ fn parse_text(line: &str) -> Result<Parsed, ControlReply> {
     Ok(p)
 }
 pub fn process_line(line: &str, ctl: &mut impl EmuControl) -> ControlReply {
+    match parse_line(line) {
+        Ok(command) => execute(command, ctl).v1(),
+        Err(reply) => reply,
+    }
+}
+/// Compatibility adapter only. No engine state or command execution.
+pub fn parse_line(line: &str) -> Result<Command, ControlReply> {
     if trim(line).is_empty() {
-        return error("", "empty command line");
+        return Err(error("", "empty command line"));
     }
     let mut p = if line.trim_start_matches(whitespace).starts_with('{') {
         match parse_json(line) {
             Ok(p) => p,
-            Err(e) => return error("", e),
+            Err(e) => return Err(error("", e)),
         }
     } else {
-        match parse_text(line) {
-            Ok(p) => p,
-            Err(e) => return e,
-        }
+        parse_text(line)?
     };
     p.cmd = trim(&p.cmd).to_lowercase();
     if let Some(name) = &p.name {
@@ -346,74 +367,87 @@ pub fn process_line(line: &str, ctl: &mut impl EmuControl) -> ControlReply {
         None => None,
         Some(s) => match uint(s) {
             Some(v) => Some(v),
-            None => return error(cmd, format!("sv '{s}' is not a uint32 (decimal or 0x...)")),
+            None => {
+                return Err(error(
+                    cmd,
+                    format!("sv '{s}' is not a uint32 (decimal or 0x...)"),
+                ));
+            }
         },
     };
     let name = p.name.as_deref().filter(|s| !s.is_empty());
     let channel = p.channel.as_deref();
     let result = match cmd {
-        "status" => {
-            let mut data = ctl.get_status();
-            data.insert("proto".into(), json!(PROTO_VERSION));
-            return reply(cmd, ControlResult::success(Some(data)));
-        }
+        "status" => Command::Status,
         "start" | "stop" => match valid_channel(channel) {
             Ok(c) => {
                 if cmd == "start" {
-                    ctl.start_channel(c)
+                    Command::Start(ChannelName::legacy(c))
                 } else {
-                    ctl.stop_channel(c)
+                    Command::Stop(ChannelName::legacy(c))
                 }
             }
-            Err(e) => return error(cmd, e),
+            Err(e) => return Err(error(cmd, e)),
         },
         "set" | "get" | "clear" => {
             let Some(name) = name else {
-                return error(cmd, format!("'{cmd}' requires a variable name"));
+                return Err(error(cmd, format!("'{cmd}' requires a variable name")));
             };
             if cmd == "set" {
                 let Some(v) = p.value else {
-                    return error(cmd, "'set' requires a numeric value");
+                    return Err(error(cmd, "'set' requires a numeric value"));
                 };
-                ctl.set_variable(channel, name, v, sv)
+                Command::Set(
+                    Variable {
+                        scope: Scope::legacy(channel),
+                        name: name.into(),
+                        sv,
+                    },
+                    NativeValue::legacy(v),
+                )
             } else if cmd == "get" {
-                ctl.get_variable(channel, name, sv)
+                Command::Get(Variable {
+                    scope: Scope::legacy(channel),
+                    name: name.into(),
+                    sv,
+                })
             } else {
-                ctl.clear_variable(channel, name, sv)
+                Command::Clear(Variable {
+                    scope: Scope::legacy(channel),
+                    name: name.into(),
+                    sv,
+                })
             }
         }
-        "profiles" => ctl.get_profiles(),
+        "profiles" => Command::Profiles,
         "profile" => {
             let Some(name) = name else {
-                return error(cmd, "'profile' requires a template name (see 'profiles')");
+                return Err(error(
+                    cmd,
+                    "'profile' requires a template name (see 'profiles')",
+                ));
             };
-            ctl.set_profile(p.device_type.as_deref(), name)
+            Command::Profile {
+                device_type: p.device_type.clone(),
+                name: name.into(),
+            }
         }
         "vars" => {
             if let Some(c) = channel
                 && let Err(e) = valid_channel(Some(c))
             {
-                return error(cmd, e);
+                return Err(error(cmd, e));
             }
-            ctl.get_variables(channel)
+            Command::Variables(Scope::legacy(channel))
         }
-        "watch" => {
-            let mut r = ok(cmd, json!({"intervalSec":1}));
-            r.start_watch = true;
-            return r;
-        }
-        "quit" => {
-            ctl.request_quit();
-            let mut r = ok(cmd, json!({"quitting":true}));
-            r.quit = true;
-            return r;
-        }
-        "help" => return ok(cmd, json!({"commands":COMMAND_NAMES})),
-        "ports" => ctl.get_ports(),
-        "adapters" => ctl.get_adapters(),
+        "watch" => Command::Watch,
+        "quit" => Command::Quit,
+        "help" => Command::Help,
+        "ports" => Command::Ports,
+        "adapters" => Command::Adapters,
         "setport" | "setadapter" => {
             let Some(name) = name else {
-                return error(
+                return Err(error(
                     cmd,
                     format!(
                         "'{cmd}' requires {} name",
@@ -423,57 +457,68 @@ pub fn process_line(line: &str, ctl: &mut impl EmuControl) -> ControlReply {
                             "an adapter"
                         }
                     ),
-                );
+                ));
             };
             if cmd == "setport" {
-                ctl.set_port(name)
+                Command::SetPort(name.into())
             } else {
-                ctl.set_adapter(name)
+                Command::SetAdapter(name.into())
             }
         }
         "setequipment" => {
             let Some(v) = p.value.filter(|v| !(*v < 0.0 || *v > f64::from(u32::MAX))) else {
-                return error(cmd, "'setequipment' requires 0x... or decimal uint32");
+                return Err(error(
+                    cmd,
+                    "'setequipment' requires 0x... or decimal uint32",
+                ));
             };
-            ctl.set_equipment(v as u32)
+            Command::SetEquipment(Equipment(v as u32))
         }
         "setfirmware" => {
             let Some(v) = p.value else {
-                return error(cmd, "'setfirmware' requires 0|1");
+                return Err(error(cmd, "'setfirmware' requires 0|1"));
             };
-            ctl.set_firmware(v != 0.0)
+            Command::SetFirmware(v != 0.0)
         }
         "setemulate" => {
             let c = match valid_channel(channel) {
                 Ok(c) => c,
-                Err(e) => return error(cmd, e),
+                Err(e) => return Err(error(cmd, e)),
             };
             let Some(v) = p.value else {
-                return error(cmd, "'setemulate' requires 0|1");
+                return Err(error(cmd, "'setemulate' requires 0|1"));
             };
-            ctl.set_emulation(c, v != 0.0)
+            Command::SetEmulation(ChannelName::legacy(c), v != 0.0)
         }
         "setpreset" => {
             let Some(v) = p.value.filter(|v| !(*v < 0.0 || *v > 3.0)) else {
-                return error(cmd, "'setpreset' requires 0..3");
+                return Err(error(cmd, "'setpreset' requires 0..3"));
             };
-            ctl.set_preset(v as i32)
+            Command::SetPreset(match v as i32 {
+                0 => crate::units::Preset::FirmwareDefault,
+                1 => crate::units::Preset::LanNative,
+                2 => crate::units::Preset::Metric,
+                _ => crate::units::Preset::Imperial,
+            })
         }
         "setunit" => {
             let Some(group) = channel.filter(|g| !g.is_empty()) else {
-                return error(cmd, "'setunit' requires a group");
+                return Err(error(cmd, "'setunit' requires a group"));
             };
-            ctl.set_unit(group, name)
+            Command::SetUnit {
+                group: group.into(),
+                unit: name.map(str::to_owned),
+            }
         }
         _ => {
-            return error(
+            return Err(error(
                 cmd,
                 format!(
                     "unknown command '{cmd}'; expected one of: {}",
                     COMMAND_NAMES.join(", ")
                 ),
-            );
+            ));
         }
     };
-    reply(cmd, result)
+    Ok(result)
 }

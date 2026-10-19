@@ -5,13 +5,15 @@ use std::process::ExitCode;
 mod windows {
     use icem_config::emulator::{EmuSettings, SettingsPaths};
     use icem_emulation::{
-        control::{ControlReply, process_line, to_json},
+        control::{Command, ControlReply, Execution, application::ErrorCategory, parse_line},
         lan::{BaseProvider, Registry},
         runtime::Engine,
         simulation::load_catalog,
     };
     use icem_platform_windows::{ComSerialEmitter, QueuedAceLanEmitter};
-    use icem_transport::emulator_control::{ACK_DRAIN, ControlServer, Executor, request};
+    use icem_transport::emulator_control::{
+        ACK_DRAIN, ClientEnd, ControlServer, Executor, cli_request,
+    };
     use std::{
         path::PathBuf,
         sync::{
@@ -38,49 +40,22 @@ mod windows {
                     command["enabled"].as_bool(),
                 );
             }
-            let reply = self.execute(&command.to_string());
-            let value = serde_json::from_str(&reply.json).map_err(|e| e.to_string())?;
-            self.reply_flushed(&reply);
-            Ok(value)
+            Err("use the typed emulator API".into())
+        }
+        fn emulator(&self, command: Command) -> Execution {
+            let reply = self.execute_application(command);
+            if reply.command == "quit" && reply.result.ok {
+                self.quit_ack.store(true, Ordering::Release);
+            }
+            reply
         }
     }
     impl Executor for Service {
         fn execute(&self, line: &str) -> ControlReply {
-            let mut engine = match self.engine.lock() {
-                Ok(engine) => engine,
-                Err(_) => {
-                    return ControlReply {
-                        cmd: String::new(),
-                        json: to_json(false, "", None, Some("engine lock poisoned")),
-                        start_watch: false,
-                        quit: false,
-                    };
-                }
-            };
-            if self.shutting_down.load(Ordering::Acquire) {
-                return ControlReply {
-                    cmd: String::new(),
-                    json: to_json(false, "", None, Some("engine is shutting down")),
-                    start_watch: false,
-                    quit: false,
-                };
+            match parse_line(line) {
+                Ok(command) => self.execute_application(command).v1(),
+                Err(reply) => reply,
             }
-            engine.set_time(self.started.elapsed().as_secs_f64());
-            let revision = engine.settings_revision();
-            let reply = process_line(line, &mut *engine);
-            if reply.quit {
-                self.quit_requested_at
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .get_or_insert_with(Instant::now);
-            }
-            if engine.settings_revision() != revision
-                && let Err(error) = engine.settings().save(&self.paths)
-            {
-                self.logs.record(&format!("settings save failed: {error}"));
-                eprintln!("settings save failed: {error}");
-            }
-            reply
         }
         fn watch_tick(&self) -> String {
             self.execute("status").json
@@ -92,6 +67,45 @@ mod windows {
         }
     }
     impl Service {
+        fn execute_application(&self, command: Command) -> Execution {
+            let name = command.name();
+            let mut engine = match self.engine.lock() {
+                Ok(engine) => engine,
+                Err(_) => {
+                    return Execution::rejected(
+                        name,
+                        ErrorCategory::Internal,
+                        "engine lock poisoned",
+                    );
+                }
+            };
+            if self.shutting_down.load(Ordering::Acquire) {
+                return Execution::rejected(
+                    name,
+                    ErrorCategory::Unavailable,
+                    "engine is shutting down",
+                );
+            }
+            engine.set_time(self.started.elapsed().as_secs_f64());
+            let reply = engine.execute_application(command, |settings| {
+                settings.save(&self.paths).map_err(|e| e.to_string())
+            });
+            if reply.command == "quit" && reply.result.ok {
+                self.quit_requested_at
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .get_or_insert_with(Instant::now);
+            }
+            if let Some(error) = &reply.error
+                && error.category == ErrorCategory::Persistence
+            {
+                self.logs
+                    .record(&format!("settings save failed: {}", error.message));
+                eprintln!("settings save failed: {}", error.message);
+            }
+            reply
+        }
+
         fn should_stop(&self) -> bool {
             self.quit_ack.load(Ordering::Acquire)
                 || self
@@ -167,16 +181,25 @@ mod windows {
                 eprintln!("invalid CLI arguments");
                 return Ok(2);
             }
-            let response = match request(&pipe, &command, Duration::from_secs(3)) {
-                Ok(response) => response,
+            use std::io::Write;
+            let mut output = std::io::stdout().lock();
+            let result = cli_request(&pipe, &command, |response| {
+                writeln!(output, "{response}")?;
+                output.flush()?;
+                Ok(std::ops::ControlFlow::Continue(()))
+            });
+            return Ok(match result {
+                Ok(ClientEnd::Reply { ok }) => u8::from(!ok),
+                Ok(ClientEnd::Cancelled) => 0,
                 Err(error) => {
+                    // Serializer escapes operator text. The server's frozen v1 envelope is unchanged.
+                    let value =
+                        icem_emulation::control::to_json(false, "", None, Some(&error.to_string()));
+                    let _ = writeln!(output, "{value}");
                     eprintln!("{error}");
-                    return Ok(2);
+                    1
                 }
-            };
-            let json: serde_json::Value = serde_json::from_str(&response)?;
-            println!("{response}");
-            return Ok(u8::from(json["ok"] != true));
+            });
         }
         let (Some(config), Some(templates)) = (config, templates) else {
             eprintln!("--config and --templates are required; see --help");

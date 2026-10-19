@@ -9,6 +9,11 @@ use gpui::{
     App, Application, Bounds, Context, Entity, SharedString, Window, WindowBounds, WindowOptions,
     div, prelude::*, px, rgba, size,
 };
+use icem_emulation::{
+    Channel,
+    control::{Command, application::Scope},
+    units::Preset,
+};
 use serde_json::{Value, json};
 use std::{
     path::PathBuf,
@@ -18,7 +23,7 @@ use std::{
 
 #[derive(Clone)]
 enum ChoiceAction {
-    Command(Value),
+    Command(Command),
     Variable { lan: bool, sv: String, name: String },
     Group(usize),
 }
@@ -27,12 +32,16 @@ struct Choice {
     label: String,
     action: ChoiceAction,
 }
-fn endpoints(names: &[String], command: &str) -> Vec<Choice> {
+fn endpoints(names: &[String], lan: bool) -> Vec<Choice> {
     names
         .iter()
         .map(|name| Choice {
             label: name.clone(),
-            action: ChoiceAction::Command(json!({"cmd":command,"name":name})),
+            action: ChoiceAction::Command(if lan {
+                Command::SetAdapter(name.clone())
+            } else {
+                Command::SetPort(name.clone())
+            }),
         })
         .collect()
 }
@@ -131,7 +140,7 @@ impl View {
             .unwrap_or(0xff808080);
         rgba(argb.rotate_left(8))
     }
-    fn send(&mut self, command: Value) {
+    fn send_logs(&mut self, command: Value) {
         if !self.model.can_submit_log(&command) {
             return;
         }
@@ -145,18 +154,23 @@ impl View {
             Err(error) => self.model.note = format!("⚠ {error}"),
         }
     }
+    fn send(&mut self, command: Command) {
+        if let Err(error) = self.bridge.send_emulator(command) {
+            self.model.note = format!("⚠ {error}");
+        }
+    }
     fn poll(&mut self) {
         if !self.model.local_logs.pending {
-            self.send(json!({"cmd":"local_logs","action":"get"}));
+            self.send_logs(json!({"cmd":"local_logs","action":"get"}));
         }
-        self.send(json!({"cmd":"status"}));
-        self.send(json!({"cmd":"vars"}));
+        self.send(Command::Status);
+        self.send(Command::Variables(Scope::default()));
     }
     fn button(
         &self,
         id: impl Into<gpui::ElementId>,
         label: impl Into<SharedString>,
-        command: Value,
+        command: Command,
         cx: &Context<Self>,
     ) -> impl IntoElement {
         let hover = self.color("MacButtonBgPressedColor");
@@ -180,7 +194,7 @@ impl View {
         id: &'static str,
         label: &str,
         on: bool,
-        command: Value,
+        command: Command,
         cx: &Context<Self>,
     ) -> impl IntoElement {
         let track = if on {
@@ -269,7 +283,8 @@ impl View {
         root
     }
     fn channel(&self, lan: bool, cx: &Context<Self>) -> impl IntoElement {
-        let channel = if lan { "lan" } else { "com" };
+        let channel_id = if lan { Channel::Lan } else { Channel::Com };
+        let channel = channel_id.as_str();
         let streaming = self.model.flag(channel, "streaming");
         let emulating = self.model.flag(channel, "emulating");
         let mut card = self
@@ -286,7 +301,11 @@ impl View {
                     "Поток выключен"
                 },
                 streaming,
-                json!({"cmd":if streaming{"stop"}else{"start"},"channel":channel}),
+                if streaming {
+                    Command::Stop(channel_id.into())
+                } else {
+                    Command::Start(channel_id.into())
+                },
                 cx,
             ))
             .child(self.toggle(
@@ -297,7 +316,7 @@ impl View {
                 },
                 "Эмуляция (автогенерация значений)",
                 emulating,
-                json!({"cmd":"setemulate","channel":channel,"value":u8::from(!emulating)}),
+                Command::SetEmulation(channel_id.into(), !emulating),
                 cx,
             ));
         if lan {
@@ -311,13 +330,13 @@ impl View {
                 .child(self.picker(
                     "LanAdapterCombo",
                     self.model.field("lan", "adapter"),
-                    endpoints(&self.model.adapters, "setadapter"),
+                    endpoints(&self.model.adapters, true),
                     cx,
                 ))
                 .child(self.button(
                     "RefreshAdaptersButton",
                     "Обновить адаптеры",
-                    json!({"cmd":"adapters"}),
+                    Command::Adapters,
                     cx,
                 ));
             if self.model.adapters.is_empty() {
@@ -338,7 +357,10 @@ impl View {
                                 .child("Применить")
                                 .on_click(cx.listener(|v, _, _, cx| {
                                     let value = v.equipment.read(cx).content.to_string();
-                                    match crate::equipment_command(&value) { Ok(command)=>v.send(command), Err(e)=>v.model.note=format!("⚠ {e}") };
+                                    match crate::equipment_command(&value) {
+                                        Ok(command) => v.send(command),
+                                        Err(e) => v.model.note = format!("⚠ {e}"),
+                                    };
                                     cx.notify();
                                 })),
                         ),
@@ -347,7 +369,7 @@ impl View {
                     "FirmwareSwitch",
                     "firmware-таблицы (доп. SV в суперкадре)",
                     self.model.flag("lan", "firmwareSv"),
-                    json!({"cmd":"setfirmware","value":u8::from(!self.model.flag("lan","firmwareSv"))}),
+                    Command::SetFirmware(!self.model.flag("lan", "firmwareSv")),
                     cx,
                 ));
         } else {
@@ -361,15 +383,10 @@ impl View {
                 .child(self.picker(
                     "ComPortCombo",
                     self.model.field("com", "port"),
-                    endpoints(&self.model.ports, "setport"),
+                    endpoints(&self.model.ports, false),
                     cx,
                 ))
-                .child(self.button(
-                    "RefreshPortsButton",
-                    "Обновить порты",
-                    json!({"cmd":"ports"}),
-                    cx,
-                ))
+                .child(self.button("RefreshPortsButton", "Обновить порты", Command::Ports, cx))
                 .child(
                     self.picker(
                         "ProfileCombo",
@@ -389,7 +406,7 @@ impl View {
         card = card.child(self.button(
             "RefreshVarsButton",
             "Обновить переменные",
-            json!({"cmd":"vars"}),
+            Command::Variables(Scope::default()),
             cx,
         ));
         let rows = if lan {
@@ -531,10 +548,15 @@ impl View {
                 text(&self.model.snapshot["units"]["preset"]),
                 PRESETS
                     .iter()
-                    .enumerate()
-                    .map(|(index, preset)| Choice {
-                        label: (*preset).into(),
-                        action: ChoiceAction::Command(json!({"cmd":"setpreset","value":index})),
+                    .zip([
+                        Preset::FirmwareDefault,
+                        Preset::LanNative,
+                        Preset::Metric,
+                        Preset::Imperial,
+                    ])
+                    .map(|(label, preset)| Choice {
+                        label: (*label).into(),
+                        action: ChoiceAction::Command(Command::SetPreset(preset)),
                     })
                     .collect(),
                 cx,
@@ -693,7 +715,7 @@ impl Render for View {
                         true,
                         "Логи эмулятора",
                         self.model.light,
-                        Self::send,
+                        Self::send_logs,
                         cx,
                     ))
                     .child(tabs)
@@ -766,8 +788,8 @@ pub fn run_emulator(
             visibility: None,
         });
         view.update(cx, |v, _| {
-            for command in ["profiles", "ports", "adapters"] {
-                v.send(json!({"cmd":command}));
+            for command in [Command::Profiles, Command::Ports, Command::Adapters] {
+                v.send(command);
             }
             v.poll();
         });
@@ -801,7 +823,7 @@ pub fn run_emulator(
         });
         let quitting = view.clone();
         cx.on_action(move |_: &ExitEmulator, cx| {
-            quitting.update(cx, |view, _| view.send(json!({"cmd":"quit"})));
+            quitting.update(cx, |view, _| view.send(Command::Quit));
         });
         cx.activate(true);
         cx.spawn(async move |cx| {

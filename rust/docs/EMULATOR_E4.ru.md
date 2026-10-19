@@ -132,3 +132,10 @@ workspace gate остаётся; результаты независимых ste
 не предлагается как средство получить green. См. PR/Actions для актуального статуса.
 GPUI graph также сообщает future-incompatibility warning proc-macro-error2 2.0.1;
 upstream dependency review остаётся отдельным пунктом, warning не подавляется.
+
+
+E17: [типизированный application API emulator и общий watch client](EMULATOR_E17.ru.md),
+[ADR 0014](adr/0014-emulator-application-api.ru.md). GPUI передаёт Command напрямую;
+pipe v1 остаётся compatibility adapter, включая coercions и исторический save ACK.
+Внутренний результат отделяет apply/save failure; CLI text/JSON watch получает поток,
+а не только ACK. Software CI не закрывает operator/SDK/hardware gates.
