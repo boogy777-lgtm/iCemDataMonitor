@@ -386,3 +386,31 @@ mapping indices, unknown action, missing composition surface, duplicate identity
 No dummy wire strings were added to the renderer. Python-equivalent validation is
 local evidence only; actual PowerShell and Windows exact-head acceptance remain
 separate. The original FAIL remains in the evidence history.
+
+
+## D48 — post-merge E19 overflow test also assumed first-sample delivery
+
+Legacy run 39253155562 / job 118061709492 on merged E19 main
+c1c4c0daf2addc59d517e853d4a8faa3a0ba5922 failed
+`DropOldest_SlowConsumerLosesSamples_BacklogNeverAccumulates`, line 187: the first
+consumed sample had no addr200. D45 freshness and Serial diagnostics tests passed.
+The capacity-one DropOldest producer can evict its initial full sample before the
+consumer runs; this test shared the confirmed D45 harness assumption. The original
+post-merge FAIL is retained, not described as a successful E19 legacy run.
+
+Class: initial full-sample observation in the legacy overflow test
+`iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs`, not production backpressure.
+Inv: initial float 1.0 assertion remains; retry is allowed only after observed
+initial DroppedCount != 0 within the same total 15s budget. Wrong/missing values on a
+loss-free initial attempt fail. Actual drops >= baseline+2, marker heartbeat 3 AFTER
+queue-full evidence, producer stop/join, Assert.Single retained, retained heartbeat 3,
+and drops >= markedBaseline+2 remain exactly the original proof; cleanup 10s remains.
+N+1: adjacent freshness/delta tests already use loss-free observation; remaining
+flag-only/empty-stream cases do not require the initial full sample. Other methods
+are unchanged. Each discarded attempt cancels/joins its producer; writer is disposed.
+
+Only the existing Metrics ledger approval changes: source-only commit
+ba8d1af1ca49e4ade40070ff13a358b93cb9a850, PR16. Immutable baseline hashes and 14 approval
+count remain unchanged; production .NET sources are untouched. Local source checks
+confirm unchanged assertions/overflow proof and other methods; Windows runtime is
+NOT_RUN before exact-head PR16 CI. This change does not upgrade hardware/UI parity.

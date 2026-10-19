@@ -77,3 +77,18 @@ The v1 successful Set decoder also requires available=true for both bool values:
 even OFF must publish through the owner's directory. ON additionally requires a
 ready writer. Contradictory ACKs are Unknown; existing codec tests cover unavailable
 success replies without changing the v1 serializer or owner behavior.
+
+
+## Late post-merge evidence: D48 / PR16
+
+Merged E19 main c1c4c0daf2addc59d517e853d4a8faa3a0ba5922 had a Legacy CI failure:
+run 39253155562 / job 118061709492, DropOldest overflow test line 187. Its first consumed
+sample was incorrectly assumed to be the producer's full sample. D45 freshness and
+Serial tests passed; the original post-merge failure remains part of the record.
+PR16 applies the same bounded loss-free initial observation to this one test,
+retaining every original overflow assertion, 15s total budget and 10s cleanup, and
+disposing the writer. Other test methods and production code are unchanged.
+[Audit D48](SOURCE_AUDIT.ru.md) records Class/Inv/N+1 and source-only provenance
+ba8d1af1ca49e4ade40070ff13a358b93cb9a850. Existing approval count remains 14 and the
+immutable baseline is unchanged. Actual Windows execution is NOT_RUN before PR16 CI;
+source/diff/baseline checks alone are not a Windows runtime PASS.
