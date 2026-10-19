@@ -2,14 +2,9 @@
 use std::process::ExitCode;
 #[cfg(windows)]
 mod windows {
+    use icem_web::shell::{BootBatch, Request, Response};
     use icem_web::{client, proto::*};
-    use serde_json::{Value, json};
     use std::sync::Arc;
-    fn layer_view(layers: LayerState) -> Value {
-        json!({"modbus":layers.modbus_bound,"sniffer":layers.sniffer,
-            "snifferAvailable":layers.sniffer_available,"busy":layers.busy,
-            "opcDa":layers.opc_da,"web":layers.web,"lastError":layers.last_error})
-    }
     struct Session {
         runtime: tokio::runtime::Runtime,
         metrics: Option<tonic::Streaming<MetricsSample>>,
@@ -23,8 +18,8 @@ mod windows {
         ensured: std::sync::OnceLock<Result<(), String>>,
         session: std::sync::Mutex<Option<Session>>,
     }
-    impl icem_desktop::UiPort for HostPort {
-        fn request(&self, command: Value) -> Result<Value, String> {
+    impl icem_desktop::host::Port for HostPort {
+        fn request(&self, command: Request) -> Result<Response, String> {
             let mut session = self
                 .session
                 .lock()
@@ -80,92 +75,173 @@ mod windows {
                     }
                 }
             }
+            let operation = command.operation();
             let result = runtime.block_on(async {
-                if command["cmd"] == "logs" {
-                    return icem_web::log_control::request(&self.pipe, command["action"].as_str().unwrap_or("get"), command["enabled"].as_bool()).await;
-
+                if let Request::Logs(action) = &command {
+                    let (action, enabled) = action.v1();
+                    return icem_web::log_control::request(&self.pipe, action, enabled)
+                        .await
+                        .map(Response::Logs);
                 }
-                if command["cmd"] == "boot" {
+                if matches!(command, Request::Boot) {
                     let reset = boot.is_none();
                     let result = async {
                         if boot.is_none() {
-                            let mut client = client::connect(&self.pipe).await.map_err(|e|e.to_string())?;
-                            *boot=Some(client.subscribe_boot_stages(BootStreamRequest{}).await.map_err(|e|e.to_string())?.into_inner());
+                            let mut client = client::connect(&self.pipe)
+                                .await
+                                .map_err(|e| e.to_string())?;
+                            *boot = Some(
+                                client
+                                    .subscribe_boot_stages(BootStreamRequest {})
+                                    .await
+                                    .map_err(|e| e.to_string())?
+                                    .into_inner(),
+                            );
                         }
-                        let mut stages=Vec::new();
-                        let due=std::time::Instant::now()+std::time::Duration::from_millis(100);
-                        while stages.len()<128 {
-                            let remaining=due.saturating_duration_since(std::time::Instant::now());
-                            if remaining.is_zero(){break;}
-                            match tokio::time::timeout(remaining,boot.as_mut().ok_or("boot stream unavailable")?.message()).await {
-                                Ok(Ok(Some(stage)))=>stages.push(json!({"ordinal":stage.ordinal,"id":stage.id,"title":stage.title,"completed":stage.completed,"detail":stage.detail})),
-                                Ok(Ok(None))=>return Err("boot stream ended".to_owned()),
-                                Ok(Err(error))=>return Err(error.to_string()),
-                                Err(_)=>break,
+                        let mut stages = Vec::new();
+                        let due = std::time::Instant::now() + std::time::Duration::from_millis(100);
+                        while stages.len() < 128 {
+                            let remaining =
+                                due.saturating_duration_since(std::time::Instant::now());
+                            if remaining.is_zero() {
+                                break;
+                            }
+                            match tokio::time::timeout(
+                                remaining,
+                                boot.as_mut().ok_or("boot stream unavailable")?.message(),
+                            )
+                            .await
+                            {
+                                Ok(Ok(Some(stage))) => stages.push(stage),
+                                Ok(Ok(None)) => return Err("boot stream ended".to_owned()),
+                                Ok(Err(error)) => return Err(error.to_string()),
+                                Err(_) => break,
                             }
                         }
-                        Ok(json!({"ok":true,"data":{"stages":stages,"reset":reset}}))
-                    }.await;
-                    if result.is_err(){*boot=None;}
+                        Ok(Response::Boot(BootBatch { stages, reset }))
+                    }
+                    .await;
+                    if result.is_err() {
+                        *boot = None;
+                    }
                     return result;
                 }
-                if command["cmd"] == "metrics" {
+                if matches!(command, Request::Metrics) {
                     let result = async {
                         if metrics.is_none() {
-                            let mut client = client::connect(&self.pipe).await.map_err(|e|e.to_string())?;
-                            *metrics = Some(client.subscribe_metrics(SubscribeRequest { interval_ms: 1000 }).await.map_err(|e|e.to_string())?.into_inner());
+                            let mut client = client::connect(&self.pipe)
+                                .await
+                                .map_err(|e| e.to_string())?;
+                            *metrics = Some(
+                                client
+                                    .subscribe_metrics(SubscribeRequest { interval_ms: 1000 })
+                                    .await
+                                    .map_err(|e| e.to_string())?
+                                    .into_inner(),
+                            );
                         }
-                        let message = tokio::time::timeout(std::time::Duration::from_millis(1500),
-                            metrics.as_mut().ok_or("metrics stream unavailable")?.message()).await
-                            .map_err(|_|"metrics stream timeout".to_owned())?.map_err(|e|e.to_string())?.ok_or("metrics stream ended")?;
-                        let at = message.timestamp_utc.map(|t|t.seconds.saturating_mul(1000).saturating_add(i64::from(t.nanos)/1_000_000)).unwrap_or_default();
-                        let deltas: Vec<_> = message.deltas.into_iter().filter_map(|d| {
-                            let (value,kind) = match d.value? {
-                                register_delta::Value::Int32Value(v)=>(json!(v),"int32"),
-                                register_delta::Value::FloatValue(v)=>(json!(if v.is_nan(){"NaN".to_owned()}else if v==f32::INFINITY{"Infinity".to_owned()}else if v==f32::NEG_INFINITY{"-Infinity".to_owned()}else{v.to_string()}),"float"),
-                            };
-                            Some(json!({"addr":d.addr,"value":value,"kind":kind}))
-                        }).collect();
-                        Ok::<_,String>(json!({"ok":true,"data":{"at":at,"heartbeat":message.heartbeat,"clamped":message.interval_clamped,"deltas":deltas}}))
-                    }.await;
-                    if result.is_err() {*metrics=None;}
+                        let message = tokio::time::timeout(
+                            std::time::Duration::from_millis(1500),
+                            metrics
+                                .as_mut()
+                                .ok_or("metrics stream unavailable")?
+                                .message(),
+                        )
+                        .await
+                        .map_err(|_| "metrics stream timeout".to_owned())?
+                        .map_err(|e| e.to_string())?
+                        .ok_or("metrics stream ended")?;
+                        Ok::<_, String>(Response::Metrics(message))
+                    }
+                    .await;
+                    if result.is_err() {
+                        *metrics = None;
+                    }
                     return result;
                 }
-                if command["cmd"] == "dashboard" {
-                    let selected = command["selected"].as_array().ok_or("missing dashboard selection")?.iter()
-                        .map(|a| a.as_u64().and_then(|n|u16::try_from(n).ok()).ok_or("invalid selection"))
-                        .collect::<Result<Vec<_>,_>>()?;
+                if let Request::Dashboard(selected) = &command {
                     let endpoint = match self.endpoint {
                         Some(endpoint) => endpoint,
-                        None => *self.station_endpoint.get_or_init(|| {
-                            let paths=icem_config::StationPaths::installed().map_err(|e|e.to_string())?;
-                            let settings=icem_config::IniOptions::read_existing(paths.selected().map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
-                            Ok(([127,0,0,1],u16::try_from(settings.web_port).map_err(|e|e.to_string())?).into())
-                        }).as_ref().map_err(Clone::clone)?,
+                        None => *self
+                            .station_endpoint
+                            .get_or_init(|| {
+                                let paths = icem_config::StationPaths::installed()
+                                    .map_err(|e| e.to_string())?;
+                                let settings = icem_config::IniOptions::read_existing(
+                                    paths.selected().map_err(|e| e.to_string())?,
+                                )
+                                .map_err(|e| e.to_string())?;
+                                Ok((
+                                    [127, 0, 0, 1],
+                                    u16::try_from(settings.web_port).map_err(|e| e.to_string())?,
+                                )
+                                    .into())
+                            })
+                            .as_ref()
+                            .map_err(Clone::clone)?,
                     };
-                    let data = icem_web::dashboard_client::read(endpoint, &selected).await?;
-                    return Ok(json!({"ok":true,"data":data}));
+                    let data =
+                        icem_web::dashboard_client::read(endpoint, selected.addresses()).await?;
+                    return Ok(Response::Dashboard(data));
                 }
-                let mut client=client::connect(&self.pipe).await.map_err(|e|e.to_string())?;
-                let data=match command["cmd"].as_str().unwrap_or(""){
-                    "navigate"=>{
-                        let result=client.navigate_ui(NavigateUiRequest{section:0}).await.map_err(|e|e.to_string())?.into_inner();
-                        json!({"pending":result.pending,"uiAlive":result.ui_alive})
+                let mut client = client::connect(&self.pipe)
+                    .await
+                    .map_err(|e| e.to_string())?;
+                match command {
+                    Request::Navigate => client
+                        .navigate_ui(NavigateUiRequest { section: 0 })
+                        .await
+                        .map(|r| Response::Navigate(r.into_inner()))
+                        .map_err(|e| e.to_string()),
+                    Request::Status => Response::status(
+                        client
+                            .get_status(HostStatusRequest {})
+                            .await
+                            .map_err(|e| e.to_string())?
+                            .into_inner(),
+                    ),
+                    Request::Prefs => client
+                        .get_ui_prefs(UiPrefsRequest {})
+                        .await
+                        .map(|r| Response::Prefs(r.into_inner()))
+                        .map_err(|e| e.to_string()),
+                    Request::Theme(theme_light) => client
+                        .set_ui_theme(SetUiThemeRequest { theme_light })
+                        .await
+                        .map(|r| Response::Theme(r.into_inner()))
+                        .map_err(|e| e.to_string()),
+                    Request::Layer(layer) => client
+                        .set_layer(LayerControlRequest {
+                            layer: icem_web::proto::LayerKind::from(layer) as i32,
+                            desired_state: false,
+                        })
+                        .await
+                        .map(|r| Response::Layer(r.into_inner()))
+                        .map_err(|e| e.to_string()),
+                    Request::Console(visible) => client
+                        .set_console_visible(SetConsoleVisibleRequest { visible })
+                        .await
+                        .map_err(|e| e.to_string())
+                        .and_then(|r| r.into_inner().try_into())
+                        .map(Response::Console),
+                    Request::Autostart(enabled) => client
+                        .set_autostart(SetAutostartRequest { enabled })
+                        .await
+                        .map_err(|e| e.to_string())
+                        .and_then(|r| r.into_inner().try_into())
+                        .map(Response::Autostart),
+                    Request::Boot | Request::Metrics | Request::Dashboard(_) | Request::Logs(_) => {
+                        Err("adapter request must use its existing owner".into())
                     }
-                    "status"=>{
-                        let status=client.get_status(HostStatusRequest{}).await.map_err(|e|e.to_string())?.into_inner();
-                        let layers=status.layers.unwrap_or_default();
-                        json!({"busOpen":status.bus_open,"addinAlive":status.addin_alive,"heartbeat":status.heartbeat,"zones":status.zones.into_iter().map(|z|json!({"kind":z.kind,"active":z.active,"ageMs":z.age_ms})).collect::<Vec<_>>(),"layers":layer_view(layers),"consoleVisible":status.console_visible,"autostartEnabled":status.autostart_enabled})
-                    }
-                    "prefs"=>{let result=client.get_ui_prefs(UiPrefsRequest{}).await.map_err(|e|e.to_string())?.into_inner();json!({"themeLight":result.theme_light})}
-                    "theme"=>{let result=client.set_ui_theme(SetUiThemeRequest{theme_light:command["value"]==true}).await.map_err(|e|e.to_string())?.into_inner();json!({"themeLight":result.theme_light})}
-                    "layer"=>{let result=client.set_layer(LayerControlRequest{layer:command["layer"].as_i64().unwrap_or(0) as i32,desired_state:false}).await.map_err(|e|e.to_string())?.into_inner();layer_view(result)}
-                    "console"=>{client.set_console_visible(SetConsoleVisibleRequest{visible:command["value"]==true}).await.map_err(|e|e.to_string())?;json!({})}
-                    "autostart"=>{client.set_autostart(SetAutostartRequest{enabled:command["value"]==true}).await.map_err(|e|e.to_string())?;json!({})}
-                    _=>return Err("unknown Host UI command".into()),
-                };Ok(json!({"ok":true,"data":data}))
+                    Request::LocalLogs(_) => Err("Shell logs belong to the local worker".into()),
+                }
             });
-            if result.is_err() && matches!(command["cmd"].as_str(), Some("status" | "boot")) {
+            if result.is_err()
+                && matches!(
+                    operation,
+                    icem_web::shell::Operation::Status | icem_web::shell::Operation::Boot
+                )
+            {
                 // Drop the runtime as well as streams: dead transport tasks can keep
                 // old pipe handles alive and prevent the next Host's exclusive bind.
                 // Both subscriptions must replay on a fresh session after disconnect.
@@ -214,7 +290,7 @@ mod windows {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use icem_desktop::UiPort;
+        use icem_desktop::host::Port;
         use icem_web::{BootStages, HostLayers, LocalRpcServer, WebState};
         type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -251,17 +327,23 @@ mod windows {
                 session: std::sync::Mutex::new(None),
             };
             let mut model = icem_desktop::Model::default();
-            for fault in ["boot", "status", "boot", "status"] {
+            for fault in [
+                Request::Boot,
+                Request::Status,
+                Request::Boot,
+                Request::Status,
+            ] {
                 let server = LocalRpcServer::bind(&name, state(true)?)?;
-                let initial = port.request(json!({"cmd":"boot"}))?;
-                assert_eq!(initial["data"]["reset"], true);
-                model.apply("boot", Ok(initial));
+                let initial = port.request(Request::Boot)?;
+                assert!(matches!(&initial, Response::Boot(batch) if batch.reset));
+                model.apply_host(icem_web::shell::Operation::Boot, Ok(initial));
                 assert!(model.boot_ready);
                 server.stop()?;
                 // Fault injection happens after READY while the old Shell keeps running.
-                let failure = port.request(json!({"cmd":fault}));
+                let operation = fault.operation();
+                let failure = port.request(fault);
                 assert!(failure.is_err());
-                model.apply(fault, failure);
+                model.apply_host(operation, failure);
                 assert!(!model.boot_ready);
                 assert!(
                     port.session
@@ -270,14 +352,14 @@ mod windows {
                         .is_none()
                 );
                 let server = LocalRpcServer::bind(&name, state(false)?)?;
-                let replay = port.request(json!({"cmd":"boot"}))?;
-                assert_eq!(replay["data"]["reset"], true);
-                model.apply("boot", Ok(replay));
+                let replay = port.request(Request::Boot)?;
+                assert!(matches!(&replay, Response::Boot(batch) if batch.reset));
+                model.apply_host(icem_web::shell::Operation::Boot, Ok(replay));
                 assert!(!model.boot_ready);
                 assert_eq!(model.boot_stages.len(), 1);
                 assert_eq!(model.boot_stages[&1].id, "ini");
                 server.stop()?;
-                assert!(port.request(json!({"cmd":"boot"})).is_err());
+                assert!(port.request(Request::Boot).is_err());
             }
             Ok(())
         }

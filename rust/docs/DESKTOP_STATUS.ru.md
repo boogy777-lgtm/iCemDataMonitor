@@ -171,3 +171,8 @@ E17: [типизированный application API emulator и общий watch 
 pipe v1 остаётся compatibility adapter, включая coercions и исторический save ACK.
 Внутренний результат отделяет apply/save failure; CLI text/JSON watch получает поток,
 а не только ACK. Software CI не закрывает operator/SDK/hardware gates.
+
+
+E18: [типизированный Shell → Host](HOST_E18.ru.md). Проверенные параметры/status,
+generated replies, общий bounded worker. Logging/dashboard JSON — следующие
+границы; visual/SDK/hardware gates остаются открытыми.

@@ -2237,6 +2237,7 @@ dependencies = [
  "icem-emulation",
  "icem-logging",
  "icem-platform-windows",
+ "icem-web",
  "icem-windows-native",
  "image",
  "serde_json",
@@ -2320,7 +2321,6 @@ dependencies = [
  "icem-platform-windows",
  "icem-transport",
  "icem-web",
- "serde_json",
  "tokio",
  "tonic",
 ]

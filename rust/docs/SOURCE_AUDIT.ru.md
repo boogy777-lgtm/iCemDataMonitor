@@ -311,3 +311,9 @@ reply даёт Unknown и не повторяет команду. CLI transport 
 [ADR 0014](adr/0014-emulator-application-api.ru.md) определяет границы и intentional
 client/resource deltas. SelfTest:null не меняется; app selftest/landiag — следующий
 кодовый инкремент. D22, dormant capture-to-file и software/hardware gates прежние.
+
+
+D43 / E18: Shell HostPort подставлял false/0 для отсутствующих параметров,
+а Model::apply("status", Ok({ok:true})) подтверждал связь без data. Typed Request
+исключает missing bool/invalid layer/selection; Status требует layers и три distinct
+zones. Mismatch/malformed status не подтверждает freshness. См. ADR 0015.
