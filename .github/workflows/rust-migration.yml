@@ -36,6 +36,11 @@ jobs:
         run: |
           cargo test --locked -p icem-windows-native
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Windows file logger boundary before desktop build
+        shell: pwsh
+        run: |
+          cargo test --locked -p icem-logging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows emulator integration before desktop build
         shell: pwsh
         run: |

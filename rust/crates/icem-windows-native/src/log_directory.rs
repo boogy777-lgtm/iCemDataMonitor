@@ -207,3 +207,49 @@ impl LogDirectory {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+    fn step<T>(stage: &str, result: io::Result<T>) -> Result<T> {
+        result.map_err(|error| format!("{stage}: {error}").into())
+    }
+    struct Root(PathBuf);
+    impl Drop for Root {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    #[test]
+    fn owned_file_write_read_replace_delete_and_sibling_pins() -> Result {
+        let root = Root(std::env::temp_dir().join(format!(
+            "icem-log-boundary-{}-{}", std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos()
+        )));
+        let first = step("first directory", LogDirectory::open(&root.0.join("first")))?;
+        let sibling = step("sibling directory", LogDirectory::open(&root.0.join("sibling")))?;
+        let mut writer = step("writer open", first.open_file("owned.log", true))?;
+        step("writer write", writer.write_all(b"old\r\n"))?;
+        step("writer sync", writer.sync_all())?;
+        assert_eq!(step("read while writer lives", std::fs::read(root.0.join("first/owned.log")))?, b"old\r\n");
+        drop(writer);
+        for record in [b"new\r\n", b"end\r\n"] {
+            let mut temp = step("temp open", first.open_file("temp.tmp", true))?;
+            step("temp truncate", temp.set_len(0))?;
+            step("temp write", temp.write_all(record))?;
+            step("temp sync", temp.sync_all())?;
+            step("replace existing destination", first.replace(&temp, "owned.log"))?;
+            drop(temp);
+            let file = step("reopen replaced destination", first.open_file("owned.log", false))?;
+            assert_eq!(step("read replaced destination", std::fs::read(root.0.join("first/owned.log")))?, record);
+            drop(file);
+        }
+        assert!(step("delete checked destination", first.remove_file("owned.log"))?);
+        drop(first);
+        step("rename with sibling pins", std::fs::rename(root.0.join("first"), root.0.join("moved")))?;
+        drop(sibling);
+        Ok(())
+    }
+}
