@@ -244,16 +244,18 @@ mod windows {
     #[test]
     fn competing_owner_hardlink_junction_and_unavailable_directory_fail_closed() -> Result {
         let root = Root::new()?;
+        let dir = root.0.join(Owner::Host.directory());
+        let outside = root.0.join("outside.txt");
+        fs::create_dir_all(&dir)?;
+        fs::write(&outside, b"must survive")?;
+        // Install the adversarial fixture before the owner pins deny link mutation.
+        fs::hard_link(&outside, dir.join("data-bus.log"))
+            .map_err(|e| format!("hardlink fixture creation: {e}"))?;
         let mut logs = Logs::open(&root.0, Owner::Host);
         logs.record("owner");
         let competing = Logs::open(&root.0, Owner::Host);
         assert_eq!(competing.status()["available"], false);
         drop(competing);
-        let dir = root.0.join(Owner::Host.directory());
-        let outside = root.0.join("outside.txt");
-        fs::write(&outside, b"must survive")?;
-        fs::hard_link(&outside, dir.join("data-bus.log"))
-            .map_err(|e| format!("hardlink fixture creation: {e}"))?;
         assert!(logs.request("clear", None).is_err());
         assert_eq!(fs::read(&outside)?, b"must survive");
         drop(logs);
