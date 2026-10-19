@@ -81,3 +81,10 @@ LAN providers, emitters, engine/control pipe, E11 config/ensure, E12 logs, E13 l
 123456789 ns, верхнюю границу секунды и переход следующей секунды. Поиск остальных
 Rust format strings обнаружил только поддерживаемый %.3f в web projection.
 Это устранение failure общего logger, а не расширение emulator scope.
+
+## Дополнение владельца: Legacy CI и merge
+
+2026-10-19 владелец явно разрешил исправить Legacy CI и продолжать merge/миграцию.
+[Исправление наблюдения retry snapshots](LEGACY_CI_E15.ru.md) меняет только
+Legacy test helper и его точный ledger hash. Production COM tee не активирован.
+Source-fix commit: `d29180be0b55c200ad4902394f725e41aa242ce1`. Merge PR #11 допускается после новых проверок.

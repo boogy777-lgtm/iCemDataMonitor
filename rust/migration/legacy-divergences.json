@@ -95,11 +95,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
       "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
-      "approved_blob_sha1": "bdb74097eccbd84659376f2649548839eb66b8aa",
+      "approved_blob_sha1": "790bf55ee06a0678f4456e4b226b2806fd0221ca",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Synchronize serial buffer access, await actual state/data and StopAsync in finally."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
+        "commit": "d29180be0b55c200ad4902394f725e41aa242ce1",
+        "reason": "User-authorized Legacy CI repair: return the exact snapshot that satisfied the bounded retry-state wait, without changing production COM tee or weakening assertions."
       }
     },
     {
