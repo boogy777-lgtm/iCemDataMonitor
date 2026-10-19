@@ -37,6 +37,10 @@ impl Owner {
 }
 #[cfg(windows)]
 use icem_windows_native::LogDirectory as Directory;
+#[cfg(windows)]
+use icem_windows_native::LogFile as OwnedFile;
+#[cfg(not(windows))]
+type OwnedFile = File;
 #[cfg(not(windows))]
 struct Directory;
 #[cfg(not(windows))]
@@ -64,7 +68,7 @@ pub struct Logs {
     owner: Owner,
     directory: Option<Directory>,
     enabled: Option<bool>,
-    writer: Option<File>,
+    writer: Option<OwnedFile>,
     active_file: usize,
     error: String,
     operation: String,
@@ -218,7 +222,7 @@ impl Logs {
         Ok(())
     }
     // Recover a partial last write from a previous crash, preserving complete records.
-    fn recover_tail(&self, file: &mut File) -> io::Result<()> {
+    fn recover_tail(&self, file: &mut OwnedFile) -> io::Result<()> {
         let length = file.metadata()?.len();
         if length == 0 {
             return Ok(());
@@ -294,9 +298,7 @@ impl Logs {
     }
     fn write_record(&mut self, message: &str) -> io::Result<()> {
         self.prepare_writer()?;
-        let timestamp = chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now())
-            .format("%Y-%m-%dT%H:%M:%S%.7fZ")
-            .to_string();
+        let timestamp = timestamp(std::time::SystemTime::now());
         let mut line = format!("{timestamp} ");
         for c in message.chars() {
             if line.len() + c.len_utf8() + 16 > MAX_RECORD {
@@ -390,6 +392,15 @@ impl RecordFile for File {
         self.sync_data()
     }
 }
+#[cfg(windows)]
+impl RecordFile for OwnedFile {
+    fn resize(&mut self, length: u64) -> io::Result<()> {
+        self.set_len(length)
+    }
+    fn sync(&mut self) -> io::Result<()> {
+        self.sync_data()
+    }
+}
 fn append_record(file: &mut impl RecordFile, record: &[u8]) -> io::Result<()> {
     let start = file.seek(SeekFrom::End(0))?;
     if let Err(error) = file.write_all(record).and_then(|_| file.sync()) {
@@ -401,6 +412,17 @@ fn append_record(file: &mut impl RecordFile, record: &[u8]) -> io::Result<()> {
         };
     }
     Ok(())
+}
+
+// .NET round-trip UTC precision is 100 ns. Chrono has %.3f/%.6f/%.9f,
+// but %.7f is invalid and panics when Display is written to a String.
+fn timestamp(time: std::time::SystemTime) -> String {
+    let date = chrono::DateTime::<chrono::Utc>::from(time);
+    format!(
+        "{}.{:07}Z",
+        date.format("%Y-%m-%dT%H:%M:%S"),
+        date.timestamp_subsec_nanos() / 100
+    )
 }
 
 #[cfg(test)]

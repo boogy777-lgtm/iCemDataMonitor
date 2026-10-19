@@ -77,10 +77,10 @@ pub fn close_shell() -> Result<(), NativeError> {
 impl Drop for Lifecycle {
     fn drop(&mut self) {
         if let Err(error) = self.remove_tray() {
-            eprintln!("Host tray cleanup: {error}");
+            diagnostic!("Host tray cleanup: {error}");
         }
         if let Err(error) = close_shell() {
-            eprintln!("Host shell cleanup: {error}");
+            diagnostic!("Host shell cleanup: {error}");
         }
     }
 }

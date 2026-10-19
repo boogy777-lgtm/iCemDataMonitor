@@ -31,6 +31,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify owned Host diagnostic window on Windows
+        shell: pwsh
+        run: |
+          cargo test --locked -p icem-windows-native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Windows file logger boundary before desktop build
+        shell: pwsh
+        run: |
+          cargo test --locked -p icem-logging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows emulator integration before desktop build
         shell: pwsh
         run: |

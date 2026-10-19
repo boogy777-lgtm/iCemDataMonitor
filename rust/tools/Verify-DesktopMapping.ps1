@@ -39,3 +39,11 @@ foreach ($Control in $Extensions) {
     if (-not $Composition.Contains('"' + $Control.surface + '"') -or -not $Implementation.Contains('"' + $Control.action + '"')) { throw "Unimplemented native extension: $($Control.name)" }
 }
 Write-Host 'Native logging extensions: 6; visual acceptance NOT_RUN.'
+
+# E15 owns a separate diagnostic surface, not another GPUI/logging control.
+$Console = @($Mapping.host_console)
+if ($Console.Count -ne 2 -or ($Console.name -join ',') -cne 'HostDiagnosticWindow,HostDiagnosticTranscript') { throw 'Host console inventory drift' }
+foreach ($Control in $Console) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Root $Control.implementation) -PathType Leaf)) { throw 'Missing Host diagnostic implementation' }
+}
+Write-Host 'Host diagnostic surface: window + readonly transcript; visual acceptance NOT_RUN.'

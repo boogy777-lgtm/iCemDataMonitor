@@ -20,10 +20,13 @@ public sealed class InMemorySerialPort : ISerialPort
     private readonly object _gate = new();
     private readonly Func<int>? _readTimeoutSim; // throw UnauthorizedAccessException after N reads
 
-    public InMemorySerialPort(string name, byte[]? initialData = null, Func<int>? readTimeoutSim = null)
+    private readonly Action? _onDispose;
+
+    public InMemorySerialPort(string name, byte[]? initialData = null, Func<int>? readTimeoutSim = null, Action? onDispose = null)
     {
         _portName = name;
         _readTimeoutSim = readTimeoutSim;
+        _onDispose = onDispose;
         _readStream = new MemoryStream();
         if (initialData != null && initialData.Length > 0)
         {
@@ -112,6 +115,7 @@ public sealed class InMemorySerialPort : ISerialPort
             _readStream.Dispose();
             _writeStream.Dispose();
         }
+        _onDispose?.Invoke();
     }
 }
 
@@ -326,12 +330,8 @@ public class SerialTeeServiceTests
         await service.StartAsync(cts.Token);
         try
         {
-            await WaitUntilAsync(() =>
-            {
-                var status = service.GetStatus();
-                return status.PhysicalPortBusy && status.State == "PORT_BUSY";
-            });
-            var status = service.GetStatus();
+            var status = await WaitUntilAsync(service.GetStatus,
+                snapshot => snapshot.PhysicalPortBusy && snapshot.State == "PORT_BUSY");
             Assert.True(status.PhysicalPortBusy);
             Assert.Equal("PORT_BUSY", status.State);
 
@@ -367,9 +367,8 @@ public class SerialTeeServiceTests
         await service.StartAsync(cts.Token);
         try
         {
-            await WaitUntilAsync(() => service.GetStatus().State == "PORT_BUSY");
-
-            var status = service.GetStatus();
+            var status = await WaitUntilAsync(service.GetStatus,
+                snapshot => snapshot.State == "PORT_BUSY");
             Assert.True(status.PhysicalPortBusy);
             Assert.Equal("PORT_BUSY", status.State);
 
@@ -431,30 +430,42 @@ public class SerialTeeServiceTests
         var logger = NullLogger<SerialTeeService>.Instance;
 
         int virtualAttempts = 0;
+        var missing = new TaskCompletionSource<ComTeeStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var retried = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         ISerialPort CreateVirtual(string name)
         {
-            virtualAttempts++;
-            if (virtualAttempts == 1)
+            int attempt = Interlocked.Increment(ref virtualAttempts);
+            if (attempt == 1)
                 throw new IOException("Virtual port not available");
+            retried.TrySetResult(attempt);
             return new InMemorySerialPort(name);
         }
 
+        SerialTeeService? owner = null;
         using var service = new SerialTeeService(
             Options.Create(options),
             configStore,
             logger,
-            _ => new InMemorySerialPort("COM2"),
+            _ => new InMemorySerialPort("COM2", onDispose: () =>
+            {
+                // Production disposes this port immediately AFTER PAIR_MISSING,
+                // before awaiting retry delay or advancing the state in finally.
+                // Capture on that same call stack; polling can miss a one-shot state.
+                if (owner is not null) missing.TrySetResult(owner.GetStatus());
+            }),
             CreateVirtual);
+        owner = service;
 
         using var cts = new CancellationTokenSource();
         await service.StartAsync(cts.Token);
         try
         {
-            await WaitUntilAsync(() => service.GetStatus().State == "PAIR_MISSING");
-
-            var status = service.GetStatus();
+            var status = await missing.Task.WaitAsync(TimeSpan.FromSeconds(15));
             Assert.False(status.Com0comPairOk);
             Assert.Equal("PAIR_MISSING", status.State);
+            // Verify the watchdog really attempts the virtual port again, rather
+            // than only observing its initial error label.
+            Assert.Equal(2, await retried.Task.WaitAsync(TimeSpan.FromSeconds(15)));
 
             cts.Cancel();
             await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
@@ -501,11 +512,33 @@ public class SerialTeeServiceTests
         }
     }
 
+    [Fact]
+    public async Task WaitUntil_ReturnsTheMatchingSnapshot_WhenSourceHasAlreadyAdvanced()
+    {
+        int reads = 0;
+        ComTeeStatus Observe() => new() { State = ++reads == 1 ? "PAIR_MISSING" : "STARTING" };
+        var observed = await WaitUntilAsync(Observe, snapshot => snapshot.State == "PAIR_MISSING");
+        Assert.Equal("STARTING", Observe().State);
+        Assert.Equal("PAIR_MISSING", observed.State);
+        Assert.Equal(2, reads);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
+        await WaitUntilAsync(condition, matched => matched);
+    }
+
+    // Return the evidence that met the predicate. A fresh read after await can
+    // already belong to the next retry phase, even though this wait succeeded.
+    private static async Task<T> WaitUntilAsync<T>(Func<T> observe, Func<T, bool> predicate)
+    {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        while (!condition())
+        while (true)
+        {
+            var snapshot = observe();
+            if (predicate(snapshot)) return snapshot;
             await Task.Delay(20, deadline.Token);
+        }
     }
 
     // ── Helpers ──

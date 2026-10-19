@@ -34,7 +34,7 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
             .arg(&templates)
             .args(["--pipe", &pipe, "--duration-ms", "30000"])
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stderr(Stdio::inherit())
             .spawn()
     };
     let mut process = EngineProcess {

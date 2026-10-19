@@ -24,7 +24,10 @@ pub use windows::{OwnedEvent, event_exists};
 #[allow(unsafe_code)]
 mod console;
 #[cfg(windows)]
-pub use console::{ConsoleControl, console_state, console_visible};
+pub use console::{
+    ConsoleControl, console_diagnostic, console_restored, console_state, console_visible,
+    inherited_console_visible,
+};
 
 #[cfg(windows)]
 #[allow(unsafe_code)]
@@ -36,7 +39,7 @@ pub use autostart::AutostartEntry;
 #[allow(unsafe_code)]
 mod log_directory;
 #[cfg(windows)]
-pub use log_directory::LogDirectory;
+pub use log_directory::{LogDirectory, LogFile};
 
 #[cfg(windows)]
 #[allow(unsafe_code)]

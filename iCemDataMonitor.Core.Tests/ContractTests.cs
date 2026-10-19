@@ -223,25 +223,24 @@ public sealed class ContractTests
             .Setup(ds => ds.DiscoverAsync())
             .ThrowsAsync(new TimeoutException("MongoDB unreachable"));
 
-        var service = new HealthCheckService(
+        using var service = new HealthCheckService(
             dataSourceMock.Object, healthChannel, options, loggerMock.Object);
 
-        // Act — start, read first health event
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
-        await service.StartAsync(cts.Token);
-
-        HealthEvent? capturedEvent = null;
-        try { capturedEvent = await healthChannel.Reader.ReadAsync(cts.Token); }
-        catch (OperationCanceledException) { }
-
-        await service.StopAsync(CancellationToken.None);
+        // The contract has no four-second scheduling/Windows process-enumeration
+        // latency guarantee. Wait for the real event within the suite's bounded
+        // async-operation budget, and always stop/join the actual loop.
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        await service.StartAsync(CancellationToken.None);
+        HealthEvent capturedEvent;
+        try { capturedEvent = await healthChannel.Reader.ReadAsync(deadline.Token); }
+        finally { await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10)); }
 
         // Assert — DbOk is the deterministic part of this test.
         // IcemOk is environment-dependent (legacy iCem.exe may or may not run on the
         // test host) ⇒ not asserted here. Exact-name process check (iCem.exe, ¬
         // FlecsTray* emulators) is covered by code review of HealthCheckService.
-        Assert.NotNull(capturedEvent);
-        Assert.False(capturedEvent.Value.DbOk,
+        dataSourceMock.Verify(ds => ds.DiscoverAsync(), Times.AtLeastOnce);
+        Assert.False(capturedEvent.DbOk,
             "HealthEvent.DbOk must be false when IDataSource.DiscoverAsync throws (MongoDB down)");
     }
 

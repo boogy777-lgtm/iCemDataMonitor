@@ -244,20 +244,23 @@ mod windows {
     #[test]
     fn competing_owner_hardlink_junction_and_unavailable_directory_fail_closed() -> Result {
         let root = Root::new()?;
+        let dir = root.0.join(Owner::Host.directory());
+        let outside = root.0.join("outside.txt");
+        fs::create_dir_all(&dir)?;
+        fs::write(&outside, b"must survive")?;
+        // Install the adversarial fixture before the owner pins deny link mutation.
+        fs::hard_link(&outside, dir.join("data-bus.log"))
+            .map_err(|e| format!("hardlink fixture creation: {e}"))?;
         let mut logs = Logs::open(&root.0, Owner::Host);
         logs.record("owner");
         let competing = Logs::open(&root.0, Owner::Host);
         assert_eq!(competing.status()["available"], false);
         drop(competing);
-        let dir = root.0.join(Owner::Host.directory());
-        let outside = root.0.join("outside.txt");
-        fs::write(&outside, b"must survive")?;
-        fs::hard_link(&outside, dir.join("data-bus.log"))?;
         assert!(logs.request("clear", None).is_err());
         assert_eq!(fs::read(&outside)?, b"must survive");
         drop(logs);
         let renamed = root.0.join("old");
-        fs::rename(&dir, &renamed)?;
+        fs::rename(&dir, &renamed).map_err(|e| format!("rename after owner drop: {e}"))?;
         let result = std::process::Command::new("cmd")
             .args(["/C", "mklink", "/J"])
             .arg(&dir)
@@ -367,5 +370,23 @@ mod windows {
         assert!(!fs::read_to_string(dir.join("crash.log"))?.contains("old"));
         assert_eq!(fs::read(dir.join("foreign.log"))?, b"foreign");
         Ok(())
+    }
+}
+
+#[test]
+fn utc_record_timestamp_has_seven_fractional_digits_without_formatter_panic() {
+    use std::time::{Duration, UNIX_EPOCH};
+    for (nanos, expected) in [
+        (0, "1970-01-01T00:00:00.0000000Z"),
+        (99, "1970-01-01T00:00:00.0000000Z"),
+        (100, "1970-01-01T00:00:00.0000001Z"),
+        (123_456_789, "1970-01-01T00:00:00.1234567Z"),
+        (999_999_999, "1970-01-01T00:00:00.9999999Z"),
+        (1_000_000_000, "1970-01-01T00:00:01.0000000Z"),
+    ] {
+        assert_eq!(
+            timestamp(UNIX_EPOCH + Duration::from_nanos(nanos)),
+            expected
+        );
     }
 }

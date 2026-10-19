@@ -35,11 +35,11 @@
     {
       "path": "iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs",
       "baseline_blob_sha1": "faded2621f43084b8298713488c354e3a77c4834",
-      "approved_blob_sha1": "477372a408671fda97ade37ac6e43833e9bd1bec",
+      "approved_blob_sha1": "fea3928fe845003ca19f47c5a3dee282cb0be5e7",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Synchronize producer completion and exercise actual DropOldest overflow."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
+        "commit": "e4a17b9c93009865eefde9f74048016d5b10b362",
+        "reason": "User-authorized Legacy CI repair: Observe full/delta only on a loss-free DropOldest subscription within one bounded budget; atomically mutate real MMF words and always stop/join the producer."
       }
     },
     {
@@ -95,11 +95,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
       "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
-      "approved_blob_sha1": "bdb74097eccbd84659376f2649548839eb66b8aa",
+      "approved_blob_sha1": "526934bbc18aadf2d60a92514255701718b258f0",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Synchronize serial buffer access, await actual state/data and StopAsync in finally."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
+        "commit": "a74669f59947d40162e203ea64e1112488f7fd91",
+        "reason": "User-authorized Legacy CI repair: capture the actual one-shot PAIR_MISSING snapshot on the test port Dispose call stack before async state advancement, verify a second watchdog attempt, and retain bounded waits, cleanup and matching-snapshot regression. Production COM tee is unchanged."
       }
     },
     {
@@ -120,6 +120,16 @@
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/5",
         "commit": "c3788065909d8e60c4b45cabc38a93bdfbe0e783",
         "reason": "User-authorized quit ACK repair: register drain ownership before command execution and synchronize shutdown tests without ThreadPool timing assumptions."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/ContractTests.cs",
+      "baseline_blob_sha1": "9fc8930f326d3154ff67ff11bc99367f0007bdad",
+      "approved_blob_sha1": "37a6b3f5299ee2730e0e0fdd7c1a20457de7ad1a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
+        "commit": "e4a17b9c93009865eefde9f74048016d5b10b362",
+        "reason": "User-authorized Legacy CI repair: Wait for the actual MongoDown health event within a bounded async-operation budget, retain exact DbOk assertion and always stop/join/dispose the loop."
       }
     }
   ]

@@ -1,6 +1,6 @@
 # iCem Data Monitor — Rust migration
 
-Workspace в папке `rust/` существующего приватного репозитория. .NET48 AddIn остаётся
+Workspace в папке `rust/` существующего репозитория. .NET48 AddIn остаётся
 в исходном проекте. Цель: идентичный host, трей, web, Modbus и самостоятельный emulator
 при меньшем полном дистрибутиве. Исходная база — commit `96e2206562c9389d1543095232115d81eae4b692`.
 
@@ -145,3 +145,9 @@ startup и прежнему RPC. Console X → hide остаётся откры�
 
 [Emulator X → Hide/Open и завершение UI](docs/HOST_E14.ru.md): тот же HWND, actual
 visibility и завершение in-flight после UI loop. Actions пропущены из-за лимита владельца.
+
+
+E15: [Host console X → Hide](docs/HOST_E15.ru.md), [ADR 0011](docs/adr/0011-host-diagnostic-window.ru.md).
+Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
+окну Host, после detach родительский терминал не адресует Host. Windows/operator
+результаты фиксируются по exact head; полная parity не объявляется.
