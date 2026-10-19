@@ -8,7 +8,19 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class OwnedHostWindowSignal {
-    [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
+    [DllImport("user32.dll", EntryPoint="FindWindowExW", CharSet=CharSet.Unicode, ExactSpelling=true, SetLastError=true)]
+    private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
+    public static IntPtr FindOwned(uint targetPid) {
+        // Keep the null title inside C#: PowerShell coerces a null string argument
+        // to an empty title, which excludes the titled Host diagnostic window.
+        IntPtr window = IntPtr.Zero;
+        while ((window = FindWindowEx(IntPtr.Zero, window, "iCem.Host.Diagnostics.v1", null)) != IntPtr.Zero) {
+            uint ownerPid;
+            GetWindowThreadProcessId(window, out ownerPid);
+            if (ownerPid == targetPid) return window;
+        }
+        return IntPtr.Zero;
+    }
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
@@ -18,14 +30,8 @@ public static class OwnedHostWindowSignal {
 }
 '@
 # Test fixture only. Caller owns the child PID. Never attach to or alter conhost.
-$window = [IntPtr]::Zero
-while ($true) {
-    $window = [OwnedHostWindowSignal]::FindWindowEx([IntPtr]::Zero, $window, 'iCem.Host.Diagnostics.v1', $null)
-    if ($window -eq [IntPtr]::Zero) { throw 'Owned Host diagnostic window not found' }
-    [uint32]$ownerPid = 0
-    [void][OwnedHostWindowSignal]::GetWindowThreadProcessId($window, [ref]$ownerPid)
-    if ($ownerPid -eq $TargetProcessId) { break }
-}
+$window = [OwnedHostWindowSignal]::FindOwned($TargetProcessId)
+if ($window -eq [IntPtr]::Zero) { throw "Owned Host diagnostic window not found for PID $TargetProcessId" }
 if ($ExpectedWindowHandle -ne 0 -and $window.ToInt64() -ne $ExpectedWindowHandle) { throw 'Host window was recreated' }
 switch ($Action) {
     'Close' { if (![OwnedHostWindowSignal]::PostMessage($window, 0x10, [UIntPtr]::Zero, [IntPtr]::Zero)) { throw 'WM_CLOSE failed' } }
