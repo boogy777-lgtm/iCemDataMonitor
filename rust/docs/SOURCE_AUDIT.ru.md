@@ -536,3 +536,38 @@ E21: [проверенные dashboard snapshots](DASHBOARD_E21.ru.md),
 current-selection filtering. REST/SPA/proto, appearance и 176+6 mapping прежние.
 Software/exact-head Windows evidence фиксируется отдельно; physical/SDK/hardware
 acceptance остаётся OPEN. Далее selftest/landiag и stdin CLI отдельными increments.
+
+
+## D51 / E21 PR18 — stale UIA observation in installer contract fixture
+
+Exact head b4df3f3926aa55d828367373945a128c04fc1636, installer-contract run
+39311030990 / job 118260335941: FAIL. The first `ui-saved-options-on` probe passed
+at 19:28:02.068; `ui-explicit-zero-is-unchecked` failed at 19:28:02.480 with
+`System.Windows.Automation.ElementNotAvailableException` (target UI closed).
+Stack: `AutomationElementInformation.get_IsEnabled` → `InstallerUiProbe.Find`
+→ `Wait` → `Click` → `Main`; `Test-WindowsMsiUpgrade.ps1:147` rejected probe exit.
+This is evidence of an unavailable element during discovery, not a failed option
+state/product assertion. The exact wizard transition timing is not established;
+previous passing E20 MSI runs do not prove the scheduling cause of this failure.
+
+Class: observational UIA snapshots in `installer/tests/InstallerUiProbe.cs::Find`,
+not MSI mutation/packaging policy. Inv: retain client PID scope and enabled/name
+filters; catch only `ElementNotAvailableException` around window descendant
+query and control enabled/name reads, then skip stale observations. Existing Wait
+polling re-enumerates within its original budget; no absent-control or exited-client
+success is introduced. N+1: discovery remains in Find; Invoke/Toggle operations
+remain outside these catch scopes and continue to fail immediately on exceptions.
+
+The 15s/100ms control wait, 180s operation wait, 240s outer probe deadline,
+client-exit failure, expected MSI exit codes, checkbox state assertions and scenario
+sequence are unchanged. No mutation retry, MSI relaunch, scenario retry, timeout
+increase or broad catch was added. Production installer/payload and original .NET
+sources are unchanged; immutable baseline and 14-entry ledger are untouched.
+
+Local verification: exact source comparison confirms only Find changed; its two
+new catches are specific to stale-element observations. All code before Find and
+from Wait through cleanup is byte-identical to the failed head. Diff whitespace
+checks PASS. UIA/PowerShell/MSI runtime execution is NOT_RUN on Linux. Existing real
+MSI scenarios must pass again on the amended exact head; the original FAIL remains
+recorded. No dashboard Rust code changed, so the existing 193 portable tests remain
+prior E21 software evidence, not a substitute for Windows installer acceptance.

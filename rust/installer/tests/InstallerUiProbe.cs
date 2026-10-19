@@ -21,12 +21,29 @@ internal static class InstallerUiProbe
             new PropertyCondition(AutomationElement.ProcessIdProperty, client.Id));
         foreach (AutomationElement window in windows)
         {
-            var controls = window.FindAll(TreeScope.Descendants,
-                new PropertyCondition(AutomationElement.ControlTypeProperty, type));
+            AutomationElementCollection controls;
+            try
+            {
+                controls = window.FindAll(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, type));
+            }
+            catch (ElementNotAvailableException)
+            {
+                // A wizard transition can retire a window from this observation snapshot.
+                continue;
+            }
             foreach (AutomationElement control in controls)
             {
-                if (control.Current.IsEnabled && Name(control).StartsWith(prefix, StringComparison.Ordinal))
-                    return control;
+                try
+                {
+                    if (control.Current.IsEnabled && Name(control).StartsWith(prefix, StringComparison.Ordinal))
+                        return control;
+                }
+                catch (ElementNotAvailableException)
+                {
+                    // Keep discovery read-only; the caller polls again within its existing budget.
+                    continue;
+                }
             }
         }
         return null;
