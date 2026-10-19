@@ -59,6 +59,8 @@ pub struct Capture<D: CaptureDevice> {
     stopped: bool,
     now: Duration,
     processing: bool,
+    catalog: Option<crate::sniffer_catalog::Catalog>,
+    witness_due: Duration,
 }
 impl<D: CaptureDevice> Capture<D> {
     pub fn new(device: D, hint: Option<String>, enabled: bool) -> Self {
@@ -86,7 +88,31 @@ impl<D: CaptureDevice> Capture<D> {
             stopped: false,
             now: Duration::ZERO,
             processing: true,
+            catalog: None,
+            witness_due: Duration::from_secs(1),
         }
+    }
+    pub fn with_catalog(mut self, catalog: crate::sniffer_catalog::Catalog) -> Self {
+        self.catalog = Some(catalog);
+        self
+    }
+    pub fn catalog(&self) -> Option<&crate::sniffer_catalog::Catalog> {
+        self.catalog.as_ref()
+    }
+    /// Caller uses its existing bounded file/screen logger, never a new worker.
+    pub fn take_witness(&mut self, now: Duration) -> Option<String> {
+        if now < self.witness_due {
+            return None;
+        }
+        self.witness_due = now.saturating_add(Duration::from_secs(60));
+        let catalog = self.catalog.as_ref()?;
+        Some(format!(
+            "[Ace] witness: ace={} total={} distinctMacs={} {}",
+            self.status.ace_frames,
+            self.status.total_frames,
+            self.macs.len(),
+            catalog.witness()
+        ))
     }
     pub fn status(&self) -> Status {
         let mut status = self.status.clone();
@@ -118,6 +144,9 @@ impl<D: CaptureDevice> Capture<D> {
     /// regain control after each batch, including under a continuously busy NIC.
     pub fn poll(&mut self, now: Duration) {
         self.now = now;
+        if let Some(catalog) = &mut self.catalog {
+            catalog.advance(now);
+        }
         if self.stopped {
             return;
         }
@@ -174,11 +203,13 @@ impl<D: CaptureDevice> Capture<D> {
         self.status.total_frames = self.status.total_frames.saturating_add(1);
         self.window_frames = self.window_frames.saturating_add(1);
         self.last_frame = Some(now);
-        // AceSnifferService.IsAceFrame is intentionally weaker than the emitter
-        // codec predicate: exactly 152 bytes and LLC 03/03/08 or 09 only.
-        if frame.len() == 152 && frame[14..16] == [3, 3] && matches!(frame[16], 8 | 9) {
+        if let Some(catalog) = &mut self.catalog {
+            catalog.observe(frame, now);
+        }
+        // Shared passive predicate, distinct from the emitter's stricter parser.
+        if let Some(header) = icem_protocols::ace::host::header(frame) {
             self.status.ace_frames = self.status.ace_frames.saturating_add(1);
-            let mac = [frame[6], frame[7], frame[8], frame[9], frame[10], frame[11]];
+            let mac = header.source;
             if self.macs.len() < MAX_TRACKED_MACS {
                 self.macs.insert(mac);
             } else if !self.macs.contains(&mac) {

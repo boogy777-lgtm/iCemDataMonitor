@@ -38,6 +38,8 @@ try {
     if ((Get-FileHash $HostRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'templates/variable_registry.json')).Hash -or
         (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemEmulator/templates/variable_registry.json')).Hash -or
         $HostRegistry -ceq $EmulatorRegistry) { throw 'Host/emulator canonical registries were merged or substituted' }
+    $HostLantable = Join-Path $Unpack 'templates/lantable_registry.json'
+    if ((Get-FileHash $HostLantable).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json')).Hash) { throw 'Host lantable catalog missing or substituted' }
     # The installer is rendered from the already verified inventory, including
     # the integrity manifest itself. Adding a payload file cannot miss the MSI.
     $Numeric = Package '0.1.0'

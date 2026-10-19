@@ -91,3 +91,5 @@ pub fn host_autostart()
         exe,
     )?)
 }
+
+pub mod sniffer_catalog;

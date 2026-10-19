@@ -56,6 +56,10 @@
     {
       "source": "templates/variable_registry.json",
       "destination": "templates/variable_registry.json"
+    },
+    {
+      "source": "iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json",
+      "destination": "templates/lantable_registry.json"
     }
   ],
   "directories": [
