@@ -1,6 +1,6 @@
 # План миграции
 
-План Б: разработка в `rust/` существующего приватного `boogy777-lgtm/iCemDataMonitor`.
+План Б: разработка в `rust/` существующего `boogy777-lgtm/iCemDataMonitor`.
 .NET-проекты и AddIn в корне сохраняются. M0 — каркас и контракты; M1–M8 — этапы приёмки.
 Реализованы Modbus-инкремент M4 (codec/mirror/TCP/dev host) и часть M2:
 Windows MMF → Modbus, строгий read-once INI parser. [Статус M2](M2_STATUS.ru.md).
@@ -169,3 +169,5 @@ E15: [Host console X → Hide](HOST_E15.ru.md), [ADR 0011](adr/0011-host-diagnos
 Собственное диагностическое окно; frozen API и E14 сохранены. Ctrl+C относится к
 окну Host, после detach родительский терминал не адресует Host. Windows/operator
 результаты фиксируются по exact head; полная parity не объявляется.
+
+Актуальный порядок оставшегося кода и scope decisions: [HOST_E15, следующая работа](HOST_E15.ru.md#следующие-работы-код-и-отдельные-gates). В legacy status selfTest тоже null; пробел — app --selftest/--landiag, а не сам JSON null. Capture-to-file production wiring не найден; dormant endpoints не активируются.

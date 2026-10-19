@@ -369,3 +369,21 @@ mod windows {
         Ok(())
     }
 }
+
+#[test]
+fn utc_record_timestamp_has_seven_fractional_digits_without_formatter_panic() {
+    use std::time::{Duration, UNIX_EPOCH};
+    for (nanos, expected) in [
+        (0, "1970-01-01T00:00:00.0000000Z"),
+        (99, "1970-01-01T00:00:00.0000000Z"),
+        (100, "1970-01-01T00:00:00.0000001Z"),
+        (123_456_789, "1970-01-01T00:00:00.1234567Z"),
+        (999_999_999, "1970-01-01T00:00:00.9999999Z"),
+        (1_000_000_000, "1970-01-01T00:00:01.0000000Z"),
+    ] {
+        assert_eq!(
+            timestamp(UNIX_EPOCH + Duration::from_nanos(nanos)),
+            expected
+        );
+    }
+}

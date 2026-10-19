@@ -294,9 +294,7 @@ impl Logs {
     }
     fn write_record(&mut self, message: &str) -> io::Result<()> {
         self.prepare_writer()?;
-        let timestamp = chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now())
-            .format("%Y-%m-%dT%H:%M:%S%.7fZ")
-            .to_string();
+        let timestamp = timestamp(std::time::SystemTime::now());
         let mut line = format!("{timestamp} ");
         for c in message.chars() {
             if line.len() + c.len_utf8() + 16 > MAX_RECORD {
@@ -401,6 +399,17 @@ fn append_record(file: &mut impl RecordFile, record: &[u8]) -> io::Result<()> {
         };
     }
     Ok(())
+}
+
+// .NET round-trip UTC precision is 100 ns. Chrono has %.3f/%.6f/%.9f,
+// but %.7f is invalid and panics when Display is written to a String.
+fn timestamp(time: std::time::SystemTime) -> String {
+    let date = chrono::DateTime::<chrono::Utc>::from(time);
+    format!(
+        "{}.{:07}Z",
+        date.format("%Y-%m-%dT%H:%M:%S"),
+        date.timestamp_subsec_nanos() / 100
+    )
 }
 
 #[cfg(test)]
