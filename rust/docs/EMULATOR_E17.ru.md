@@ -48,3 +48,10 @@ keyboard/focus/DPI/session и COM/Npcap/AddIn, SDK release/install/reboot/rollba
 Host E11–E16, logs/typed LogFile/pins, SetLayer toggle и frozen legacy/proto/web
 сохраняются. Capture-to-file и D22 остаются отдельными scope/compatibility решениями.
 Следующий код: app selftest/landiag; legacy selfTest:null не является пробелом.
+
+
+Class: Rust payload changes в `.github/workflows/rust-windows-release.yml`;
+docs вне класса. Inv: apps/crates/Cargo/toolchain запускают существующий native MSI
+contract job. N+1: новый модуль в этих roots не требует изменения filter.
+Раньше runtime-only PR пропускал этот job. Расширен только pull_request paths;
+manual SDK/release conditions и отсутствие fixture publication сохранены.
