@@ -95,11 +95,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
       "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
-      "approved_blob_sha1": "790bf55ee06a0678f4456e4b226b2806fd0221ca",
+      "approved_blob_sha1": "526934bbc18aadf2d60a92514255701718b258f0",
       "provenance": {
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
-        "commit": "d29180be0b55c200ad4902394f725e41aa242ce1",
-        "reason": "User-authorized Legacy CI repair: return the exact snapshot that satisfied the bounded retry-state wait, without changing production COM tee or weakening assertions."
+        "commit": "a74669f59947d40162e203ea64e1112488f7fd91",
+        "reason": "User-authorized Legacy CI repair: capture the actual one-shot PAIR_MISSING snapshot on the test port Dispose call stack before async state advancement, verify a second watchdog attempt, and retain bounded waits, cleanup and matching-snapshot regression. Production COM tee is unchanged."
       }
     },
     {
