@@ -1,6 +1,5 @@
 //! In-process Shell contract; the frozen protobuf remains the RPC schema.
 use crate::proto;
-use serde_json::Value;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Layer {
     Modbus,
@@ -37,7 +36,7 @@ impl Selection {
         if addresses.len() > 298
             || addresses
                 .iter()
-                .any(|a| !(4..600).contains(a) || !a.is_multiple_of(2))
+                .any(|&a| crate::dashboard_client::Address::new(a).is_err())
         {
             return Err("invalid dashboard selection");
         }
@@ -154,8 +153,7 @@ pub enum Response {
     Navigate(proto::NavigateUiResponse),
     Boot(BootBatch),
     Metrics(proto::MetricsSample),
-    // Isolated adapter payloads for the next separate refactoring increments.
-    Dashboard(Value),
+    Dashboard(Box<crate::dashboard_client::Read>),
     Logs(Result<icem_logging::Reply, icem_logging::ControlError>),
     LocalLogs(Result<icem_logging::Reply, icem_logging::ControlError>),
 }

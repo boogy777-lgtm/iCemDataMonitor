@@ -528,3 +528,11 @@ b4211289e6f94fb5a09f493563bf1fa12e92d0f0 / PR17. On old 1111 head, Rust/MSVC
 39268706746 and installer contracts 39268706847 passed; Legacy 39268707217 failed.
 All mandatory checks must run again on the final amended head. Hardware/operator/
 SDK/real-install gates remain separate; exact CI timeout timing remains unproved.
+
+
+E21: [проверенные dashboard snapshots](DASHBOARD_E21.ru.md),
+[ADR0018](adr/0018-typed-dashboard.ru.md): owned Registers/History через Shell и GPUI,
+полная geometry/value/UTC/liveness validation, independent history failure и
+current-selection filtering. REST/SPA/proto, appearance и 176+6 mapping прежние.
+Software/exact-head Windows evidence фиксируется отдельно; physical/SDK/hardware
+acceptance остаётся OPEN. Далее selftest/landiag и stdin CLI отдельными increments.

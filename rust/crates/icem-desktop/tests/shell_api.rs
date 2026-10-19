@@ -1,3 +1,4 @@
+mod support;
 use icem_desktop::Model;
 use icem_web::{
     proto,
@@ -131,7 +132,7 @@ fn all_shell_operations_have_distinct_checked_response_pairs() -> Result<(), Str
         ),
         (
             Request::Dashboard(Selection::new(vec![])?),
-            Response::Dashboard(json!({"registers":{"system":{"scalars":[]}},"history":{}})),
+            Response::Dashboard(Box::new(support::response(json!({})))),
         ),
         (
             Request::Logs(LogCommand::Get),
