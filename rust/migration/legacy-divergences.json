@@ -35,11 +35,11 @@
     {
       "path": "iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs",
       "baseline_blob_sha1": "faded2621f43084b8298713488c354e3a77c4834",
-      "approved_blob_sha1": "fea3928fe845003ca19f47c5a3dee282cb0be5e7",
+      "approved_blob_sha1": "ec3ea4fb1fb6521b58a3386a81eb2b72df78bf7b",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
-        "commit": "e4a17b9c93009865eefde9f74048016d5b10b362",
-        "reason": "User-authorized Legacy CI repair: Observe full/delta only on a loss-free DropOldest subscription within one bounded budget; atomically mutate real MMF words and always stop/join the producer."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/15",
+        "commit": "6d2d87c2ac8daaad555e886bb5f673bc531aa30a",
+        "reason": "User-authorized E19/D45 Legacy CI repair: freshness observes original float/header assertions on a loss-free capacity-one DropOldest attempt within one bounded budget; atomic real-MMF value/heartbeat mutation, explicit producer cancellation/join and writer disposal. Production sampler unchanged."
       }
     },
     {
@@ -95,11 +95,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
       "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
-      "approved_blob_sha1": "526934bbc18aadf2d60a92514255701718b258f0",
+      "approved_blob_sha1": "43bf35c289524bf8b7ea2a99df6de7f633050171",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
-        "commit": "a74669f59947d40162e203ea64e1112488f7fd91",
-        "reason": "User-authorized Legacy CI repair: capture the actual one-shot PAIR_MISSING snapshot on the test port Dispose call stack before async state advancement, verify a second watchdog attempt, and retain bounded waits, cleanup and matching-snapshot regression. Production COM tee is unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/15",
+        "commit": "6d2d87c2ac8daaad555e886bb5f673bc531aa30a",
+        "reason": "User-authorized E19/D46 diagnostic-only change: retain exact PAIR_MISSING/attempt=2 assertions and original 15s/10s deadlines; on Timeout report actual state, attempts, ExecuteTask status/exception and elapsed time. Cause of CI retry timeout remains unknown; production COM tee unchanged."
       }
     },
     {

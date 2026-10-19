@@ -46,3 +46,10 @@ recording=true, как гарантирует owner. Противоречивы�
 Shell `host::start` продолжает записывать Host transport failures, включая nested
 Response::Logs(Err), в свой diagnostic logger. LocalLogs/Incomplete не логируются
 повторно; typed ControlError передаётся UI неизменным, без рекурсии logger failures.
+
+
+E19 includes separately authorized legacy test maintenance D45/D46, not a logging
+API semantic change: loss-free freshness characterization and diagnostic-only
+serial retry timeout evidence. Original failures, unchanged meaningful assertions,
+deadlines and immutable-baseline provenance are in [SOURCE_AUDIT](../SOURCE_AUDIT.ru.md).
+Production .NET code is unchanged; 14 existing exact approvals remain 14.

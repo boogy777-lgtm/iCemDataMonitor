@@ -47,3 +47,17 @@ real iCem/AddIn/COM/Npcap, SDK-built release, install/reboot/rollback/offline и
 measurements — NOT_RUN/OPEN. Mapping 176+6 и appearance прежние; visual parity не
 объявляется. E20 typed emulator payloads и E21 dashboard остаются следующими
 инкрементами. Dormant capture-to-file не активирован.
+
+
+## E19 Legacy CI: D45/D46
+
+Run 39249279178 / job 118048857901 on ba61f4262aac5fe10e5a9868feea22190c50fee1
+failed two unchanged legacy tests. [Audit D45/D46](SOURCE_AUDIT.ru.md) retains the
+original evidence and Class/Inv/N+1. D45 fixes the confirmed first-consumed versus
+first-produced DropOldest assumption using a bounded loss-free attempt, atomic MMF
+mutation, explicit producer stop/join and writer disposal; original freshness
+assertions remain. D46 adds timeout diagnostics only, retaining 15s/10s and exact
+PAIR_MISSING/second-attempt assertions. Serial timeout cause remains unknown.
+Production .NET sources, immutable baseline and 14 approval count remain unchanged.
+Exact approved test blobs refer to source-only commit
+6d2d87c2ac8daaad555e886bb5f673bc531aa30a in PR15; new Windows CI is required.
