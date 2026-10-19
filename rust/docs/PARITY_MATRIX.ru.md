@@ -121,3 +121,11 @@ virtual-port retry timeout gains diagnostics only (cause unknown). Original
 assertions/deadlines remain; no production parity row is upgraded by test changes.
 [Audit/evidence](SOURCE_AUDIT.ru.md) and exact ledger preserve immutable baseline
 and 14 existing approvals. New exact-head Windows results are a separate gate.
+
+
+D48 / PR16: post-merge E19 Legacy run 39253155562 failed the overflow test's initial
+full-sample assumption; the original failure is retained. Test-only repair acquires
+a loss-free initial sample under the same 15s budget, then preserves actual overflow,
+newer heartbeat marker and exact single retained sample assertions. Production
+sampling and parity status are unchanged. [Audit/evidence](SOURCE_AUDIT.ru.md).
+Windows exact-head PR16 execution is a separate gate, NOT_RUN before CI.
