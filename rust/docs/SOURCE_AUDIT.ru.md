@@ -659,3 +659,43 @@ helper invocations again returned 2/2/1 with empty stdout. These prove the check
 layout, source identity and fail-closed local behavior, not Framework path handling,
 Windows Rust compilation or user32 behavior. Actual Framework/Windows exact-head
 execution is still mandatory; no production/dependency/ledger/workflow change.
+
+
+### D52 follow-up — unsupported new fixture-build budget
+
+Head 0743051dcdc6c37154314f4d389a28015c3afd39, Rust run 39315553503 /
+job 118275987649: FAIL. console_stop began at 20:10:05.494 and failed at
+20:10:15.672: `console fixture compilation before Host startup: child PID9040
+deadline exceeded after 10s`. No compiler stderr was reported. Host was never
+launched. Unlike 956498ab, this run did not report CS1504; absence of that error
+does not establish compiler completion or the cause of its delay. Installer
+39315553386 and Legacy 39315553408 (941/941) passed on the same head. The failed
+Rust gate remains recorded; there is no blind rerun or claim of console parity.
+
+The 10s setup cap was NEW in D52, copied from the runtime-action cap without build
+time evidence. It is now explicitly corrected from 10s to 60s for pre-Host BUILD
+preparation only. This is a bounded build policy, not a measured guarantee that
+compilation completes in 60s or proof of a compiler-stall cause. Repository practice
+already separates compilation from operation: MSI UI fixture csc runs before its
+scenarios under the 20-minute installer job; C# oracle compilation runs under the
+35-minute Rust job. This fixture has a tighter independent preparation cap within
+that job. The original 10s action, 2s state, 5s Host stop, assertions and no-retry
+behavior remain unchanged. None of the product behavior is allowed more time.
+
+Preparation logs include start time, compiler path/PID, cwd, source path/size,
+output path, inherited stdout/stderr, elapsed time, wait result/exit state and output
+bytes. Compilation errors/timeouts remain fatal before Host startup. A successful
+compiler exit additionally requires a nonempty regular executable. Owned process
+and directory cleanup remain in place. No production/dependency/workflow/ledger
+change was added, and the C# helper bytes and runtime action method are unchanged.
+
+Local Rust1.99.1 fmt/host --tests check/Clippy locked/offline / -D warnings PASS;
+Linux cargo excludes cfg(windows). A scratch-only harness compiled the exact setup,
+wait and RAII code with only Windows creation_flags omitted. Failed compiler exit7,
+missing source, exit0 with no output, and exit0 with zero-byte output all aborted
+before a subsequent Host-start marker. The zero-byte case recorded output bytes0
+and the explicit no-executable failure. Literal source comparison confirmed all
+Host test assertions, functional bounds and runtime helper invocation unchanged.
+These checks exercise fail-closed preparation; they do not prove Windows Framework
+compilation or actual Host behavior. New exact-head Windows evidence must show
+compiler duration/result and the full behavior checks passing before merge.

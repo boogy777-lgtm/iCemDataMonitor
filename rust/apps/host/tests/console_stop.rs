@@ -258,7 +258,7 @@ async fn ready(pipe: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync
     }
 }
 
-// Compile once before starting Host; each action retains its own 10-second child bound.
+// Build preparation is separate from the unchanged 10-second runtime action bound.
 struct WindowHelper(std::path::PathBuf);
 impl Drop for WindowHelper {
     fn drop(&mut self) {
@@ -281,8 +281,20 @@ impl WindowHelper {
             .ok_or("missing Rust workspace for console fixture source")?
             .join("tests")
             .join("windows");
+        let source = source_directory.join("OwnedConsoleProbe.cs");
+        let source_bytes = std::fs::metadata(&source)?.len();
+        let executable = helper.0.join("OwnedConsoleProbe.exe");
+        eprintln!(
+            "console fixture build start {:?}: compiler {}, cwd {}, source {} ({source_bytes} bytes), output {}; stdout/stderr inherited; preparation limit 60s, no retry",
+            std::time::SystemTime::now(),
+            compiler.display(),
+            source_directory.display(),
+            source.display(),
+            executable.display()
+        );
         let mut output = std::ffi::OsString::from("/out:");
-        output.push(helper.0.join("OwnedConsoleProbe.exe"));
+        output.push(&executable);
+        let started = Instant::now();
         let mut compiler = Owned(
             Command::new(compiler)
                 .current_dir(source_directory)
@@ -293,11 +305,27 @@ impl WindowHelper {
                 .stdin(Stdio::null())
                 .spawn()?,
         );
-        wait(
+        eprintln!("console fixture build: compiler PID {}", compiler.0.id());
+        // Compilation is fixture build work, not a Host operation. The prior new
+        // 10s setup assumption failed on a cold runner before Host was launched.
+        let result = wait(
             &mut compiler.0,
-            Duration::from_secs(10),
-            "console fixture compilation before Host startup",
-        )?;
+            Duration::from_secs(60),
+            "console fixture build preparation before Host startup",
+        );
+        eprintln!(
+            "console fixture build: PID {}, elapsed {:?}, result {:?}, exit {:?}, output bytes {:?}",
+            compiler.0.id(),
+            started.elapsed(),
+            result,
+            compiler.0.try_wait(),
+            std::fs::metadata(&executable).map(|metadata| metadata.len())
+        );
+        result?;
+        let artifact = std::fs::metadata(&executable)?;
+        if !artifact.is_file() || artifact.len() == 0 {
+            return Err("console fixture compiler produced no executable".into());
+        }
         Ok(helper)
     }
     fn action(

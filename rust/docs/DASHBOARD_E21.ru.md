@@ -67,3 +67,13 @@ directory and receives literal `OwnedConsoleProbe.cs`; helper bytes, timeouts,
 actions and assertions remain unchanged. Local source identity, relative-input
 compile and missing-source/invalid-invocation checks PASS; actual Framework/Windows
 execution remains pending. [Evidence and limits](SOURCE_AUDIT.ru.md).
+
+
+D52 build-budget correction: 0743051d Rust run 39315553503 failed the NEW 10s
+compiler setup cap before Host launched. That unsupported preparation assumption
+is explicitly changed 10→60s as a separate bounded BUILD policy, with compiler
+path/PID/start/elapsed/exit/output diagnostics and mandatory nonempty executable.
+The original 10s action, 2s state, 5s Host stop and assertions remain unchanged;
+there are no retries. Local negative setup checks fail before Host startup.
+[Failure and validation limits](SOURCE_AUDIT.ru.md) retain the original failure;
+actual Windows compiler duration and behavior remain required on the amended head.
