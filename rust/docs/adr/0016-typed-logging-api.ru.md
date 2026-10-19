@@ -53,3 +53,9 @@ API semantic change: loss-free freshness characterization and diagnostic-only
 serial retry timeout evidence. Original failures, unchanged meaningful assertions,
 deadlines and immutable-baseline provenance are in [SOURCE_AUDIT](../SOURCE_AUDIT.ru.md).
 Production .NET code is unchanged; 14 existing exact approvals remain 14.
+
+
+Successful Set v1 replies require available=true for OFF as well as ON, because
+both preferences must be published through the owned directory. The mapping guard
+checks typed renderer commands and exact index pairing (D47), with eight fixture
+cases; source mapping remains distinct from visual/operator acceptance.

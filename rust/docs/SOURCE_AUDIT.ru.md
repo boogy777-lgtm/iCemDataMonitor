@@ -367,3 +367,22 @@ NullLogger remains; no new event recorder or behavioral retry was introduced.
 Source-only provenance is the same 6d2d87c commit. Ledger still contains 14 existing
 approvals, baseline hashes/source manifest unchanged. Windows verdict requires a
 new exact-head CI run; neither patch turns the original FAIL into PASS by itself.
+
+
+## D47 / E19 — mapping guard still expected wire action strings
+
+Rust run 39249279337 / job 118048857814 on ba61f4262aac5fe10e5a9868feea22190c50fee1
+failed at Verify-DesktopMapping.ps1:39: `Unimplemented native extension: HostLogsSwitch`.
+The renderer correctly moved to Command::SetEnabled/Command::Clear; the guard still
+searched for removed literal wire strings. This was a guard defect, not missing UI.
+
+Class: native logging extension source mapping (`tools/Verify-DesktopMapping.ps1`),
+not the frozen 176 controls or HTTP grammar. Inv: all six surface/composition and
+unique identity checks remain; index 0 must be set/SetEnabled, index 1 clear/Clear.
+The guard reads the real enumerated renderer array and rejects other command order.
+N+1: the existing fixture mutation pattern now runs eight mapping cases from Scaffold:
+actual mapping, missing SetEnabled, missing Clear, swapped renderer order, swapped
+mapping indices, unknown action, missing composition surface, duplicate identity.
+No dummy wire strings were added to the renderer. Python-equivalent validation is
+local evidence only; actual PowerShell and Windows exact-head acceptance remain
+separate. The original FAIL remains in the evidence history.

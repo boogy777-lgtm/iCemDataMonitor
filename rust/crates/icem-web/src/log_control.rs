@@ -115,7 +115,7 @@ pub fn decode_reply(value: &Value, command: Command) -> Result<LogReply, Control
     };
     if ok
         && let Command::SetEnabled(enabled) = command
-        && (status.enabled != Some(enabled) || (enabled && !status.recording))
+        && (!status.available || status.enabled != Some(enabled) || (enabled && !status.recording))
     {
         return Err(invalid());
     }

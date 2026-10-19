@@ -61,3 +61,19 @@ PAIR_MISSING/second-attempt assertions. Serial timeout cause remains unknown.
 Production .NET sources, immutable baseline and 14 approval count remain unchanged.
 Exact approved test blobs refer to source-only commit
 6d2d87c2ac8daaad555e886bb5f673bc531aa30a in PR15; new Windows CI is required.
+
+
+## D47: typed renderer mapping guard
+
+The earlier ba61f42 Rust run 39249279337 failed a stale mapping guard searching for
+wire action strings in the typed renderer. The guard now checks the actual typed
+button array and exact index/action pairing, retaining all six extension identities
+and composition surfaces, frozen 176 controls and Host console checks. Eight
+fixture cases run from Scaffold (positive and seven negative mutations). Local
+Python-equivalent mapping/negative checks PASS; actual PowerShell is NOT_RUN here.
+[Audit D47](SOURCE_AUDIT.ru.md) retains the failure and architecture checks.
+
+The v1 successful Set decoder also requires available=true for both bool values:
+even OFF must publish through the owner's directory. ON additionally requires a
+ready writer. Contradictory ACKs are Unknown; existing codec tests cover unavailable
+success replies without changing the v1 serializer or owner behavior.

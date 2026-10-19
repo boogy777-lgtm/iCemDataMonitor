@@ -7,6 +7,7 @@ try {
     & (Join-Path $PSScriptRoot 'Test-BaselineGuard.ps1')
     & (Join-Path $PSScriptRoot 'Test-WindowsPackaging.ps1')
     & (Join-Path $PSScriptRoot 'Verify-Baseline.ps1') -RequireComplete:$RequireCompleteBaseline
+    & (Join-Path $PSScriptRoot 'Test-DesktopMappingGuard.ps1')
     & (Join-Path $PSScriptRoot 'Verify-DesktopMapping.ps1')
     # Every workspace member must follow the pinned compiler/edition policy.
     # CI installs directly from rust-toolchain.toml, so no third version literal exists.

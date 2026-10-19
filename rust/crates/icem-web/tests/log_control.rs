@@ -143,6 +143,8 @@ fn typed_v1_codec_preserves_facts_and_never_invents_clear_counts()
         assert_eq!(reply.outcome, Outcome::Applied);
         assert_eq!(log_control::encode_reply(&reply), set);
         assert!(log_control::decode_reply(&set, Command::SetEnabled(!enabled)).is_err());
+        set["data"]["available"] = json!(false);
+        assert!(log_control::decode_reply(&set, Command::SetEnabled(enabled)).is_err());
     }
     assert!(log_control::decode_reply(&value, Command::SetEnabled(false)).is_err());
     let mut stopped = value.clone();
