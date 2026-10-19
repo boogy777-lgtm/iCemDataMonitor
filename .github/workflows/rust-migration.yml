@@ -82,6 +82,7 @@ jobs:
         with:
           name: emulator-differential
           path: |
+            rust/target/control-differential-report.json
             rust/target/emu-differential-report.json
             rust/target/dfb-differential-report.json
             rust/target/lan-differential-report.json

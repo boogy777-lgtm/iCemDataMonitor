@@ -1,5 +1,8 @@
 use icem_desktop::{Model, navigation::NavigationPoll};
-use serde_json::json;
+use icem_web::{
+    proto,
+    shell::{Operation, Response},
+};
 
 #[test]
 fn lost_consume_reply_does_not_retry_or_consume_the_next_pending_section() -> Result<(), String> {
@@ -13,7 +16,10 @@ fn lost_consume_reply_does_not_retry_or_consume_the_next_pending_section() -> Re
         calls += 1;
         Ok(())
     })?;
-    model.apply("navigate", Err("response lost after consume".into()));
+    model.apply_host(
+        Operation::Navigate,
+        Err("response lost after consume".into()),
+    );
     poll.complete();
     assert!(model.navigation.is_none());
     assert!(model.note.contains("автоматический повтор отключён"));
@@ -29,9 +35,12 @@ fn lost_consume_reply_does_not_retry_or_consume_the_next_pending_section() -> Re
     assert_eq!(pending, 2);
     poll.show(); // only a new explicit show demand authorizes a new consume
     poll.submit(true, || {
-        model.apply(
-            "navigate",
-            Ok(json!({"ok":true,"data":{"pending":std::mem::replace(&mut pending,0)}})),
+        model.apply_host(
+            Operation::Navigate,
+            Ok(Response::Navigate(proto::NavigateUiResponse {
+                pending: std::mem::replace(&mut pending, 0),
+                ..Default::default()
+            })),
         );
         calls += 1;
         Ok(())

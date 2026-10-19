@@ -414,3 +414,22 @@ ba8d1af1ca49e4ade40070ff13a358b93cb9a850, PR16. Immutable baseline hashes and 14
 count remain unchanged; production .NET sources are untouched. Local source checks
 confirm unchanged assertions/overflow proof and other methods; Windows runtime is
 NOT_RUN before exact-head PR16 CI. This change does not upgrade hardware/UI parity.
+
+
+## D49 / E20 — Host dashboard status retained obsolete JSON snapshot reads
+
+E19 `dashboard_view.rs` read Model.snapshot[busOpen/addinAlive/zones/layers], but
+E18/E19 Model::apply_host writes only the acknowledged typed Model.host. Thus those
+cards could remain unknown/false despite a valid Host response. Source evidence:
+E19 production tree 8b70979f512a5e0daeac3025a6d4a97d3d4199c9; this was not a Host RPC
+or producer state defect. The original display seam is recorded, not claimed parity.
+
+Class: status display scalar reads in desktop dashboard_view/host; dashboard REST
+register/history adapters are outside this edit. Inv: display derives from the
+latest typed Host status, unknown is explicit, transport fault keeps last-known
+facts while connected=false. Portable regression changes actual status twice,
+checks bus/AddIn/zones/age/layers/error, then checks retained facts after fault.
+N+1: existing StatusView derives from the already checked Host status; no new RPC,
+listener, Engine, dispatcher or queue. Layout/controls/palette unchanged; physical
+UI acceptance remains NOT_RUN. Dead Model.snapshot/JSON Model.apply removed; old
+Host fixture assertions now exercise apply_host instead of that inactive dispatcher.

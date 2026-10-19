@@ -332,7 +332,7 @@ impl Monitor {
         for (label, value) in [
             (
                 "Шина",
-                if self.model.snapshot["busOpen"] == true {
+                if self.model.host_display().bus_open {
                     "открыта".into()
                 } else {
                     "закрыта".into()
@@ -340,7 +340,7 @@ impl Monitor {
             ),
             (
                 "iCEM",
-                if self.model.snapshot["addinAlive"] == true {
+                if self.model.host_display().addin_alive {
                     "жив".into()
                 } else {
                     "нет".into()
@@ -375,27 +375,21 @@ impl Monitor {
         }
         root = root.child(cards);
         for (i, label) in ["COM", "LAN", "RAW"].iter().enumerate() {
-            let zone = &self.model.snapshot["zones"][i];
+            let host = self.model.host_display();
+            let zone = &host.zones[i];
             root = root.child(format!(
                 "{label} · {} · {} ms",
-                if zone["active"] == true {
-                    "live"
-                } else {
-                    "stale"
-                },
-                crate::text(&zone["ageMs"])
+                if zone.active { "live" } else { "stale" },
+                zone.age_ms
             ));
         }
-        let layers = &self.model.snapshot["layers"];
+        let layers = self.model.host_display();
         root = root
             .child(format!(
                 "Modbus: {} · Web: {} · Сниффер: {} · OPC: {}",
-                crate::text(&layers["modbus"]),
-                crate::text(&layers["web"]),
-                crate::text(&layers["sniffer"]),
-                crate::text(&layers["opcDa"])
+                layers.modbus, layers.web, layers.sniffer, layers.opc_da
             ))
-            .child(crate::text(&layers["lastError"]))
+            .child(layers.last_error)
             .child(format!(
                 "Живые метрики · регистров: {} · сэмплов: {} · последний: {} ms назад",
                 dashboard.metrics.len(),

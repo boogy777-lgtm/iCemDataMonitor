@@ -41,7 +41,7 @@ mod windows {
         }
         fn emulator(&self, command: Command) -> Execution {
             let reply = self.execute_application(command);
-            if reply.command == "quit" && reply.result.ok {
+            if reply.command == "quit" && reply.result.ok() {
                 self.quit_ack.store(true, Ordering::Release);
             }
             reply
@@ -87,7 +87,7 @@ mod windows {
             let reply = engine.execute_application(command, |settings| {
                 settings.save(&self.paths).map_err(|e| e.to_string())
             });
-            if reply.command == "quit" && reply.result.ok {
+            if reply.command == "quit" && reply.result.ok() {
                 self.quit_requested_at
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner)

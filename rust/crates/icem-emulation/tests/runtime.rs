@@ -246,12 +246,12 @@ fn applied_settings_survive_save_failure_and_do_not_claim_rejection_or_rollback(
         result.error.as_ref().map(|e| e.category),
         Some(ErrorCategory::Persistence)
     );
-    assert_eq!(
-        result.ui_value()["application"]["outcome"],
-        "AppliedNotPersisted"
-    );
+    assert!(matches!(
+        result.result.data(),
+        Some(icem_emulation::control::payload::Payload::SetEquipment(42))
+    ));
     assert!(
-        result.result.ok,
+        result.result.ok(),
         "frozen v1 historically acknowledges memory application"
     );
     let wire: serde_json::Value = serde_json::from_str(&result.v1().json)?;
@@ -305,7 +305,7 @@ fn live_endpoint_replacement_failure_reports_the_prior_close_effect() -> TestRes
             Ok(())
         });
         assert_eq!(reply.outcome, Outcome::AppliedWithError);
-        assert!(!reply.result.ok);
+        assert!(!reply.result.ok());
         assert_eq!(
             e.settings(),
             &old,
@@ -371,8 +371,13 @@ fn cross_channel_override_failure_reports_applied_com_effect_without_rollback() 
         },
     );
     assert_eq!(
-        read.result.data.as_ref().and_then(|d| d.get("value")),
-        Some(&serde_json::json!(17.))
+        read.result.data().and_then(|d| match d {
+            icem_emulation::control::payload::Payload::Get(
+                icem_emulation::control::payload::Get::Com(v),
+            ) => Some(v.value),
+            _ => None,
+        }),
+        Some(17.)
     );
     let clear = e.execute_application(Command::Clear(target), |_| {
         saves += 1;
@@ -380,5 +385,102 @@ fn cross_channel_override_failure_reports_applied_com_effect_without_rollback() 
     });
     assert_eq!(clear.outcome, Outcome::AppliedWithError);
     assert_eq!(saves, 0);
+    Ok(())
+}
+
+#[test]
+fn complete_v1_engine_envelopes_match_frozen_e19_payloads() -> TestResult {
+    let frozen: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/emulator-v1-e19-golden.json"
+    ))?;
+    let mut e = engine()?;
+    e.set_time(123.25);
+    let mut commands = BTreeSet::new();
+    for row in frozen["rows"].as_array().ok_or("missing golden rows")? {
+        let line = row["line"].as_str().ok_or("missing line")?;
+        let reply = process_line(line, &mut e);
+        let mut value: serde_json::Value = serde_json::from_str(&reply.json)?;
+        if let Some(pid) = value.get_mut("data").and_then(|d| d.get_mut("pid")) {
+            *pid = serde_json::json!(0);
+        }
+        assert_eq!(value, row["reply"], "{line}");
+        assert_eq!(reply.start_watch, row["start_watch"] == true, "{line}");
+        assert_eq!(reply.quit, row["quit"] == true, "{line}");
+        commands.insert(reply.cmd);
+    }
+    assert_eq!(commands, COMMANDS.iter().map(|c| (*c).to_owned()).collect());
+    let unknown = icem_emulation::control::EmuControl::get_variables(&mut e, Some("bogus"))
+        .map_data(icem_emulation::control::payload::Payload::Variables);
+    let wire = icem_emulation::control::to_value(
+        unknown.ok(),
+        "vars",
+        unknown.data().cloned(),
+        unknown.error(),
+    );
+    assert_eq!(wire, frozen["backend_unknown_vars"]);
+    Ok(())
+}
+#[test]
+fn raw_nonfinite_outputs_survive_typed_get_vars_and_status_until_v1_projection() -> TestResult {
+    use icem_emulation::Channel;
+    use icem_emulation::control::{
+        self, Command,
+        application::{Scope, Variable},
+        payload::{Get, Payload},
+    };
+    let mut e = engine()?;
+    command(&mut e, "setport COM12")?;
+    command(&mut e, "start com")?;
+    command(&mut e, "setemulate com 1")?;
+    for (token, bits) in [
+        ("NaN", 0xfff8_0000_0000_0000),
+        ("Infinity", f64::INFINITY.to_bits()),
+        ("-Infinity", f64::NEG_INFINITY.to_bits()),
+        ("-0", (-0.0_f64).to_bits()),
+    ] {
+        let applied =
+            control::parse_line(&format!("set com.Pressure {token}")).map_err(|r| r.json)?;
+        let set = control::execute(applied, &mut e);
+        assert!(set.result.ok());
+        let get = control::execute(
+            Command::Get(Variable {
+                scope: Scope::channel(Channel::Com),
+                name: "Pressure".into(),
+                sv: None,
+            }),
+            &mut e,
+        );
+        let Some(Payload::Get(Get::Com(value))) = get.result.data() else {
+            return Err("wrong typed get family".into());
+        };
+        assert_eq!(value.value.to_bits(), bits);
+        e.tick();
+        let vars = control::execute(Command::Variables(Scope::channel(Channel::Com)), &mut e);
+        let Some(Payload::Variables(vars)) = vars.result.data() else {
+            return Err("wrong variables family".into());
+        };
+        // Vars reports the simulation cache after its real tick, retaining raw IEEE.
+        assert_eq!(
+            vars.com.as_ref().map(|c| c.variables[0].value.to_bits()),
+            Some(bits)
+        );
+        let status = control::execute(Command::Status, &mut e);
+        let Some(Payload::Status(snapshot)) = status.result.data() else {
+            return Err("wrong status family".into());
+        };
+        assert_eq!(snapshot.overrides[0].value.to_bits(), bits);
+        assert_eq!(
+            snapshot.com.values.get("Pressure").map(|v| v.to_bits()),
+            Some(bits)
+        );
+        let wire: serde_json::Value = serde_json::from_str(&get.v1().json)?;
+        if token != "-0" {
+            assert!(wire["data"]["value"].is_null());
+        }
+        assert!(
+            serde_json::from_str::<serde_json::Value>(&status.v1().json)?["data"]["selfTest"]
+                .is_null()
+        );
+    }
     Ok(())
 }

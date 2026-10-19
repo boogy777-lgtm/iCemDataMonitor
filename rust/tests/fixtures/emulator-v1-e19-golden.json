@@ -1,0 +1,858 @@
+{
+  "provenance": {
+    "captured_from": "2ac68f53cb0f1bd4362a10cbd86e13794e0e7076",
+    "clock_seconds": 123.25,
+    "normalization": "status.data.pid only -> 0; fixed injected clock; crate version unchanged",
+    "production_head": "400cdc6c6ef77602cae6b48584b5b95afb850486",
+    "production_tree": "8b70979f512a5e0daeac3025a6d4a97d3d4199c9"
+  },
+  "rows": [
+    {
+      "line": "status",
+      "quit": false,
+      "reply": {
+        "cmd": "status",
+        "data": {
+          "com": {
+            "baud": 9600,
+            "deviceType": "FLECS",
+            "emulating": false,
+            "linesPerSec": 0.0,
+            "linesSent": 0,
+            "port": null,
+            "portOpen": false,
+            "streaming": false,
+            "template": "test",
+            "values": {},
+            "variableCount": 1
+          },
+          "lan": {
+            "adapter": null,
+            "adapterOpen": false,
+            "emulating": false,
+            "equipment": "0x00A86F46",
+            "firmwareSv": false,
+            "framesPerSec": 0.0,
+            "framesSent": 0,
+            "npcapAvailable": true,
+            "streaming": false,
+            "svCount": 6,
+            "svs": [
+              "0x13120203",
+              "0x13120206",
+              "0x13120200",
+              "0x13120209",
+              "0x1312020C",
+              "0x1312020F"
+            ],
+            "targets": [
+              "03:00:01:00:00:20"
+            ]
+          },
+          "overrides": [],
+          "pid": 0,
+          "proto": 1,
+          "selfTest": null,
+          "units": {
+            "densityOverride": null,
+            "flowOverride": null,
+            "levelOverride": null,
+            "preset": "LanNative",
+            "pressureOverride": null,
+            "temperatureOverride": null,
+            "volumeOverride": null
+          },
+          "uptimeSec": 123.2,
+          "version": "0.1.0"
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "help",
+      "quit": false,
+      "reply": {
+        "cmd": "help",
+        "data": {
+          "commands": [
+            "status",
+            "start",
+            "stop",
+            "set",
+            "get",
+            "clear",
+            "profiles",
+            "profile",
+            "vars",
+            "watch",
+            "quit",
+            "help",
+            "ports",
+            "adapters",
+            "setport",
+            "setadapter",
+            "setequipment",
+            "setfirmware",
+            "setemulate",
+            "setpreset",
+            "setunit"
+          ]
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "profiles",
+      "quit": false,
+      "reply": {
+        "cmd": "profiles",
+        "data": {
+          "profiles": [
+            {
+              "active": true,
+              "deviceType": "FLECS",
+              "name": "test",
+              "variableCount": 1
+            }
+          ]
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "profile test",
+      "quit": false,
+      "reply": {
+        "cmd": "profile",
+        "data": {
+          "deviceType": "FLECS",
+          "name": "test",
+          "note": "template swap is on-the-fly; COM stream not interrupted"
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "vars com",
+      "quit": false,
+      "reply": {
+        "cmd": "vars",
+        "data": {
+          "com": {
+            "template": "test",
+            "variables": [
+              {
+                "excludeFromTelemetry": false,
+                "name": "Pressure",
+                "overridden": false,
+                "uom": "psi",
+                "value": 10.0
+              }
+            ]
+          }
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "vars lan",
+      "quit": false,
+      "reply": {
+        "cmd": "vars",
+        "data": {
+          "lan": {
+            "variables": []
+          }
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "vars",
+      "quit": false,
+      "reply": {
+        "cmd": "vars",
+        "data": {
+          "com": {
+            "template": "test",
+            "variables": [
+              {
+                "excludeFromTelemetry": false,
+                "name": "Pressure",
+                "overridden": false,
+                "uom": "psi",
+                "value": 10.0
+              }
+            ]
+          },
+          "lan": {
+            "variables": []
+          }
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "ports",
+      "quit": false,
+      "reply": {
+        "cmd": "ports",
+        "data": {
+          "ports": [
+            {
+              "name": "COM12",
+              "open": false
+            }
+          ]
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "adapters",
+      "quit": false,
+      "reply": {
+        "cmd": "adapters",
+        "data": {
+          "adapters": [
+            {
+              "name": "Ethernet",
+              "open": false
+            }
+          ],
+          "npcapAvailable": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setport COM12",
+      "quit": false,
+      "reply": {
+        "cmd": "setport",
+        "data": {
+          "port": "COM12",
+          "streaming": false
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setadapter Ethernet",
+      "quit": false,
+      "reply": {
+        "cmd": "setadapter",
+        "data": {
+          "adapter": "Ethernet",
+          "streaming": false
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setequipment 0x12345678",
+      "quit": false,
+      "reply": {
+        "cmd": "setequipment",
+        "data": {
+          "equipment": "0x12345678"
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setfirmware 1",
+      "quit": false,
+      "reply": {
+        "cmd": "setfirmware",
+        "data": {
+          "firmwareSv": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setemulate com 1",
+      "quit": false,
+      "reply": {
+        "cmd": "setemulate",
+        "data": {
+          "channel": "com",
+          "emulating": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setemulate lan 0",
+      "quit": false,
+      "reply": {
+        "cmd": "setemulate",
+        "data": {
+          "channel": "lan",
+          "emulating": false
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setpreset 1",
+      "quit": false,
+      "reply": {
+        "cmd": "setpreset",
+        "data": {
+          "preset": "LanNative"
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setunit flow gal/min",
+      "quit": false,
+      "reply": {
+        "cmd": "setunit",
+        "data": {
+          "group": "flow",
+          "unit": "gal/min"
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "setunit pressure",
+      "quit": false,
+      "reply": {
+        "cmd": "setunit",
+        "data": {
+          "group": "pressure",
+          "unit": null
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "start com",
+      "quit": false,
+      "reply": {
+        "cmd": "start",
+        "data": {
+          "channel": "com",
+          "port": "COM12",
+          "streaming": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "start com",
+      "quit": false,
+      "reply": {
+        "cmd": "start",
+        "data": {
+          "already": true,
+          "channel": "com",
+          "port": "COM12",
+          "streaming": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "start lan",
+      "quit": false,
+      "reply": {
+        "cmd": "start",
+        "data": {
+          "adapter": "Ethernet",
+          "channel": "lan",
+          "streaming": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "start lan",
+      "quit": false,
+      "reply": {
+        "cmd": "start",
+        "data": {
+          "adapter": "Ethernet",
+          "already": true,
+          "channel": "lan",
+          "streaming": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "set com.Pressure 17",
+      "quit": false,
+      "reply": {
+        "cmd": "set",
+        "data": {
+          "applied": [
+            {
+              "channel": "com",
+              "name": "Pressure",
+              "uom": "psi"
+            }
+          ],
+          "note": "LAN overrides are pre-unit-conversion (native); the wire value follows the Units preset",
+          "units": "native",
+          "value": 17.0
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "get com.Pressure",
+      "quit": false,
+      "reply": {
+        "cmd": "get",
+        "data": {
+          "channel": "com",
+          "excludeFromTelemetry": false,
+          "name": "Pressure",
+          "overridden": true,
+          "uom": "psi",
+          "value": 17.0
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "clear com.Pressure",
+      "quit": false,
+      "reply": {
+        "cmd": "clear",
+        "data": {
+          "cleared": [
+            "com"
+          ]
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "watch",
+      "quit": false,
+      "reply": {
+        "cmd": "watch",
+        "data": {
+          "intervalSec": 1
+        },
+        "ok": true
+      },
+      "start_watch": true
+    },
+    {
+      "line": "stop com",
+      "quit": false,
+      "reply": {
+        "cmd": "stop",
+        "data": {
+          "channel": "com",
+          "streaming": false,
+          "wasStreaming": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "stop com",
+      "quit": false,
+      "reply": {
+        "cmd": "stop",
+        "data": {
+          "channel": "com",
+          "streaming": false,
+          "wasStreaming": false
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "stop lan",
+      "quit": false,
+      "reply": {
+        "cmd": "stop",
+        "data": {
+          "channel": "lan",
+          "streaming": false,
+          "wasStreaming": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "quit",
+      "quit": true,
+      "reply": {
+        "cmd": "quit",
+        "data": {
+          "quitting": true
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "status",
+      "quit": false,
+      "reply": {
+        "cmd": "status",
+        "data": {
+          "com": {
+            "baud": 9600,
+            "deviceType": "FLECS",
+            "emulating": true,
+            "linesPerSec": 0.0,
+            "linesSent": 0,
+            "port": "COM12",
+            "portOpen": false,
+            "streaming": false,
+            "template": "test",
+            "values": {},
+            "variableCount": 1
+          },
+          "lan": {
+            "adapter": "Ethernet",
+            "adapterOpen": false,
+            "emulating": false,
+            "equipment": "0x12345678",
+            "firmwareSv": false,
+            "framesPerSec": 0.0,
+            "framesSent": 0,
+            "npcapAvailable": true,
+            "streaming": false,
+            "svCount": 6,
+            "svs": [
+              "0x13120203",
+              "0x13120206",
+              "0x13120200",
+              "0x13120209",
+              "0x1312020C",
+              "0x1312020F"
+            ],
+            "targets": [
+              "03:00:01:00:00:20"
+            ]
+          },
+          "overrides": [],
+          "pid": 0,
+          "proto": 1,
+          "selfTest": null,
+          "units": {
+            "densityOverride": null,
+            "flowOverride": "gal/min",
+            "levelOverride": null,
+            "preset": "LanNative",
+            "pressureOverride": null,
+            "temperatureOverride": null,
+            "volumeOverride": null
+          },
+          "uptimeSec": 123.2,
+          "version": "0.1.0"
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "vars bad",
+      "quit": false,
+      "reply": {
+        "cmd": "vars",
+        "error": "unknown channel 'bad' (com|lan)",
+        "ok": false
+      },
+      "start_watch": false
+    },
+    {
+      "line": "get com.missing",
+      "quit": false,
+      "reply": {
+        "cmd": "get",
+        "error": "variable 'missing' not found on com",
+        "ok": false
+      },
+      "start_watch": false
+    },
+    {
+      "line": "set com.Pressure NaN",
+      "quit": false,
+      "reply": {
+        "cmd": "set",
+        "data": {
+          "applied": [
+            {
+              "channel": "com",
+              "name": "Pressure",
+              "uom": "psi"
+            }
+          ],
+          "note": "LAN overrides are pre-unit-conversion (native); the wire value follows the Units preset",
+          "units": "native",
+          "value": null
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "get com.Pressure",
+      "quit": false,
+      "reply": {
+        "cmd": "get",
+        "data": {
+          "channel": "com",
+          "excludeFromTelemetry": false,
+          "name": "Pressure",
+          "overridden": true,
+          "uom": "psi",
+          "value": null
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "vars com",
+      "quit": false,
+      "reply": {
+        "cmd": "vars",
+        "data": {
+          "com": {
+            "template": "test",
+            "variables": [
+              {
+                "excludeFromTelemetry": false,
+                "name": "Pressure",
+                "overridden": true,
+                "uom": "psi",
+                "value": 10.0
+              }
+            ]
+          }
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "status",
+      "quit": false,
+      "reply": {
+        "cmd": "status",
+        "data": {
+          "com": {
+            "baud": 9600,
+            "deviceType": "FLECS",
+            "emulating": true,
+            "linesPerSec": 0.0,
+            "linesSent": 0,
+            "port": "COM12",
+            "portOpen": false,
+            "streaming": false,
+            "template": "test",
+            "values": {},
+            "variableCount": 1
+          },
+          "lan": {
+            "adapter": "Ethernet",
+            "adapterOpen": false,
+            "emulating": false,
+            "equipment": "0x12345678",
+            "firmwareSv": false,
+            "framesPerSec": 0.0,
+            "framesSent": 0,
+            "npcapAvailable": true,
+            "streaming": false,
+            "svCount": 6,
+            "svs": [
+              "0x13120203",
+              "0x13120206",
+              "0x13120200",
+              "0x13120209",
+              "0x1312020C",
+              "0x1312020F"
+            ],
+            "targets": [
+              "03:00:01:00:00:20"
+            ]
+          },
+          "overrides": [
+            {
+              "channel": "com",
+              "name": "Pressure",
+              "value": null
+            }
+          ],
+          "pid": 0,
+          "proto": 1,
+          "selfTest": null,
+          "units": {
+            "densityOverride": null,
+            "flowOverride": "gal/min",
+            "levelOverride": null,
+            "preset": "LanNative",
+            "pressureOverride": null,
+            "temperatureOverride": null,
+            "volumeOverride": null
+          },
+          "uptimeSec": 123.2,
+          "version": "0.1.0"
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "set com.Pressure Infinity",
+      "quit": false,
+      "reply": {
+        "cmd": "set",
+        "data": {
+          "applied": [
+            {
+              "channel": "com",
+              "name": "Pressure",
+              "uom": "psi"
+            }
+          ],
+          "note": "LAN overrides are pre-unit-conversion (native); the wire value follows the Units preset",
+          "units": "native",
+          "value": null
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "get com.Pressure",
+      "quit": false,
+      "reply": {
+        "cmd": "get",
+        "data": {
+          "channel": "com",
+          "excludeFromTelemetry": false,
+          "name": "Pressure",
+          "overridden": true,
+          "uom": "psi",
+          "value": null
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "set com.Pressure -Infinity",
+      "quit": false,
+      "reply": {
+        "cmd": "set",
+        "data": {
+          "applied": [
+            {
+              "channel": "com",
+              "name": "Pressure",
+              "uom": "psi"
+            }
+          ],
+          "note": "LAN overrides are pre-unit-conversion (native); the wire value follows the Units preset",
+          "units": "native",
+          "value": null
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "get com.Pressure",
+      "quit": false,
+      "reply": {
+        "cmd": "get",
+        "data": {
+          "channel": "com",
+          "excludeFromTelemetry": false,
+          "name": "Pressure",
+          "overridden": true,
+          "uom": "psi",
+          "value": null
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "set com.Pressure -0",
+      "quit": false,
+      "reply": {
+        "cmd": "set",
+        "data": {
+          "applied": [
+            {
+              "channel": "com",
+              "name": "Pressure",
+              "uom": "psi"
+            }
+          ],
+          "note": "LAN overrides are pre-unit-conversion (native); the wire value follows the Units preset",
+          "units": "native",
+          "value": -0.0
+        },
+        "ok": true
+      },
+      "start_watch": false
+    },
+    {
+      "line": "get com.Pressure",
+      "quit": false,
+      "reply": {
+        "cmd": "get",
+        "data": {
+          "channel": "com",
+          "excludeFromTelemetry": false,
+          "name": "Pressure",
+          "overridden": true,
+          "uom": "psi",
+          "value": -0.0
+        },
+        "ok": true
+      },
+      "start_watch": false
+    }
+  ],
+  "backend_unknown_vars": {
+    "cmd": "vars",
+    "data": {},
+    "ok": true
+  }
+}

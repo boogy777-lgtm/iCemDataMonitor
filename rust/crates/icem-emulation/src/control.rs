@@ -12,24 +12,53 @@ pub enum FailureEffect {
     None,
     Applied,
 }
+/// Backend success always carries its operation's payload; failures never carry data.
+/// The family cannot be replaced by a different command's payload.
+/// ```compile_fail
+/// use icem_emulation::control::{ControlResult,payload::{Start,Payload}};
+/// let _:ControlResult<Start>=ControlResult::success(Payload::Help);
+/// ```
+/// Result fields are private, so success/error or failure/data cannot be forged.
+/// ```compile_fail
+/// use icem_emulation::control::{ControlResult,FailureEffect,payload::Payload};
+/// let _=ControlResult {ok:true,error:Some("wrong".into()),failure_effect:FailureEffect::None,data:Some(Payload::Help)};
+/// ```
+#[must_use]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ControlResult<T = Payload> {
-    pub ok: bool,
-    pub failure_effect: FailureEffect,
-    pub error: Option<String>,
-    pub data: Option<T>,
+    ok: bool,
+    failure_effect: FailureEffect,
+    error: Option<String>,
+    data: Option<T>,
 }
 impl<T> ControlResult<T> {
-    pub fn success(data: Option<T>) -> Self {
+    pub fn success(data: T) -> Self {
         Self {
             ok: true,
             failure_effect: FailureEffect::None,
             error: None,
-            data,
+            data: Some(data),
         }
     }
+    pub const fn ok(&self) -> bool {
+        self.ok
+    }
+    pub fn data(&self) -> Option<&T> {
+        self.data.as_ref()
+    }
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+    pub const fn failure_effect(&self) -> FailureEffect {
+        self.failure_effect
+    }
     pub fn map_data<U>(self, map: impl FnOnce(T) -> U) -> ControlResult<U> {
-        ControlResult {ok:self.ok,failure_effect:self.failure_effect,error:self.error,data:self.data.map(map)}
+        ControlResult {
+            ok: self.ok,
+            failure_effect: self.failure_effect,
+            error: self.error,
+            data: self.data.map(map),
+        }
     }
     pub fn fail_after_effect(error: impl Into<String>) -> Self {
         Self {
@@ -63,8 +92,12 @@ pub trait EmuControl {
         name: &str,
         sv: Option<u32>,
     ) -> ControlResult<Clear>;
-    fn get_variable(&mut self, channel: Option<&str>, name: &str, sv: Option<u32>)
-    -> ControlResult<Get>;
+    fn get_variable(
+        &mut self,
+        channel: Option<&str>,
+        name: &str,
+        sv: Option<u32>,
+    ) -> ControlResult<Get>;
     fn get_profiles(&mut self) -> ControlResult<Vec<ProfileInfo>>;
     fn set_profile(&mut self, device_type: Option<&str>, name: &str) -> ControlResult<Profile>;
     fn get_variables(&mut self, channel: Option<&str>) -> ControlResult<Variables>;

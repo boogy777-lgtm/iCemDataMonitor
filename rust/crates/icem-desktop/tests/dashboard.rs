@@ -1,4 +1,8 @@
 use icem_desktop::dashboard::{Dashboard, HISTORY_CAPACITY, Sample};
+use icem_web::{
+    proto,
+    shell::{Operation, Response},
+};
 use serde_json::{Value, json};
 fn response(history: Value) -> Value {
     json!({"ok":true,"data":{"registers":{"system":{"scalars":[{"reg":0,"name":"COM","value":1}]},"zones":{"com":{"pairs":[{"addr":4,"addrEnd":5,"name":"Unix","value":"2026-10-17T12:00:00Z"},{"addr":6,"addrEnd":7,"name":"Pressure","value":12.25}]}}},"history":history}})
@@ -89,11 +93,14 @@ fn rest_errors_do_not_disconnect_host_or_discard_registers() {
         connected: true,
         ..Default::default()
     };
-    m.apply("dashboard", Err("REST offline".into()));
+    m.apply_host(Operation::Dashboard, Err("REST offline".into()));
     assert!(m.connected);
     let mut result = response(json!({}));
     result["data"]["historyError"] = json!("HTTP 503 history disabled");
-    m.apply("dashboard", Ok(result));
+    m.apply_host(
+        Operation::Dashboard,
+        Ok(Response::Dashboard(result["data"].clone())),
+    );
     assert!(m.dashboard.loaded);
     assert!(m.dashboard.history_error.is_some());
 }
@@ -103,14 +110,47 @@ fn metric_deltas_keep_update_age_and_survive_disconnect_without_changing_host_tr
         connected: true,
         ..Default::default()
     };
-    m.apply("metrics",Ok(json!({"ok":true,"data":{"at":1000,"heartbeat":7,"deltas":[{"addr":4,"kind":"int32","value":-1},{"addr":6,"kind":"float","value":"NaN"}]}})));
-    m.apply("metrics",Ok(json!({"ok":true,"data":{"at":2000,"heartbeat":8,"deltas":[{"addr":4,"kind":"int32","value":0}]}})));
+    for (seconds, heartbeat, deltas) in [
+        (
+            1,
+            7,
+            vec![
+                proto::RegisterDelta {
+                    addr: 4,
+                    value: Some(proto::register_delta::Value::Int32Value(-1)),
+                },
+                proto::RegisterDelta {
+                    addr: 6,
+                    value: Some(proto::register_delta::Value::FloatValue(f32::NAN)),
+                },
+            ],
+        ),
+        (
+            2,
+            8,
+            vec![proto::RegisterDelta {
+                addr: 4,
+                value: Some(proto::register_delta::Value::Int32Value(0)),
+            }],
+        ),
+    ] {
+        let mut sample = proto::MetricsSample {
+            timestamp_utc: Some(Default::default()),
+            heartbeat,
+            deltas,
+            ..Default::default()
+        };
+        if let Some(timestamp) = &mut sample.timestamp_utc {
+            timestamp.seconds = seconds;
+        }
+        m.apply_host(Operation::Metrics, Ok(Response::Metrics(sample)));
+    }
     assert_eq!(m.dashboard.metrics[&6].at, 1000);
     assert_eq!(m.dashboard.metrics[&6].value, "NaN");
     assert_eq!(m.dashboard.metrics[&4].at, 2000);
     assert_eq!(m.dashboard.sample_count, 2);
     m.dashboard.metrics_pending = true;
-    m.apply("metrics", Err("stream ended".into()));
+    m.apply_host(Operation::Metrics, Err("stream ended".into()));
     assert!(m.connected);
     assert!(!m.dashboard.metrics_pending);
     assert_eq!(m.dashboard.metrics.len(), 2);

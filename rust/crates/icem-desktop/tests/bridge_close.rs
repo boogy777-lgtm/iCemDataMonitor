@@ -26,7 +26,9 @@ impl UiPort for Port {
         match self.logs(LogCommand::Get) {
             Ok(_) => Execution {
                 command: command.name(),
-                result: ControlResult::success(None),
+                result: ControlResult::success(
+                    icem_emulation::control::payload::Payload::SetFirmware(true),
+                ),
                 outcome: Outcome::Applied,
                 error: None,
             },

@@ -1,11 +1,14 @@
-use icem_emulation::control::{self, ControlResult, Data, EmuControl};
+use icem_emulation::{
+    Channel,
+    control::{self, ControlResult, EmuControl, payload::*},
+};
 use serde_json::{Value, json};
 #[derive(Default)]
 struct Fake {
     calls: Vec<Value>,
 }
 impl Fake {
-    fn call(&mut self, method: &str, args: Value) -> ControlResult {
+    fn call<T>(&mut self, method: &str, args: Value, data: T) -> ControlResult<T> {
         self.calls.push(json!({"method":method,"args":args}));
         if args
             .as_array()
@@ -13,71 +16,260 @@ impl Fake {
         {
             ControlResult::fail("backend rejected")
         } else {
-            ControlResult::success(json!({"method":method,"args":args}).as_object().cloned())
+            ControlResult::success(data)
         }
     }
 }
+fn channel(c: &str) -> Channel {
+    if c.eq_ignore_ascii_case("lan") {
+        Channel::Lan
+    } else {
+        Channel::Com
+    }
+}
+fn variable() -> ComVariable {
+    ComVariable {
+        name: "Pressure".into(),
+        uom: "psi".into(),
+        value: 12.5,
+        overridden: true,
+        exclude_from_telemetry: false,
+    }
+}
 impl EmuControl for Fake {
-    fn get_status(&mut self) -> Data {
-        self.call("GetStatus", json!([]));
-        json!({"state":"ready","proto":99})
-            .as_object()
-            .cloned()
-            .unwrap_or_default()
+    fn get_status(&mut self) -> Status {
+        self.calls.push(json!({"method":"GetStatus","args":[]}));
+        Status {
+            pid: 7,
+            version: "fixture".into(),
+            uptime_sec: 3.5,
+            com: ComStatus {
+                lines_per_sec: 0.25,
+                ..Default::default()
+            },
+            lan: LanStatus {
+                frames_per_sec: 0.5,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
     }
-    fn start_channel(&mut self, c: &str) -> ControlResult {
-        self.call("StartChannel", json!([c]))
+    fn start_channel(&mut self, c: &str) -> ControlResult<Start> {
+        self.call(
+            "StartChannel",
+            json!([c]),
+            match channel(c) {
+                Channel::Com => Start::Com {
+                    port: Some("COM12".into()),
+                    already: false,
+                },
+                Channel::Lan => Start::Lan {
+                    adapter: Some("Ethernet".into()),
+                    already: false,
+                },
+            },
+        )
     }
-    fn stop_channel(&mut self, c: &str) -> ControlResult {
-        self.call("StopChannel", json!([c]))
+    fn stop_channel(&mut self, c: &str) -> ControlResult<Stop> {
+        self.call(
+            "StopChannel",
+            json!([c]),
+            Stop {
+                channel: channel(c),
+                was_streaming: true,
+            },
+        )
     }
-    fn set_variable(&mut self, c: Option<&str>, n: &str, v: f64, sv: Option<u32>) -> ControlResult {
+    fn set_variable(
+        &mut self,
+        c: Option<&str>,
+        n: &str,
+        v: f64,
+        sv: Option<u32>,
+    ) -> ControlResult<Set> {
         self.call(
             "SetVariable",
             json!([c, n, format!("{:016X}", v.to_bits()), sv]),
+            Set {
+                applied: vec![AppliedSignal {
+                    signal: if c.is_some_and(|c| c.eq_ignore_ascii_case("lan")) {
+                        Signal::Lan {
+                            sv: sv.unwrap_or(42),
+                            name: n.into(),
+                        }
+                    } else {
+                        Signal::Com { name: n.into() }
+                    },
+                    uom: "psi".into(),
+                }],
+                value: 12.5,
+            },
         )
     }
-    fn clear_variable(&mut self, c: Option<&str>, n: &str, sv: Option<u32>) -> ControlResult {
-        self.call("ClearVariable", json!([c, n, sv]))
+    fn clear_variable(
+        &mut self,
+        c: Option<&str>,
+        n: &str,
+        sv: Option<u32>,
+    ) -> ControlResult<Clear> {
+        self.call(
+            "ClearVariable",
+            json!([c, n, sv]),
+            Clear {
+                cleared: vec![c.map_or(Channel::Com, channel)],
+            },
+        )
     }
-    fn get_variable(&mut self, c: Option<&str>, n: &str, sv: Option<u32>) -> ControlResult {
-        self.call("GetVariable", json!([c, n, sv]))
+    fn get_variable(&mut self, c: Option<&str>, n: &str, sv: Option<u32>) -> ControlResult<Get> {
+        self.call(
+            "GetVariable",
+            json!([c, n, sv]),
+            if c.is_some_and(|c| c.eq_ignore_ascii_case("lan")) {
+                Get::Lan {
+                    sv: sv.unwrap_or(42),
+                    name: n.into(),
+                    uom: "psi".into(),
+                    value: 12.5,
+                    overridden: true,
+                }
+            } else {
+                Get::Com(ComVariable {
+                    name: n.into(),
+                    ..variable()
+                })
+            },
+        )
     }
-    fn get_profiles(&mut self) -> ControlResult {
-        self.call("GetProfiles", json!([]))
+    fn get_profiles(&mut self) -> ControlResult<Vec<ProfileInfo>> {
+        self.call(
+            "GetProfiles",
+            json!([]),
+            vec![ProfileInfo {
+                profile: Profile {
+                    device_type: "FLECS".into(),
+                    name: "Test".into(),
+                },
+                variable_count: 1,
+                active: true,
+            }],
+        )
     }
-    fn set_profile(&mut self, d: Option<&str>, n: &str) -> ControlResult {
-        self.call("SetProfile", json!([d, n]))
+    fn set_profile(&mut self, d: Option<&str>, n: &str) -> ControlResult<Profile> {
+        self.call(
+            "SetProfile",
+            json!([d, n]),
+            Profile {
+                device_type: d.unwrap_or("fixture").into(),
+                name: n.into(),
+            },
+        )
     }
-    fn get_variables(&mut self, c: Option<&str>) -> ControlResult {
-        self.call("GetVariables", json!([c]))
+    fn get_variables(&mut self, c: Option<&str>) -> ControlResult<Variables> {
+        self.call(
+            "GetVariables",
+            json!([c]),
+            Variables {
+                com: if c.is_none_or(|c| c.eq_ignore_ascii_case("com")) {
+                    Some(ComVariables {
+                        template: Some("Test".into()),
+                        variables: vec![variable()],
+                    })
+                } else {
+                    None
+                },
+                lan: if c.is_none_or(|c| c.eq_ignore_ascii_case("lan")) {
+                    Some(vec![LanVariable {
+                        sv: 42,
+                        name: "Pressure".into(),
+                        uom: "psi".into(),
+                        value: Some(12.5),
+                        value_type: "float".into(),
+                        byte_offset: 4,
+                        size: 4,
+                        transmittable: true,
+                        overridden: true,
+                    }])
+                } else {
+                    None
+                },
+            },
+        )
     }
-    fn get_ports(&mut self) -> ControlResult {
-        self.call("GetPorts", json!([]))
+    fn get_ports(&mut self) -> ControlResult<Vec<Endpoint>> {
+        self.call(
+            "GetPorts",
+            json!([]),
+            vec![Endpoint {
+                name: "COM12".into(),
+                open: true,
+            }],
+        )
     }
-    fn get_adapters(&mut self) -> ControlResult {
-        self.call("GetAdapters", json!([]))
+    fn get_adapters(&mut self) -> ControlResult<Adapters> {
+        self.call(
+            "GetAdapters",
+            json!([]),
+            Adapters {
+                adapters: vec![Endpoint {
+                    name: "Ethernet".into(),
+                    open: true,
+                }],
+                npcap_available: true,
+            },
+        )
     }
-    fn set_port(&mut self, p: &str) -> ControlResult {
-        self.call("SetPort", json!([p]))
+    fn set_port(&mut self, p: &str) -> ControlResult<PortChanged> {
+        self.call(
+            "SetPort",
+            json!([p]),
+            PortChanged {
+                port: p.into(),
+                streaming: true,
+            },
+        )
     }
-    fn set_adapter(&mut self, a: &str) -> ControlResult {
-        self.call("SetAdapter", json!([a]))
+    fn set_adapter(&mut self, a: &str) -> ControlResult<AdapterChanged> {
+        self.call(
+            "SetAdapter",
+            json!([a]),
+            AdapterChanged {
+                adapter: a.into(),
+                streaming: true,
+            },
+        )
     }
-    fn set_equipment(&mut self, e: u32) -> ControlResult {
-        self.call("SetEquipment", json!([e]))
+    fn set_equipment(&mut self, e: u32) -> ControlResult<u32> {
+        self.call("SetEquipment", json!([e]), e)
     }
-    fn set_firmware(&mut self, on: bool) -> ControlResult {
-        self.call("SetFirmware", json!([on]))
+    fn set_firmware(&mut self, on: bool) -> ControlResult<bool> {
+        self.call("SetFirmware", json!([on]), on)
     }
-    fn set_emulation(&mut self, c: &str, on: bool) -> ControlResult {
-        self.call("SetEmulation", json!([c, on]))
+    fn set_emulation(&mut self, c: &str, on: bool) -> ControlResult<Emulation> {
+        self.call(
+            "SetEmulation",
+            json!([c, on]),
+            Emulation {
+                channel: channel(c),
+                emulating: on,
+            },
+        )
     }
-    fn set_preset(&mut self, p: i32) -> ControlResult {
-        self.call("SetPreset", json!([p]))
+    fn set_preset(&mut self, p: i32) -> ControlResult<String> {
+        self.call(
+            "SetPreset",
+            json!([p]),
+            ["FirmwareDefault", "LanNative", "Metric", "Imperial"][p as usize].into(),
+        )
     }
-    fn set_unit(&mut self, g: &str, u: Option<&str>) -> ControlResult {
-        self.call("SetUnit", json!([g, u]))
+    fn set_unit(&mut self, g: &str, u: Option<&str>) -> ControlResult<UnitChanged> {
+        self.call(
+            "SetUnit",
+            json!([g, u]),
+            UnitChanged {
+                group: g.into(),
+                unit: u.map(str::to_owned),
+            },
+        )
     }
     fn request_quit(&mut self) {
         self.calls.push(json!({"method":"RequestQuit","args":[]}));
@@ -163,7 +355,7 @@ fn original_dotnet_dispatch() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(
         root.join("rust/target/control-differential-report.json"),
         serde_json::to_vec_pretty(
-            &json!({"result":"PASS","runtime":oracle["runtime"],"cases":rows.len(),"command_count":21,"native_json_diagnostic_cases":native_errors,"comparison":"parsed envelope, backend method+arguments, ACK flags; native JSON syntax diagnostic prose normalized"}),
+            &json!({"result":"PASS","runtime":oracle["runtime"],"cases":rows.len(),"command_count":21,"native_json_diagnostic_cases":native_errors,"payload_families":21,"comparison":"full parsed domain-shaped envelope/data, backend method+exact IEEE arguments, ACK flags; only native JSON syntax diagnostic prose normalized; deterministic backend fixtures, not a legacy Engine oracle"}),
         )?,
     )?;
     Ok(())
@@ -238,9 +430,11 @@ fn all_21_typed_commands_and_v1_adapter_use_the_same_execution_path()
         let reply = control::process_line(line, &mut legacy);
         assert_eq!(result.v1(), reply, "{line}");
         assert_eq!(direct.calls, legacy.calls, "{line}");
+        assert!(result.matches_request(result.command), "{line}");
         assert_eq!(
-            result.ui_value()["data"],
-            serde_json::from_str::<Value>(&reply.json)?["data"]
+            result.result.data().map(Payload::command_name),
+            Some(result.command),
+            "{line}"
         );
     }
     assert_eq!(visited, control::COMMAND_NAMES.iter().copied().collect());
@@ -282,4 +476,31 @@ fn typed_budget_rejects_before_backend_effect() {
         Some(control::application::ErrorCategory::InvalidInput)
     );
     assert!(ctl.calls.is_empty());
+}
+
+#[test]
+fn v1_optional_data_and_error_envelope_remain_frozen() -> Result<(), Box<dyn std::error::Error>> {
+    assert_eq!(
+        control::to_value(true, "status", None, None),
+        json!({"ok":true,"cmd":"status"})
+    );
+    assert_eq!(
+        control::to_value(false, "get", None, None),
+        json!({"ok":false,"cmd":"get","error":"error"})
+    );
+    let mut ctl = Fake::default();
+    for line in ["start COM", "stop LAN", "setemulate LAN 1", "vars COM"] {
+        let command = control::parse_line(line).map_err(|r| r.json)?;
+        let name = command.name();
+        let execution = control::execute(command, &mut ctl);
+        assert!(execution.matches_request(name));
+        let value: Value = serde_json::from_str(&execution.v1().json)?;
+        if value["data"].get("channel").is_some() {
+            assert!(matches!(
+                value["data"]["channel"].as_str(),
+                Some("com" | "lan")
+            ));
+        }
+    }
+    Ok(())
 }

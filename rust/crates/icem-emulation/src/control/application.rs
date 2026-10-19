@@ -1,7 +1,7 @@
 //! Typed in-process emulator API. Legacy coercions are confined to the parent adapter.
+use super::payload::Payload;
 use super::{ControlReply, ControlResult, EmuControl, FailureEffect};
 use crate::{Channel, units::Preset};
-use super::payload::Payload;
 
 impl Channel {
     pub const fn as_str(self) -> &'static str {
@@ -219,6 +219,7 @@ pub struct ApplicationError {
     pub category: ErrorCategory,
     pub message: String,
 }
+#[must_use]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Execution {
     pub command: &'static str,
@@ -259,9 +260,14 @@ impl Execution {
     }
     /// Validate the narrow request/reply association before presentation.
     pub fn matches_request(&self, command: &str) -> bool {
-        self.command == command && (!self.result.ok || self.result.data.as_ref().is_some_and(|data|data.command_name()==command))
+        self.command == command
+            && (!self.result.ok
+                || self
+                    .result
+                    .data
+                    .as_ref()
+                    .is_some_and(|data| data.command_name() == command))
     }
-
 }
 /// The only application dispatch. No timer, persistence owner or engine clone lives here.
 pub fn execute(command: Command, control: &mut impl EmuControl) -> Execution {
@@ -271,39 +277,51 @@ pub fn execute(command: Command, control: &mut impl EmuControl) -> Execution {
     }
     let mutation = command.is_mutation();
     let result = match command {
-        Command::Status => ControlResult::success(Some(Payload::Status(control.get_status()))),
+        Command::Status => ControlResult::success(Payload::Status(Box::new(control.get_status()))),
         Command::Start(c) => control.start_channel(c.as_str()).map_data(Payload::Start),
         Command::Stop(c) => control.stop_channel(c.as_str()).map_data(Payload::Stop),
-        Command::Set(v, value) => {
-            control.set_variable(v.scope.as_deref(), &v.name, value.get(), v.sv).map_data(Payload::Set)
-        }
-        Command::Get(v) => control.get_variable(v.scope.as_deref(), &v.name, v.sv).map_data(Payload::Get),
-        Command::Clear(v) => control.clear_variable(v.scope.as_deref(), &v.name, v.sv).map_data(Payload::Clear),
+        Command::Set(v, value) => control
+            .set_variable(v.scope.as_deref(), &v.name, value.get(), v.sv)
+            .map_data(Payload::Set),
+        Command::Get(v) => control
+            .get_variable(v.scope.as_deref(), &v.name, v.sv)
+            .map_data(Payload::Get),
+        Command::Clear(v) => control
+            .clear_variable(v.scope.as_deref(), &v.name, v.sv)
+            .map_data(Payload::Clear),
         Command::Profiles => control.get_profiles().map_data(Payload::Profiles),
-        Command::Profile { device_type, name } => {
-            control.set_profile(device_type.as_deref(), &name).map_data(Payload::Profile)
-        }
-        Command::Variables(c) => control.get_variables(c.as_deref()).map_data(Payload::Variables),
-        Command::Watch => ControlResult::success(Some(Payload::Watch)),
+        Command::Profile { device_type, name } => control
+            .set_profile(device_type.as_deref(), &name)
+            .map_data(Payload::Profile),
+        Command::Variables(c) => control
+            .get_variables(c.as_deref())
+            .map_data(Payload::Variables),
+        Command::Watch => ControlResult::success(Payload::Watch),
         Command::Quit => {
             control.request_quit();
-            ControlResult::success(Some(Payload::Quit))
+            ControlResult::success(Payload::Quit)
         }
-        Command::Help => ControlResult::success(Some(Payload::Help)),
+        Command::Help => ControlResult::success(Payload::Help),
         Command::Ports => control.get_ports().map_data(Payload::Ports),
         Command::Adapters => control.get_adapters().map_data(Payload::Adapters),
         Command::SetPort(p) => control.set_port(&p).map_data(Payload::SetPort),
         Command::SetAdapter(a) => control.set_adapter(&a).map_data(Payload::SetAdapter),
         Command::SetEquipment(e) => control.set_equipment(e.0).map_data(Payload::SetEquipment),
         Command::SetFirmware(on) => control.set_firmware(on).map_data(Payload::SetFirmware),
-        Command::SetEmulation(c, on) => control.set_emulation(c.as_str(), on).map_data(Payload::SetEmulation),
-        Command::SetPreset(p) => control.set_preset(match p {
-            Preset::FirmwareDefault => 0,
-            Preset::LanNative => 1,
-            Preset::Metric => 2,
-            Preset::Imperial => 3,
-        }).map_data(Payload::SetPreset),
-        Command::SetUnit { group, unit } => control.set_unit(&group, unit.as_deref()).map_data(Payload::SetUnit),
+        Command::SetEmulation(c, on) => control
+            .set_emulation(c.as_str(), on)
+            .map_data(Payload::SetEmulation),
+        Command::SetPreset(p) => control
+            .set_preset(match p {
+                Preset::FirmwareDefault => 0,
+                Preset::LanNative => 1,
+                Preset::Metric => 2,
+                Preset::Imperial => 3,
+            })
+            .map_data(Payload::SetPreset),
+        Command::SetUnit { group, unit } => control
+            .set_unit(&group, unit.as_deref())
+            .map_data(Payload::SetUnit),
     };
     let outcome = if result.ok {
         if mutation {

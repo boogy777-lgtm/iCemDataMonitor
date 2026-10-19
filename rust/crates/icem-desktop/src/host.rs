@@ -187,3 +187,40 @@ impl Model {
         }
     }
 }
+
+/// Scalar display facts derived from the acknowledged typed Host snapshot.
+/// A transport fault keeps last-known text; Model.connected separately reports freshness.
+pub struct StatusView {
+    pub bus_open: bool,
+    pub addin_alive: bool,
+    pub zones: [ZoneView; 3],
+    pub modbus: String,
+    pub web: String,
+    pub sniffer: String,
+    pub opc_da: String,
+    pub last_error: String,
+}
+pub struct ZoneView {
+    pub active: bool,
+    pub age_ms: String,
+}
+impl Model {
+    pub fn host_display(&self) -> StatusView {
+        let status = self.host.as_ref();
+        let layers = status.map(|s| &s.layers);
+        let flag = |value: Option<bool>| value.map_or_else(|| "—".into(), |v| v.to_string());
+        StatusView {
+            bus_open: status.is_some_and(|s| s.bus_open),
+            addin_alive: status.is_some_and(|s| s.addin_alive),
+            zones: std::array::from_fn(|i| ZoneView {
+                active: status.is_some_and(|s| s.zones[i].active),
+                age_ms: status.map_or_else(|| "—".into(), |s| s.zones[i].age_ms.to_string()),
+            }),
+            modbus: flag(layers.map(|s| s.modbus)),
+            web: flag(layers.map(|s| s.web)),
+            sniffer: flag(layers.map(|s| s.sniffer)),
+            opc_da: flag(layers.map(|s| s.opc_da)),
+            last_error: layers.map_or_else(|| "—".into(), |s| s.last_error.clone()),
+        }
+    }
+}

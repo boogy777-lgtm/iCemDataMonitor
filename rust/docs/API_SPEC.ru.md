@@ -323,3 +323,12 @@ Frozen protobuf, активный web API и emulator pipe grammar не меня
 
 Успешный v1 Set подтверждается только при enabled==requested; ON также требует
 recording=true, как гарантирует owner. Противоречивый ACK становится Unknown.
+
+
+E20: [типизированные ответы emulator](EMULATOR_E20.ru.md),
+[ADR0017](adr/0017-typed-emulator-payloads.ru.md): 21 concrete backend payload families,
+private ControlResult, typed Execution → derived GPUI View/Signal identity; JSON только
+на v1 adapter/display formatting, без response roundtrip. Полные 43 E19 wire frames,
+parser C# domain-shaped fixtures и mismatch/nonfinite/partial/save-failure checks.
+D49: dashboard status отображает уже typed Model.host, сохраняя last-known при fault.
+Dashboard REST/selftest/landiag и visual/operator/SDK/hardware gates остаются открытыми.
