@@ -45,3 +45,7 @@ Baseline: 512/513 локальных файлов совпали по Git blob h
 Причина запуска не установлена; ошибка исходников не доказана. Legacy CI не исправляется.
 SDK не подтверждён; real release workflow не запускался. AddIn load, COM/Npcap,
 installer reboot/rollback/offline, sessions и Windows operator acceptance NOT_RUN.
+
+PR #9 затем слит по отдельной команде пользователя; main
+abd9055d65a9ca0f867e792a685287dcd473d3b0. Владелец сообщил об исчерпанном лимите
+Actions. Неисполненные Windows tests остаются NOT_RUN. [Продолжение E14](HOST_E14.ru.md).

@@ -37,3 +37,9 @@ pub use autostart::AutostartEntry;
 mod log_directory;
 #[cfg(windows)]
 pub use log_directory::LogDirectory;
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+mod owned_window;
+#[cfg(windows)]
+pub use owned_window::{request_window_visible, window_visibility};

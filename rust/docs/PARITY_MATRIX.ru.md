@@ -80,3 +80,7 @@ E13: [console owner и Ctrl+C](HOST_E13.ru.md) дополняют P10/P15 без
 статуса PARTIAL. Show/Hide/software faults покрыты; Windows process scenarios
 добавлены, но runtime NOT_RUN. X → hide не доказано и не реализовано: legacy
 CTRL_CLOSE TRUE не является гарантией Windows. Visual/window parity OPEN.
+
+E14: [emulator X/Hide/Open и UI shutdown](HOST_E14.ru.md) реализованы без новых
+контролов. Windows UI/process gates NOT_RUN; window/visual parity PARTIAL.
+Console Host X → hide отдельно OPEN.

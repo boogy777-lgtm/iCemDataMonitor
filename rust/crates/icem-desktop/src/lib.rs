@@ -3,6 +3,7 @@
 pub mod dashboard;
 pub mod logs;
 pub mod navigation;
+pub mod window_visibility;
 use serde_json::{Value, json};
 use std::sync::{
     Arc,
@@ -340,10 +341,24 @@ pub struct Bridge {
     sender: mpsc::SyncSender<Value>,
     receiver: mpsc::Receiver<Reply>,
     stopping: Arc<AtomicBool>,
-    worker: Option<std::thread::JoinHandle<()>>,
+}
+/// Kept outside the view. Finish only AFTER the UI event loop has returned.
+#[must_use = "finish the worker after the UI loop to preserve in-flight writes"]
+pub struct WorkerCompletion {
+    worker: std::thread::JoinHandle<()>,
+    stopping: Arc<AtomicBool>,
+}
+impl WorkerCompletion {
+    pub fn finish(self) -> std::io::Result<()> {
+        self.stopping.store(true, Ordering::Release);
+        self.worker.thread().unpark();
+        self.worker
+            .join()
+            .map_err(|_| std::io::Error::other("desktop worker panicked"))
+    }
 }
 impl Bridge {
-    pub fn start(port: Arc<dyn UiPort>) -> std::io::Result<Self> {
+    pub fn start(port: Arc<dyn UiPort>) -> std::io::Result<(Self, WorkerCompletion)> {
         let (sender, requests) = mpsc::sync_channel::<Value>(16);
         let (responses, receiver) = mpsc::sync_channel(16);
         let stopping = Arc::new(AtomicBool::new(false));
@@ -351,7 +366,7 @@ impl Bridge {
         let worker = std::thread::Builder::new()
             .name("desktop-control".into())
             .spawn(move || {
-                while !stop.load(Ordering::Acquire) {
+                'requests: while !stop.load(Ordering::Acquire) {
                     let request = match requests.recv_timeout(std::time::Duration::from_millis(50))
                     {
                         Ok(request) => request,
@@ -363,17 +378,30 @@ impl Bridge {
                     }
                     let command = request["cmd"].as_str().unwrap_or("").to_owned();
                     let result = port.request(request);
-                    if responses.send(Reply { command, result }).is_err() {
-                        break;
+                    let mut reply = Reply { command, result };
+                    loop {
+                        if stop.load(Ordering::Acquire) {
+                            break 'requests;
+                        }
+                        match responses.try_send(reply) {
+                            Ok(()) => break,
+                            Err(mpsc::TrySendError::Disconnected(_)) => break 'requests,
+                            Err(mpsc::TrySendError::Full(returned)) => {
+                                reply = returned;
+                                std::thread::park_timeout(std::time::Duration::from_millis(50));
+                            }
+                        }
                     }
                 }
             })?;
-        Ok(Self {
-            sender,
-            receiver,
-            stopping,
-            worker: Some(worker),
-        })
+        Ok((
+            Self {
+                sender,
+                receiver,
+                stopping: stopping.clone(),
+            },
+            WorkerCompletion { worker, stopping },
+        ))
     }
     pub fn send(&self, command: Value) -> Result<(), String> {
         self.sender
@@ -391,11 +419,9 @@ impl Drop for Bridge {
         self.stopping.store(true, Ordering::Release);
         let (_, empty) = mpsc::channel();
         drop(std::mem::replace(&mut self.receiver, empty));
-        if let Some(worker) = self.worker.take()
-            && worker.join().is_err()
-        {
-            eprintln!("desktop worker panicked");
-        }
+        // Never join backend I/O from a window-close callback. The worker owns
+        // only the port/queues/stop flag; backpressure observes cancellation within 50 ms.
+        // A request already in progress may finish; the queue is never replayed.
     }
 }
 
