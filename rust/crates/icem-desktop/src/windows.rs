@@ -3,7 +3,7 @@ use crate::tray::{ExitEmulator, OpenEmulator, emulator_tray};
 use crate::{
     Bridge, Model, PRESETS, Page, UNIT_GROUPS, UiPort,
     input::{self, TextInput},
-    text, theme,
+    theme,
 };
 use gpui::{
     App, Application, Bounds, Context, Entity, SharedString, Window, WindowBounds, WindowOptions,
@@ -11,7 +11,7 @@ use gpui::{
 };
 use icem_emulation::{
     Channel,
-    control::{Command, application::Scope},
+    control::{Command, application::Scope, payload::Signal},
     units::Preset,
 };
 use std::{
@@ -23,7 +23,7 @@ use std::{
 #[derive(Clone)]
 enum ChoiceAction {
     Command(Command),
-    Variable { lan: bool, sv: String, name: String },
+    Variable(Signal),
     Group(usize),
 }
 #[derive(Clone)]
@@ -102,21 +102,18 @@ impl View {
     fn choose(&mut self, action: &ChoiceAction, cx: &mut Context<Self>) {
         match action {
             ChoiceAction::Command(command) => self.send(command.clone()),
-            ChoiceAction::Variable { lan, sv, name } => {
-                if let Some(value) = self.model.select_variable(*lan, sv, name) {
-                    self.value_input(*lan).update(cx, |input, cx| {
-                        input.set(value);
-                        cx.notify();
-                    });
+            ChoiceAction::Variable(identity) => {
+                if let Some(value) = self.model.select_variable(identity) {
+                    self.value_input(matches!(identity, Signal::Lan { .. }))
+                        .update(cx, |input, cx| {
+                            input.set(value);
+                            cx.notify();
+                        });
                 }
             }
             ChoiceAction::Group(index) => {
                 self.model.group = *index;
-                let value = self.model.snapshot["units"]
-                    [format!("{}Override", UNIT_GROUPS[*index].0)]
-                .as_str()
-                .unwrap_or("")
-                .to_owned();
+                let value = self.model.emulator.unit_override(*index);
                 self.unit.update(cx, |input, cx| {
                     input.set(value);
                     cx.notify();
@@ -286,9 +283,8 @@ impl View {
     }
     fn channel(&self, lan: bool, cx: &Context<Self>) -> impl IntoElement {
         let channel_id = if lan { Channel::Lan } else { Channel::Com };
-        let channel = channel_id.as_str();
-        let streaming = self.model.flag(channel, "streaming");
-        let emulating = self.model.flag(channel, "emulating");
+        let streaming = self.model.emulator.streaming(channel_id);
+        let emulating = self.model.emulator.emulating(channel_id);
         let mut card = self
             .card()
             .child(self.toggle(
@@ -325,13 +321,13 @@ impl View {
             card = card
                 .child(format!(
                     "{} · {} кадров · {} кадр/с",
-                    self.model.field("lan", "adapter"),
-                    self.model.field("lan", "framesSent"),
-                    self.model.field("lan", "framesPerSec")
+                    self.model.emulator.lan.endpoint.clone(),
+                    self.model.emulator.lan.count.clone(),
+                    self.model.emulator.lan.rate.clone()
                 ))
                 .child(self.picker(
                     "LanAdapterCombo",
-                    self.model.field("lan", "adapter"),
+                    self.model.emulator.lan.endpoint.clone(),
                     endpoints(&self.model.adapters, true),
                     cx,
                 ))
@@ -370,21 +366,21 @@ impl View {
                 .child(self.toggle(
                     "FirmwareSwitch",
                     "firmware-таблицы (доп. SV в суперкадре)",
-                    self.model.flag("lan", "firmwareSv"),
-                    Command::SetFirmware(!self.model.flag("lan", "firmwareSv")),
+                    self.model.emulator.firmware(),
+                    Command::SetFirmware(!self.model.emulator.firmware()),
                     cx,
                 ));
         } else {
             card = card
                 .child(format!(
                     "{} · 9600 baud · {} строк · {} строк/с",
-                    self.model.field("com", "port"),
-                    self.model.field("com", "linesSent"),
-                    self.model.field("com", "linesPerSec")
+                    self.model.emulator.com.endpoint.clone(),
+                    self.model.emulator.com.count.clone(),
+                    self.model.emulator.com.rate.clone()
                 ))
                 .child(self.picker(
                     "ComPortCombo",
-                    self.model.field("com", "port"),
+                    self.model.emulator.com.endpoint.clone(),
                     endpoints(&self.model.ports, false),
                     cx,
                 ))
@@ -392,7 +388,7 @@ impl View {
                 .child(
                     self.picker(
                         "ProfileCombo",
-                        self.model.field("com", "template"),
+                        self.model.emulator.com.template.clone(),
                         self.model
                             .profiles
                             .iter()
@@ -429,15 +425,11 @@ impl View {
             .bg(self.color("MacListBackgroundColor"));
         for (index, row) in rows.iter().enumerate() {
             let label = if lan {
-                format!("{}  {}", row.sv, row.name)
+                format!("{}  {}", row.sv(), row.name())
             } else {
-                row.name.clone()
+                row.name().to_owned()
             };
-            let action = ChoiceAction::Variable {
-                lan,
-                sv: row.sv.clone(),
-                name: row.name.clone(),
-            };
+            let action = ChoiceAction::Variable(row.identity.clone());
             list = list.child(
                 div()
                     .id(("variable", index))
@@ -470,20 +462,16 @@ impl View {
                     if lan { "LanVarCombo" } else { "ComVarCombo" },
                     self.model
                         .selected(lan)
-                        .map(|r| r.name.clone())
+                        .map(|r| r.name().to_owned())
                         .unwrap_or_else(|| "Выберите переменную".into()),
                     rows.iter()
                         .map(|row| Choice {
                             label: if lan {
-                                format!("{} · {}", row.sv, row.name)
+                                format!("{} · {}", row.sv(), row.name())
                             } else {
-                                row.name.clone()
+                                row.name().to_owned()
                             },
-                            action: ChoiceAction::Variable {
-                                lan,
-                                sv: row.sv.clone(),
-                                name: row.name.clone(),
-                            },
+                            action: ChoiceAction::Variable(row.identity.clone()),
                         })
                         .collect(),
                     cx,
@@ -540,14 +528,13 @@ impl View {
             .child(card)
     }
     fn units(&self, cx: &Context<Self>) -> impl IntoElement {
-        let mut card = self.card().child(format!(
-            "Пресет: {}",
-            text(&self.model.snapshot["units"]["preset"])
-        ));
+        let mut card = self
+            .card()
+            .child(format!("Пресет: {}", self.model.emulator.preset.clone()));
         card = card.child(
             self.picker(
                 "PresetCombo",
-                text(&self.model.snapshot["units"]["preset"]),
+                self.model.emulator.preset.clone(),
                 PRESETS
                     .iter()
                     .zip([
@@ -577,7 +564,7 @@ impl View {
                 .collect(),
             cx,
         );
-        card.child(text(&self.model.snapshot["units"]))
+        card.child(self.model.emulator.units.clone())
             .child(groups)
             .child(self.unit.clone())
             .child(
@@ -707,8 +694,8 @@ impl Render for View {
                         } else {
                             "○ Нет связи"
                         },
-                        text(&self.model.snapshot["pid"]),
-                        text(&self.model.snapshot["uptimeSec"]),
+                        self.model.emulator.pid.clone(),
+                        self.model.emulator.uptime.clone(),
                         self.model.lan_header()
                     ))
                     .child(crate::logs::controls(
@@ -848,12 +835,9 @@ pub fn run_emulator(
                         let _ =
                             window.update(cx, |view, window, _| view.observe_visibility(window));
                         view.update(cx, |v, cx| {
-                            let first = v.model.snapshot.is_null();
+                            let first = v.model.emulator.status.is_none();
                             v.bridge.drain(&mut v.model);
-                            if first
-                                && let Some(equipment) =
-                                    v.model.snapshot["lan"]["equipment"].as_str()
-                            {
+                            if first && let Some(equipment) = v.model.emulator.equipment() {
                                 let equipment = equipment.to_owned();
                                 v.equipment.update(cx, |input, cx| {
                                     input.set(equipment);

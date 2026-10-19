@@ -429,6 +429,10 @@ public class SerialTeeServiceTests
         var configStore = new MockConfigStore(BuildFlecs34Variables());
         var logger = NullLogger<SerialTeeService>.Instance;
 
+        using var cts = new CancellationTokenSource();
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        long retrySignalBeforeTicks = -1, retrySignalAfterTicks = -1, retryWaitStartTicks = -1;
+        bool retrySignalSucceeded = false;
         int virtualAttempts = 0;
         var missing = new TaskCompletionSource<ComTeeStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
         var retried = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -437,7 +441,13 @@ public class SerialTeeServiceTests
             int attempt = Interlocked.Increment(ref virtualAttempts);
             if (attempt == 1)
                 throw new IOException("Virtual port not available");
-            retried.TrySetResult(attempt);
+            Interlocked.Exchange(ref retrySignalBeforeTicks, elapsed.ElapsedTicks);
+            Volatile.Write(ref retrySignalSucceeded, retried.TrySetResult(attempt));
+            Interlocked.Exchange(ref retrySignalAfterTicks, elapsed.ElapsedTicks);
+            // This test proves retry, not steady-state forwarding. Release the
+            // worker on this call stack instead of entering synchronous reads
+            // while the asynchronous retry-wait completion is still queued.
+            if (attempt == 2) cts.Cancel();
             return new InMemorySerialPort(name);
         }
 
@@ -456,8 +466,6 @@ public class SerialTeeServiceTests
             CreateVirtual);
         owner = service;
 
-        using var cts = new CancellationTokenSource();
-        var elapsed = System.Diagnostics.Stopwatch.StartNew();
         await service.StartAsync(cts.Token);
         try
         {
@@ -466,10 +474,12 @@ public class SerialTeeServiceTests
             Assert.Equal("PAIR_MISSING", status.State);
             // Verify the watchdog really attempts the virtual port again, rather
             // than only observing its initial error label.
+            retryWaitStartTicks = elapsed.ElapsedTicks;
             Assert.Equal(2, await retried.Task.WaitAsync(TimeSpan.FromSeconds(15)));
 
             cts.Cancel();
             await service.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(2, Volatile.Read(ref virtualAttempts));
         }
         catch (TimeoutException error)
         {
@@ -479,7 +489,12 @@ public class SerialTeeServiceTests
                 $"virtualAttempts={Volatile.Read(ref virtualAttempts)}; " +
                 $"state={actual.State}; pairOk={actual.Com0comPairOk}; up={actual.Up}; " +
                 $"executeTask={service.ExecuteTask?.Status}; " +
-                $"executeException={service.ExecuteTask?.Exception}", error);
+                $"executeException={service.ExecuteTask?.Exception}; " +
+                $"stopwatchFrequency={System.Diagnostics.Stopwatch.Frequency}; retryWaitStartTicks={retryWaitStartTicks}; " +
+                $"retryDeadlineTicks={retryWaitStartTicks + 15 * System.Diagnostics.Stopwatch.Frequency}; " +
+                $"retrySignalBeforeTicks={Volatile.Read(ref retrySignalBeforeTicks)}; " +
+                $"retrySignalAfterTicks={Volatile.Read(ref retrySignalAfterTicks)}; " +
+                $"retrySignalSucceeded={Volatile.Read(ref retrySignalSucceeded)}; retryTask={retried.Task.Status}", error);
         }
         finally
         {

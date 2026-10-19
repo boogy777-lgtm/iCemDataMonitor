@@ -19,7 +19,10 @@ fn status() -> proto::HostStatus {
 #[test]
 fn malformed_status_cannot_confirm_connection_or_freshness() {
     let mut model = Model::default();
-    model.apply("status", Ok(json!({"ok":true})));
+    model.apply_host(
+        Operation::Status,
+        Response::status(proto::HostStatus::default()),
+    );
     assert!(!model.connected);
     for bad in [
         proto::HostStatus::default(),
@@ -233,4 +236,47 @@ fn shell_close_discards_queued_mutations_and_finishes_started_work()
     completion.finish()?;
     assert_eq!(calls.load(Ordering::Acquire), 1);
     Ok(())
+}
+
+#[test]
+fn dashboard_status_display_uses_latest_acknowledged_host_and_retains_last_known_on_fault() {
+    let mut model = Model::default();
+    let unknown = model.host_display();
+    assert!(!unknown.bus_open && !unknown.addin_alive);
+    assert_eq!(unknown.zones[0].age_ms, "—");
+    assert_eq!(unknown.modbus, "—");
+    let mut first = status();
+    first.bus_open = true;
+    first.addin_alive = true;
+    first.zones[0].active = true;
+    first.zones[0].age_ms = 12;
+    first.zones[1].age_ms = 34;
+    first.zones[2].age_ms = 56;
+    first.layers = Some(proto::LayerState {
+        modbus: true,
+        web: false,
+        sniffer: true,
+        opc_da: false,
+        last_error: "probe error".into(),
+        ..Default::default()
+    });
+    model.apply_host(Operation::Status, Response::status(first));
+    let display = model.host_display();
+    assert!(display.bus_open && display.addin_alive);
+    assert!(display.zones[0].active);
+    assert!(!display.zones[1].active);
+    assert_eq!(display.zones.map(|z| z.age_ms), ["12", "34", "56"]);
+    assert_eq!(
+        (display.modbus, display.web, display.sniffer, display.opc_da),
+        ("true".into(), "false".into(), "true".into(), "false".into())
+    );
+    assert_eq!(display.last_error, "probe error");
+    let mut second = status();
+    second.zones[2].age_ms = 99;
+    model.apply_host(Operation::Status, Response::status(second));
+    assert!(!model.host_display().bus_open);
+    assert_eq!(model.host_display().zones[2].age_ms, "99");
+    model.apply_host(Operation::Status, Err("disconnected".into()));
+    assert!(!model.connected);
+    assert_eq!(model.host_display().zones[2].age_ms, "99");
 }

@@ -1,6 +1,7 @@
 //! GPUI desktop presentation. Domain state stays behind the original control seam.
 #![forbid(unsafe_code)]
 pub mod dashboard;
+pub mod emulator;
 pub mod logs;
 pub mod navigation;
 pub mod window_visibility;
@@ -9,6 +10,7 @@ use icem_emulation::{
     control::{
         Command, Execution,
         application::{Equipment, ErrorCategory, NativeValue, Scope, Variable},
+        payload::Signal,
     },
 };
 use serde_json::Value;
@@ -40,13 +42,37 @@ pub enum Page {
     Status,
     Dashboard,
 }
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VariableRow {
-    pub sv: String,
-    pub name: String,
+    pub identity: Signal,
     pub value: String,
     pub uom: String,
     pub overridden: bool,
+}
+impl Default for VariableRow {
+    fn default() -> Self {
+        Self {
+            identity: Signal::Com {
+                name: String::new(),
+            },
+            value: String::new(),
+            uom: String::new(),
+            overridden: false,
+        }
+    }
+}
+impl VariableRow {
+    pub fn name(&self) -> &str {
+        match &self.identity {
+            Signal::Com { name } | Signal::Lan { name, .. } => name,
+        }
+    }
+    pub fn sv(&self) -> String {
+        match self.identity {
+            Signal::Com { .. } => String::new(),
+            Signal::Lan { sv, .. } => format!("0x{sv:08X}"),
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProfileChoice {
@@ -81,7 +107,7 @@ pub struct Model {
     pub light: bool,
     pub connected: bool,
     pub note: String,
-    pub snapshot: Value,
+    pub emulator: emulator::View,
     pub host: Option<icem_web::shell::Status>,
     pub com_variables: Vec<VariableRow>,
     pub lan_variables: Vec<VariableRow>,
@@ -129,167 +155,6 @@ impl Model {
                 .as_ref()
                 .is_some_and(|s| s.layers.sniffer_available && !s.layers.busy)
     }
-    pub fn flag(&self, channel: &str, field: &str) -> bool {
-        self.snapshot[channel][field].as_bool() == Some(true)
-    }
-    pub fn field(&self, channel: &str, field: &str) -> String {
-        text(&self.snapshot[channel][field])
-    }
-    pub fn apply(&mut self, cmd: &str, response: Result<Value, String>) {
-        if cmd == "navigate" {
-            self.navigation = None;
-            match response {
-                Ok(value) if value["ok"] == true => {
-                    self.navigation = match value["data"]["pending"].as_i64() {
-                        Some(1) => Some(true),
-                        Some(2) => Some(false),
-                        _ => None,
-                    }
-                }
-                Ok(value) => self.note = format!("Navigation: {}", text(&value["error"])),
-                Err(error) => {
-                    self.note = format!(
-                        "Navigation: {error}; результат неизвестен, автоматический повтор отключён"
-                    );
-                }
-            }
-            return;
-        }
-        if cmd == "boot" {
-            let result = response.and_then(|v| {
-                if v["ok"] == true {
-                    Ok(v["data"].clone())
-                } else {
-                    Err(text(&v["error"]))
-                }
-            });
-            match result {
-                Err(error) => {
-                    self.boot_stages.clear();
-                    self.boot_ready = false;
-                    self.boot_error = Some(error);
-                }
-                Ok(data) => {
-                    if data["reset"] == true {
-                        self.boot_stages.clear();
-                    }
-                    for stage in data["stages"].as_array().into_iter().flatten() {
-                        if let Some(ordinal) = stage["ordinal"]
-                            .as_u64()
-                            .and_then(|v| u32::try_from(v).ok())
-                            .filter(|&v| (1..=64).contains(&v))
-                        {
-                            self.boot_stages.insert(
-                                ordinal,
-                                BootStageRow {
-                                    id: text(&stage["id"]),
-                                    title: text(&stage["title"]),
-                                    completed: stage["completed"] == true,
-                                    detail: stage["detail"].as_str().unwrap_or("").into(),
-                                },
-                            );
-                        }
-                    }
-                    self.boot_ready = self
-                        .boot_stages
-                        .values()
-                        .any(|s| s.id == "ready" && s.completed);
-                    self.boot_error = None;
-                }
-            }
-            return;
-        }
-        if cmd == "metrics" {
-            self.dashboard.apply_metrics(response);
-            return;
-        }
-        if cmd == "dashboard" {
-            self.dashboard.apply(response);
-            return;
-        }
-        let result = match response {
-            Ok(result) => result,
-            Err(error) => {
-                if cmd == "status" {
-                    self.host_logs.fresh = false;
-                    self.boot_stages.clear();
-                    self.boot_ready = false;
-                }
-                self.connected = false;
-                self.note = format!("⚠ {error}");
-                return;
-            }
-        };
-        if result["ok"] != true {
-            let effect = if result["application"]["outcome"] == "AppliedWithError" {
-                "Состояние частично изменено; "
-            } else {
-                ""
-            };
-            self.note = format!("⚠ {effect}{}", text(&result["error"]));
-            return;
-        }
-        let data = &result["data"];
-        match cmd {
-            "layer" => {
-                self.snapshot["layers"] = data.clone();
-                self.note = data["lastError"].as_str().unwrap_or("").to_owned();
-            }
-            "status" => {
-                if !data.is_object() {
-                    self.connected = false;
-                    self.host_logs.fresh = false;
-                    self.boot_stages.clear();
-                    self.boot_ready = false;
-                    self.note = "⚠ invalid status data".into();
-                    return;
-                }
-                self.snapshot = data.clone();
-                self.connected = true;
-            }
-            "prefs" | "theme" => {
-                self.light = data["themeLight"].as_bool().unwrap_or(false);
-            }
-            "profiles" => {
-                self.profiles = data["profiles"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|v| {
-                        Some(ProfileChoice {
-                            name: v["name"].as_str()?.into(),
-                            device_type: v["deviceType"].as_str()?.into(),
-                        })
-                    })
-                    .collect()
-            }
-            "ports" => self.ports = names(&data["ports"]),
-            "adapters" => self.adapters = names(&data["adapters"]),
-            "vars" => {
-                let com = self.selected(false).map(|r| (r.sv.clone(), r.name.clone()));
-                let lan = self.selected(true).map(|r| (r.sv.clone(), r.name.clone()));
-                update_rows(&mut self.com_variables, &data["com"]["variables"]);
-                update_rows(&mut self.lan_variables, &data["lan"]["variables"]);
-                self.selected_com = com.and_then(|(sv, name)| {
-                    self.com_variables
-                        .iter()
-                        .position(|r| r.sv == sv && r.name == name)
-                });
-                self.selected_lan = lan.and_then(|(sv, name)| {
-                    self.lan_variables
-                        .iter()
-                        .position(|r| r.sv == sv && r.name == name)
-                });
-            }
-            _ => self.note = format!("✓ {cmd}"),
-        }
-        if result["application"]["outcome"] == "AppliedNotPersisted" {
-            self.note = format!(
-                "⚠ {cmd}: применено в памяти, не сохранено: {}",
-                text(&result["application"]["message"])
-            );
-        }
-    }
     pub fn selected(&self, lan: bool) -> Option<&VariableRow> {
         if lan {
             self.selected_lan.and_then(|i| self.lan_variables.get(i))
@@ -297,13 +162,14 @@ impl Model {
             self.selected_com.and_then(|i| self.com_variables.get(i))
         }
     }
-    pub fn select_variable(&mut self, lan: bool, sv: &str, name: &str) -> Option<String> {
+    pub fn select_variable(&mut self, identity: &Signal) -> Option<String> {
+        let lan = matches!(identity, Signal::Lan { .. });
         let rows = if lan {
             &self.lan_variables
         } else {
             &self.com_variables
         };
-        let index = rows.iter().position(|row| row.sv == sv && row.name == name);
+        let index = rows.iter().position(|row| &row.identity == identity);
         let value = index.map(|i| rows[i].value.clone());
         if lan {
             self.selected_lan = index;
@@ -316,19 +182,16 @@ impl Model {
         let row = self
             .selected(lan)
             .ok_or_else(|| "выберите переменную в списке слева".to_owned())?;
-        let variable = Variable {
-            scope: Scope::channel(if lan { Channel::Lan } else { Channel::Com }),
-            name: row.name.clone(),
-            sv: if lan {
-                Some(
-                    u32::from_str_radix(
-                        row.sv.trim_start_matches("0x").trim_start_matches("0X"),
-                        16,
-                    )
-                    .map_err(|_| "неверный SV")?,
-                )
-            } else {
-                None
+        let variable = match &row.identity {
+            Signal::Com { name } => Variable {
+                scope: Scope::channel(Channel::Com),
+                name: name.clone(),
+                sv: None,
+            },
+            Signal::Lan { sv, name } => Variable {
+                scope: Scope::channel(Channel::Lan),
+                name: name.clone(),
+                sv: Some(*sv),
             },
         };
         if let Some(value) = value {
@@ -346,36 +209,7 @@ impl Model {
         }
     }
     pub fn lan_header(&self) -> String {
-        if self.snapshot["lan"]["npcapAvailable"] == false {
-            "LAN: ⚠ Npcap не установлен".into()
-        } else if self.flag("lan", "streaming") {
-            format!("LAN: стрим → {}", self.field("lan", "adapter"))
-        } else if matches!(self.field("lan", "adapter").as_str(), "" | "—") {
-            "LAN: ⚠ адаптер не выбран".into()
-        } else {
-            "LAN: выкл".into()
-        }
-    }
-}
-fn names(value: &Value) -> Vec<String> {
-    value
-        .as_array()
-        .into_iter()
-        .flatten()
-        .map(|v| text(v.get("name").unwrap_or(v)))
-        .collect()
-}
-fn update_rows(rows: &mut Vec<VariableRow>, value: &Value) {
-    let Some(values) = value.as_array() else {
-        return;
-    };
-    rows.resize_with(values.len(), VariableRow::default);
-    for (row, v) in rows.iter_mut().zip(values) {
-        row.sv = v["sv"].as_str().unwrap_or("").to_owned();
-        row.name = text(&v["name"]);
-        row.value = text(&v["value"]);
-        row.uom = text(&v["uom"]);
-        row.overridden = v["overridden"] == true;
+        self.emulator.lan_header()
     }
 }
 pub enum Reply {
@@ -385,7 +219,7 @@ pub enum Reply {
     ),
     Emulator {
         command: String,
-        result: Result<Value, String>,
+        result: Execution,
     },
 }
 enum Request {
@@ -401,7 +235,7 @@ impl Bridge {
             Request::Logs(request) => Reply::Logs(request, port.logs(request.command)),
             Request::Emulator(command) => Reply::Emulator {
                 command: command.name().to_owned(),
-                result: Ok(port.emulator(command).ui_value()),
+                result: port.emulator(command),
             },
         })?;
         Ok((Self { worker }, completion))
@@ -423,7 +257,7 @@ impl Bridge {
                         model.host_logs.apply(result)
                     }
                 }
-                Reply::Emulator { command, result } => model.apply(&command, result),
+                Reply::Emulator { command, result } => model.apply_emulator(&command, result),
             }
         }
     }

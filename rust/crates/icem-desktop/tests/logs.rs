@@ -46,7 +46,10 @@ fn state_is_owner_acknowledged_disconnect_retains_facts_and_blocks_mutations() {
         .host_logs
         .apply(Ok(reply(Some(false), Outcome::Completed)));
     assert_eq!(model.host_logs.enabled(), Some(false));
-    model.apply("status", Err("Host disconnected".into()));
+    model.apply_host(
+        icem_web::shell::Operation::Status,
+        Err("Host disconnected".into()),
+    );
     assert!(!model.host_logs.actionable());
     let mut partial = reply(Some(true), Outcome::Incomplete);
     partial.status.error = "partial clear: locked file".into();

@@ -1,7 +1,7 @@
 //! Typed in-process emulator API. Legacy coercions are confined to the parent adapter.
+use super::payload::Payload;
 use super::{ControlReply, ControlResult, EmuControl, FailureEffect};
 use crate::{Channel, units::Preset};
-use serde_json::{Value, json};
 
 impl Channel {
     pub const fn as_str(self) -> &'static str {
@@ -219,6 +219,7 @@ pub struct ApplicationError {
     pub category: ErrorCategory,
     pub message: String,
 }
+#[must_use]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Execution {
     pub command: &'static str,
@@ -257,18 +258,15 @@ impl Execution {
         reply.quit = self.command == "quit" && self.result.ok;
         reply
     }
-    /// Owned UI data; no JSON stringify/parse and no new external protocol version.
-    pub fn ui_value(&self) -> Value {
-        let mut value = super::to_value(
-            self.result.ok,
-            self.command,
-            self.result.data.clone(),
-            self.result.error.as_deref(),
-        );
-        value["application"] = json!({"outcome":format!("{:?}", self.outcome),
-            "category":self.error.as_ref().map(|e| e.category.code()),
-            "message":self.error.as_ref().map(|e| &e.message)});
-        value
+    /// Validate the narrow request/reply association before presentation.
+    pub fn matches_request(&self, command: &str) -> bool {
+        self.command == command
+            && (!self.result.ok
+                || self
+                    .result
+                    .data
+                    .as_ref()
+                    .is_some_and(|data| data.command_name() == command))
     }
 }
 /// The only application dispatch. No timer, persistence owner or engine clone lives here.
@@ -279,47 +277,51 @@ pub fn execute(command: Command, control: &mut impl EmuControl) -> Execution {
     }
     let mutation = command.is_mutation();
     let result = match command {
-        Command::Status => {
-            let mut data = control.get_status();
-            data.insert("proto".into(), json!(super::PROTO_VERSION));
-            ControlResult::success(Some(data))
-        }
-        Command::Start(c) => control.start_channel(c.as_str()),
-        Command::Stop(c) => control.stop_channel(c.as_str()),
-        Command::Set(v, value) => {
-            control.set_variable(v.scope.as_deref(), &v.name, value.get(), v.sv)
-        }
-        Command::Get(v) => control.get_variable(v.scope.as_deref(), &v.name, v.sv),
-        Command::Clear(v) => control.clear_variable(v.scope.as_deref(), &v.name, v.sv),
-        Command::Profiles => control.get_profiles(),
-        Command::Profile { device_type, name } => {
-            control.set_profile(device_type.as_deref(), &name)
-        }
-        Command::Variables(c) => control.get_variables(c.as_deref()),
-        Command::Watch => ControlResult::success(json!({"intervalSec":1}).as_object().cloned()),
+        Command::Status => ControlResult::success(Payload::Status(Box::new(control.get_status()))),
+        Command::Start(c) => control.start_channel(c.as_str()).map_data(Payload::Start),
+        Command::Stop(c) => control.stop_channel(c.as_str()).map_data(Payload::Stop),
+        Command::Set(v, value) => control
+            .set_variable(v.scope.as_deref(), &v.name, value.get(), v.sv)
+            .map_data(Payload::Set),
+        Command::Get(v) => control
+            .get_variable(v.scope.as_deref(), &v.name, v.sv)
+            .map_data(Payload::Get),
+        Command::Clear(v) => control
+            .clear_variable(v.scope.as_deref(), &v.name, v.sv)
+            .map_data(Payload::Clear),
+        Command::Profiles => control.get_profiles().map_data(Payload::Profiles),
+        Command::Profile { device_type, name } => control
+            .set_profile(device_type.as_deref(), &name)
+            .map_data(Payload::Profile),
+        Command::Variables(c) => control
+            .get_variables(c.as_deref())
+            .map_data(Payload::Variables),
+        Command::Watch => ControlResult::success(Payload::Watch),
         Command::Quit => {
             control.request_quit();
-            ControlResult::success(json!({"quitting":true}).as_object().cloned())
+            ControlResult::success(Payload::Quit)
         }
-        Command::Help => ControlResult::success(
-            json!({"commands":super::COMMAND_NAMES})
-                .as_object()
-                .cloned(),
-        ),
-        Command::Ports => control.get_ports(),
-        Command::Adapters => control.get_adapters(),
-        Command::SetPort(p) => control.set_port(&p),
-        Command::SetAdapter(a) => control.set_adapter(&a),
-        Command::SetEquipment(e) => control.set_equipment(e.0),
-        Command::SetFirmware(on) => control.set_firmware(on),
-        Command::SetEmulation(c, on) => control.set_emulation(c.as_str(), on),
-        Command::SetPreset(p) => control.set_preset(match p {
-            Preset::FirmwareDefault => 0,
-            Preset::LanNative => 1,
-            Preset::Metric => 2,
-            Preset::Imperial => 3,
-        }),
-        Command::SetUnit { group, unit } => control.set_unit(&group, unit.as_deref()),
+        Command::Help => ControlResult::success(Payload::Help),
+        Command::Ports => control.get_ports().map_data(Payload::Ports),
+        Command::Adapters => control.get_adapters().map_data(Payload::Adapters),
+        Command::SetPort(p) => control.set_port(&p).map_data(Payload::SetPort),
+        Command::SetAdapter(a) => control.set_adapter(&a).map_data(Payload::SetAdapter),
+        Command::SetEquipment(e) => control.set_equipment(e.0).map_data(Payload::SetEquipment),
+        Command::SetFirmware(on) => control.set_firmware(on).map_data(Payload::SetFirmware),
+        Command::SetEmulation(c, on) => control
+            .set_emulation(c.as_str(), on)
+            .map_data(Payload::SetEmulation),
+        Command::SetPreset(p) => control
+            .set_preset(match p {
+                Preset::FirmwareDefault => 0,
+                Preset::LanNative => 1,
+                Preset::Metric => 2,
+                Preset::Imperial => 3,
+            })
+            .map_data(Payload::SetPreset),
+        Command::SetUnit { group, unit } => control
+            .set_unit(&group, unit.as_deref())
+            .map_data(Payload::SetUnit),
     };
     let outcome = if result.ok {
         if mutation {

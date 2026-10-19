@@ -414,3 +414,117 @@ ba8d1af1ca49e4ade40070ff13a358b93cb9a850, PR16. Immutable baseline hashes and 14
 count remain unchanged; production .NET sources are untouched. Local source checks
 confirm unchanged assertions/overflow proof and other methods; Windows runtime is
 NOT_RUN before exact-head PR16 CI. This change does not upgrade hardware/UI parity.
+
+
+## D49 / E20 — Host dashboard status retained obsolete JSON snapshot reads
+
+E19 `dashboard_view.rs` read Model.snapshot[busOpen/addinAlive/zones/layers], but
+E18/E19 Model::apply_host writes only the acknowledged typed Model.host. Thus those
+cards could remain unknown/false despite a valid Host response. Source evidence:
+E19 production tree 8b70979f512a5e0daeac3025a6d4a97d3d4199c9; this was not a Host RPC
+or producer state defect. The original display seam is recorded, not claimed parity.
+
+Class: status display scalar reads in desktop dashboard_view/host; dashboard REST
+register/history adapters are outside this edit. Inv: display derives from the
+latest typed Host status, unknown is explicit, transport fault keeps last-known
+facts while connected=false. Portable regression changes actual status twice,
+checks bus/AddIn/zones/age/layers/error, then checks retained facts after fault.
+N+1: existing StatusView derives from the already checked Host status; no new RPC,
+listener, Engine, dispatcher or queue. Layout/controls/palette unchanged; physical
+UI acceptance remains NOT_RUN. Dead Model.snapshot/JSON Model.apply removed; old
+Host fixture assertions now exercise apply_host instead of that inactive dispatcher.
+
+
+## D50 / E20 — units display order depended on JSON map feature unification
+
+PR17 Rust/MSVC run 39265963972 / job 118105477073, exact head
+c4bbc1fa16a8d341c6d8f30684375959fd519c86, failed
+`typed_display_retains_nonfinite_and_escaped_units_policy` at model.rs:379.
+BTreeMap display sorted keys; the Windows GPUI graph enables serde_json/preserve_order,
+so the legacy Value display retained insertion order. Escaping matched. Linux's
+sorted Value accidentally concealed the production display order regression.
+The failed expected fixture itself put density before temperature, also differing
+from E19 production; its order is not used as a new contract.
+
+Source: rust/crates/icem-emulation/src/runtime.rs:324–327 at E19 head
+400cdc6c6ef77602cae6b48584b5b95afb850486 / production tree
+8b70979f512a5e0daeac3025a6d4a97d3d4199c9: preset, flowOverride,
+temperatureOverride, densityOverride, volumeOverride, levelOverride, pressureOverride.
+Class: seven scalar unit-summary display fields in desktop/emulator.rs, not pipe
+response JSON or dashboard REST. Inv: private ordered Serialize subject preserves
+that exact string order plus standard serde escaping with and without preserve_order;
+full literal-string regressions include all seven values and null/control/Unicode.
+N+1: exhaustive UnitStatus destructuring fails compilation for an unreviewed field;
+no dispatcher/Engine/worker changes. Direct desktop → existing serde std/derive edge
+only; dependency packages/versions and unsafe/pins unchanged. Physical appearance
+acceptance remains NOT_RUN; actual Windows regression requires the new exact-head CI.
+
+
+## D46 follow-up / PR17 — retry signal versus deferred WaitAsync completion
+
+Exact E20 head 1111e3c9c7bb56ad123e7c254bb1b621ad05a640: Legacy run 39268707217 /
+job 118115014371 FAIL at SerialTeeServiceTests line469, the second-attempt wait.
+D46 diagnostics reported elapsed 15.5113553s, virtualAttempts=2, RUNNING,
+pairOk=true/up=true, ExecuteTask=WaitingForActivation and no exception. This proves
+progress by catch time, not before the 15s deadline. Previous c4bbc1fa Legacy run
+39265964072 passed 941 tests. Original failures remain in the history; neither
+retry progress at catch nor a later passing run establishes the exact timeout cause.
+
+Class: lifetime of the retry-only serial fixture in
+`iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs`; production COM forwarding
+and retry timing are outside the change. Inv: preserve the first PAIR_MISSING /
+pair=false snapshot, exact second-attempt assertion, both 15s waits and 10s cleanup;
+cancel immediately on the same second-factory call stack after signaling its TCS.
+An additional post-Stop assertion requires exactly 2 attempts, excluding a third.
+N+1: existing disposal/cancellation boundaries own cleanup; recurrence diagnostics
+record Stopwatch frequency, before/after TrySetResult ticks, returned bool, source
+TCS status, wait-start and deadline ticks. No new fake framework, global worker
+setting, test parallelism change, exception masking or production change was added.
+
+Mechanism evidence is narrower than the CI hypothesis. In runtime 10.0.13,
+[Task.cs CancellationPromise](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Task.cs)
+registers a completion action (lines 2853–2930, InvokeMayRunArbitraryCode=true);
+RunContinuationsAsynchronously makes RunOrQueueCompletionAction queue that action
+with preferLocal=true (lines 3464 and 3604–3612). A completed source TCS can therefore
+still have a pending WaitAsync wrapper. The fixture previously entered synchronous
+steady-state reads immediately after TrySetResult. Cancellation stops that unrelated
+work on its existing token. The Hosting.Abstractions 10.0.0
+[BackgroundService.StartAsync](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/Microsoft.Extensions.Hosting.Abstractions/src/BackgroundService.cs)
+already uses Task.Run; a captured test synchronization context was not established.
+
+A scratch-only console experiment ran SDK 10.0.402 / runtime 10.0.13 on Linux. It
+limited its own process to two workers, registered a RunContinuationsAsynchronously
+TCS with WaitAsync(1s), signaled 2 on worker A, then held A in synchronous work. Worker B
+was gated until a dedicated controller released B after 1.5s, allowing the timeout to
+compete with A's queued completion. Finally released A and joined all work. A variant
+canceled after signaling and skipped A's synchronous wait. These worker controls
+were never added to repository code. Frequency was 1,000,000,000 ticks/s:
+
+| Controlled case | Wait start / deadline ticks | Before / after TrySetResult ticks | Wrapper result |
+|---|---|---|---|
+| Baseline | 885818 / 1000885818 | 19223376 / 19379852 | Timeout/Faulted; total 1.5597983s |
+| Same-stack cancellation | 509487 / 1000509487 | 29788765 / 34800144 | Result 2 at 44292582 ticks (~44ms); total 1.5417121s |
+
+Both signals returned true and source tasks were RanToCompletion. Cancellation's
+44ms wrapper latency is distinct from total 1.54s, which includes the controller
+join. A one-worker experiment also completed successfully, showing this is an
+ordering-sensitive mechanism. Controlled workers/shortened 1s wrapper prove a
+possible race and its release, not the original Windows 15s scheduling timeline.
+Reproduction commands were `dotnet build Repro.csproj -c Release --no-restore`,
+then `dotnet Repro.dll` and `dotnet Repro.dll --cancel-after-signal` for this bounded
+scratch algorithm; no new executable or worker-tuning framework is part of PR17.
+
+Focused isolated Linux tests using the real production SerialTeeService and its
+original 8s retry path passed once each: instrumented baseline (signal 8.212s,
+wait-return 8.222s, total 8.240s), cancellation variant (signal 8.029s,
+wait-return 8.038s, total 8.040s). Both kept original assertions and 15s/10s bounds;
+these passing cold tests do not reproduce the Windows failure or prove its cause.
+The exact staged SerialTeeServiceTests.cs blob 22ab3d12fa03aa94b673ca6c621f2d8ddca3d3f6
+also passed its focused Linux test once (8s), including the post-Stop count 2 check.
+
+Only the existing SerialTee ledger approval changes (count 14 and immutable baseline
+b59afbbc4b2282e1aaa5817b8457c2415b8c3647 unchanged), source-only provenance
+b4211289e6f94fb5a09f493563bf1fa12e92d0f0 / PR17. On old 1111 head, Rust/MSVC
+39268706746 and installer contracts 39268706847 passed; Legacy 39268707217 failed.
+All mandatory checks must run again on the final amended head. Hardware/operator/
+SDK/real-install gates remain separate; exact CI timeout timing remains unproved.
