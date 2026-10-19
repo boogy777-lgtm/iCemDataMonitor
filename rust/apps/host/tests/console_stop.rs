@@ -38,6 +38,7 @@ fn wait(
 #[test]
 fn headless_console_rpc_reconnect_ctrl_c_tears_down_host()
 -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let helper = WindowHelper::compile()?;
     let pipe = format!("icem-console-stop-{}", std::process::id());
     let port = std::net::TcpListener::bind("127.0.0.1:0")?.local_addr()?;
     let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -91,10 +92,10 @@ fn headless_console_rpc_reconnect_ctrl_c_tears_down_host()
                 .into_inner();
             assert_eq!(status.console_visible, visible);
         }
-        let initial = window_action(host.0.id(), "Probe", 0)?;
+        let initial = helper.action(host.0.id(), "Probe", 0)?;
         let handle = initial["hwnd"].as_i64().ok_or("missing window handle")?;
         for _ in 0..3 {
-            window_action(host.0.id(), "Close", handle)?;
+            helper.action(host.0.id(), "Close", handle)?;
             assert!(host.0.try_wait()?.is_none(), "X killed Host");
             let status = client::connect(&pipe)
                 .await?
@@ -109,21 +110,21 @@ fn headless_console_rpc_reconnect_ctrl_c_tears_down_host()
                 .await?
                 .into_inner();
             assert!(status.console_visible);
-            window_action(host.0.id(), "Minimize", handle)?;
+            helper.action(host.0.id(), "Minimize", handle)?;
             // visible=true must also restore an already-visible minimized window.
             client::connect(&pipe)
                 .await?
                 .set_console_visible(SetConsoleVisibleRequest { visible: true })
                 .await?;
             assert_eq!(
-                window_action(host.0.id(), "Probe", handle)?["minimized"],
+                helper.action(host.0.id(), "Probe", handle)?["minimized"],
                 false
             );
         }
         Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     })?;
     // Real message-level Ctrl+C input to the Host-owned diagnostic window.
-    window_action(host.0.id(), "CtrlC", 0)?;
+    helper.action(host.0.id(), "CtrlC", 0)?;
     wait(
         &mut host.0,
         Duration::from_secs(5),
@@ -257,51 +258,77 @@ async fn ready(pipe: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync
     }
 }
 
-fn window_action(
-    pid: u32,
-    action: &str,
-    handle: i64,
-) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-    use std::io::Read;
-    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/windows/Send-OwnedConsoleCtrlC.ps1");
-    let mut helper = Owned(
-        Command::new("powershell.exe")
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-            ])
-            .arg(script)
-            .arg("-TargetProcessId")
-            .arg(pid.to_string())
-            .arg("-Action")
-            .arg(action)
-            .arg("-ExpectedWindowHandle")
-            .arg(handle.to_string())
-            .creation_flags(0x0800_0000)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .spawn()?,
-    );
-    eprintln!(
-        "window helper PID {}: target PID {pid}, action {action}, expected HWND {handle}",
-        helper.0.id()
-    );
-    wait(
-        &mut helper.0,
-        Duration::from_secs(10),
-        &format!("window helper target PID {pid}, action {action}, expected HWND {handle}"),
-    )?;
-    let mut bytes = Vec::new();
-    helper
-        .0
-        .stdout
-        .take()
-        .ok_or("missing helper stdout")?
-        .take(8192)
-        .read_to_end(&mut bytes)?;
-    Ok(serde_json::from_slice(&bytes)?)
+// Compile once before starting Host; each action retains its own 10-second child bound.
+struct WindowHelper(std::path::PathBuf);
+impl Drop for WindowHelper {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(self.0.join("OwnedConsoleProbe.exe"));
+        let _ = std::fs::remove_dir(&self.0);
+    }
+}
+impl WindowHelper {
+    fn compile() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let root = std::env::temp_dir().join(format!("icem-console-helper-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let helper = Self(root);
+        let compiler = std::path::PathBuf::from(
+            std::env::var_os("WINDIR").ok_or("missing WINDIR for Framework fixture compiler")?,
+        )
+        .join("Microsoft.NET/Framework64/v4.0.30319/csc.exe");
+        let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/windows/OwnedConsoleProbe.cs");
+        let mut output = std::ffi::OsString::from("/out:");
+        output.push(helper.0.join("OwnedConsoleProbe.exe"));
+        let mut compiler = Owned(
+            Command::new(compiler)
+                .args(["/nologo", "/target:exe", "/platform:x64"])
+                .arg(output)
+                .arg(source)
+                .creation_flags(0x0800_0000)
+                .stdin(Stdio::null())
+                .spawn()?,
+        );
+        wait(
+            &mut compiler.0,
+            Duration::from_secs(10),
+            "console fixture compilation before Host startup",
+        )?;
+        Ok(helper)
+    }
+    fn action(
+        &self,
+        pid: u32,
+        action: &str,
+        handle: i64,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        use std::io::Read;
+        let mut helper = Owned(
+            Command::new(self.0.join("OwnedConsoleProbe.exe"))
+                .arg(pid.to_string())
+                .arg(action)
+                .arg(handle.to_string())
+                .creation_flags(0x0800_0000)
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .spawn()?,
+        );
+        eprintln!(
+            "window helper PID {}: target PID {pid}, action {action}, expected HWND {handle}",
+            helper.0.id()
+        );
+        wait(
+            &mut helper.0,
+            Duration::from_secs(10),
+            &format!("window helper target PID {pid}, action {action}, expected HWND {handle}"),
+        )?;
+        let mut bytes = Vec::new();
+        helper
+            .0
+            .stdout
+            .take()
+            .ok_or("missing helper stdout")?
+            .take(8192)
+            .read_to_end(&mut bytes)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
 }

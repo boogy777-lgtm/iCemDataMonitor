@@ -66,3 +66,13 @@ wait budget. Invoke/Toggle, assertions, deadlines and production MSI are unchang
 Linux source/diff checks PASS; real UIA/MSI is NOT_RUN locally and amended exact-head
 Windows checks remain mandatory. The dashboard Rust code and prior 193-test proof
 are unchanged.
+
+
+D52 / PR18: Rust run 39311807867 / job 118263127720 on 9fe6fb30 failed the
+console helper's 10s deadline after a 7.419s dynamic interop compile. The exact
+final serialization/exit scheduling remains unknown; Probe has no state wait.
+The disposable helper is now compiled once in separately bounded pre-Host setup;
+actions keep 10s, state waits 2s and teardown 5s, with original PID/HWND checks,
+actions and assertions. [Audit D52](../SOURCE_AUDIT.ru.md) preserves failure evidence.
+Windows execution must pass again at the amended exact head; portable checks do
+not establish console/UI parity. Dashboard Rust behavior is unchanged.

@@ -571,3 +571,59 @@ checks PASS. UIA/PowerShell/MSI runtime execution is NOT_RUN on Linux. Existing 
 MSI scenarios must pass again on the amended exact head; the original FAIL remains
 recorded. No dashboard Rust code changed, so the existing 193 portable tests remain
 prior E21 software evidence, not a substitute for Windows installer acceptance.
+
+
+## D52 / E21 PR18 — console fixture recompiles interop within every action deadline
+
+Exact head 9fe6fb30b400690ca0f9da4fdd5ffba865ca510a, Rust run 39311807867 /
+job 118263127720: FAIL in console_stop (10.65s). Helper PID6264 targeted Host PID3208,
+Action=Probe, expected HWND=0. Logs: startup/compiling at 19:43:33.725, interop
+compiled/finding window at 19:43:41.144, action posted/checking state at
+19:43:41.163; parent reported the 10s helper child deadline at 19:43:42.241.
+Probe has no 2s state loop: only Close/Minimize wait for visibility/minimized state.
+The 7.419s Add-Type phase plus process startup consumed most of the child budget;
+the precise remaining serialization/process-exit scheduling cost is not established.
+This does not prove a Host teardown failure, nor a compiler-only cause for the final
+second. The older E19 diagnostic-only failure record remains in HOST_E19.
+Legacy 39311807737 and installer contracts 39311807909 passed at this same head;
+they do not replace the failed Rust gate or a new exact-head run.
+
+Class: disposable window-action helper setup in `apps/host/tests/console_stop.rs`
+and `tests/windows/OwnedConsoleProbe.cs`; production Host/native APIs are outside
+this change. Inv: compile once BEFORE launching Host, under a separately named
+10s compiler-child deadline; each helper action keeps its original 10s child budget,
+Close/Minimize keep 2s state/10ms polling, Host teardown remains 5s. N+1: one helper
+Main validates the four actions; action dispatch/Win32 behavior lives there, not in
+production native code. Unknown/malformed helper invocation fails before effects.
+
+The Rust fixture invokes the existing Windows .NET Framework64 v4.0.30319 csc.exe
+(the compiler family already used by MSI contract fixtures), compiling one x64 EXE
+in a process-specific directory. Missing compiler/compile failure/timeout aborts the
+test before Host startup. Owned compiler/action processes are killed/joined on exit;
+helper directory cleanup runs on success/error. No retry or timeout extension was
+added. PowerShell startup, repeated Add-Type and ConvertTo-Json are removed from
+the operation path; the old PS-only helper is removed after call-site audit.
+
+C# retains the same Win32 signatures, diagnostic window class, null-title search,
+PID ownership and expected HWND check, WM_CLOSE/Minimize/WM_CHAR Ctrl+C actions,
+state predicates and destroyed-window failure. Stdout has only the same four JSON
+facts (integer hwnd/pid, bool visible/minimized); invariant numeric formatting and
+fixed keys avoid serializer setup. Diagnostics/errors go to stderr, with nonzero
+exit on failure. Original reconnect/three X/Open/minimize/same HWND/listener/pipe/
+restart/autostart/Quit assertions and limits remain unchanged. No production source,
+.NET baseline/ledger, dependency, workflow or unsafe-policy change is involved.
+
+Local validation: pinned Rust1.99.1 fmt --check and host --tests check/Clippy
+locked/offline / -D warnings PASS. Exact C# source compiled without warnings under
+SDK10.0.402 / net10.0 with LangVersion=5; no-args and unknown-action cases returned
+2, malformed PID returned 1, all with empty stdout under a 10s subprocess bound.
+No invalid invocation reached user32. A literal source comparison confirmed that
+the original Rust test body is identical after one pre-Host setup line and caller
+rename; Win32 signatures/messages and state limits were checked against the old
+helper. Diff whitespace checks PASS. These are fixture/source checks, not a new
+execution of the dashboard's prior 193 portable tests.
+
+Validation limits: local Linux checks do not compile cfg(windows) Rust or execute
+user32/Framework/msiexec; the SDK compiler check does not establish the Framework
+compiler/runtime result. Real Windows exact-head execution remains mandatory;
+no passing UI/teardown result is inferred from source inspection or prior CI.
