@@ -27,6 +27,10 @@ public static class OwnedHostWindowSignal {
     [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hwnd);
     [DllImport("user32.dll", SetLastError=true)] public static extern bool PostMessage(IntPtr hwnd, uint msg, UIntPtr wp, IntPtr lp);
     [DllImport("user32.dll", SetLastError=true)] public static extern bool ShowWindowAsync(IntPtr hwnd, int cmd);
+    // Windows PowerShell 5 cannot cast Int32 directly to UIntPtr.
+    public static bool PostCtrlC(IntPtr window) {
+        return PostMessage(window, 0x102, new UIntPtr(3u), IntPtr.Zero);
+    }
 }
 '@
 # Test fixture only. Caller owns the child PID. Never attach to or alter conhost.
@@ -36,7 +40,7 @@ if ($ExpectedWindowHandle -ne 0 -and $window.ToInt64() -ne $ExpectedWindowHandle
 switch ($Action) {
     'Close' { if (![OwnedHostWindowSignal]::PostMessage($window, 0x10, [UIntPtr]::Zero, [IntPtr]::Zero)) { throw 'WM_CLOSE failed' } }
     'Minimize' { if (![OwnedHostWindowSignal]::ShowWindowAsync($window, 6)) { throw 'Minimize failed' } }
-    'CtrlC' { if (![OwnedHostWindowSignal]::PostMessage($window, 0x102, [UIntPtr]3, [IntPtr]::Zero)) { throw 'Host Ctrl+C input failed' } }
+    'CtrlC' { if (![OwnedHostWindowSignal]::PostCtrlC($window)) { throw 'Host Ctrl+C input failed' } }
 }
 $deadline = [DateTime]::UtcNow.AddSeconds(2)
 if ($Action -in @('Close','Minimize')) {
