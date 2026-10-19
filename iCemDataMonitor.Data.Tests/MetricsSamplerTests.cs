@@ -197,6 +197,13 @@ public sealed class MetricsSamplerTests : IDisposable
         throw new InvalidOperationException("stream ended before a sample arrived");
     }
 
+    private void WriteDeltaState(float value, ushort heartbeat)
+    {
+        uint bits = BitConverter.SingleToUInt32Bits(value);
+        WriteRawWords((202, (ushort)(bits & 0xffff)), (203, (ushort)(bits >> 16)),
+            (BusLayout.RegHeartbeat, heartbeat));
+    }
+
     // ═══ (в) delta-корректность: первый полный, второй только изменённые ═══
 
     [Fact]
@@ -218,23 +225,39 @@ public sealed class MetricsSamplerTests : IDisposable
         WriteHeader(comPort: 2, caseState: 7, caseLanState: 0, heartbeat: 7);
 
         var sampler = new MetricsSampler(reader);
-        var subscription = sampler.Subscribe(intervalMs: 200);
-
-        var samples = new List<MetricsSample>();
-        await foreach (var sample in subscription)
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        MetricsSample full;
+        MetricsSample delta;
+        // DropOldest deliberately cannot promise delivery of the producer's first
+        // full sample to a stalled consumer. Only a proven loss makes an attempt
+        // inconclusive; an incorrect full/delta on a loss-free stream still fails.
+        while (true)
         {
-            samples.Add(sample);
-            if (samples.Count == 1)
+            deadline.Token.ThrowIfCancellationRequested();
+            // Both changed values are one real MMF transaction, not two snapshots.
+            WriteDeltaState(10.0f, 7);
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+            var subscription = sampler.Subscribe(intervalMs: 200, stop.Token);
+            try
             {
-                writer.WriteFloat(202, 20.0f);                       // ONE zone pair changed
-                WriteHeader(comPort: 2, caseState: 7, caseLanState: 0, heartbeat: 8); // ONE header reg changed
+                await using var stream = subscription.GetAsyncEnumerator(deadline.Token);
+                Assert.True(await stream.MoveNextAsync(), "stream ended before full sample");
+                full = stream.Current;
+                WriteDeltaState(20.0f, 8);
+                do
+                {
+                    Assert.True(await stream.MoveNextAsync(), "stream ended before changed sample");
+                    delta = stream.Current;
+                }
+                while (delta.Heartbeat != 8 && subscription.DroppedCount == 0);
+                if (subscription.DroppedCount == 0) break;
             }
-            else break;
+            finally
+            {
+                stop.Cancel();
+                await subscription.ProducerCompletion.WaitAsync(TimeSpan.FromSeconds(10));
+            }
         }
-
-        Assert.Equal(2, samples.Count);
-        var full = samples[0];
-        var delta = samples[1];
 
         // ── Sample 1: FULL — header regs 0..3 + every CDAB pair 4..598 ──
         var addrs = full.Deltas.Select(d => d.Addr).ToArray();
