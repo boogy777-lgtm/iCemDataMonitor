@@ -1,0 +1,30 @@
+name: rust-installer-contracts
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installer-contracts:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: rust
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Full payload, AddIn provenance and native MSI ownership contracts
+        run: ./tools/Test-WindowsPackaging.ps1
+      - name: Build and install fixture MSI using native WiX ownership and original branding
+        run: ./tools/Test-WindowsInstaller.ps1
+      - name: Upload installer contract logs (no fixture MSI publication)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-contract-evidence
+          path: rust/artifacts/msi/*.log
+          if-no-files-found: ignore

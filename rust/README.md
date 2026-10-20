@@ -31,6 +31,7 @@ Desktop UI — нативный GPUI без WebView с сохранением с
 - [Safe Rust и размер дистрибутива](docs/SAFETY_AND_SIZE.ru.md)
 - [Rust 1.99 и применённые идиомы](docs/RUST_IDIOMS.ru.md)
 - [Статус проверки этого этапа](docs/VALIDATION.ru.md)
+- [CI-1: маршрутизация компонентов и общий CI gate](docs/CI_CD.ru.md)
 - [OpenAPI 3.1 для действующего REST](contracts/http/openapi.json)
 - [Оригинальный Protobuf без изменений](../iCemDataMonitor.Contracts/Protos/telemetry.proto)
 

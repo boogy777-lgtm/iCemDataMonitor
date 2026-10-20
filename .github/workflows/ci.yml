@@ -1,66 +1,81 @@
 name: ci
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
-concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: true
-
+  workflow_dispatch:
 permissions:
   contents: read
-
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  build:
-    name: Build, test and pack MSI
+  classify:
+    timeout-minutes: 5
+    runs-on: windows-latest
+    outputs:
+      legacy: ${{ steps.route.outputs.legacy }}
+      rust: ${{ steps.route.outputs.rust }}
+      packaging: ${{ steps.route.outputs.packaging }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Classify verified changed paths (unknown input selects all)
+        id: route
+        shell: pwsh
+        run: python rust/tools/ci/routing.py classify
+  baseline:
+    timeout-minutes: 10
     runs-on: windows-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up .NET SDK 10.0.x (global.json picks the exact band)
-        uses: actions/setup-dotnet@v5
+      - uses: actions/checkout@v5
+      - name: Test immutable baseline guard
+        shell: pwsh
+        run: ./rust/tools/Test-BaselineGuard.ps1
+      - name: Verify complete legacy baseline and approvals
+        shell: pwsh
+        run: ./rust/tools/Verify-Baseline.ps1 -RequireComplete
+  routing-tests:
+    timeout-minutes: 5
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
         with:
-          dotnet-version: 10.0.x
-
-      - name: Install WiX v5 toolset
-        run: dotnet tool install --global wix --version 5.0.2
+          python-version: '3.12'
+      - name: Routing, diff, dependency and gate contracts
         shell: pwsh
-
-      - name: Add dotnet global tools to PATH
-        run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.dotnet\tools"
-          Write-Host "Added $env:USERPROFILE\.dotnet\tools to PATH for subsequent steps"
-        shell: pwsh
-
-      - name: Build solution
-        # CI.slnf = iCemDataMonitor.sln minus Burservis.iCem.DataMonitor (+ Tests):
-        # the AddIn links the proprietary Halliburton iCem SDK via absolute
-        # HintPaths (C:\Program Files\Halliburton\iCem\Bin) that exist only on a
-        # dev machine with iCem installed; build-msi.ps1 skips it there too.
-        run: dotnet build CI.slnf -c Release --nologo
-        shell: pwsh
-
-      - name: Run tests
-        # Category!=Live: LIVE interop tests (LiveModbusEmulatorTests) require a
-        # running iCem.exe + operator prompt - a dev-machine-only verdict.
-        run: dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m --filter "Category!=Live"
-        shell: pwsh
-
-      - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)
-        # 2026-09-02: the step hung >1 h on the runner once (first-ever CI MSI
-        # build, cold cache). Cap it so a hang fails fast and leaves a full log
-        # for diagnosis instead of burning the 6 h job limit.
-        timeout-minutes: 30
-        run: installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause
-        shell: pwsh
-
-      - name: Upload MSI artifact
-        uses: actions/upload-artifact@v5
+        run: python -m unittest discover -s rust/tools/ci -p "test_*.py" -v
+  legacy:
+    needs: classify
+    if: needs.classify.outputs.legacy == 'true'
+    uses: ./.github/workflows/legacy-build.yml
+  rust:
+    needs: classify
+    if: needs.classify.outputs.rust == 'true'
+    uses: ./.github/workflows/rust-migration.yml
+  packaging:
+    needs: classify
+    if: needs.classify.outputs.packaging == 'true'
+    uses: ./.github/workflows/rust-installer-contracts.yml
+  gate:
+    name: CI gate
+    timeout-minutes: 5
+    if: always()
+    needs: [classify, baseline, routing-tests, legacy, rust, packaging]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
         with:
-          name: msi-ci
-          path: dist/*.msi
-          retention-days: 7
+          python-version: '3.12'
+      - name: Require every selected check and reject unexpected skips
+        shell: pwsh
+        env:
+          CI_NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python rust/tools/ci/routing.py gate

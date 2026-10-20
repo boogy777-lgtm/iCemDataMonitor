@@ -1,0 +1,57 @@
+name: legacy-build
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Build, test and pack MSI
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up .NET SDK 10.0.x (global.json picks the exact band)
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install WiX v5 toolset
+        run: dotnet tool install --global wix --version 5.0.2
+        shell: pwsh
+
+      - name: Add dotnet global tools to PATH
+        run: |
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.dotnet\tools"
+          Write-Host "Added $env:USERPROFILE\.dotnet\tools to PATH for subsequent steps"
+        shell: pwsh
+
+      - name: Build solution
+        # CI.slnf = iCemDataMonitor.sln minus Burservis.iCem.DataMonitor (+ Tests):
+        # the AddIn links the proprietary Halliburton iCem SDK via absolute
+        # HintPaths (C:\Program Files\Halliburton\iCem\Bin) that exist only on a
+        # dev machine with iCem installed; build-msi.ps1 skips it there too.
+        run: dotnet build CI.slnf -c Release --nologo
+        shell: pwsh
+
+      - name: Run tests
+        # Category!=Live: LIVE interop tests (LiveModbusEmulatorTests) require a
+        # running iCem.exe + operator prompt - a dev-machine-only verdict.
+        run: dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m --filter "Category!=Live"
+        shell: pwsh
+
+      - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)
+        # 2026-09-02: the step hung >1 h on the runner once (first-ever CI MSI
+        # build, cold cache). Cap it so a hang fails fast and leaves a full log
+        # for diagnosis instead of burning the 6 h job limit.
+        timeout-minutes: 30
+        run: installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause
+        shell: pwsh
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: msi-ci
+          path: dist/*.msi
+          retention-days: 7
