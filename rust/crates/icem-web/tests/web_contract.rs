@@ -922,6 +922,9 @@ fn dashboard_http_fixture(replies: Vec<Vec<u8>>) -> TestResultFixture {
                     Err(error) => return Err(error.to_string()),
                 }
             };
+            // Windows may inherit the listener's nonblocking mode. This fixture
+            // uses synchronous I/O; the timeout must govern an incomplete header.
+            stream.set_nonblocking(false).map_err(|e| e.to_string())?;
             stream
                 .set_read_timeout(Some(Duration::from_secs(3)))
                 .map_err(|e| e.to_string())?;
@@ -956,6 +959,29 @@ type TestResultFixture = Result<
     ),
     Box<dyn std::error::Error>,
 >;
+
+#[test]
+fn dashboard_http_fixture_waits_for_fragmented_request_header() -> TestResult {
+    use std::io::{Read, Write};
+    let (endpoint, fixture) = dashboard_http_fixture(vec![b"{}".to_vec()])?;
+    let mut client = std::net::TcpStream::connect(endpoint)?;
+    client.set_nodelay(true)?;
+    client.set_read_timeout(Some(Duration::from_secs(3)))?;
+    client.set_write_timeout(Some(Duration::from_secs(3)))?;
+    client.write_all(b"GET /api/regs HTTP/1.1\r\nHost: localhost\r\n")?;
+    std::thread::sleep(Duration::from_millis(25));
+    client.write_all(b"\r\n")?;
+    let mut response = String::new();
+    client.read_to_string(&mut response)?;
+    let paths = fixture.join().map_err(|_| "fixture panic")??;
+    assert_eq!(paths, vec!["GET /api/regs HTTP/1.1"]);
+    assert_eq!(
+        response,
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"
+    );
+    Ok(())
+}
+
 #[tokio::test]
 async fn malformed_http_success_preserves_partial_outcome_and_empty_selection_skips_history()
 -> TestResult {

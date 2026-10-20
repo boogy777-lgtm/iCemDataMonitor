@@ -699,3 +699,38 @@ Host test assertions, functional bounds and runtime helper invocation unchanged.
 These checks exercise fail-closed preparation; they do not prove Windows Framework
 compilation or actual Host behavior. New exact-head Windows evidence must show
 compiler duration/result and the full behavior checks passing before merge.
+
+## D53 / E21 — accepted HTTP fixture stream has no explicit blocking mode
+
+Head 7c406efe25a56d5561bc7cce1afc906580deca2a, Rust run 39317752694 /
+job 118283533993: web_contract FAILED, 15/16 passed. The malformed HTTP-200
+partial-outcome test returned Windows socket error 10035 (WouldBlock). The fixture
+sets its listener nonblocking for bounded accept, then performs synchronous reads
+on each accepted stream without explicitly restoring blocking mode. A read timeout
+does not itself choose blocking mode. The log does not identify the exact failing
+socket call; inherited nonblocking mode is the source-level defect addressed here.
+Production async WebServer and dashboard client are outside this change.
+
+Class: synchronous accepted streams in the disposable dashboard HTTP fixture in
+`crates/icem-web/tests/web_contract.rs`, not Tokio production socket handling.
+Inv: explicitly set blocking mode before the existing 3s read timeout; complete a
+fragmented request header and return the exact declared HTTP response. The new
+real-TCP regression sends the terminating header fragment separately, with bounded
+client reads/writes. N+1: every malformed/empty-selection scenario uses the same
+fixture; the original partial-result and exact request-path assertions remain.
+Accept/read deadlines, 16KiB request cap, response bodies and production contracts
+are unchanged. No WouldBlock retry loop or ignored error is introduced.
+
+On the failed old head, console_stop passed, as did the earlier native console,
+logger and integration gates. Legacy run39317752797 and MSI run39317752827 passed.
+These results preserve D52 evidence but do not replace a complete new exact-head
+Rust/Legacy/MSI verdict. Physical UI/hardware and genuine SDK release gates remain
+separate. Local Rust binaries must be restored in this resumed environment before
+claiming new local cargo results.
+
+Resumed validation: restored exact Rust1.99.1; workspace fmt --check and focused
+`cargo test --locked -p icem-web --test web_contract` passed (17/17, including the
+new fragmented-header and original malformed-success scenarios). Dependencies were
+fetched from the unchanged lockfile. Then `cargo clippy --locked --offline
+-p icem-web --all-targets -- -D warnings` and git diff --check passed. These Linux
+results do not establish Windows behavior; full exact-head CI remains required.

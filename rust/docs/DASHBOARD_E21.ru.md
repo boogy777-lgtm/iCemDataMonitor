@@ -77,3 +77,17 @@ The original 10s action, 2s state, 5s Host stop and assertions remain unchanged;
 there are no retries. Local negative setup checks fail before Host startup.
 [Failure and validation limits](SOURCE_AUDIT.ru.md) retain the original failure;
 actual Windows compiler duration and behavior remain required on the amended head.
+
+D53 / resumed PR18: on head7c406efe Rust run39317752694 passed console_stop and
+native integration but failed web_contract (15/16) with socket error10035 in the
+malformed HTTP fixture. Each accepted fixture stream now explicitly enters blocking
+mode before its existing 3s read timeout. A real-TCP fragmented-header regression
+checks the exact request and response; all previous malformed/partial assertions
+remain. Production I/O is unchanged. [Audit D53](SOURCE_AUDIT.ru.md) retains the
+failure and distinction between observed error and inferred inheritance mechanism.
+Legacy39317752797 and MSI39317752827 passed on the old head; all mandatory checks
+must pass on the amended head before merge.
+
+Resumed local Rust1.99.1 validation: workspace fmt --check, web_contract17/17,
+icem-web all-targets Clippy locked/offline/-D warnings and git diff --check PASS.
+Windows verdict remains separate; the prior E21 193-test count is historical.
