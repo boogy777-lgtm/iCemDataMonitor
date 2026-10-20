@@ -126,7 +126,13 @@ Linux не доказывает Windows MMF,
 TestServer runtime, MSI или окончательный exact-head CI. Обязательны отдельный review
 и полный Windows run на окончательном head, включая неизменённые четыре теста выше.
 
-Frozen source manifest не изменяется. Root review должен добавить точный hash
-RegisterMirrorTests как approval15 с настоящими PR21/commit provenance и обновить
-существующий approval `.github/workflows/ci.yml`. До этого Verify-Baseline ожидаемо
-FAIL на изменённом legacy path; обход guard не допускается.
+Frozen source manifest не изменён. Exact-hash ledger сохраняет прежние 14
+approval paths и добавляет RegisterMirrorTests как approval15; существующий
+approval `.github/workflows/ci.yml` обновлён. Provenance:
+[PR21](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21), reviewed source
+commit `843331ece3efa6e243fbe7dec357523054e389ea`. Canonical Git blobs:
+workflow `ab050730c618844c63971245fcf3b8dbc2becbce`, fixture
+`27e97a9957acf04042f1812d662ef2827da90b6c`. Предварительный source commit с
+необновлённым ledger не является принятым head; final exact-head verdict
+фиксируется в PR после полной Windows проверки. Независимое review CI-2b: PASS;
+проверяющий отдельно повторил compile и 10 history tests без замечаний.
