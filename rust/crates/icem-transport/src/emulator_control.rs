@@ -277,7 +277,7 @@ pub async fn client_session<S: AsyncRead + AsyncWrite + Unpin>(
     }
 }
 #[cfg(windows)]
-pub use windows::{ControlServer, cli_request, request, stream_request};
+pub use windows::{ControlServer, cli_request, request, selftest_probe, stream_request};
 #[cfg(windows)]
 mod windows {
     use super::*;
@@ -374,6 +374,82 @@ mod windows {
         fn drop(&mut self) {
             let _ = self.stop_inner();
         }
+    }
+
+    /// Legacy T26: a private native pipe, one connection for all commands and watch.
+    /// The server is joined on success and on every error; never contacts the app pipe.
+    pub fn selftest_probe(executor: Arc<dyn Executor>) -> io::Result<()> {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(io::Error::other)?
+            .as_nanos();
+        let name = format!(
+            "iCemEmule.TestCtl.{}.{nonce}.{}",
+            std::process::id(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        );
+        let server = ControlServer::bind(&name, executor)?;
+        let result = (|| {
+            let path = pipe_path(&name)?;
+            Builder::new_current_thread()
+                .enable_all()
+                .build()?
+                .block_on(async {
+                    let pipe = tokio::time::timeout(Duration::from_secs(5), async {
+                        loop {
+                            match ClientOptions::new().open(&path) {
+                                Ok(pipe) => break Ok(pipe),
+                                Err(error) if error.raw_os_error() == Some(231) => {
+                                    tokio::time::sleep(Duration::from_millis(10)).await
+                                }
+                                Err(error) => break Err(error),
+                            }
+                        }
+                    })
+                    .await
+                    .map_err(|_| {
+                        io::Error::new(io::ErrorKind::TimedOut, "selftest connect timeout")
+                    })??;
+                    let (input, mut output) = tokio::io::split(pipe);
+                    let mut input = BufReader::new(input);
+                    for (command, expected) in [
+                        ("status", true),
+                        ("{{{broken", false),
+                        ("status", true),
+                        ("watch", true),
+                    ] {
+                        write_line(&mut output, command).await?;
+                        let response =
+                            tokio::time::timeout(Duration::from_secs(5), reply_line(&mut input))
+                                .await
+                                .map_err(|_| {
+                                    io::Error::new(
+                                        io::ErrorKind::TimedOut,
+                                        "selftest reply timeout",
+                                    )
+                                })??;
+                        if reply_ok(&response, None)? != expected
+                            || (!expected && !response.contains("\"error\""))
+                        {
+                            return Err(io::Error::other(format!(
+                                "selftest {command}: {response}"
+                            )));
+                        }
+                    }
+                    let tick = tokio::time::timeout(Duration::from_secs(4), reply_line(&mut input))
+                        .await
+                        .map_err(|_| {
+                            io::Error::new(io::ErrorKind::TimedOut, "selftest watch timeout")
+                        })??;
+                    if !reply_ok(&tick, Some("status"))? || !tick.contains("\"uptimeSec\"") {
+                        return Err(io::Error::other("selftest watch tick missing uptimeSec"));
+                    }
+                    Ok(())
+                })
+        })();
+        let stopped = server.stop();
+        result.and(stopped)
     }
 
     async fn connect_and_exchange(

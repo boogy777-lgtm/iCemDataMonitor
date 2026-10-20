@@ -146,3 +146,6 @@ E21: [проверенные dashboard snapshots](DASHBOARD_E21.ru.md),
 current-selection filtering. REST/SPA/proto, appearance и 176+6 mapping прежние.
 Software/exact-head Windows evidence фиксируется отдельно; physical/SDK/hardware
 acceptance остаётся OPEN. Далее selftest/landiag и stdin CLI отдельными increments.
+
+
+E22: [встроенный emulator --selftest](EMULATOR_E22.ru.md): полный mapping T1–T26, first-argument dispatch до startup, read-only EXE-relative emulator catalogs, isolated native TestCtl и полный i32 failCount. Windows process/release smoke tests добавлены; local Linux не доказывает Windows runtime. D22/operator/SDK/hardware gates открыты; E23 — explicit --landiag и stdin CLI.

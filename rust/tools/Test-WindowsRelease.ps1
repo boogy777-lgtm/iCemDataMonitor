@@ -44,6 +44,12 @@ try {
     $EmulatorTemplates = ($Manifest.binaries | Where-Object role -EQ 'emulator').templates_directory
     $HostExe = Join-Path $Package 'icem-host-dev.exe'
     $Engine = Join-Path $Package 'icem-emulator-engine-dev.exe'
+    # Standalone dispatch before any settings/startup, using only extracted assets.
+    $SelfTest = Start-Child $Engine @('--selftest')
+    $SelfTestResult = Wait-Child $SelfTest 45000
+    $SelfTestIds = [regex]::Matches($SelfTestResult.output, '(?m)^T(\d+) PASS\r?$') | ForEach-Object { [int] $_.Groups[1].Value }
+    if (($SelfTestIds -join ',') -cne ((1..26) -join ',') -or $SelfTestResult.output -match '(?m)^T\d+ FAIL' -or $SelfTestResult.output -notmatch '(?m)^ALL TESTS PASSED\r?$') { throw 'Packaged emulator selftest incomplete' }
+    if (Test-Path -LiteralPath (Join-Path $Temp 'emule_config.xml')) { throw 'Selftest created settings' }
     $Fixture = Join-Path $Temp 'bus.bin'
     Copy-Item -LiteralPath (Join-Path $Root 'tests/fixtures/bus-v5-minimal.bin') -Destination $Fixture
     $HostRun = Start-Child $HostExe @('--modbus-fixture', $Fixture, '--bind', '127.0.0.1:0', '--web-bind', '127.0.0.1:0', '--duration-ms', '1000', '--registry', (Join-Path $Package "$HostTemplates/variable_registry.json"), '--theme-file', (Join-Path $Temp 'ui-theme'), '--rpc-pipe', ('icem-package-host-' + [guid]::NewGuid().ToString('N')))

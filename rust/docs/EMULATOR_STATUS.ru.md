@@ -136,3 +136,6 @@ private ControlResult, typed Execution → derived GPUI View/Signal identity; JS
 parser C# domain-shaped fixtures и mismatch/nonfinite/partial/save-failure checks.
 D49: dashboard status отображает уже typed Model.host, сохраняя last-known при fault.
 Dashboard REST/selftest/landiag и visual/operator/SDK/hardware gates остаются открытыми.
+
+
+E22: [встроенный emulator --selftest](EMULATOR_E22.ru.md): полный mapping T1–T26, first-argument dispatch до startup, read-only EXE-relative emulator catalogs, isolated native TestCtl и полный i32 failCount. Windows process/release smoke tests добавлены; local Linux не доказывает Windows runtime. D22/operator/SDK/hardware gates открыты; E23 — explicit --landiag и stdin CLI.

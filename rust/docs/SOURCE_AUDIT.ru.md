@@ -734,3 +734,6 @@ new fragmented-header and original malformed-success scenarios). Dependencies we
 fetched from the unchanged lockfile. Then `cargo clippy --locked --offline
 -p icem-web --all-targets -- -D warnings` and git diff --check passed. These Linux
 results do not establish Windows behavior; full exact-head CI remains required.
+
+
+E22: [встроенный emulator --selftest](EMULATOR_E22.ru.md): полный mapping T1–T26, first-argument dispatch до startup, read-only EXE-relative emulator catalogs, isolated native TestCtl и полный i32 failCount. Windows process/release smoke tests добавлены; local Linux не доказывает Windows runtime. D22/operator/SDK/hardware gates открыты; E23 — explicit --landiag и stdin CLI.
