@@ -5,11 +5,11 @@
     {
       "path": ".github/workflows/ci.yml",
       "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
-      "approved_blob_sha1": "5c5553f92a8280b991909ee11090dac89fd41778",
+      "approved_blob_sha1": "e5d19816563dadeb80967349821e0db6ae1ae15c",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Use the existing -NoPause MSI option in unattended CI."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/20",
+        "commit": "3f04ae0816c1d9286032a2b8bb8ed41d65a447d3",
+        "reason": "Owner-authorized CI-1 component-aware monorepo routing. Extract the previous complete legacy build/test/MSI job verbatim into reusable legacy-build.yml (including accepted PR2 -NoPause), preserve full Rust/browser/differential and native installer workloads, add always-required full baseline/routing checks and strict CI gate. Unknown/incomplete changes select all consumers; original source manifest and production .NET remain unchanged. Reviewed source commit and PR20 provide exact workflow provenance."
       }
     },
     {

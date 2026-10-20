@@ -117,8 +117,10 @@ unavailable. Поэтому **CI gate подготовлен как единый
 гарантировать запрет merge; требование CI gate в branch protection/ruleset должно
 быть отдельно включено владельцем с соответствующими правами.
 
-Изменение baseline-файла `.github/workflows/ci.yml` требует обновить существующую
-exact-hash запись `migration/legacy-divergences.json` после публикации проверенного
-source commit и создания реального PR. До этого обновления baseline ожидаемо
-отклоняет новый hash; PR number/provenance не подставляются заранее. Source manifest
-остаётся pinned, все 513 baseline entries и 14 одобренных отклонений сохраняются.
+Изменение baseline-файла `.github/workflows/ci.yml` записано в существующем
+exact-hash ledger: [PR20](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/20),
+reviewed source commit `3f04ae0816c1d9286032a2b8bb8ed41d65a447d3`.
+Прежний полный legacy job, включая принятый PR2 `-NoPause`, выделен побайтово.
+Source manifest остаётся pinned, все 513 baseline entries и 14 одобренных
+отклонений сохраняются. Фактические exact-head CI runs фиксируются в PR;
+неполный предварительный source commit без ledger не является принятым деревом.
