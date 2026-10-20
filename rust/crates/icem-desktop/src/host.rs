@@ -158,7 +158,7 @@ impl Model {
                                 "-Infinity".into()
                             } else {
                                 let number = v.to_string().parse::<f64>().unwrap_or(f64::from(v));
-                                crate::dashboard::format_value(&serde_json::json!(number))
+                                crate::dashboard::format_number(number)
                             };
                             (value, "float")
                         }
@@ -179,9 +179,7 @@ impl Model {
                 self.dashboard.interval_clamped = sample.interval_clamped;
                 self.dashboard.metrics_error = None;
             }
-            Response::Dashboard(data) => self
-                .dashboard
-                .apply(Ok(serde_json::json!({"ok":true,"data":data}))),
+            Response::Dashboard(data) => self.dashboard.apply(Ok(*data)),
             Response::Logs(value) => self.host_logs.apply(value),
             Response::LocalLogs(value) => self.local_logs.apply(value),
         }

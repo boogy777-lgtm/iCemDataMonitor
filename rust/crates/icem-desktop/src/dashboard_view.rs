@@ -103,7 +103,11 @@ impl Monitor {
                     )),
             );
         }
-        if dashboard.registers["stale"] == true {
+        if dashboard
+            .registers
+            .as_ref()
+            .is_some_and(|registers| registers.stale())
+        {
             panel = panel.child(
                 div()
                     .text_color(self.color("MacOrangeColor"))
@@ -248,7 +252,7 @@ impl Monitor {
             selected = selected.child(self.table_row(row, true, cx));
         }
         panel = panel.child(selected);
-        if !dashboard.loaded {
+        if !dashboard.loaded() {
             panel = panel.child("загрузка зеркала регистров…");
         }
         for (key, label) in [
@@ -258,7 +262,17 @@ impl Monitor {
             ("raw", "RAW [400..599]"),
         ] {
             let collapsed = dashboard.collapsed.contains(key);
-            let live = &dashboard.registers["liveness"][key];
+            let zone = match key {
+                "com" => Some(icem_web::dashboard_client::Zone::Com),
+                "lan" => Some(icem_web::dashboard_client::Zone::Lan),
+                "raw" => Some(icem_web::dashboard_client::Zone::Raw),
+                _ => None,
+            };
+            let live = dashboard
+                .registers
+                .as_ref()
+                .zip(zone)
+                .map(|(registers, zone)| registers.zone(zone).liveness());
             panel = panel.child(
                 div()
                     .flex()
@@ -274,13 +288,15 @@ impl Monitor {
                     .when(key != "system", |s| {
                         s.child(format!(
                             "{} · {} ms · записей {}",
-                            if live["active"] == true {
+                            if live.is_some_and(|live| live.active) {
                                 "live"
                             } else {
                                 "stale"
                             },
-                            crate::text(&live["ageMs"]),
-                            crate::text(&live["writeCount"])
+                            live.map(|live| live.age_ms.to_string())
+                                .unwrap_or_else(|| "—".into()),
+                            live.map(|live| live.write_count.to_string())
+                                .unwrap_or_else(|| "—".into())
                         ))
                     }),
             );

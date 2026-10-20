@@ -265,10 +265,13 @@ async fn deferred_web_plan_does_not_change_effective_routes_or_history() -> Test
         } else {
             assert_eq!(code, StatusCode::SERVICE_UNAVAILABLE);
         }
-        let actual = icem_web::dashboard_client::read(server.local_addr(), &[6])
-            .await
-            .map_err(std::io::Error::other)?;
-        assert_eq!(actual["historyError"].is_null(), startup);
+        let actual = icem_web::dashboard_client::read(
+            server.local_addr(),
+            &icem_web::shell::Selection::new(vec![6])?,
+        )
+        .await
+        .map_err(std::io::Error::other)?;
+        assert_eq!(actual.history.is_ok(), startup);
         assert_eq!(h.get("/api/engine").await?.0, StatusCode::NOT_FOUND);
         server.stop()?;
     }
@@ -578,35 +581,39 @@ async fn native_dashboard_reads_existing_rest_shapes_and_history_errors() -> Tes
     for enabled in [true, false] {
         let h = Harness::new(enabled)?;
         let server = icem_web::WebServer::bind("127.0.0.1:0".parse()?, h.state.clone())?;
-        let data = icem_web::dashboard_client::read(server.local_addr(), &[4, 6])
-            .await
-            .map_err(std::io::Error::other)?;
-        assert!(data["registers"]["system"]["scalars"].is_array());
+        let data = icem_web::dashboard_client::read(
+            server.local_addr(),
+            &icem_web::shell::Selection::new(vec![4, 6])?,
+        )
+        .await
+        .map_err(std::io::Error::other)?;
+        assert_eq!(data.registers.scalars().len(), 4);
         assert_eq!(
-            data["registers"]["zones"]["com"]["pairs"][1]["name"],
-            "UnitNum"
+            data.registers.zone(icem_bus::Zone::Com).pairs()[1].name(),
+            Some("UnitNum")
         );
         if enabled {
-            assert!(data["history"]["6"].is_array());
-            assert!(data["historyError"].is_null());
+            assert_eq!(data.history?.series().count(), 2);
         } else {
-            assert!(
-                data["historyError"]
-                    .as_str()
-                    .is_some_and(|e| e.contains("503"))
-            );
+            assert!(data.history.err().is_some_and(|e| e.contains("503")));
         }
         server.stop()?;
     }
     assert!(
-        icem_web::dashboard_client::read("192.0.2.1:80".parse()?, &[])
-            .await
-            .is_err()
+        icem_web::dashboard_client::read(
+            "192.0.2.1:80".parse()?,
+            &icem_web::shell::Selection::new(vec![])?
+        )
+        .await
+        .is_err()
     );
     assert!(
-        icem_web::dashboard_client::read("127.0.0.1:1".parse()?, &[5])
-            .await
-            .is_err()
+        icem_web::dashboard_client::read(
+            "127.0.0.1:1".parse()?,
+            &icem_web::shell::Selection::new(vec![])?
+        )
+        .await
+        .is_err()
     );
     Ok(())
 }
@@ -669,5 +676,353 @@ async fn navigate_rpc_stores_queries_clears_and_rejects_unknown_sections() -> Te
         headers.get("grpc-status").ok_or("missing grpc status")?,
         "3"
     );
+    Ok(())
+}
+
+#[tokio::test]
+async fn typed_dashboard_accepts_actual_rest_numeric_timestamp_and_stale_contract() -> TestResult {
+    use icem_web::{
+        dashboard_client::{self, Freshness as DashboardFreshness, PairValue},
+        shell::Selection,
+    };
+    let h = Harness::new(true)?;
+    let server = icem_web::WebServer::bind("127.0.0.1:0".parse()?, h.state.clone())?;
+    let mut bytes = image();
+    bytes[64..66].copy_from_slice(&u16::MAX.to_be_bytes());
+    fn set_pair(bytes: &mut [u8], addr: usize, bits: u32) {
+        bytes[64 + 2 * addr..66 + 2 * addr].copy_from_slice(&(bits as u16).to_be_bytes());
+        bytes[66 + 2 * addr..68 + 2 * addr].copy_from_slice(&((bits >> 16) as u16).to_be_bytes());
+    }
+    set_pair(&mut bytes, 6, 0.1_f32.to_bits());
+    h.state
+        .probe(&reply(&bytes, Freshness::Fresh)?, 1_700_000_000_123)?;
+    let read = dashboard_client::read(server.local_addr(), &Selection::new(vec![4, 6])?).await?;
+    assert_eq!(read.registers.scalars()[0].value(), u16::MAX);
+    assert_eq!(read.registers.scalars().len(), 4);
+    for (zone, count) in [
+        (icem_bus::Zone::Com, 98),
+        (icem_bus::Zone::Lan, 100),
+        (icem_bus::Zone::Raw, 100),
+    ] {
+        assert_eq!(read.registers.zone(zone).pairs().len(), count);
+    }
+    assert_eq!(
+        read.registers.zone(icem_bus::Zone::Com).pairs()[1].value(),
+        &PairValue::Float(f64::from(0.1_f32))
+    );
+    let DashboardFreshness::Fresh(text) = read.registers.freshness() else {
+        return Err("missing fresh timestamp".into());
+    };
+    assert_eq!(text.len(), 24);
+    assert!(text.ends_with('Z') && text.as_bytes()[19] == b'.');
+    assert_eq!(
+        read.history?
+            .series()
+            .find(|(addr, _)| addr.get() == 6)
+            .ok_or("missing series")?
+            .1
+            .last()
+            .ok_or("missing sample")?
+            .value,
+        0.1
+    );
+    let raw: Value = serde_json::from_slice(&h.get("/api/regs/history?addr=6").await?.1)?;
+    assert_eq!(raw["6"][1]["ts"], "2023-11-14T22:13:20.1230000+00:00");
+    for seconds in [i32::MIN, -1, 0, i32::MAX] {
+        set_pair(&mut bytes, 4, seconds.cast_unsigned());
+        h.state.observe(&reply(&bytes, Freshness::Fresh)?);
+        let read = dashboard_client::read(server.local_addr(), &Selection::new(vec![])?).await?;
+        let expected = chrono::DateTime::from_timestamp(i64::from(seconds), 0)
+            .ok_or("timestamp")?
+            .format("%Y-%m-%dT%H:%M:%SZ")
+            .to_string();
+        assert_eq!(
+            read.registers.zone(icem_bus::Zone::Com).pairs()[0].value(),
+            &PairValue::UnixUtc(expected)
+        );
+        assert_eq!(read.history?.series().count(), 0);
+    }
+    h.state.observe(&reply(&bytes, Freshness::LastGood)?);
+    let stale = dashboard_client::read(server.local_addr(), &Selection::new(vec![])?).await?;
+    assert!(matches!(
+        stale.registers.freshness(),
+        DashboardFreshness::LastGood
+    ));
+    let raw: Value = serde_json::from_slice(&h.get("/api/regs").await?.1)?;
+    assert!(raw["updatedAtUtc"].is_null());
+    assert!(stale.registers.zone(icem_bus::Zone::Com).liveness().age_ms >= 0);
+    // NaN in retained history fails independently of a now-finite register snapshot.
+    set_pair(&mut bytes, 6, f32::NAN.to_bits());
+    h.state
+        .probe(&reply(&bytes, Freshness::Fresh)?, 1_700_000_001_000)?;
+    assert!(
+        dashboard_client::read(server.local_addr(), &Selection::new(vec![6])?)
+            .await
+            .is_err()
+    );
+    set_pair(&mut bytes, 6, 1_f32.to_bits());
+    h.state.observe(&reply(&bytes, Freshness::Fresh)?);
+    let partial = dashboard_client::read(server.local_addr(), &Selection::new(vec![6])?).await?;
+    assert!(
+        partial
+            .history
+            .err()
+            .is_some_and(|error| error.contains("500"))
+    );
+    server.stop()?;
+    Ok(())
+}
+#[tokio::test]
+async fn typed_dashboard_rejects_malformed_success_shapes_and_bounds_history() -> TestResult {
+    use icem_web::{
+        dashboard_client::{HISTORY_CAPACITY, History, Registers},
+        shell::Selection,
+    };
+    let h = Harness::new(true)?;
+    let baseline: Value = serde_json::from_slice(&h.get("/api/regs").await?.1)?;
+    for (pointer, value) in [
+        ("/system/scalars", serde_json::json!([])),
+        ("/system/scalars/1/reg", serde_json::json!(0)),
+        ("/system/scalars/0/value", serde_json::json!(-1)),
+        ("/system/scalars/0/value", serde_json::json!(65536)),
+        ("/system/scalars/0/value", serde_json::json!(1.5)),
+        ("/system/liveness", serde_json::json!({})),
+        ("/zones/com/pairs/1/addr", serde_json::json!(7)),
+        ("/zones/lan/pairs/0/addr", serde_json::json!(4)),
+        ("/zones/raw/pairs/0/addrEnd", serde_json::json!(402)),
+        ("/zones/com/pairs/0/idx", serde_json::json!(1)),
+        ("/zones/lan/baseReg", serde_json::json!(4)),
+        ("/zones/raw/len", serde_json::json!(198)),
+        ("/zones/com/pairs/0/kind", serde_json::json!("float")),
+        ("/zones/com/pairs/1/kind", serde_json::json!("unix")),
+        ("/zones/com/pairs/1/kind", serde_json::json!("unknown")),
+        ("/zones/com/pairs/1/value", serde_json::json!(null)),
+        ("/zones/com/pairs/1/value", serde_json::json!("NaN")),
+        (
+            "/zones/com/pairs/0/value",
+            serde_json::json!("2038-01-19T03:14:08Z"),
+        ),
+        (
+            "/zones/com/pairs/0/value",
+            serde_json::json!("2026-10-17T12:00:00+01:00"),
+        ),
+        (
+            "/zones/com/pairs/0/value",
+            serde_json::json!("1901-12-13T20:45:51Z"),
+        ),
+        (
+            "/zones/com/pairs/0/value",
+            serde_json::json!("2026-10-17T12:00:00.001Z"),
+        ),
+        ("/liveness/com/active", serde_json::json!("true")),
+        ("/liveness/com/ageMs", serde_json::json!(-1)),
+        ("/liveness/com/ageMs", serde_json::json!(null)),
+        (
+            "/liveness/com/writeCount",
+            serde_json::json!(4294967296_u64),
+        ),
+        ("/updatedAtUtc", serde_json::json!(null)),
+        ("/stale", serde_json::json!(true)),
+    ] {
+        let mut malformed = baseline.clone();
+        *malformed.pointer_mut(pointer).ok_or("bad test pointer")? = value;
+        assert!(
+            Registers::decode(&serde_json::to_vec(&malformed)?).is_err(),
+            "accepted {pointer}: {malformed}"
+        );
+    }
+    for pointer in [
+        "/updatedAtUtc",
+        "/zones/com/pairs/0/name",
+        "/system/scalars/0/label",
+        "/system/liveness",
+        "/liveness/lan/producerFlag",
+    ] {
+        let mut malformed = baseline.clone();
+        let (parent, key) = pointer.rsplit_once('/').ok_or("pointer")?;
+        malformed
+            .pointer_mut(parent)
+            .and_then(Value::as_object_mut)
+            .ok_or("object")?
+            .remove(key);
+        assert!(
+            Registers::decode(&serde_json::to_vec(&malformed)?).is_err(),
+            "accepted missing {pointer}"
+        );
+    }
+    for (active, producer, age, valid) in [
+        (true, false, 0, false),
+        (true, true, 5000, false),
+        (false, true, 0, false),
+        (true, true, 4999, true),
+        (false, true, 5000, true),
+        (false, false, 0, true),
+    ] {
+        let mut source = baseline.clone();
+        source["liveness"]["com"] =
+            serde_json::json!({"active":active,"producerFlag":producer,"ageMs":age,"writeCount":0});
+        assert_eq!(
+            Registers::decode(&serde_json::to_vec(&source)?).is_ok(),
+            valid
+        );
+    }
+    let selected = Selection::new(vec![6])?;
+    for malformed in [
+        serde_json::json!({}),
+        serde_json::json!({"5":[]}),
+        serde_json::json!({"8":[]}),
+        serde_json::json!({"06":[]}),
+        serde_json::json!({"6":null}),
+        serde_json::json!({"6":[{"ts":"bad","v":1}]}),
+        serde_json::json!({"6":[{"ts":"2023-11-14T22:13:20Z","v":null}]}),
+        serde_json::json!({"6":[{"ts":"2023-11-14T22:13:20Z","v":"Infinity"}]}),
+    ] {
+        assert!(History::decode(&serde_json::to_vec(&malformed)?, &selected).is_err());
+    }
+    let points: Vec<_> = (0..700)
+        .map(|value| serde_json::json!({"ts":"2023-11-14T22:13:20.1230000+00:00","v":value}))
+        .collect();
+    let bounded = History::decode(
+        &serde_json::to_vec(&serde_json::json!({"6":points}))?,
+        &selected,
+    )?;
+    let (_, points) = bounded.series().next().ok_or("missing series")?;
+    assert_eq!(points.len(), HISTORY_CAPACITY);
+    assert_eq!((points[0].value, points[599].value), (100., 699.));
+    assert_eq!(points[0].at, 1_700_000_000_123);
+    assert!(
+        History::decode(
+            br#"{"6":[{"ts":"2023-11-14T22:13:20Z","v":1e400}]}"#,
+            &selected
+        )
+        .is_err()
+    );
+    Ok(())
+}
+
+/// HTTP-200 fault fixture; each expected response corresponds to one connection.
+fn dashboard_http_fixture(replies: Vec<Vec<u8>>) -> TestResultFixture {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+    let address = listener.local_addr()?;
+    listener.set_nonblocking(true)?;
+    let thread = std::thread::spawn(move || -> Result<Vec<String>, String> {
+        let mut paths = Vec::new();
+        for body in replies {
+            let deadline = std::time::Instant::now() + Duration::from_secs(3);
+            let mut stream = loop {
+                match listener.accept() {
+                    Ok((stream, _)) => break stream,
+                    Err(error)
+                        if error.kind() == std::io::ErrorKind::WouldBlock
+                            && std::time::Instant::now() < deadline =>
+                    {
+                        std::thread::sleep(Duration::from_millis(1))
+                    }
+                    Err(error) => return Err(error.to_string()),
+                }
+            };
+            // Windows may inherit the listener's nonblocking mode. This fixture
+            // uses synchronous I/O; the timeout must govern an incomplete header.
+            stream.set_nonblocking(false).map_err(|e| e.to_string())?;
+            stream
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .map_err(|e| e.to_string())?;
+            let mut request = Vec::new();
+            let mut chunk = [0; 4096];
+            while !request.windows(4).any(|part| part == b"\r\n\r\n") {
+                let n = stream.read(&mut chunk).map_err(|e| e.to_string())?;
+                if n == 0 || request.len() + n > 16384 {
+                    return Err("invalid request".into());
+                }
+                request.extend_from_slice(&chunk[..n]);
+            }
+            paths.push(
+                String::from_utf8(request)
+                    .map_err(|e| e.to_string())?
+                    .lines()
+                    .next()
+                    .ok_or("request line")?
+                    .to_owned(),
+            );
+            write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",body.len()).map_err(|e|e.to_string())?;
+            stream.write_all(&body).map_err(|e| e.to_string())?;
+        }
+        Ok(paths)
+    });
+    Ok((address, thread))
+}
+type TestResultFixture = Result<
+    (
+        std::net::SocketAddr,
+        std::thread::JoinHandle<Result<Vec<String>, String>>,
+    ),
+    Box<dyn std::error::Error>,
+>;
+
+#[test]
+fn dashboard_http_fixture_waits_for_fragmented_request_header() -> TestResult {
+    use std::io::{Read, Write};
+    let (endpoint, fixture) = dashboard_http_fixture(vec![b"{}".to_vec()])?;
+    let mut client = std::net::TcpStream::connect(endpoint)?;
+    client.set_nodelay(true)?;
+    client.set_read_timeout(Some(Duration::from_secs(3)))?;
+    client.set_write_timeout(Some(Duration::from_secs(3)))?;
+    client.write_all(b"GET /api/regs HTTP/1.1\r\nHost: localhost\r\n")?;
+    std::thread::sleep(Duration::from_millis(25));
+    client.write_all(b"\r\n")?;
+    let mut response = String::new();
+    client.read_to_string(&mut response)?;
+    let paths = fixture.join().map_err(|_| "fixture panic")??;
+    assert_eq!(paths, vec!["GET /api/regs HTTP/1.1"]);
+    assert_eq!(
+        response,
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn malformed_http_success_preserves_partial_outcome_and_empty_selection_skips_history()
+-> TestResult {
+    use icem_web::{dashboard_client, shell::Selection};
+    let h = Harness::new(true)?;
+    let registers = h.get("/api/regs").await?.1;
+    for history in [
+        b"not json".to_vec(),
+        b"{}".to_vec(),
+        br#"{"6":[{"ts":"bad","v":1}]}"#.to_vec(),
+    ] {
+        let (endpoint, fixture) = dashboard_http_fixture(vec![registers.clone(), history])?;
+        let read = dashboard_client::read(endpoint, &Selection::new(vec![6])?).await?;
+        assert_eq!(read.registers.scalars().len(), 4);
+        assert!(read.history.is_err());
+        let paths = fixture.join().map_err(|_| "fixture panic")??;
+        assert_eq!(
+            paths,
+            vec![
+                "GET /api/regs HTTP/1.1",
+                "GET /api/regs/history?addr=6 HTTP/1.1"
+            ]
+        );
+    }
+    let (endpoint, fixture) = dashboard_http_fixture(vec![registers])?;
+    assert_eq!(
+        dashboard_client::read(endpoint, &Selection::new(vec![])?)
+            .await?
+            .history?
+            .series()
+            .count(),
+        0
+    );
+    assert_eq!(fixture.join().map_err(|_| "fixture panic")??.len(), 1);
+    let (endpoint, fixture) =
+        dashboard_http_fixture(vec![br#"{"system":{"scalars":[]}}"#.to_vec()])?;
+    assert!(
+        dashboard_client::read(endpoint, &Selection::new(vec![6])?)
+            .await
+            .is_err()
+    );
+    assert_eq!(fixture.join().map_err(|_| "fixture panic")??.len(), 1);
     Ok(())
 }

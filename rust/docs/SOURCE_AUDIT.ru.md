@@ -528,3 +528,209 @@ b4211289e6f94fb5a09f493563bf1fa12e92d0f0 / PR17. On old 1111 head, Rust/MSVC
 39268706746 and installer contracts 39268706847 passed; Legacy 39268707217 failed.
 All mandatory checks must run again on the final amended head. Hardware/operator/
 SDK/real-install gates remain separate; exact CI timeout timing remains unproved.
+
+
+E21: [проверенные dashboard snapshots](DASHBOARD_E21.ru.md),
+[ADR0018](adr/0018-typed-dashboard.ru.md): owned Registers/History через Shell и GPUI,
+полная geometry/value/UTC/liveness validation, independent history failure и
+current-selection filtering. REST/SPA/proto, appearance и 176+6 mapping прежние.
+Software/exact-head Windows evidence фиксируется отдельно; physical/SDK/hardware
+acceptance остаётся OPEN. Далее selftest/landiag и stdin CLI отдельными increments.
+
+
+## D51 / E21 PR18 — stale UIA observation in installer contract fixture
+
+Exact head b4df3f3926aa55d828367373945a128c04fc1636, installer-contract run
+39311030990 / job 118260335941: FAIL. The first `ui-saved-options-on` probe passed
+at 19:28:02.068; `ui-explicit-zero-is-unchecked` failed at 19:28:02.480 with
+`System.Windows.Automation.ElementNotAvailableException` (target UI closed).
+Stack: `AutomationElementInformation.get_IsEnabled` → `InstallerUiProbe.Find`
+→ `Wait` → `Click` → `Main`; `Test-WindowsMsiUpgrade.ps1:147` rejected probe exit.
+This is evidence of an unavailable element during discovery, not a failed option
+state/product assertion. The exact wizard transition timing is not established;
+previous passing E20 MSI runs do not prove the scheduling cause of this failure.
+
+Class: observational UIA snapshots in `installer/tests/InstallerUiProbe.cs::Find`,
+not MSI mutation/packaging policy. Inv: retain client PID scope and enabled/name
+filters; catch only `ElementNotAvailableException` around window descendant
+query and control enabled/name reads, then skip stale observations. Existing Wait
+polling re-enumerates within its original budget; no absent-control or exited-client
+success is introduced. N+1: discovery remains in Find; Invoke/Toggle operations
+remain outside these catch scopes and continue to fail immediately on exceptions.
+
+The 15s/100ms control wait, 180s operation wait, 240s outer probe deadline,
+client-exit failure, expected MSI exit codes, checkbox state assertions and scenario
+sequence are unchanged. No mutation retry, MSI relaunch, scenario retry, timeout
+increase or broad catch was added. Production installer/payload and original .NET
+sources are unchanged; immutable baseline and 14-entry ledger are untouched.
+
+Local verification: exact source comparison confirms only Find changed; its two
+new catches are specific to stale-element observations. All code before Find and
+from Wait through cleanup is byte-identical to the failed head. Diff whitespace
+checks PASS. UIA/PowerShell/MSI runtime execution is NOT_RUN on Linux. Existing real
+MSI scenarios must pass again on the amended exact head; the original FAIL remains
+recorded. No dashboard Rust code changed, so the existing 193 portable tests remain
+prior E21 software evidence, not a substitute for Windows installer acceptance.
+
+
+## D52 / E21 PR18 — console fixture recompiles interop within every action deadline
+
+Exact head 9fe6fb30b400690ca0f9da4fdd5ffba865ca510a, Rust run 39311807867 /
+job 118263127720: FAIL in console_stop (10.65s). Helper PID6264 targeted Host PID3208,
+Action=Probe, expected HWND=0. Logs: startup/compiling at 19:43:33.725, interop
+compiled/finding window at 19:43:41.144, action posted/checking state at
+19:43:41.163; parent reported the 10s helper child deadline at 19:43:42.241.
+Probe has no 2s state loop: only Close/Minimize wait for visibility/minimized state.
+The 7.419s Add-Type phase plus process startup consumed most of the child budget;
+the precise remaining serialization/process-exit scheduling cost is not established.
+This does not prove a Host teardown failure, nor a compiler-only cause for the final
+second. The older E19 diagnostic-only failure record remains in HOST_E19.
+Legacy 39311807737 and installer contracts 39311807909 passed at this same head;
+they do not replace the failed Rust gate or a new exact-head run.
+
+Class: disposable window-action helper setup in `apps/host/tests/console_stop.rs`
+and `tests/windows/OwnedConsoleProbe.cs`; production Host/native APIs are outside
+this change. Inv: compile once BEFORE launching Host, under a separately named
+10s compiler-child deadline; each helper action keeps its original 10s child budget,
+Close/Minimize keep 2s state/10ms polling, Host teardown remains 5s. N+1: one helper
+Main validates the four actions; action dispatch/Win32 behavior lives there, not in
+production native code. Unknown/malformed helper invocation fails before effects.
+
+The Rust fixture invokes the existing Windows .NET Framework64 v4.0.30319 csc.exe
+(the compiler family already used by MSI contract fixtures), compiling one x64 EXE
+in a process-specific directory. Missing compiler/compile failure/timeout aborts the
+test before Host startup. Owned compiler/action processes are killed/joined on exit;
+helper directory cleanup runs on success/error. No retry or timeout extension was
+added. PowerShell startup, repeated Add-Type and ConvertTo-Json are removed from
+the operation path; the old PS-only helper is removed after call-site audit.
+
+C# retains the same Win32 signatures, diagnostic window class, null-title search,
+PID ownership and expected HWND check, WM_CLOSE/Minimize/WM_CHAR Ctrl+C actions,
+state predicates and destroyed-window failure. Stdout has only the same four JSON
+facts (integer hwnd/pid, bool visible/minimized); invariant numeric formatting and
+fixed keys avoid serializer setup. Diagnostics/errors go to stderr, with nonzero
+exit on failure. Original reconnect/three X/Open/minimize/same HWND/listener/pipe/
+restart/autostart/Quit assertions and limits remain unchanged. No production source,
+.NET baseline/ledger, dependency, workflow or unsafe-policy change is involved.
+
+Local validation: pinned Rust1.99.1 fmt --check and host --tests check/Clippy
+locked/offline / -D warnings PASS. Exact C# source compiled without warnings under
+SDK10.0.402 / net10.0 with LangVersion=5; no-args and unknown-action cases returned
+2, malformed PID returned 1, all with empty stdout under a 10s subprocess bound.
+No invalid invocation reached user32. A literal source comparison confirmed that
+the original Rust test body is identical after one pre-Host setup line and caller
+rename; Win32 signatures/messages and state limits were checked against the old
+helper. Diff whitespace checks PASS. These are fixture/source checks, not a new
+execution of the dashboard's prior 193 portable tests.
+
+Validation limits: local Linux checks do not compile cfg(windows) Rust or execute
+user32/Framework/msiexec; the SDK compiler check does not establish the Framework
+compiler/runtime result. Real Windows exact-head execution remains mandatory;
+no passing UI/teardown result is inferred from source inspection or prior CI.
+
+
+### D52 follow-up — Framework compiler source argument
+
+Head 956498ab3d5412d4dc04d7caa519afd073b520af, Rust run 39313953787 /
+job 118270460165: FAIL before Host startup. At 19:56:43.008 Framework csc
+reported CS1504: source `d:\a\iCemDataMonitor\iCemDataMonitor\rust\apps\host\OwnedConsoleProbe.cs`
+could not be opened (missing file). The fixture had passed an absolute source
+argument constructed with `../../tests/windows/OwnedConsoleProbe.cs`; the reported
+path differs from that intended location. This establishes failed source resolution,
+not the exact internals of the older compiler's mixed-slash argument parser.
+Installer 39313953824 and Legacy 39313953790 (941/941) passed at the same head.
+The Rust failure remains recorded and all checks must run on the amended head.
+
+The compiler now runs with current_dir=`rust/tests/windows` derived through the
+manifest directory's two parents and explicit `tests`/`windows` components. Its
+source argument is the literal basename `OwnedConsoleProbe.cs`. No canonicalize/
+verbatim path prefix is introduced. Output path, compiler/setup/action/state/
+teardown limits and every assertion/action remain unchanged. Literal comparison
+verified that only source-directory construction and compiler arguments changed;
+the C# helper remains byte-identical, SHA256
+3a375e1eece42d3f43fe052b3cf1b078173b66035cfcbed9076ad1c24a3ff71e.
+
+Local Linux: invocation-layout/source-identity checks and diff/fmt PASS; host
+--tests check/Clippy locked/offline / -D warnings PASS (cfg(windows) excluded).
+Direct SDK10.0.402 Roslyn compilation from the actual source directory with the
+literal basename passed in C#5 mode under a 10s subprocess limit. The same command
+with `AbsentConsoleProbe.cs` failed (CS2001/exit1); no-args/unknown-action/malformed-PID
+helper invocations again returned 2/2/1 with empty stdout. These prove the checked
+layout, source identity and fail-closed local behavior, not Framework path handling,
+Windows Rust compilation or user32 behavior. Actual Framework/Windows exact-head
+execution is still mandatory; no production/dependency/ledger/workflow change.
+
+
+### D52 follow-up — unsupported new fixture-build budget
+
+Head 0743051dcdc6c37154314f4d389a28015c3afd39, Rust run 39315553503 /
+job 118275987649: FAIL. console_stop began at 20:10:05.494 and failed at
+20:10:15.672: `console fixture compilation before Host startup: child PID9040
+deadline exceeded after 10s`. No compiler stderr was reported. Host was never
+launched. Unlike 956498ab, this run did not report CS1504; absence of that error
+does not establish compiler completion or the cause of its delay. Installer
+39315553386 and Legacy 39315553408 (941/941) passed on the same head. The failed
+Rust gate remains recorded; there is no blind rerun or claim of console parity.
+
+The 10s setup cap was NEW in D52, copied from the runtime-action cap without build
+time evidence. It is now explicitly corrected from 10s to 60s for pre-Host BUILD
+preparation only. This is a bounded build policy, not a measured guarantee that
+compilation completes in 60s or proof of a compiler-stall cause. Repository practice
+already separates compilation from operation: MSI UI fixture csc runs before its
+scenarios under the 20-minute installer job; C# oracle compilation runs under the
+35-minute Rust job. This fixture has a tighter independent preparation cap within
+that job. The original 10s action, 2s state, 5s Host stop, assertions and no-retry
+behavior remain unchanged. None of the product behavior is allowed more time.
+
+Preparation logs include start time, compiler path/PID, cwd, source path/size,
+output path, inherited stdout/stderr, elapsed time, wait result/exit state and output
+bytes. Compilation errors/timeouts remain fatal before Host startup. A successful
+compiler exit additionally requires a nonempty regular executable. Owned process
+and directory cleanup remain in place. No production/dependency/workflow/ledger
+change was added, and the C# helper bytes and runtime action method are unchanged.
+
+Local Rust1.99.1 fmt/host --tests check/Clippy locked/offline / -D warnings PASS;
+Linux cargo excludes cfg(windows). A scratch-only harness compiled the exact setup,
+wait and RAII code with only Windows creation_flags omitted. Failed compiler exit7,
+missing source, exit0 with no output, and exit0 with zero-byte output all aborted
+before a subsequent Host-start marker. The zero-byte case recorded output bytes0
+and the explicit no-executable failure. Literal source comparison confirmed all
+Host test assertions, functional bounds and runtime helper invocation unchanged.
+These checks exercise fail-closed preparation; they do not prove Windows Framework
+compilation or actual Host behavior. New exact-head Windows evidence must show
+compiler duration/result and the full behavior checks passing before merge.
+
+## D53 / E21 — accepted HTTP fixture stream has no explicit blocking mode
+
+Head 7c406efe25a56d5561bc7cce1afc906580deca2a, Rust run 39317752694 /
+job 118283533993: web_contract FAILED, 15/16 passed. The malformed HTTP-200
+partial-outcome test returned Windows socket error 10035 (WouldBlock). The fixture
+sets its listener nonblocking for bounded accept, then performs synchronous reads
+on each accepted stream without explicitly restoring blocking mode. A read timeout
+does not itself choose blocking mode. The log does not identify the exact failing
+socket call; inherited nonblocking mode is the source-level defect addressed here.
+Production async WebServer and dashboard client are outside this change.
+
+Class: synchronous accepted streams in the disposable dashboard HTTP fixture in
+`crates/icem-web/tests/web_contract.rs`, not Tokio production socket handling.
+Inv: explicitly set blocking mode before the existing 3s read timeout; complete a
+fragmented request header and return the exact declared HTTP response. The new
+real-TCP regression sends the terminating header fragment separately, with bounded
+client reads/writes. N+1: every malformed/empty-selection scenario uses the same
+fixture; the original partial-result and exact request-path assertions remain.
+Accept/read deadlines, 16KiB request cap, response bodies and production contracts
+are unchanged. No WouldBlock retry loop or ignored error is introduced.
+
+On the failed old head, console_stop passed, as did the earlier native console,
+logger and integration gates. Legacy run39317752797 and MSI run39317752827 passed.
+These results preserve D52 evidence but do not replace a complete new exact-head
+Rust/Legacy/MSI verdict. Physical UI/hardware and genuine SDK release gates remain
+separate. Local Rust binaries must be restored in this resumed environment before
+claiming new local cargo results.
+
+Resumed validation: restored exact Rust1.99.1; workspace fmt --check and focused
+`cargo test --locked -p icem-web --test web_contract` passed (17/17, including the
+new fragmented-header and original malformed-success scenarios). Dependencies were
+fetched from the unchanged lockfile. Then `cargo clippy --locked --offline
+-p icem-web --all-targets -- -D warnings` and git diff --check passed. These Linux
+results do not establish Windows behavior; full exact-head CI remains required.

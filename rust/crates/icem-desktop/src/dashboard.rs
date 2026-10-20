@@ -1,8 +1,8 @@
 //! Native dashboard state. Wire projections stay owned by the Host REST API.
-use serde_json::{Value, json};
+use icem_web::dashboard_client::{Address, PairValue, Read, Registers, Zone};
+pub use icem_web::dashboard_client::{HISTORY_CAPACITY, Sample};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const HISTORY_CAPACITY: usize = 600;
 pub const PALETTE: [u32; 10] = [
     0xcc3300, 0x339933, 0x006699, 0xff9933, 0x634b9f, 0xffcc05, 0xd86c27, 0x009999, 0x660066,
     0xa1a744,
@@ -15,11 +15,6 @@ pub struct RegisterRow {
     pub value: String,
     pub label: String,
 }
-#[derive(Clone, Debug, PartialEq)]
-pub struct Sample {
-    pub at: i64,
-    pub value: f64,
-}
 #[derive(Clone, Debug)]
 pub struct Metric {
     pub value: String,
@@ -28,7 +23,7 @@ pub struct Metric {
 }
 #[derive(Default)]
 pub struct Dashboard {
-    pub registers: Value,
+    pub registers: Option<Registers>,
     pub metrics: BTreeMap<u16, Metric>,
     pub metrics_pending: bool,
     pub metrics_error: Option<String>,
@@ -41,60 +36,11 @@ pub struct Dashboard {
     pub collapsed: BTreeSet<String>,
     pub error: Option<String>,
     pub history_error: Option<String>,
-    pub loaded: bool,
     pub pending: bool,
 }
 impl Dashboard {
-    pub fn apply_metrics(&mut self, response: Result<Value, String>) {
-        self.metrics_pending = false;
-        let result = response.and_then(|v| {
-            if v["ok"] == true {
-                Ok(v["data"].clone())
-            } else {
-                Err(crate::text(&v["error"]))
-            }
-        });
-        let data = match result {
-            Ok(v) => v,
-            Err(error) => {
-                self.metrics_error = Some(error);
-                return;
-            }
-        };
-        let Some(deltas) = data["deltas"].as_array() else {
-            self.metrics_error = Some("invalid metrics sample".into());
-            return;
-        };
-        let at = data["at"].as_i64().unwrap_or_default();
-        for delta in deltas {
-            if let Some(addr) = delta["addr"].as_u64().and_then(|a| u16::try_from(a).ok())
-                && (addr < 4 || valid_addr(addr))
-            {
-                self.metrics.insert(
-                    addr,
-                    Metric {
-                        value: if delta["kind"] == "int32" {
-                            crate::text(&delta["value"])
-                        } else if let Some(value) = delta["value"]
-                            .as_str()
-                            .and_then(|s| s.parse::<f64>().ok())
-                            .filter(|v| v.is_finite())
-                        {
-                            format_value(&json!(value))
-                        } else {
-                            format_value(&delta["value"])
-                        },
-                        kind: crate::text(&delta["kind"]),
-                        at,
-                    },
-                );
-            }
-        }
-        self.sample_count = self.sample_count.saturating_add(1);
-        self.last_sample = at;
-        self.heartbeat = data["heartbeat"].as_i64().unwrap_or_default();
-        self.interval_clamped = data["clamped"] == true;
-        self.metrics_error = None;
+    pub fn loaded(&self) -> bool {
+        self.registers.is_some()
     }
     pub fn toggle(&mut self, addr: u16) {
         if valid_addr(addr) && !self.selected.remove(&addr) {
@@ -107,92 +53,65 @@ impl Dashboard {
         self.history.clear();
         self.history_error = None;
     }
-    pub fn request(&self) -> Value {
-        json!({"cmd":"dashboard", "selected":self.selected})
-    }
-    pub fn apply(&mut self, response: Result<Value, String>) {
+    pub fn apply(&mut self, response: Result<Read, String>) {
         self.pending = false;
-        let result = response.and_then(|v| {
-            if v["ok"] == true {
-                Ok(v["data"].clone())
-            } else {
-                Err(crate::text(&v["error"]))
-            }
-        });
-        let data = match result {
+        let data = match response {
             Ok(data) => data,
             Err(error) => {
                 self.error = Some(error);
                 return;
             }
         };
-        if !data["registers"]["system"]["scalars"].is_array() {
-            self.error = Some("неверный ответ регистров".into());
-            return;
-        }
-        self.registers = data["registers"].clone();
-        self.loaded = true;
+        self.registers = Some(data.registers);
         self.error = None;
-        if let Some(error) = data["historyError"].as_str() {
-            self.history_error = Some(error.to_owned());
-            return;
-        }
-        let mut history = BTreeMap::new();
-        for &addr in &self.selected {
-            let Some(items) = data["history"][addr.to_string()].as_array() else {
-                continue;
-            };
-            let mut samples = Vec::new();
-            for item in items
-                .iter()
-                .skip(items.len().saturating_sub(HISTORY_CAPACITY))
-            {
-                let sample = item["ts"]
-                    .as_str()
-                    .and_then(|ts| chrono::DateTime::parse_from_rfc3339(ts).ok())
-                    .zip(item["v"].as_f64().filter(|v| v.is_finite()));
-                let Some((time, value)) = sample else {
-                    self.history_error = Some(format!("неверная точка истории addr {addr}"));
-                    return;
-                };
-                samples.push(Sample {
-                    at: time.timestamp_millis(),
-                    value,
-                });
+        match data.history {
+            Ok(history) => {
+                self.history = history
+                    .series()
+                    .filter(|(address, _)| self.selected.contains(&address.get()))
+                    .map(|(address, samples)| (address.get(), samples.to_vec()))
+                    .collect();
+                self.history_error = None;
             }
-            history.insert(addr, samples);
+            Err(error) => self.history_error = Some(error),
         }
-        self.history = history;
-        self.history_error = None;
     }
     pub fn rows(&self, zone: &str) -> Vec<RegisterRow> {
-        let source = if zone == "system" {
-            &self.registers["system"]["scalars"]
-        } else {
-            &self.registers["zones"][zone]["pairs"]
+        let Some(registers) = &self.registers else {
+            return Vec::new();
         };
-        source
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|p| {
-                let addr =
-                    u16::try_from(p[if zone == "system" { "reg" } else { "addr" }].as_u64()?)
-                        .ok()?;
-                Some(RegisterRow {
-                    addr,
-                    end: p["addrEnd"]
-                        .as_u64()
-                        .and_then(|n| u16::try_from(n).ok())
-                        .unwrap_or(addr),
-                    name: crate::text(&p["name"]),
-                    value: if zone == "system" {
-                        crate::text(&p["value"])
-                    } else {
-                        format_value(&p["value"])
-                    },
-                    label: p["label"].as_str().unwrap_or("").into(),
+        if zone == "system" {
+            return registers
+                .scalars()
+                .iter()
+                .map(|scalar| RegisterRow {
+                    addr: scalar.reg(),
+                    end: scalar.reg(),
+                    name: scalar.name().into(),
+                    value: scalar.value().to_string(),
+                    label: scalar.label().unwrap_or("").into(),
                 })
+                .collect();
+        }
+        let zone = match zone {
+            "com" => Zone::Com,
+            "lan" => Zone::Lan,
+            "raw" => Zone::Raw,
+            _ => return Vec::new(),
+        };
+        registers
+            .zone(zone)
+            .pairs()
+            .iter()
+            .map(|pair| RegisterRow {
+                addr: pair.address().get(),
+                end: pair.address().get() + 1,
+                name: pair.name().unwrap_or("—").into(),
+                value: match pair.value() {
+                    PairValue::Float(value) => format_number(*value),
+                    PairValue::UnixUtc(text) => text.clone(),
+                },
+                label: String::new(),
             })
             .collect()
     }
@@ -244,20 +163,16 @@ impl Dashboard {
     }
 }
 pub fn valid_addr(addr: u16) -> bool {
-    (4..600).contains(&addr) && addr.is_multiple_of(2)
+    Address::new(addr).is_ok()
 }
-pub fn format_value(value: &Value) -> String {
-    if let Some(n) = value.as_f64() {
-        if n.abs() >= 1000. {
-            format!("{n:.1}")
-        } else {
-            format!("{n:.4}")
-                .trim_end_matches('0')
-                .trim_end_matches('.')
-                .into()
-        }
+pub fn format_number(n: f64) -> String {
+    if n.abs() >= 1000. {
+        format!("{n:.1}")
     } else {
-        crate::text(value)
+        format!("{n:.4}")
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .into()
     }
 }
 #[derive(Clone, Copy, Debug)]

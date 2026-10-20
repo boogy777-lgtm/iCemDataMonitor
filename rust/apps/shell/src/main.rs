@@ -179,9 +179,8 @@ mod windows {
                             .as_ref()
                             .map_err(Clone::clone)?,
                     };
-                    let data =
-                        icem_web::dashboard_client::read(endpoint, selected.addresses()).await?;
-                    return Ok(Response::Dashboard(data));
+                    let data = icem_web::dashboard_client::read(endpoint, selected).await?;
+                    return Ok(Response::Dashboard(Box::new(data)));
                 }
                 let mut client = client::connect(&self.pipe)
                     .await

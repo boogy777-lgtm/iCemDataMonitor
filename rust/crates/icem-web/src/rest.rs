@@ -204,7 +204,7 @@ async fn history(State(state): State<WebState>, RawQuery(raw): RawQuery) -> Resp
     let mut addrs = Vec::new();
     for raw in values {
         match raw.trim().parse::<u16>() {
-            Ok(addr) if (4..600).contains(&addr) && addr.is_multiple_of(2) => addrs.push(addr),
+            Ok(addr) if crate::dashboard_client::Address::new(addr).is_ok() => addrs.push(addr),
             _ => {
                 return error(
                     StatusCode::BAD_REQUEST,

@@ -191,3 +191,11 @@ private ControlResult, typed Execution → derived GPUI View/Signal identity; JS
 parser C# domain-shaped fixtures и mismatch/nonfinite/partial/save-failure checks.
 D49: dashboard status отображает уже typed Model.host, сохраняя last-known при fault.
 Dashboard REST/selftest/landiag и visual/operator/SDK/hardware gates остаются открытыми.
+
+
+E21: [проверенные dashboard snapshots](DASHBOARD_E21.ru.md),
+[ADR0018](adr/0018-typed-dashboard.ru.md): owned Registers/History через Shell и GPUI,
+полная geometry/value/UTC/liveness validation, independent history failure и
+current-selection filtering. REST/SPA/proto, appearance и 176+6 mapping прежние.
+Software/exact-head Windows evidence фиксируется отдельно; physical/SDK/hardware
+acceptance остаётся OPEN. Далее selftest/landiag и stdin CLI отдельными increments.
