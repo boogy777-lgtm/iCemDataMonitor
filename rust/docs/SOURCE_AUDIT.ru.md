@@ -737,3 +737,15 @@ results do not establish Windows behavior; full exact-head CI remains required.
 
 
 E22: [встроенный emulator --selftest](EMULATOR_E22.ru.md): полный mapping T1–T26, first-argument dispatch до startup, read-only EXE-relative emulator catalogs, isolated native TestCtl и полный i32 failCount. Windows process/release smoke tests добавлены; local Linux не доказывает Windows runtime. D22/operator/SDK/hardware gates открыты; E23 — explicit --landiag и stdin CLI.
+
+
+## D54 / CI-2a — canonical INI read/create race
+
+CI-1 head `0283817`, Rust run `39433195261` / job `118664064048`: unchanged
+station concurrent-creation test FAIL at 13:56:31.850 with Windows os2/NotFound
+config.ini. The old predicate used a later exists probe rather than the captured
+read error. A deterministic real NotFound → real winner-publication regression
+fails with that predicate and passes when only the original canonical NotFound
+permits defaults. Exact original Windows interleaving remains inferred. Parse/access
+errors stay fail-fast; no-clobber publication and legacy policy are unchanged.
+[Scope, red/green evidence and Windows limits](CI2_CONFIG_RACE.ru.md).

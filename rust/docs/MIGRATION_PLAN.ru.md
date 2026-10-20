@@ -214,3 +214,9 @@ acceptance остаётся OPEN. Далее selftest/landiag и stdin CLI от�
 
 
 E22: [встроенный emulator --selftest](EMULATOR_E22.ru.md): полный mapping T1–T26, first-argument dispatch до startup, read-only EXE-relative emulator catalogs, isolated native TestCtl и полный i32 failCount. Windows process/release smoke tests добавлены; local Linux не доказывает Windows runtime. D22/operator/SDK/hardware gates открыты; E23 — explicit --landiag и stdin CLI.
+
+
+CI-2a / D54: [canonical INI read/create race](CI2_CONFIG_RACE.ru.md), отдельный
+prerequisite CI-1. Только исходный canonical NotFound разрешает defaults; strict
+validation/no-clobber и legacy migration сохранены. Локальный red/green не заменяет
+обязательные exact-head Windows gates; E23 и ensure-host вне этого изменения.
