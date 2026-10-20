@@ -220,3 +220,9 @@ CI-2a / D54: [canonical INI read/create race](CI2_CONFIG_RACE.ru.md), отдел
 prerequisite CI-1. Только исходный canonical NotFound разрешает defaults; strict
 validation/no-clobber и legacy migration сохранены. Локальный red/green не заменяет
 обязательные exact-head Windows gates; E23 и ensure-host вне этого изменения.
+
+
+CI-2b / D55: [synthetic register mirror fixture и CI diagnostics](CI2_TEST_INFRA.ru.md).
+Future-clock test fixture отделён от настоящего fresh producer; stale endpoint control
+и exact 5000 ms health matrix сохранены. Production .NET неизменён; окончательные
+Windows gates и отдельный review обязательны. E23/ensure-host вне изменения.

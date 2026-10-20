@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using iCemDataMonitor.Data.Bus;
 using iCemDataMonitor.Sdk.Bus;
 using iCemDataMonitor.Host.Core.Endpoints;
+using Xunit.Abstractions;
 
 namespace iCemDataMonitor.UI.Tests;
 
@@ -20,15 +22,24 @@ namespace iCemDataMonitor.UI.Tests;
 /// ring absent (web_on=0) ⇒ 503. Synthetic bus + direct ring ingestion —
 /// no real web pipeline needed (TestServer over MapRegisterMirror).
 /// </summary>
-public class RegisterMirrorTests : IDisposable
+public class RegisterMirrorTests : IAsyncLifetime
 {
     private readonly string _dir;
     private readonly string _path;
     private readonly string _mapName;
     private readonly string _mutexName;
 
-    public RegisterMirrorTests()
+    private readonly List<HttpClient> _clients = new();
+    private readonly List<WebApplication> _apps = new();
+    private readonly List<BusReader> _readers = new();
+    private readonly Stopwatch _elapsed = Stopwatch.StartNew();
+    private readonly ITestOutputHelper _output;
+    // Match the existing HttpClient default request budget; no timeout increase.
+    private static readonly TimeSpan OperationBudget = TimeSpan.FromSeconds(100);
+
+    public RegisterMirrorTests(ITestOutputHelper output)
     {
+        _output = output;
         _dir = Path.Combine(Path.GetTempPath(), "regs_mirror_test", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_dir);
         _path = Path.Combine(_dir, "test_bus.dat");
@@ -36,9 +47,52 @@ public class RegisterMirrorTests : IDisposable
         _mutexName = $"Global\\RegMirrorMutex_{Guid.NewGuid():N}";
     }
 
-    public void Dispose()
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public async Task DisposeAsync()
     {
-        try { Directory.Delete(_dir, recursive: true); } catch { }
+        try
+        {
+            foreach (var client in _clients) client.Dispose();
+            foreach (var app in _apps) await StopAndDisposeAsync(app);
+        }
+        finally
+        {
+            foreach (var reader in _readers) reader.Dispose();
+            Directory.Delete(_dir, recursive: true);
+        }
+    }
+
+    private BusReader CreateReader()
+    {
+        var reader = new BusReader(_path, _mapName, _mutexName);
+        _readers.Add(reader);
+        return reader;
+    }
+
+    private async Task StopAndDisposeAsync(WebApplication app)
+    {
+        try
+        {
+            LogPhase("stop started");
+            using var deadline = new CancellationTokenSource(OperationBudget);
+            await app.StopAsync(deadline.Token);
+            LogPhase("stop completed");
+        }
+        finally { await app.DisposeAsync(); }
+    }
+
+    private void LogPhase(string phase) =>
+        _output.WriteLine($"{phase}; elapsedMs={_elapsed.ElapsedMilliseconds}");
+
+    private void LogLiveness(Dictionary<string, JsonElement> json) =>
+        LogPhase($"liveness={json["liveness"].GetRawText()}");
+
+    private async Task<HttpResponseMessage> GetAsync(HttpClient client, string url)
+    {
+        LogPhase($"request started {url}");
+        try { return await client.GetAsync(url); }
+        finally { LogPhase($"request finished {url}"); }
     }
 
     [Fact]
@@ -51,18 +105,19 @@ public class RegisterMirrorTests : IDisposable
         SeedFloat(6, 123.456f);   // com idx1 (UnitNum)
         SeedFloat(200, 15.79f);   // lan idx0
         SeedFloat(400, -42.0f);   // raw idx0
-        MarkLanActive();
+        MarkLanActiveWithFutureClock();
 
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
 
-        var client = CreateClient(reader, history: null);
+        var client = await CreateClientAsync(reader, history: null);
 
-        var response = await client.GetAsync("/api/regs");
+        using var response = await GetAsync(client, "/api/regs");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var json = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
         Assert.NotNull(json);
+        LogLiveness(json);
 
         var zones = json["zones"].EnumerateObject().ToDictionary(p => p.Name, p => p.Value);
         Assert.True(zones.ContainsKey("com"));
@@ -85,6 +140,9 @@ public class RegisterMirrorTests : IDisposable
 
         var liveness = json["liveness"].EnumerateObject().ToDictionary(p => p.Name, p => p.Value);
         Assert.True(liveness["lan"].GetProperty("active").GetBoolean());
+        Assert.True(liveness["lan"].GetProperty("producerFlag").GetBoolean());
+        Assert.Equal(0L, liveness["lan"].GetProperty("ageMs").GetInt64());
+        Assert.Equal(1u, liveness["lan"].GetProperty("writeCount").GetUInt32());
     }
 
     // ── 2026-08-28 dishonest-surface fix: /api/regs liveness is AGE-GATED ──
@@ -100,18 +158,20 @@ public class RegisterMirrorTests : IDisposable
         SeedBusFile();
         SeedFloat(200, 15.79f);
         WriteZoneHeader(ZoneKind.Lan, DateTime.UtcNow.AddMilliseconds(-6_000).Ticks, active: true, count: 42);
-        // COM: fresh writer — flag 1 + young tick ⇒ live.
-        WriteZoneHeader(ZoneKind.ComMain, DateTime.UtcNow.Ticks, active: true, count: 1);
+        // Synthetic future clock: force the production future-age clamp to 0,
+        // independent of TestServer startup duration; not an ordinary fresh producer.
+        WriteZoneHeader(ZoneKind.ComMain, DateTime.MaxValue.Ticks, active: true, count: 1);
 
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history: null);
+        var client = await CreateClientAsync(reader, history: null);
 
-        var response = await client.GetAsync("/api/regs");
+        using var response = await GetAsync(client, "/api/regs");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
         Assert.NotNull(json);
 
+        LogLiveness(json!);
         var liveness = json!["liveness"].EnumerateObject().ToDictionary(p => p.Name, p => p.Value);
 
         // THE GATE: frozen flag + 6 s tick ⇒ NOT live — same verdict the
@@ -122,9 +182,11 @@ public class RegisterMirrorTests : IDisposable
         Assert.True(liveness["lan"].GetProperty("ageMs").GetInt64() > BusZoneInfo.MaxZoneAgeMs);
         Assert.Equal(42u, liveness["lan"].GetProperty("writeCount").GetUInt32());
 
-        // Fresh zone: verdict active, producer flag agrees.
+        // Future-clock synthetic zone: active with clamped age 0 and raw claim.
         Assert.True(liveness["com"].GetProperty("active").GetBoolean());
         Assert.True(liveness["com"].GetProperty("producerFlag").GetBoolean());
+        Assert.Equal(0L, liveness["com"].GetProperty("ageMs").GetInt64());
+        Assert.Equal(1u, liveness["com"].GetProperty("writeCount").GetUInt32());
 
         // RAW: never written (flag 0, tick 0) ⇒ inactive both ways.
         Assert.False(liveness["raw"].GetProperty("active").GetBoolean());
@@ -145,11 +207,11 @@ public class RegisterMirrorTests : IDisposable
         sampler.Ingest(SyntheticSnapshot(firstFloat: 1.5f), tick1);
         sampler.Ingest(SyntheticSnapshot(firstFloat: 123.456f), tick2);
 
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history);
+        var client = await CreateClientAsync(reader, history);
 
-        var response = await client.GetAsync("/api/regs/history?addr=6");
+        using var response = await GetAsync(client, "/api/regs/history?addr=6");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var json = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
@@ -169,11 +231,11 @@ public class RegisterMirrorTests : IDisposable
         var sampler = new BusAddrRingService(history);
         sampler.Ingest(SyntheticSnapshot(firstFloat: 7.25f), DateTimeOffset.UtcNow);
 
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history);
+        var client = await CreateClientAsync(reader, history);
 
-        var response = await client.GetAsync("/api/regs/history?addr=6&addr=200");
+        using var response = await GetAsync(client, "/api/regs/history?addr=6&addr=200");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var json = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
@@ -187,11 +249,11 @@ public class RegisterMirrorTests : IDisposable
     public async Task GetHistory_ValidButUnringedAddr_EmptyArrayNeverNull()
     {
         var history = new RingHistory();
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history);
+        var client = await CreateClientAsync(reader, history);
 
-        var response = await client.GetAsync("/api/regs/history?addr=400");
+        using var response = await GetAsync(client, "/api/regs/history?addr=400");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
         Assert.Equal(0, json!["400"].GetArrayLength());
@@ -207,11 +269,11 @@ public class RegisterMirrorTests : IDisposable
     public async Task GetHistory_BadAddr_400(string url)
     {
         var history = new RingHistory();
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history);
+        var client = await CreateClientAsync(reader, history);
 
-        var response = await client.GetAsync(url);
+        using var response = await GetAsync(client, url);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -220,11 +282,11 @@ public class RegisterMirrorTests : IDisposable
     {
         // web_on=0: composition registers NOTHING of the ring trio — the
         // endpoint must answer 503 «history disabled» (Э2 line 47), not 500.
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history: null);
+        var client = await CreateClientAsync(reader, history: null);
 
-        var response = await client.GetAsync("/api/regs/history?addr=4");
+        using var response = await GetAsync(client, "/api/regs/history?addr=4");
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
@@ -257,11 +319,11 @@ public class RegisterMirrorTests : IDisposable
         PatchHeaderReg(1, 2);
         PatchHeaderReg(2, 4);
 
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history: null);
+        var client = await CreateClientAsync(reader, history: null);
 
-        var response = await client.GetAsync("/api/regs");
+        using var response = await GetAsync(client, "/api/regs");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
         Assert.NotNull(json);
@@ -283,11 +345,11 @@ public class RegisterMirrorTests : IDisposable
         PatchHeaderReg(1, 99);  // RealtimeState ∉ {0..5} — invented value
         PatchHeaderReg(2, 3);   // ComPortStates composite {1,2} — banned combination
 
-        using var reader = new BusReader(_path, _mapName, _mutexName);
+        var reader = CreateReader();
         reader.TryOpen(out _);
-        var client = CreateClient(reader, history: null);
+        var client = await CreateClientAsync(reader, history: null);
 
-        var response = await client.GetAsync("/api/regs");
+        using var response = await GetAsync(client, "/api/regs");
         var json = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
         var scalars = json!["system"].GetProperty("scalars").EnumerateArray().ToList();
 
@@ -333,8 +395,10 @@ public class RegisterMirrorTests : IDisposable
         fs.WriteByte((byte)(high & 0xFF));
     }
 
-    /// <summary>Mark the LAN zone active in the header: lastWriteTick u64 LE, activeFlag=1, writeCount=1 u32 LE.</summary>
-    private void MarkLanActive() => WriteZoneHeader(ZoneKind.Lan, DateTime.UtcNow.Ticks, active: true, count: 1);
+    /// <summary>Synthetic future-clock fixture: age clamps to 0 regardless of startup
+    /// scheduling. This is not an ordinary fresh-producer/freshness-boundary test.</summary>
+    private void MarkLanActiveWithFutureClock() =>
+        WriteZoneHeader(ZoneKind.Lan, DateTime.MaxValue.Ticks, active: true, count: 1);
 
     /// <summary>Zone liveness header block (lastWriteTick u64 LE, activeFlag u8, writeCount u32 LE)
     /// for ANY zone at ANY age — the age-gated liveness tests seed OLD ticks deliberately.</summary>
@@ -351,12 +415,13 @@ public class RegisterMirrorTests : IDisposable
         fs.Write(c, 0, c.Length);
     }
 
-    private HttpClient CreateClient(BusReader reader, RingHistory? history)
+    private async Task<HttpClient> CreateClientAsync(BusReader reader, RingHistory? history)
     {
         // W22: WebHostBuilder is obsolete on net10 (ASPDEPR004) — minimal
         // hosting + UseTestServer, same shape as B5ContractTests.
         // history=null models web_on=0 (nothing of the ring trio registered —
         // the endpoint must degrade to 503, Э2 line 47).
+        LogPhase("startup started");
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddRouting();
@@ -368,10 +433,23 @@ public class RegisterMirrorTests : IDisposable
         }
 
         var app = builder.Build();
-        app.MapRegisterMirror();
-
-        app.StartAsync().GetAwaiter().GetResult();
-        var server = (TestServer)app.Services.GetRequiredService<IServer>();
-        return server.CreateClient();
+        try
+        {
+            app.MapRegisterMirror();
+            using var deadline = new CancellationTokenSource(OperationBudget);
+            await app.StartAsync(deadline.Token);
+            var server = (TestServer)app.Services.GetRequiredService<IServer>();
+            var client = server.CreateClient();
+            _apps.Add(app);
+            _clients.Add(client);
+            LogPhase("startup completed");
+            return client;
+        }
+        catch
+        {
+            LogPhase("startup failed");
+            await StopAndDisposeAsync(app);
+            throw;
+        }
     }
 }

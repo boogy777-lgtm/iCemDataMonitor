@@ -749,3 +749,18 @@ fails with that predicate and passes when only the original canonical NotFound
 permits defaults. Exact original Windows interleaving remains inferred. Parse/access
 errors stay fail-fast; no-clobber publication and legacy policy are unchanged.
 [Scope, red/green evidence and Windows limits](CI2_CONFIG_RACE.ru.md).
+
+
+## D55 / CI-2b — synthetic register mirror fixture and CI diagnostics
+
+PR21 head `e8f99925620afa47fe752c217012d96773f672d0`, Legacy run `39436420724`: 940/941
+PASS, RegisterMirrorTests.GetRegs_ReturnsZones_And_DecodedFloats FAIL line87, LAN
+active=false after about 6 s. A seed using UtcNow before TestServer startup can age
+past the 5000 ms gate; original age/startup timeline was not logged, so that causal
+explanation remains inferred. Synthetic future-clock headers now explicitly check
+clamped age 0, raw flag and count without claiming ordinary fresh-producer coverage.
+Original decode assertions, stale LAN negative control and existing exact-threshold
+health-monitor matrix remain. Async fixture ownership stops/disposes apps before
+reader/file cleanup; phase/liveness output plus attempt-unique TRX/console artifacts
+make recurrence reviewable. Production .NET and the immutable manifest are unchanged.
+[Scope, four prior repairs, artifact policy and pending Windows proof](CI2_TEST_INFRA.ru.md).
