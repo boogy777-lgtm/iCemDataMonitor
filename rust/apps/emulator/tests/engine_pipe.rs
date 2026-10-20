@@ -1,4 +1,6 @@
 #![cfg(windows)]
+#[path = "support/selftest.rs"]
+mod selftest_support;
 use icem_transport::emulator_control::request;
 use std::{
     path::PathBuf,
@@ -28,6 +30,7 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../iCemEmulator/templates");
     let spawn = || {
         Command::new(exe)
+            .env("LOCALAPPDATA", directory.join("local"))
             .arg("--config")
             .arg(&config)
             .arg("--templates")
@@ -73,6 +76,48 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
         serde_json::from_str(&request(&pipe, "status", Duration::from_secs(3))?)?;
     assert_eq!(updated["data"]["lan"]["equipment"], "0x12345678");
     assert!(std::fs::read_to_string(&config)?.contains("0x12345678"));
+    // Selftest is standalone even while the live engine owns its singleton and pipe.
+    let mutex = icem_platform_windows::emulator_mutex()?;
+    assert!(mutex.lock(Duration::ZERO)?.is_none());
+    let staged = selftest_support::Stage::new("live")?;
+    staged.readonly(true)?;
+    let config_before = std::fs::read(&config)?;
+    let live_files_before = selftest_support::snapshot(&directory)?;
+    let staged_before = selftest_support::snapshot(&staged.root)?;
+    let output = staged.run(&[
+        "--selftest",
+        "--pipe",
+        &pipe,
+        "--config",
+        config.to_str().ok_or("config path")?,
+    ])?;
+    selftest_support::report(&output, true)?;
+    assert!(mutex.lock(Duration::ZERO)?.is_none());
+    assert_eq!(std::fs::read(&config)?, config_before);
+    assert_eq!(selftest_support::snapshot(&directory)?, live_files_before);
+    assert_eq!(selftest_support::snapshot(&staged.root)?, staged_before);
+    let live_after: serde_json::Value =
+        serde_json::from_str(&request(&pipe, "status", Duration::from_secs(3))?)?;
+    for channel in ["com", "lan"] {
+        for key in [
+            "streaming",
+            "portOpen",
+            "port",
+            "linesSent",
+            "adapterOpen",
+            "adapter",
+            "framesSent",
+            "equipment",
+            "svCount",
+            "targets",
+        ] {
+            assert_eq!(
+                updated["data"][channel].get(key),
+                live_after["data"][channel].get(key),
+                "live {channel}.{key} changed"
+            );
+        }
+    }
     // CLI uses the same subscription consumer for text and JSON, without a second engine.
     for command in ["watch", r#"{"cmd":"watch"}"#] {
         use std::io::BufRead;

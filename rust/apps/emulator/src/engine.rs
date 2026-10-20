@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Explicit headless integration executable, independent of the monitor host.
 use std::process::ExitCode;
+mod selftest;
 #[cfg(windows)]
 mod windows {
     use icem_config::emulator::{EmuSettings, SettingsPaths};
@@ -136,7 +137,7 @@ mod windows {
             }
             if key == "--help" {
                 eprintln!(
-                    "Usage: icem-emulator-engine-dev --config PATH --templates DIR [--pipe NAME] [--duration-ms N] [--desktop]\n       icem-emulator-engine-dev [--pipe NAME] --cli <command...>\nDevelopment headless engine; GPUI/tray acceptance pending."
+                    "Usage: icem-emulator-engine-dev --selftest\n       icem-emulator-engine-dev --config PATH --templates DIR [--pipe NAME] [--duration-ms N] [--desktop]\n       icem-emulator-engine-dev [--pipe NAME] --cli <command...>\nDevelopment headless engine; GPUI/tray acceptance pending."
                 );
                 return Ok(0);
             }
@@ -313,6 +314,9 @@ mod windows {
     }
 }
 fn main() -> ExitCode {
+    if selftest::requested(std::env::args().nth(1).as_deref()) {
+        std::process::exit(selftest::main());
+    }
     #[cfg(windows)]
     {
         ExitCode::from(windows::main())
