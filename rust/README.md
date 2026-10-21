@@ -33,7 +33,7 @@ Desktop UI — нативный GPUI без WebView с сохранением с
 - [Статус проверки этого этапа](docs/VALIDATION.ru.md)
 - [CI-2a: canonical INI read/create race и границы проверки](docs/CI2_CONFIG_RACE.ru.md)
 - [CI-2b: synthetic TestServer fixture и CI diagnostics](docs/CI2_TEST_INFRA.ru.md)
-- [CI-1: маршрутизация компонентов и общий CI gate](docs/CI_CD.ru.md)
+- [CI: маршрутизация, общий gate и bounded Cargo cache](docs/CI_CD.ru.md)
 - [OpenAPI 3.1 для действующего REST](contracts/http/openapi.json)
 - [Оригинальный Protobuf без изменений](../iCemDataMonitor.Contracts/Protos/telemetry.proto)
 
@@ -74,7 +74,7 @@ cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 Или `pwsh -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline`.
 Версия задаётся в `rust-toolchain.toml`; Cargo rust-version = 1.99.1, resolver = 3.
 CI читает тот же pin и проверяет edition/MSRV всех участников workspace.
-13 workspace packages; Windows-only native bindings: windows-sys 0.61.2 и windows-link,
+14 workspace packages; Windows-only native bindings: windows-sys 0.61.2 и windows-link,
 зафиксированные Cargo.lock. Web dependencies и build-only protoc описаны в ADR 0002.
 После fetch проверки Rust работают offline; browser checks используют npm lockfile.
 Все прикладные crates запрещают unsafe; явное исключение —
