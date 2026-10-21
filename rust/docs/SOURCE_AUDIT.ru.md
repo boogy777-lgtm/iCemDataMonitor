@@ -737,3 +737,30 @@ results do not establish Windows behavior; full exact-head CI remains required.
 
 
 E22: [встроенный emulator --selftest](EMULATOR_E22.ru.md): полный mapping T1–T26, first-argument dispatch до startup, read-only EXE-relative emulator catalogs, isolated native TestCtl и полный i32 failCount. Windows process/release smoke tests добавлены; local Linux не доказывает Windows runtime. D22/operator/SDK/hardware gates открыты; E23 — explicit --landiag и stdin CLI.
+
+
+## D54 / CI-2a — canonical INI read/create race
+
+CI-1 head `0283817`, Rust run `39433195261` / job `118664064048`: unchanged
+station concurrent-creation test FAIL at 13:56:31.850 with Windows os2/NotFound
+config.ini. The old predicate used a later exists probe rather than the captured
+read error. A deterministic real NotFound → real winner-publication regression
+fails with that predicate and passes when only the original canonical NotFound
+permits defaults. Exact original Windows interleaving remains inferred. Parse/access
+errors stay fail-fast; no-clobber publication and legacy policy are unchanged.
+[Scope, red/green evidence and Windows limits](CI2_CONFIG_RACE.ru.md).
+
+
+## D55 / CI-2b — synthetic register mirror fixture and CI diagnostics
+
+PR21 head `e8f99925620afa47fe752c217012d96773f672d0`, Legacy run `39436420724`: 940/941
+PASS, RegisterMirrorTests.GetRegs_ReturnsZones_And_DecodedFloats FAIL line87, LAN
+active=false after about 6 s. A seed using UtcNow before TestServer startup can age
+past the 5000 ms gate; original age/startup timeline was not logged, so that causal
+explanation remains inferred. Synthetic future-clock headers now explicitly check
+clamped age 0, raw flag and count without claiming ordinary fresh-producer coverage.
+Original decode assertions, stale LAN negative control and existing exact-threshold
+health-monitor matrix remain. Async fixture ownership stops/disposes apps before
+reader/file cleanup; phase/liveness output plus attempt-unique TRX/console artifacts
+make recurrence reviewable. Production .NET and the immutable manifest are unchanged.
+[Scope, four prior repairs, artifact policy and pending Windows proof](CI2_TEST_INFRA.ru.md).

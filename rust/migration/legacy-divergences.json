@@ -5,11 +5,11 @@
     {
       "path": ".github/workflows/ci.yml",
       "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
-      "approved_blob_sha1": "5c5553f92a8280b991909ee11090dac89fd41778",
+      "approved_blob_sha1": "ab050730c618844c63971245fcf3b8dbc2becbce",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Use the existing -NoPause MSI option in unattended CI."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21",
+        "commit": "843331ece3efa6e243fbe7dec357523054e389ea",
+        "reason": "User-authorized CI-2 diagnostics: preserve complete CI.slnf build/test, Live exclusion, 10m hang detection and smoke MSI; add unique per-project TRX, build/test console and allowlisted runtime/source provenance, always-upload attempt-specific 7d logs without dumps. Native pipeline exit codes captured immediately; no test bypass or production .NET change. Existing PR2 -NoPause retained."
       }
     },
     {
@@ -140,6 +140,16 @@
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/14",
         "commit": "03c27552bb7fc3af2e70cf0842a4c1fa39f5bdb7",
         "reason": "User-authorized Legacy CI repair: replace three ThreadPool/sleep mutex holders with one dedicated-thread fixture using acquisition acknowledgement, explicit release and bounded join; retain navigation assertions and add ownership/release regression. Production navigation is unchanged."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/RegisterMirrorTests.cs",
+      "baseline_blob_sha1": "54a32036f138fa28a6fa717da69f1fd1855a34a4",
+      "approved_blob_sha1": "27e97a9957acf04042f1812d662ef2827da90b6c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21",
+        "commit": "843331ece3efa6e243fbe7dec357523054e389ea",
+        "reason": "User-authorized D55 synthetic register fixture repair: explicit future-clock LAN/COM exercise age clamp0, all46 original assertions plus claim/age/count checks; exact staleLAN now-6000 and health boundary matrix preserved. Await startup, own clients/apps/readers, dispose responses and cleanup, report monotonic phase/liveness diagnostics. Original CI activefalse cause remains inferred because age was unlogged. No production .NET behavior, dependencies, retries, sleeps or request-timeout increase."
       }
     }
   ]

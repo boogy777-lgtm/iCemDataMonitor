@@ -31,6 +31,8 @@ Desktop UI — нативный GPUI без WebView с сохранением с
 - [Safe Rust и размер дистрибутива](docs/SAFETY_AND_SIZE.ru.md)
 - [Rust 1.99 и применённые идиомы](docs/RUST_IDIOMS.ru.md)
 - [Статус проверки этого этапа](docs/VALIDATION.ru.md)
+- [CI-2a: canonical INI read/create race и границы проверки](docs/CI2_CONFIG_RACE.ru.md)
+- [CI-2b: synthetic TestServer fixture и CI diagnostics](docs/CI2_TEST_INFRA.ru.md)
 - [OpenAPI 3.1 для действующего REST](contracts/http/openapi.json)
 - [Оригинальный Protobuf без изменений](../iCemDataMonitor.Contracts/Protos/telemetry.proto)
 
