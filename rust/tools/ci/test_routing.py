@@ -109,6 +109,47 @@ class RoutingTests(unittest.TestCase):
         for family in ('Core', 'Control', 'Dfb', 'Emitters'):
             self.assertEqual(routing.categories(f'iCemEmule.Core/{family}/Future.cs'), {'legacy', 'shared-contracts'})
 
+    def test_legacy_diagnostics_contract(self):
+        legacy = (ROOT / '.github/workflows/legacy-build.yml').read_text()
+        # Scope each assertion to the real step; another step cannot satisfy it.
+        steps = dict(part.split('\n', 1) for part in re.split(r'(?m)^      - name: ', legacy)[1:])
+        prepare = steps['Prepare CI diagnostics']
+        provenance = re.search(r'@\(\n(.*?)\n          \) \| Set-Content \(Join-Path \$diag "provenance.txt"\)', prepare, re.S)
+        self.assertIsNotNone(provenance)
+        self.assertEqual(provenance.group(1).splitlines(), [
+            f'            "{key}=$env:{env}"' for key, env in (
+                ('sha', 'GITHUB_SHA'), ('run_id', 'GITHUB_RUN_ID'),
+                ('run_attempt', 'GITHUB_RUN_ATTEMPT'), ('runner_os', 'RUNNER_OS'),
+                ('runner_arch', 'RUNNER_ARCH'), ('image_os', 'ImageOS'),
+                ('image_version', 'ImageVersion'))])
+        self.assertIn('Join-Path $env:RUNNER_TEMP "legacy-ci-diagnostics"', prepare)
+        commands = (
+            (prepare, 'dotnet --info', '(Join-Path $diag "dotnet-info.txt")', 'infoExit'),
+            (steps['Build solution'], 'dotnet build CI.slnf -c Release --nologo',
+             '(Join-Path $env:RUNNER_TEMP "legacy-ci-diagnostics/build.log")', 'buildExit'),
+            (steps['Run tests'], 'dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m --filter "Category!=Live" --logger trx',
+             '(Join-Path $env:RUNNER_TEMP "legacy-ci-diagnostics/test.log")', 'testExit'),
+        )
+        for step, command, output, variable in commands:
+            self.assertIn(f'{command} 2>&1 | Tee-Object -FilePath {output}\n'
+                          f'          ${variable} = $LASTEXITCODE\n'
+                          f'          exit ${variable}\n', step)
+            self.assertNotIn('continue-on-error:', step)
+        upload = steps['Upload test diagnostics']
+        self.assertIn('        if: always()\n', upload)
+        self.assertIn('        uses: actions/upload-artifact@v5\n', upload)
+        self.assertIn('          name: legacy-ci-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}\n', upload)
+        patterns = re.search(r'          path: \|\n(.*?)\n          if-no-files-found:', upload, re.S)
+        self.assertIsNotNone(patterns)
+        self.assertEqual(patterns.group(1).splitlines(), [
+            '            ${{ runner.temp }}/legacy-ci-diagnostics/*.txt',
+            '            ${{ runner.temp }}/legacy-ci-diagnostics/*.log',
+            '            **/TestResults/**/*.trx',
+            '            **/TestResults/**/*Sequence.xml',
+            '            **/TestResults/**/*.log'])
+        self.assertIn('          if-no-files-found: warn\n', upload)
+        self.assertIn('          retention-days: 7\n', upload)
+
     def test_workflow_wiring(self):
         workflows = ROOT / '.github/workflows'
         coordinator = (workflows / 'ci.yml').read_text()
@@ -149,7 +190,7 @@ class RoutingTests(unittest.TestCase):
             self.assertIn(command, packaging)
 
 
-class GitDiffTests(unittest.TestCase):
+class GitFixture(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -178,6 +219,8 @@ class GitDiffTests(unittest.TestCase):
         data = {'before': base, 'after': head} if event == 'push' else {'pull_request': {'base': {'sha': base}, 'head': {'sha': head}}}
         return routing.changed_paths(self.repo, event, data)
 
+
+class GitDiffTests(GitFixture):
     def test_verified_empty_and_dispatch(self):
         self.assertEqual(self.paths(self.base), [])
         self.assertIsNone(routing.changed_paths(self.repo, 'workflow_dispatch', {}))
@@ -237,6 +280,298 @@ class GitDiffTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(output.read_text().splitlines(), ['legacy=true', 'rust=true', 'packaging=true'])
             self.assertEqual(json.loads(result.stdout)['mode'], 'full fallback')
+
+
+class LedgerRoutingTests(GitFixture):
+    A = 'iCemDataMonitor.Core/A.cs'
+    B = 'iCemDataMonitor.UI.Tests/B.cs'
+    SHARED = 'iCemDataMonitor.Data/Bus/BusReader.cs'
+    FROZEN = 'iCemDataMonitor.Host/wwwroot/index.html'
+
+    def setUp(self):
+        super().setUp()
+        self.manifest = {
+            'source_repository': 'fixture/repository', 'source_commit': 'a' * 40,
+            'source_tree': 'b' * 40, 'retrieved_on': '2026-10-21',
+            'source_location': 'repository root (parent of rust/)', 'files': []}
+        for path in (self.A, self.B, self.SHARED, self.FROZEN):
+            self.write(path)
+            self.manifest['files'].append({'path': path, 'git_blob_sha1': self.hash(path),
+                                           'size': 8, 'available': True})
+        self.write_content(self.A, 'old approval\n')
+        self.old = {'schema_version': 1, 'source_commit': 'a' * 40,
+                    'changes': [self.approval(self.A)]}
+        self.write_json(routing.MANIFEST_PATH, self.manifest)
+        self.write_json(routing.LEDGER_PATH, self.old)
+        self.base = self.commit()
+
+    def write_content(self, path, content):
+        target = self.repo / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content if isinstance(content, bytes) else content.encode('utf-8'))
+
+    def write_json(self, path, document):
+        self.write_content(path, json.dumps(document))
+
+    def hash(self, path):
+        # Match git add's path-aware clean conversion (including Windows CRLF).
+        return self.run_git('hash-object', '--path=' + path, '--', str(self.repo / path))
+
+    def approval(self, path):
+        baseline = next(item['git_blob_sha1'] for item in self.manifest['files'] if item['path'] == path)
+        return {'path': path, 'baseline_blob_sha1': baseline,
+                'approved_blob_sha1': self.hash(path),
+                'provenance': {'pull_request': 'https://github.com/fixture/repository/pull/1',
+                               'commit': 'c' * 40, 'reason': 'Fixture approved source change'}}
+
+    def update(self, *paths):
+        new = copy.deepcopy(self.old)
+        for path in paths or (self.A,):
+            self.write_content(path, 'new approval\n')
+            new['changes'] = [item for item in new['changes'] if item['path'] != path]
+            new['changes'].append(self.approval(path))
+        self.write_json(routing.LEDGER_PATH, new)
+        return new
+
+    def selection(self, head, base=None, event='push'):
+        base = base or self.base
+        data = ({'before': base, 'after': head} if event == 'push' else
+                {'pull_request': {'base': {'sha': base}, 'head': {'sha': head}}})
+        context = routing.verified_diff(self.repo, event, data)
+        self.assertIsNotNone(context)
+        return routing.classify_verified(self.repo, context)
+
+    def assert_full(self, head, base=None):
+        selected, delegated = self.selection(head, base)
+        self.assertEqual(selected, dict.fromkeys(routing.COMPONENTS, 'true'))
+        self.assertEqual(delegated, ())
+
+    def test_updated_and_added_approvals_keep_component_closures(self):
+        for paths, extra in (((self.A,), None), ((self.B,), None), ((self.A, self.B), None),
+                             ((self.SHARED,), None), ((self.FROZEN,), None),
+                             ((self.A,), 'rust/apps/host/src/main.rs'),
+                             ((self.A,), 'Future/unknown.input')):
+            with self.subTest(paths=paths, extra=extra):
+                self.run_git('reset', '--hard', '-q', self.base)
+                self.update(*paths)
+                if extra:
+                    self.write(extra)
+                head = self.commit()
+                selected, delegated = self.selection(head)
+                expected_paths = list(paths) + ([extra] if extra else [])
+                self.assertEqual(selected, routing.classify(expected_paths))
+                self.assertEqual(set(delegated), set(paths))
+                # Raw paths never acquire metadata exemption.
+                self.assertEqual(routing.classify(self.paths(head)), dict.fromkeys(routing.COMPONENTS, 'true'))
+
+    def test_crlf_checkout_hashes_match_new_and_updated_git_approvals(self):
+        self.run_git('config', 'core.autocrlf', 'true')
+        # Rebuild the fixture with explicit CRLF bytes, independent of host OS defaults.
+        for path in (self.A, self.B):
+            self.write_content(path, b'fixture\r\n')
+            item = next(item for item in self.manifest['files'] if item['path'] == path)
+            item['git_blob_sha1'] = self.hash(path)
+            item['size'] = 8  # Canonical Git bytes are fixture + LF.
+        self.write_content(self.A, b'old approval\r\n')
+        self.old['changes'] = [self.approval(self.A)]
+        self.write_json(routing.MANIFEST_PATH, self.manifest)
+        self.write_json(routing.LEDGER_PATH, self.old)
+        # Canonical content can equal the previous LF fixture exactly.
+        self.run_git('add', '-A')
+        self.run_git('commit', '--allow-empty', '-qm', 'CRLF baseline fixture')
+        self.base = self.run_git('rev-parse', 'HEAD')
+        self.assertEqual(self.run_git('rev-parse', self.base + ':' + self.A), self.hash(self.A))
+        baseline = next(item['git_blob_sha1'] for item in self.manifest['files'] if item['path'] == self.B)
+        self.assertEqual(self.run_git('rev-parse', self.base + ':' + self.B), baseline)
+        self.assertNotEqual(self.run_git('hash-object', '--no-filters', '--', str(self.repo / self.B)), baseline)
+        new = copy.deepcopy(self.old)
+        for path in (self.A, self.B):
+            self.write_content(path, b'new approval\r\n')
+        new['changes'] = [self.approval(path) for path in (self.A, self.B)]
+        self.write_json(routing.LEDGER_PATH, new)
+        head = self.commit()
+        for item in new['changes']:
+            self.assertEqual(self.run_git('rev-parse', head + ':' + item['path']), item['approved_blob_sha1'])
+        selected, delegated = self.selection(head)
+        self.assertEqual(selected, routing.classify([self.A, self.B]))
+        self.assertEqual(set(delegated), {self.A, self.B})
+
+    def test_nonmember_changes_do_not_delegate(self):
+        for variant in ('format', 'reorder', 'provenance', 'unrelated-source', 'removal',
+                        'unchanged-source', 'wrong-base', 'wrong-head', 'missing-source', 'symlink-source'):
+            with self.subTest(variant=variant):
+                self.run_git('reset', '--hard', '-q', self.base)
+                new = self.update()
+                if variant in ('format', 'reorder', 'provenance', 'unchanged-source'):
+                    self.run_git('restore', '--source', self.base, '--', self.A)
+                if variant == 'format':
+                    self.write_content(routing.LEDGER_PATH, json.dumps(self.old, indent=4))
+                elif variant == 'reorder':
+                    self.write_json(routing.LEDGER_PATH, dict(reversed(list(self.old.items()))))
+                elif variant == 'provenance':
+                    new = copy.deepcopy(self.old)
+                    new['changes'][0]['provenance']['reason'] = 'Only provenance changed'
+                    self.write_json(routing.LEDGER_PATH, new)
+                elif variant == 'unrelated-source':
+                    self.run_git('restore', '--source', self.base, '--', self.A)
+                    self.write_content(self.B, 'unrelated source\n')
+                elif variant == 'removal':
+                    new['changes'] = []
+                    self.write_json(routing.LEDGER_PATH, new)
+                elif variant == 'wrong-base':
+                    old = copy.deepcopy(self.old)
+                    old['changes'][0]['approved_blob_sha1'] = 'd' * 40
+                    self.write_json(routing.LEDGER_PATH, old)
+                    self.run_git('restore', '--source', self.base, '--', self.A)
+                    bad_base = self.commit()
+                    new = self.update()
+                    self.assert_full(self.commit(), bad_base)
+                    continue
+                elif variant == 'wrong-head':
+                    new['changes'][0]['approved_blob_sha1'] = 'd' * 40
+                    self.write_json(routing.LEDGER_PATH, new)
+                elif variant == 'missing-source':
+                    (self.repo / self.A).unlink()
+                elif variant == 'symlink-source':
+                    # Build the mode with Git, including on Windows without symlink privilege.
+                    self.run_git('add', '-A')
+                    self.run_git('update-index', '--cacheinfo', '120000,' + self.hash(self.A) + ',' + self.A)
+                    self.run_git('commit', '-qm', 'symlink fixture')
+                    self.assert_full(self.run_git('rev-parse', 'HEAD'))
+                    continue
+                self.assert_full(self.commit())
+
+    def test_invalid_ledger_metadata_at_either_revision(self):
+        variants = ('version', 'bool-version', 'source-commit', 'extra-field', 'entry-field',
+                    'baseline-hash', 'approved-hash', 'baseline-equals-approved', 'outside-manifest',
+                    'noncanonical-path', 'duplicate-entry', 'provenance-field', 'pr-url',
+                    'provenance-commit', 'empty-reason', 'duplicate-json', 'bad-utf8',
+                    'missing', 'oversize', 'symlink', 'malformed-json')
+        for revision, variant in itertools.product(('base', 'head'), variants):
+            with self.subTest(revision=revision, variant=variant):
+                self.run_git('reset', '--hard', '-q', self.base)
+                new = self.update()
+                good_head = self.commit()
+                document = copy.deepcopy(self.old if revision == 'base' else new)
+                if revision == 'base':
+                    self.run_git('reset', '--hard', '-q', self.base)
+                item = document['changes'][0]
+                if variant == 'version': document['schema_version'] = 2
+                elif variant == 'bool-version': document['schema_version'] = True
+                elif variant == 'source-commit': document['source_commit'] = 'd' * 40
+                elif variant == 'extra-field': document['extra'] = True
+                elif variant == 'entry-field': item['extra'] = True
+                elif variant == 'baseline-hash': item['baseline_blob_sha1'] = 'd' * 40
+                elif variant == 'approved-hash': item['approved_blob_sha1'] = 'D' * 40
+                elif variant == 'baseline-equals-approved': item['approved_blob_sha1'] = item['baseline_blob_sha1']
+                elif variant == 'outside-manifest': item['path'] = 'iCemDataMonitor.Core/Absent.cs'
+                elif variant == 'noncanonical-path': item['path'] = 'iCemDataMonitor.Core/../A.cs'
+                elif variant == 'duplicate-entry': document['changes'].append(copy.deepcopy(item))
+                elif variant == 'provenance-field': item['provenance']['extra'] = True
+                elif variant == 'pr-url': item['provenance']['pull_request'] += '/bad'
+                elif variant == 'provenance-commit': item['provenance']['commit'] = 'invalid'
+                elif variant == 'empty-reason': item['provenance']['reason'] = '   '
+                self.write_json(routing.LEDGER_PATH, document)
+                if variant == 'duplicate-json':
+                    self.write_content(routing.LEDGER_PATH, json.dumps(document).replace('"schema_version": 1', '"schema_version": 1, "schema_version": 1'))
+                elif variant == 'bad-utf8': self.write_content(routing.LEDGER_PATH, b'\xff')
+                elif variant == 'malformed-json': self.write_content(routing.LEDGER_PATH, '{')
+                elif variant == 'missing': (self.repo / routing.LEDGER_PATH).unlink()
+                elif variant == 'oversize': self.write_content(routing.LEDGER_PATH, ' ' * (routing.METADATA_LIMIT + 1))
+                if variant == 'symlink':
+                    self.run_git('add', '-A')
+                    self.run_git('update-index', '--cacheinfo', '120000,' + self.hash(routing.LEDGER_PATH) + ',' + routing.LEDGER_PATH)
+                    self.run_git('commit', '-qm', 'symlink metadata')
+                    bad = self.run_git('rev-parse', 'HEAD')
+                else:
+                    bad = self.commit()
+                if revision == 'base':
+                    self.assert_full(good_head, bad)
+                else:
+                    self.assert_full(bad)
+
+    def test_manifest_identity_and_invalid_manifest(self):
+        for variant in ('identity', 'source-commit', 'duplicate-path', 'duplicate-json',
+                        'entry-hash', 'schema', 'bad-utf8', 'missing'):
+            with self.subTest(variant=variant):
+                self.run_git('reset', '--hard', '-q', self.base)
+                manifest = copy.deepcopy(self.manifest)
+                if variant == 'source-commit': manifest['source_commit'] = 'invalid'
+                elif variant == 'duplicate-path': manifest['files'].append(copy.deepcopy(manifest['files'][0]))
+                elif variant == 'entry-hash': manifest['files'][0]['git_blob_sha1'] = 'D' * 40
+                elif variant == 'schema': manifest['files'][0]['extra'] = True
+                self.write_json(routing.MANIFEST_PATH, manifest)
+                if variant == 'duplicate-json':
+                    self.write_content(routing.MANIFEST_PATH, json.dumps(manifest).replace('"source_tree":', '"source_tree": "b", "source_tree":'))
+                elif variant == 'bad-utf8': self.write_content(routing.MANIFEST_PATH, b'\xff')
+                elif variant == 'missing': (self.repo / routing.MANIFEST_PATH).unlink()
+                if variant == 'identity':
+                    self.write_content(routing.MANIFEST_PATH, json.dumps(manifest, indent=4))
+                    base = self.base
+                else:
+                    base = self.commit()
+                self.update()
+                self.assert_full(self.commit(), base)
+
+    def test_pr_proof_uses_merge_base_and_worktree_is_irrelevant(self):
+        self.run_git('checkout', '-qb', 'approval-topic')
+        self.update()
+        head = self.commit()
+        self.run_git('checkout', '-q', '--detach', self.base)
+        self.write_content(self.A, 'different base tip approval\n')
+        base_tip = self.commit()
+        # Worktree metadata and source also differ from the PR head; only Git objects count.
+        self.write_content(routing.LEDGER_PATH, 'invalid JSON')
+        self.write_content(routing.MANIFEST_PATH, 'invalid JSON')
+        selected, delegated = self.selection(head, base_tip, 'pull_request')
+        self.assertEqual(selected, routing.classify([self.A]))
+        self.assertEqual(delegated, (self.A,))
+        self.assert_full(head, base_tip)  # push uses the tip, whose source hash differs
+
+    def test_metadata_git_failure_keeps_ledger(self):
+        self.update()
+        head = self.commit()
+        context = routing.verified_diff(self.repo, 'push', {'before': self.base, 'after': head})
+        with patch.object(routing, 'git', side_effect=OSError('Git unavailable')):
+            selected, delegated = routing.classify_verified(self.repo, context)
+        self.assertEqual(selected, dict.fromkeys(routing.COMPONENTS, 'true'))
+        self.assertEqual(delegated, ())
+
+    def test_literal_paths_and_regular_source_base(self):
+        # A wildcard-looking approval must query exactly that source, never its siblings.
+        path = 'iCemDataMonitor.Core/[A].cs'
+        self.write(path)
+        self.manifest['files'].append({'path': path, 'git_blob_sha1': self.hash(path),
+                                      'size': 8, 'available': True})
+        self.write_json(routing.MANIFEST_PATH, self.manifest)
+        self.base = self.commit()
+        self.update(path)
+        self.assertEqual(self.selection(self.commit())[1], (path,))
+        self.run_git('reset', '--hard', '-q', self.base)
+        self.run_git('update-index', '--cacheinfo', '120000,' + self.hash(path) + ',' + path)
+        self.run_git('commit', '-qm', 'base symlink source')
+        base = self.run_git('rev-parse', 'HEAD')
+        self.update(path)
+        self.assert_full(self.commit(), base)
+
+    def test_cli_real_proof_diagnostics_and_outputs(self):
+        import os
+        import sys
+        self.update(self.A, self.B)
+        head = self.commit()
+        event = self.repo / 'event.json'
+        output = self.repo / 'outputs.txt'
+        event.write_text(json.dumps({'before': self.base, 'after': head}))
+        env = dict(os.environ, GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event), GITHUB_OUTPUT=str(output))
+        result = subprocess.run([sys.executable, str(Path(routing.__file__)), 'classify', '--repo', str(self.repo)],
+                                env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output.read_text().splitlines(), ['legacy=true', 'rust=false', 'packaging=false'])
+        diagnostic = json.loads(result.stdout)
+        self.assertEqual(diagnostic['mode'], 'verified diff')
+        self.assertEqual(set(diagnostic['paths']), {self.A, self.B, routing.LEDGER_PATH})
+        self.assertEqual(set(diagnostic['metadata_delegation'][routing.LEDGER_PATH]), {self.A, self.B})
+        self.assertIn('infrastructure', diagnostic['categories'])
 
 
 class GateTests(unittest.TestCase):

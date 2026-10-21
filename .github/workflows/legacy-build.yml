@@ -27,18 +27,42 @@ jobs:
           Write-Host "Added $env:USERPROFILE\.dotnet\tools to PATH for subsequent steps"
         shell: pwsh
 
+      - name: Prepare CI diagnostics
+        shell: pwsh
+        run: |
+          $diag = Join-Path $env:RUNNER_TEMP "legacy-ci-diagnostics"
+          New-Item -ItemType Directory -Force -Path $diag | Out-Null
+          @(
+            "sha=$env:GITHUB_SHA"
+            "run_id=$env:GITHUB_RUN_ID"
+            "run_attempt=$env:GITHUB_RUN_ATTEMPT"
+            "runner_os=$env:RUNNER_OS"
+            "runner_arch=$env:RUNNER_ARCH"
+            "image_os=$env:ImageOS"
+            "image_version=$env:ImageVersion"
+          ) | Set-Content (Join-Path $diag "provenance.txt")
+          dotnet --info 2>&1 | Tee-Object -FilePath (Join-Path $diag "dotnet-info.txt")
+          $infoExit = $LASTEXITCODE
+          exit $infoExit
+
       - name: Build solution
         # CI.slnf = iCemDataMonitor.sln minus Burservis.iCem.DataMonitor (+ Tests):
         # the AddIn links the proprietary Halliburton iCem SDK via absolute
         # HintPaths (C:\Program Files\Halliburton\iCem\Bin) that exist only on a
         # dev machine with iCem installed; build-msi.ps1 skips it there too.
-        run: dotnet build CI.slnf -c Release --nologo
+        run: |
+          dotnet build CI.slnf -c Release --nologo 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "legacy-ci-diagnostics/build.log")
+          $buildExit = $LASTEXITCODE
+          exit $buildExit
         shell: pwsh
 
       - name: Run tests
         # Category!=Live: LIVE interop tests (LiveModbusEmulatorTests) require a
         # running iCem.exe + operator prompt - a dev-machine-only verdict.
-        run: dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m --filter "Category!=Live"
+        run: |
+          dotnet test CI.slnf -c Release --no-build --nologo --blame-hang-timeout 10m --filter "Category!=Live" --logger trx 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "legacy-ci-diagnostics/test.log")
+          $testExit = $LASTEXITCODE
+          exit $testExit
         shell: pwsh
 
       - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)
@@ -54,4 +78,18 @@ jobs:
         with:
           name: msi-ci
           path: dist/*.msi
+          retention-days: 7
+
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: legacy-ci-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/legacy-ci-diagnostics/*.txt
+            ${{ runner.temp }}/legacy-ci-diagnostics/*.log
+            **/TestResults/**/*.trx
+            **/TestResults/**/*Sequence.xml
+            **/TestResults/**/*.log
+          if-no-files-found: warn
           retention-days: 7

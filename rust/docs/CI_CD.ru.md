@@ -1,18 +1,25 @@
 # CI-1: независимая проверка компонентов и общий compatibility gate
 
-Scope — только маршрутизация существующих проверок. CI-2 (стабильность тестов) и
-CI-3 (cache/performance, разделение Rust Cargo/browser/per-crate jobs) не реализованы. Политика выпуска,
+Scope — маршрутизация существующих проверок поверх принятого prerequisite CI-2:
+main `25935c0481faf29f1e5ec15924cbc71e70203f62`, [PR21](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21).
+[CI-2a/D54](CI2_CONFIG_RACE.ru.md) исправляет canonical INI read/create race;
+[CI-2b/D55](CI2_TEST_INFRA.ru.md) сохраняет synthetic register fixture и диагностику CI.
+CI-3 (cache/performance, разделение Rust Cargo/browser/per-crate jobs) не реализован. Политика выпуска,
 Rust 1.99.1/locked graph, unsafe/lints, .NET production, source-manifest, frozen
 proto и SPA не меняются. E23 не входит в этот инкремент.
 
 Class: изменённые пути относятся к пересекающимся категориям `legacy`, `rust`,
 `shared-contracts`, `packaging`, `infrastructure`, `documentation`; близкий
 nonmember — только явно разрешённая Markdown-документация без runtime inputs.
-Inv: достоверный Git diff либо полный набор проверок; неизменяемый baseline и
-routing selftests обязательны, `CI gate` принимает только точные ожидаемые результаты.
+Inv: достоверный Git diff либо полный набор проверок; exact-hash approval metadata
+делегируется только фактически изменённым source blobs того же diff. Ledger-only и
+provenance-only — nonmembers. Полный неизменяемый baseline и routing selftests
+обязательны; `CI gate` принимает только точные ожидаемые результаты.
 N+1: новый путь/consumer добавляется в `tools/ci/routing-rules.json`; executable
 coverage/dependency/workflow contracts в `tools/ci/test_routing.py` обнаруживают
 неучтённые tracked paths, зависимости и пропущенные job связи.
+Legacy job имеет один исполняемый источник в `legacy-build.yml`; диагностический
+контракт проверяет отдельный `RoutingTests.test_legacy_diagnostics_contract`.
 
 ## Граф и матрица
 
@@ -30,7 +37,8 @@ dispatch, без path filter. Всегда выполняются Windows `class
 | MMF/wire/proto/API/oracle/shared inputs | Да | Да | Да |
 | Rust packaging implementation | — | Да | Да |
 | Исходный installer или AddIn SDK inputs | Да | Да | Да |
-| Workflow/routing/manifest/ledger, неизвестный путь | Да | Да | Да |
+| Workflow/routing/manifest, недоказанный ledger или неизвестный путь | Да | Да | Да |
+| Ledger с доказанными source approvals в том же diff | По всем source/остальным путям | По всем source/остальным путям | По всем source/остальным путям |
 | Только разрешённая Markdown-документация | — | — | — |
 | Невосстановимый base/diff, manual dispatch | Да | Да | Да |
 
@@ -80,6 +88,39 @@ malformed event/diff/UTF-8 ведут к полному набору. Пусто
 после успешного проверенного diff. Никакой недостоверный ввод не превращается
 в успешный docs-only skip.
 
+Raw `categories(path)` и `classify(paths)` сохраняют все шесть категорий и прежний
+fail-closed результат для ledger. Только Git-aware CLI может убрать из dependency
+classification ровно `rust/migration/legacy-divergences.json`, если докажет связь
+metadata с реальными source changes. Один immutable context хранит проверенные
+base/head и paths; PR object reads используют тот же merge-base, что и diff.
+Manifest должен быть одним неизменённым regular Git blob в обеих ревизиях.
+Manifest и оба ledger читаются из Git objects как strict UTF-8 JSON, с запретом
+повторяющихся keys, проверкой формы/версии/pinned source commit, уникальных
+canonical paths, baseline/approved hashes и структуры provenance. Каждый metadata
+blob ограничен 1 MiB (текущие документы меньше 128 KiB); symlink/tree/missing object,
+ошибка Git или любая неоднозначность оставляет ledger и полный набор workloads.
+Git path queries используют `--literal-pathspecs`; source contents не загружаются.
+
+Нужен минимум один добавленный/обновлённый approval без удаления существующих.
+Каждый изменённый approval обязан относиться к пути фактического diff и regular
+blob в обеих ревизиях: base hash равен прежнему approved hash либо immutable
+manifest baseline hash для нового approval; head hash равен новому approved hash
+и отличается от base. Existing baseline identity не меняется. Ledger-only,
+format/reorder-only, provenance-only и approval к неизменённому/постороннему source
+не проходят proof. Все исходные пути, кроме единственного доказанного ledger,
+по-прежнему проходят JSON rules: independent Legacy approval запускает Legacy;
+shared/frozen input, workflow или unknown path сохраняет полный dependency closure.
+Новый компонент добавляется в JSON rules, без project-specific ветвей в proof.
+Диагностика сохраняет исходные paths/categories и явно выводит `metadata_delegation`
+с associated source paths; три `GITHUB_OUTPUT` booleans и gate schema неизменны.
+
+Это proof зависимости metadata, а не новая baseline/provenance policy. В обоих
+случаях — с делегированием и без него — всегда выполняются полный
+`Verify-Baseline.ps1 -RequireComplete`, frozen/catalog/provenance проверки и
+`Test-BaselineGuard.ps1`; их обязанности не переносятся в classifier. Provenance
+commit не обязан равняться новому head (это создало бы циклическую ссылку); proof
+не требует сетевого доступа или доступности указанного provenance commit.
+
 Gate получает `toJSON(needs)` через environment, проверяет точную схему шести
 зависимостей и outputs `legacy/rust/packaging` со строками только `true/false`.
 Classify/baseline/selftests должны завершиться `success`. Выбранный workload
@@ -105,7 +146,15 @@ python -m unittest discover -s rust/tools/ci -p "test_*.py" -v
 Suite покрывает матрицу, смешанные scopes, unknown paths, реальный temporary Git
 rename/delete/PR merge-base/empty diff, NUL/tab/newline parser, unavailable/failed
 Git, malformed inputs, CLI fallback, все комбинации workload selection и result
-states, consumer dependencies и coordinator/reusable wiring. Linux suite не
+states, consumer dependencies и coordinator/reusable wiring. Real Git subtests
+проверяют updated/new independent Legacy approvals, mixed/shared/frozen/unknown
+closures, base/head blob binding, invalid/missing/symlink/oversize/UTF-8 metadata,
+JSON/path duplicates, ledger nonmembers, immutable manifest, unavailable Git,
+PR merge-base вместо base tip, независимость от worktree и CLI diagnostics/outputs.
+Fixture hashes используют Git path-aware canonical conversion, как `git add`;
+отдельный Linux real-Git test с `core.autocrlf=true` и явными CRLF bytes проверяет
+new/updated approvals и baseline hashes. Это контролируемая проверка CRLF, а не
+доказательство запуска suite на Windows. Linux suite не
 доказывает Windows runtime/MSI. Exact-head Windows verdict и PR provenance
 фиксируются владельцем после независимого review; прежние E22 runs не являются
 доказательством CI-1 и ускорение до новых измерений не заявляется.
@@ -120,7 +169,29 @@ unavailable. Поэтому **CI gate подготовлен как единый
 Изменение baseline-файла `.github/workflows/ci.yml` записано в существующем
 exact-hash ledger: [PR20](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/20),
 reviewed source commit `3f04ae0816c1d9286032a2b8bb8ed41d65a447d3`.
-Прежний полный legacy job, включая принятый PR2 `-NoPause`, выделен побайтово.
-Source manifest остаётся pinned, все 513 baseline entries и 14 одобренных
-отклонений сохраняются. Фактические exact-head CI runs фиксируются в PR;
+Весь suffix после `jobs:\n` из `.github/workflows/ci.yml` immutable main
+`25935c0481faf29f1e5ec15924cbc71e70203f62` выделен побайтово в reusable
+`legacy-build.yml`. Сохранены полный CI.slnf build/test, `--no-build`,
+`Category!=Live`, blame-hang 10m и MSI smoke с PR2 `-NoPause`/30m limit.
+Диагностика отдельно происходит из PR21/reviewed source
+`843331ece3efa6e243fbe7dec357523054e389ea`: TRX без общего имени, console
+Tee-Object с немедленным сохранением/возвратом LASTEXITCODE, allowlist provenance
+и `if: always()` upload пяти allowlisted patterns с run ID/attempt и retention 7 days.
+Coordinator остаётся побайтово CI-1 PR20 (`e5d19816563dadeb80967349821e0db6ae1ae15c`);
+его ledger provenance не заменяется provenance исходного PR21 workflow.
+Source manifest остаётся pinned, все 513 baseline entries, прежние 14 одобренных
+отклонений и новый approval15 `RegisterMirrorTests.cs` из PR21 сохраняются.
+Фактические exact-head CI runs фиксируются в PR;
 неполный предварительный source commit без ledger не является принятым деревом.
+
+Прежний CI-1 head `0283817` не принят: Rust run `39433195261`, job
+`118664064048` завершился FAIL в
+`concurrent_creation_publishes_only_complete_valid_file` (Windows NotFound).
+Legacy 941 tests, MSI contracts и baseline этого head прошли, но общий gate FAIL.
+CI-2 final head `45d8e93` получил Windows PASS с одной попытки: Legacy
+`39440073028` (941/941 + MSI), Rust `39440073152` (246 tests + Chrome/differential)
+и installer contracts `39440073117`. Проверено дерево merge PR21 в main;
+эти результаты относятся к prerequisite CI-2 и не являются приёмкой обновлённого
+CI-1. Post-merge main runs Legacy `39545433194` и Rust `39545433323` также
+завершились SUCCESS с первой попытки; это подтверждает prerequisite CI-2. Для обновлённого CI-1 обязательны отдельное review и новые полные
+Windows gates на окончательном exact head; до них Windows PASS не заявляется.
