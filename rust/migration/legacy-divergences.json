@@ -5,11 +5,11 @@
     {
       "path": ".github/workflows/ci.yml",
       "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
-      "approved_blob_sha1": "ab050730c618844c63971245fcf3b8dbc2becbce",
+      "approved_blob_sha1": "e5d19816563dadeb80967349821e0db6ae1ae15c",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21",
-        "commit": "843331ece3efa6e243fbe7dec357523054e389ea",
-        "reason": "User-authorized CI-2 diagnostics: preserve complete CI.slnf build/test, Live exclusion, 10m hang detection and smoke MSI; add unique per-project TRX, build/test console and allowlisted runtime/source provenance, always-upload attempt-specific 7d logs without dumps. Native pipeline exit codes captured immediately; no test bypass or production .NET change. Existing PR2 -NoPause retained."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/20",
+        "commit": "3f04ae0816c1d9286032a2b8bb8ed41d65a447d3",
+        "reason": "Owner-authorized CI-1 component-aware monorepo routing. Extract the previous complete legacy build/test/MSI job verbatim into reusable legacy-build.yml (including accepted PR2 -NoPause), preserve full Rust/browser/differential and native installer workloads, add always-required full baseline/routing checks and strict CI gate. Unknown/incomplete changes select all consumers; original source manifest and production .NET remain unchanged. Reviewed source commit and PR20 provide exact workflow provenance."
       }
     },
     {

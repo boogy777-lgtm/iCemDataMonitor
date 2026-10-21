@@ -18,51 +18,15 @@ on:
         description: 'Create a draft prerelease with the verified MSI'
         type: boolean
         default: false
-  pull_request:
-    branches: [main]
-    paths:
-      # Runtime/dependency changes alter the payload and must retain native MSI contracts.
-      - 'rust/apps/**'
-      - 'rust/crates/**'
-      - 'rust/Cargo.*'
-      - 'rust/rust-toolchain.toml'
-      - 'rust/installer/**'
-      - 'rust/tools/Build-Windows*.ps1'
-      - 'rust/tools/Build-LegacyAddin.ps1'
-      - 'rust/tools/WindowsPackagingFixture.psm1'
-      - 'rust/tools/Test-Windows*.ps1'
-      - '.github/workflows/rust-windows-release.yml'
-      - '.github/workflows/rust-addin-build.yml'
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: rust-windows-release-${{ github.event_name == 'workflow_dispatch' && 'manual' || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+  group: rust-windows-release-manual
+  cancel-in-progress: false
 jobs:
   installer-contracts:
-    runs-on: windows-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: rust
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-      - name: Full payload, AddIn provenance and native MSI ownership contracts
-        run: ./tools/Test-WindowsPackaging.ps1
-      - name: Build and install fixture MSI using native WiX ownership and original branding
-        run: ./tools/Test-WindowsInstaller.ps1
-      - name: Upload installer contract logs (no fixture MSI publication)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: installer-contract-evidence
-          path: rust/artifacts/msi/*.log
-          if-no-files-found: ignore
+    uses: ./.github/workflows/rust-installer-contracts.yml
   resolve-version:
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest

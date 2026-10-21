@@ -1,19 +1,12 @@
 name: rust-migration
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: rust-migration-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   verify:
     runs-on: windows-latest
-    # Run for legacy changes too: the immutable baseline guard covers the root tree.
     # Cold MSVC check + build of the locked GPUI graph exceeded 15m.
     timeout-minutes: 35
     defaults:
