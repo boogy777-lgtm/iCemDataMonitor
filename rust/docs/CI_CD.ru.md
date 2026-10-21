@@ -1,10 +1,12 @@
-# CI-1: независимая проверка компонентов и общий compatibility gate
+# CI: маршрутизация, общий gate и bounded Cargo cache
 
 Scope — маршрутизация существующих проверок поверх принятого prerequisite CI-2:
 main `25935c0481faf29f1e5ec15924cbc71e70203f62`, [PR21](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21).
 [CI-2a/D54](CI2_CONFIG_RACE.ru.md) исправляет canonical INI read/create race;
 [CI-2b/D55](CI2_TEST_INFRA.ru.md) сохраняет synthetic register fixture и диагностику CI.
-CI-3 (cache/performance, разделение Rust Cargo/browser/per-crate jobs) не реализован. Политика выпуска,
+CI-1 PR20 и prerequisite CI-2 PR21 приняты в main
+`9b9b747854098425281419086db0587c776ac870`; post-merge coordinator run
+`39548701932` — PASS. CI-3 ниже подготовлен для отдельной Windows-проверки. Политика выпуска,
 Rust 1.99.1/locked graph, unsafe/lints, .NET production, source-manifest, frozen
 proto и SPA не меняются. E23 не входит в этот инкремент.
 
@@ -193,5 +195,72 @@ CI-2 final head `45d8e93` получил Windows PASS с одной попытк
 и installer contracts `39440073117`. Проверено дерево merge PR21 в main;
 эти результаты относятся к prerequisite CI-2 и не являются приёмкой обновлённого
 CI-1. Post-merge main runs Legacy `39545433194` и Rust `39545433323` также
-завершились SUCCESS с первой попытки; это подтверждает prerequisite CI-2. Для обновлённого CI-1 обязательны отдельное review и новые полные
-Windows gates на окончательном exact head; до них Windows PASS не заявляется.
+завершились SUCCESS с первой попытки; это подтверждает prerequisite CI-2. Обновлённый CI-1 затем принят в PR20; полный post-merge coordinator
+`39548701932` на main `9b9b747854098425281419086db0587c776ac870` — PASS
+(Legacy 941, Rust 246, Chrome/C# differential и MSI contracts). Это baseline CI-3,
+а не доказательство его ускорения.
+
+
+## CI-3: повторное использование Cargo downloads и debug build
+
+Class: Windows x64 MSVC Cargo downloads/debug inputs в одном прежнем Rust job;
+близкие nonmembers — browser, differential evidence, MSI, SDK и release payload.
+Inv: cache hit/miss не меняет ни одной проверки. `cache_contract.py` исполняемо
+проверяет allowlist путей, единственный совместимый fallback, locked/offline,
+clippy `-D warnings`, непосредственный exit-code propagation и порядок guards.
+N+1: новый Cargo input добавляется в `cache_identity.py`; общий Scaffold prefix
+имеет один owner `Verify-ScaffoldInputs.ps1` и выполняется до restore debug, затем
+снова из полного Scaffold. Изменения команд/flags и common input owners входят
+в compatibility identity; stdlib mutation tests выявляют потерю обязательств.
+
+Для stdlib tooling явно устанавливается Python 3.12 (`setup-python@v5`).
+Job сохраняется целиком: install pin → identity/contracts → restore downloads →
+единственный `cargo fetch --locked` → полный Inputs с `-RequireCompleteBaseline` →
+restore debug → прежние native/logger/emulator preflights → полный Scaffold →
+Chrome и evidence. После fetch все прежние Cargo проверки offline/locked.
+Inputs содержит baseline guard, packaging guard, полный baseline, desktop guards,
+metadata edition/MSRV и fmt. Полный Scaffold повторяет Inputs и прежние
+check/build/test/clippy. У проверок нет cache-hit conditions; только save зависит
+от успешного выполнения всех checks и отсутствия exact primary key hit.
+
+`actions/cache/restore@v5` и `save@v5` имеют два bounded набора:
+
+| Cache | Пути | Ключ и fallback |
+|---|---|---|
+| Cargo downloads | Только `$CARGO_HOME/registry/{index,cache,src}` и `git/{db,checkouts}` | Exact compatibility identity, включающая Cargo.lock; без restore prefix |
+| Cargo debug | Только `rust/target/debug` | compatibility + source SHA; ровно один prefix полной compatibility identity |
+
+Compatibility включает Windows/архитектуру, ImageOS/ImageVersion, полный
+`rustc --version --verbose` (host/version), Cargo version, pin, lockfile, все
+workspace Cargo.toml, absence/presence `.cargo/config[.toml]` по Cargo ancestor
+search, actual workflow и scripts с командами/flags. Выбранные MSVC/SDK/include/lib
+переменные входят только как hash, без публикации значений. Compiler/Cargo/native
+flags/wrappers/target/profile overrides отклоняются fail closed.
+Native tool/flag families (включая ARFLAGS/RANLIBFLAGS и RC, даже пустые) отклоняются в base,
+HOST_/TARGET_ и target-suffix формах; SDK/include/lib paths остаются hash inputs.
+Непустые Cargo configuration overrides и внешние Cargo configs также отклоняются; это узкий
+контракт существующего job, не универсальный конфигуратор. Изменение этой политики
+требует пересмотра identity и tests. CPU model не входит в compatibility key.
+
+Весь Cargo home, `target/` целиком, release/dist, differential JSON/oracle
+intermediates, browser/node, MSI и SDK outputs не кэшируются. Старые evidence
+uploads сохраняются. `cargo-cache-evidence` (7 days) и job summary содержат только
+keys/hit/matched key, source/compatibility identity, runner image/arch/compiler и
+CPU count/model. Никаких dumps environment/config/credentials. Actual overhead
+restore/save берётся из длительностей отдельных GHA steps; сравниваются также
+полный job и неизменённые preflight/Scaffold/browser steps.
+
+Исходное измерение до CI-3: run `39547068850`, Rust job `119047616914` —
+14m11s; emulator preflight 8m22s, Scaffold 3m54s, browser 20s, fetch 15s.
+Прежние cold runs варьировали примерно 8m55s–13m17s, поэтому одно сравнение
+на разных runners не доказывает причину ускорения. Отдельные per-crate/browser
+jobs не добавляются: browser занимает 20s и не оправдывает новый runner.
+
+Локально проверяются stdlib suite (включая отрицательные mutations root/release
+cache paths, broad fallback, conditional checks, пропущенные commands/baseline,
+lost locked/offline/clippy и подавленные exit codes), actionlint, PowerShell
+parse и полный Inputs. Windows cold/warm full coordinator runs для CI-3 **pending**.
+План: cold PASS, затем review/docs-only evidence commit с тем же compatibility
+identity и warm full coordinator PASS. Это разные source SHA при неизменных build
+inputs; сравнение не называется same-exact-head. При image/key mismatch измерение
+warm reuse не считается доказанным. Числа ускорения/экономии до actual runs не заявляются.

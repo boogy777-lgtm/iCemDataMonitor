@@ -24,29 +24,61 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Set up Python for cache contracts
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify cache contracts and derive identity
+        id: cache-identity
+        shell: pwsh
+        run: |
+          python tools/ci/cache_contract.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/ci/cache_identity.py --output "$env:RUNNER_TEMP/icem-cache-identity.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Restore Cargo downloads
+        id: cargo-downloads
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ steps.cache-identity.outputs.cargo_home }}/registry/index
+            ${{ steps.cache-identity.outputs.cargo_home }}/registry/cache
+            ${{ steps.cache-identity.outputs.cargo_home }}/registry/src
+            ${{ steps.cache-identity.outputs.cargo_home }}/git/db
+            ${{ steps.cache-identity.outputs.cargo_home }}/git/checkouts
+          key: ${{ steps.cache-identity.outputs.download_key }}
+      - name: Fetch locked Rust dependencies
+        shell: pwsh
+        run: |
+          cargo fetch --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify all scaffold inputs before debug restore
+        shell: pwsh
+        run: ./tools/Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline
+      - name: Restore Cargo debug build
+        id: cargo-debug
+        uses: actions/cache/restore@v5
+        with:
+          path: rust/target/debug
+          key: ${{ steps.cache-identity.outputs.build_key }}
+          restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}
       - name: Verify owned Host diagnostic window on Windows
         shell: pwsh
         run: |
-          cargo test --locked -p icem-windows-native
+          cargo test --locked --offline -p icem-windows-native
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows file logger boundary before desktop build
         shell: pwsh
         run: |
-          cargo test --locked -p icem-logging
+          cargo test --locked --offline -p icem-logging
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows emulator integration before desktop build
         shell: pwsh
         run: |
           # Test the native runtime boundary before the much larger desktop graph.
-          # Cargo downloads only this locked package closure on the cold runner.
-          cargo test --locked -p icem-emulator-app -p icem-transport -p icem-platform-windows
+          cargo test --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo clippy --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Fetch locked Rust dependencies
-        shell: pwsh
-        run: |
-          cargo fetch --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify source and skeleton
         shell: pwsh
@@ -81,3 +113,47 @@ jobs:
             rust/target/lan-differential-report.json
             rust/target/host-sniffer-differential-report.json
           if-no-files-found: ignore
+      - name: Save Cargo downloads after all checks
+        if: success() && steps.cargo-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ${{ steps.cache-identity.outputs.cargo_home }}/registry/index
+            ${{ steps.cache-identity.outputs.cargo_home }}/registry/cache
+            ${{ steps.cache-identity.outputs.cargo_home }}/registry/src
+            ${{ steps.cache-identity.outputs.cargo_home }}/git/db
+            ${{ steps.cache-identity.outputs.cargo_home }}/git/checkouts
+          key: ${{ steps.cache-identity.outputs.download_key }}
+      - name: Save Cargo debug build after all checks
+        if: success() && steps.cargo-debug.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: rust/target/debug
+          key: ${{ steps.cache-identity.outputs.build_key }}
+      - name: Record bounded cache evidence
+        if: always()
+        shell: pwsh
+        env:
+          DOWNLOAD_HIT: ${{ steps.cargo-downloads.outputs.cache-hit }}
+          DOWNLOAD_MATCH: ${{ steps.cargo-downloads.outputs.cache-matched-key }}
+          DEBUG_HIT: ${{ steps.cargo-debug.outputs.cache-hit }}
+          DEBUG_MATCH: ${{ steps.cargo-debug.outputs.cache-matched-key }}
+        run: |
+          $IdentityPath = "$env:RUNNER_TEMP/icem-cache-identity.json"
+          $Evidence = [ordered]@{ identityAvailable = (Test-Path $IdentityPath); downloadHit = $env:DOWNLOAD_HIT; downloadMatchedKey = $env:DOWNLOAD_MATCH; debugHit = $env:DEBUG_HIT; debugMatchedKey = $env:DEBUG_MATCH }
+          $Evidence.cpuCount = [Environment]::ProcessorCount
+          $Evidence.cpuModels = @()
+          try { $Evidence.cpuModels = @((Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name) | Sort-Object -Unique) } catch { }
+          if ($Evidence.identityAvailable) { $Evidence.identity = Get-Content -Raw $IdentityPath | ConvertFrom-Json }
+          $Evidence | ConvertTo-Json -Depth 5 | Set-Content "$env:RUNNER_TEMP/icem-cache-evidence.json"
+          '### Cargo cache evidence' >> $env:GITHUB_STEP_SUMMARY
+          'Keys, matched keys, hit status and runner/compiler identity are in the bounded cache evidence artifact. Actual restore/save overhead is recorded by the Actions step durations; compare total job and unchanged check durations across cold/warm runs.' >> $env:GITHUB_STEP_SUMMARY
+          ($Evidence | ConvertTo-Json -Depth 5) >> $env:GITHUB_STEP_SUMMARY
+      - name: Upload Cargo cache evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-cache-evidence
+          path: ${{ runner.temp }}/icem-cache-evidence.json
+          if-no-files-found: ignore
+          retention-days: 7
