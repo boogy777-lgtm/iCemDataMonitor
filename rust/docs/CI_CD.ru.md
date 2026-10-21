@@ -6,7 +6,7 @@ main `25935c0481faf29f1e5ec15924cbc71e70203f62`, [PR21](https://github.com/boogy
 [CI-2b/D55](CI2_TEST_INFRA.ru.md) сохраняет synthetic register fixture и диагностику CI.
 CI-1 PR20 и prerequisite CI-2 PR21 приняты в main
 `9b9b747854098425281419086db0587c776ac870`; post-merge coordinator run
-`39548701932` — PASS. CI-3 ниже подготовлен для отдельной Windows-проверки. Политика выпуска,
+`39548701932` — PASS. CI-3 прошёл первый cold Windows run; warm evidence описывается ниже. Политика выпуска,
 Rust 1.99.1/locked graph, unsafe/lints, .NET production, source-manifest, frozen
 proto и SPA не меняются. E23 не входит в этот инкремент.
 
@@ -259,8 +259,46 @@ jobs не добавляются: browser занимает 20s и не опра�
 Локально проверяются stdlib suite (включая отрицательные mutations root/release
 cache paths, broad fallback, conditional checks, пропущенные commands/baseline,
 lost locked/offline/clippy и подавленные exit codes), actionlint, PowerShell
-parse и полный Inputs. Windows cold/warm full coordinator runs для CI-3 **pending**.
-План: cold PASS, затем review/docs-only evidence commit с тем же compatibility
-identity и warm full coordinator PASS. Это разные source SHA при неизменных build
-inputs; сравнение не называется same-exact-head. При image/key mismatch измерение
-warm reuse не считается доказанным. Числа ускорения/экономии до actual runs не заявляются.
+parse и полный Inputs.
+
+### Первый cold run и метод warm-проверки
+
+[PR22](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/22),
+[coordinator 39610489900, attempt 1](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/39610489900)
+завершился SUCCESS. Проверенный PR head `ee36b81f2013ab0e95f0107c2a8181b47da3cac6`
+и фактический checkout merge `6ab47a783faf14dc30f03f5cf056129b1c7878ff`
+имеют одинаковое дерево `a71061f64991cdccb572d69fc5c66dc16d841a1d`.
+Windows Rust job `119257913310`: 246 уникальных tests в 77 группах, 0 failed/ignored;
+повторные preflight tests пересекаются с этим набором и не увеличивают unique count.
+Legacy job `119257913274`: 941/941, 0 failed/skipped и smoke MSI; packaging
+`119257913272`: PASS на synthetic fixtures. Baseline `119257761018`: 513/513,
+15 ledger approvals и 25 regression cases; routing `119257761451`: 37 tests,
+72.160s; общий gate `119266539118`: SUCCESS. SDK/operator/hardware gates остаются открытыми.
+
+| Rust job / step | Cold duration |
+|---|---:|
+| Полный Rust job | 997s (16m37s) |
+| Restore downloads / fetch | 1s / 56s |
+| Early Inputs / restore debug | 67s / 0s |
+| Native / logger preflights | 12s / 8s |
+| Emulator preflight | 414s (6m54s) |
+| Полный Scaffold / Chrome | 203s (3m23s) / 20s |
+| Save downloads / debug | 110s / 72s |
+
+Оба restore дали miss (hit/matched key пусты); оба cache сохранены с фактическими
+keys. Только cold saves заняли 182s. Runner: `win25-vs2026`, image version
+`20261018.275.1`, 4 logical CPU, AMD EPYC 7763. Compatibility prefix:
+`ci3-debug-e1113059beb4ecb55ab3178babeaf245c6210073b353e43381ef441279ed1293-`.
+Evidence artifact `12350338721` независимо скачан и проверен: ZIP 780 bytes,
+SHA256 `dae2a15e39c96fe538f8d39561a998b81f3230dd104e545c747230646d494467`.
+Baseline 14m11s использовал другую image version (`20261007.264.1`); эти cold результаты
+не доказывают ускорения или экономии.
+
+Следующий docs-only evidence commit меняет source SHA, сохраняя build inputs;
+документация не входит в compatibility identity. Для warm evidence нужны новый
+полный coordinator run и проверка фактических image/compatibility/matched keys.
+При image/key mismatch warm reuse не считается доказанным. Это сравнение разных
+source SHA, не same-exact-head. Итоговый verdict нового head и фактические warm
+metrics фиксируются в PR22 после завершения run, без циклического evidence commit.
+Таблица фиксирует первый cold run и сама по себе не является доказательством
+ускорения; итоговые данные отслеживаются в PR22.
