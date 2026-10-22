@@ -46,8 +46,8 @@ fn integer(value: &Value, name: &str) -> Result<i32, Box<dyn std::error::Error>>
     }
 }
 fn read_json(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
-    let text = std::fs::read_to_string(path)?;
-    Ok(serde_json::from_str(text.trim_start_matches('\u{feff}'))?)
+    let text = icem_config::text_file::read_all_text(path)?;
+    Ok(serde_json::from_str(&text)?)
 }
 /// Explicit file load, not the production directory catalog/fallback resolver.
 /// Registry override naming follows the original SimFileResolver for this one file.

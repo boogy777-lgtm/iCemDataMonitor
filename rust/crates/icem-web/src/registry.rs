@@ -1,8 +1,8 @@
 //! Existing v1 registry -> legacy REST display names; never invent sensor labels.
 use std::{collections::BTreeMap, path::Path};
 pub fn load_names(path: &Path) -> Result<BTreeMap<u16, String>, Box<dyn std::error::Error>> {
-    let text = std::fs::read_to_string(path)?;
-    let root: serde_json::Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))?;
+    let text = icem_config::text_file::read_all_text(path)?;
+    let root: serde_json::Value = serde_json::from_str(&text)?;
     if root["version"] != 1 {
         return Err("unsupported variable registry version".into());
     }

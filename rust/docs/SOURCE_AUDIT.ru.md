@@ -81,8 +81,11 @@ production LAN per-file recovery: completed prefix сохраняется, ос�
 файла пропускается, firmware читается затем; Registry diagnostics остаются видимыми.
 Strict Registry::from_json не меняется. [D22b](EMULATOR_D22B.ru.md) разделяет
 COM all-or-empty registry recovery и template isolation. Null registry records
-отклоняются явно на file boundary; incidental C# traversal exceptions не повторяются. File.ReadAllText encoding/Unicode OrdinalIgnoreCase и DOM case-colliding
-key order остаются кодовым backlog. Valid pinned ASCII catalogs проверяются отдельно; Windows original-
+отклоняются явно на file boundary; incidental C# traversal exceptions не повторяются.
+[D22c](CATALOG_D22C.ru.md) переносит File.ReadAllText BOM encoding в общий INI/catalog
+decoder для emulator и Host; emulator service-vector registry сохраняет UTF-8 stream boundary.
+Unicode OrdinalIgnoreCase и DOM case-colliding key order остаются кодовым backlog.
+Valid pinned ASCII catalogs проверяются отдельно; Windows original-
 method oracle и acceptance фиксируются по exact head.
 
 D23 — E4 pipe вводит явные caps (32 sessions, request 64 KiB, response 8 MiB)

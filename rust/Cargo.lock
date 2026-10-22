@@ -2300,6 +2300,7 @@ name = "icem-platform-windows"
 version = "0.1.0"
 dependencies = [
  "icem-bus",
+ "icem-config",
  "icem-core",
  "icem-emulation",
  "icem-protocols",
@@ -2347,6 +2348,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "icem-bus",
+ "icem-config",
  "icem-core",
  "icem-logging",
  "icem-platform-windows",

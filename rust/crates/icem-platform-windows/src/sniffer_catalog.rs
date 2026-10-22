@@ -93,13 +93,14 @@ impl Catalog {
         use std::io::Read;
         let file = std::fs::File::open(path)
             .map_err(|e| format!("Host lantable {}: {e}", path.display()))?;
-        let mut json = String::new();
+        let mut bytes = Vec::new();
         file.take(MAX_CATALOG_BYTES + 1)
-            .read_to_string(&mut json)
+            .read_to_end(&mut bytes)
             .map_err(|e| e.to_string())?;
-        if json.len() as u64 > MAX_CATALOG_BYTES {
+        if bytes.len() as u64 > MAX_CATALOG_BYTES {
             return Err("Host lantable exceeds 2 MiB".into());
         }
+        let json = icem_config::text_file::decode_read_all_text(&bytes);
         Self::new(Registry::from_json(&json).map_err(|e| e.to_string())?)
     }
     pub fn new(registry: Registry) -> Result<Self, String> {

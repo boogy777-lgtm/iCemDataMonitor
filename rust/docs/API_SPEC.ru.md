@@ -360,3 +360,10 @@ file errors silent. Strict from_json, wire/API и COM loaders не меняют�
 Null registry record считается ошибкой файла независимо от позиции; пустой
 reference-only template допустим при documented missing-ref policy. CLI/wire/API и strict explicit file load
 сохранены; encoding/Unicode вне этого инкремента.
+
+[D22c catalog encoding](CATALOG_D22C.ru.md): COM profiles/registry, LAN simulation
+variables и Host sniffer/Web catalogs читают UTF-8 по умолчанию и UTF-8/16/32 по
+одному начальному BOM. Emulator service-vector registry остаётся UTF-8 stream JSON.
+Внутренний `Registry::from_json` принимает уже декодированный JSON без BOM.
+External wire/API, file recovery и Host size limits сохраняются; Unicode identity
+matching и source-order JSON property collisions остаются отдельными задачами.
