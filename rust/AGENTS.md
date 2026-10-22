@@ -25,6 +25,13 @@ Native integration must prove its safe interface before adoption. An unsafe exce
 a distinct design decision; do not weaken the policy as an implementation shortcut.
 Use owned snapshots, bounded resources, deterministic codecs and injected clocks.
 Preserve external valid-traffic behavior, exact names, byte order, IPC ownership and CLI exits.
+User clarification (2026-10-22): compatibility is the external facade for valid configs,
+formats, traffic and results; Rust implementation and control flow are independent.
+Legacy code is evidence, not trusted design. Do not reproduce incidental exceptions,
+null dereferences or traversal-dependent bugs merely to make a differential test pass.
+Use explicit validated snapshots and documented file/template isolation for malformed
+input; compare original methods on healthy inputs, and test intentional Rust error
+policy separately. Existing accepted external command semantics still require parity.
 Do not silently fix SetLayer's legacy toggle semantics or activate dormant REST endpoints.
 No new dependency until it has a role, selected features, license/unsafe review and lockfile.
 Windows is the production target. Tests on Linux do not prove Windows integration or UI parity.
