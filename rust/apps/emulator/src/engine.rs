@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Explicit headless integration executable, independent of the monitor host.
 use std::process::ExitCode;
+mod landiag;
 mod selftest;
 #[cfg(windows)]
 mod windows {
@@ -314,6 +315,12 @@ mod windows {
     }
 }
 fn main() -> ExitCode {
+    if std::env::args()
+        .nth(1)
+        .is_some_and(|s| s.trim().eq_ignore_ascii_case("--landiag"))
+    {
+        return ExitCode::from(landiag::main(std::env::args().nth(2).as_deref()));
+    }
     if selftest::requested(std::env::args().nth(1).as_deref()) {
         std::process::exit(selftest::main());
     }

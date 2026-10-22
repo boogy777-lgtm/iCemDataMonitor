@@ -234,14 +234,21 @@ impl Pcap {
     /// ADR 0007. All setup failures close the unique session through RAII.
     pub fn open_capture(self: &Arc<Self>, name: &str) -> Result<CaptureSession, String> {
         let api = CaptureApi::load(self._library.as_ref().ok_or("Npcap module unavailable")?)?;
-        self.open_capture_with(name, api)
+        self.open_capture_with(name, api, 65535, 100)
+    }
+    /// Standalone emulator diagnostic; Host capture configuration is unchanged.
+    pub fn open_diagnostic_capture(self: &Arc<Self>, name: &str) -> Result<CaptureSession, String> {
+        let api = CaptureApi::load(self._library.as_ref().ok_or("Npcap module unavailable")?)?;
+        self.open_capture_with(name, api, 200, 500)
     }
     fn open_capture_with(
         self: &Arc<Self>,
         name: &str,
         api: CaptureApi,
+        snaplen: i32,
+        timeout: i32,
     ) -> Result<CaptureSession, String> {
-        let session = self.open(name, true)?;
+        let session = self.open_with(name, true, snaplen, timeout)?;
         for (set, value) in [
             (api.set_buffer, 64 * 1024),
             (api.set_user_buffer, 64 * 1024),
@@ -289,16 +296,25 @@ impl Pcap {
         Ok(CaptureSession(session))
     }
     pub fn open(self: &Arc<Self>, name: &str, promiscuous: bool) -> Result<PacketSession, String> {
+        self.open_with(name, promiscuous, 65535, 100)
+    }
+    fn open_with(
+        self: &Arc<Self>,
+        name: &str,
+        promiscuous: bool,
+        snaplen: i32,
+        timeout: i32,
+    ) -> Result<PacketSession, String> {
         let name = CString::new(name).map_err(|_| "Adapter name contains NUL")?;
         let mut error = [0i8; 256];
-        // SAFETY: stable CString/local error buffer, bounded snaplen, finite100ms
+        // SAFETY: stable CString/local error buffer, bounded internal snaplen and finite
         // read timeout; returned pcap_t uniquely owned on success.
         let raw = unsafe {
             (self.open_live)(
                 name.as_ptr(),
-                65535,
+                snaplen,
                 i32::from(promiscuous),
-                100,
+                timeout,
                 error.as_mut_ptr(),
             )
         };
@@ -469,16 +485,22 @@ mod tests {
         promiscuous: i32,
         filter: String,
         buffers: [i32; 3],
+        snaplen: i32,
+        timeout: i32,
     }
     thread_local! { static TRACE: RefCell<Trace> = RefCell::new(Trace::default()); }
     unsafe extern "C" fn open(
         _: *const c_char,
-        _: i32,
+        snaplen: i32,
         promiscuous: i32,
-        _: i32,
+        timeout: i32,
         _: *mut c_char,
     ) -> *mut c_void {
-        TRACE.with_borrow_mut(|t| t.promiscuous = promiscuous);
+        TRACE.with_borrow_mut(|t| {
+            t.promiscuous = promiscuous;
+            t.snaplen = snaplen;
+            t.timeout = timeout;
+        });
         // Opaque sentinel is never dereferenced by these ABI shims.
         ptr::NonNull::<u8>::dangling().as_ptr().cast()
     }
@@ -553,61 +575,66 @@ mod tests {
     unsafe extern "C" fn free_all(_: *mut PcapIf) {}
     #[test]
     fn capture_setup_fails_closed_and_frees_filter_exactly_once() -> Result<(), String> {
-        for fail in 0..=6 {
-            TRACE.with_borrow_mut(|t| {
-                *t = Trace {
-                    fail,
-                    ..Trace::default()
+        for (snaplen, timeout) in [(65535, 100), (200, 500)] {
+            for fail in 0..=6 {
+                TRACE.with_borrow_mut(|t| {
+                    *t = Trace {
+                        fail,
+                        ..Trace::default()
+                    }
+                });
+                let pcap = Arc::new(Pcap {
+                    _library: None,
+                    find_all: find,
+                    free_all,
+                    open_live: open,
+                    close,
+                    send_packet: send,
+                    next_ex: next,
+                    get_error: error,
+                    datalink,
+                });
+                let result = pcap.open_capture_with(
+                    "test",
+                    CaptureApi {
+                        set_nonblock: nonblock,
+                        compile,
+                        set_filter: filter,
+                        free_code: free,
+                        set_buffer: buffer,
+                        set_user_buffer: user_buffer,
+                        set_min_to_copy: min_to_copy,
+                    },
+                    snaplen,
+                    timeout,
+                );
+                if fail == 0 {
+                    let mut session = result?;
+                    assert_eq!(session.next_packet()?, None);
+                    TRACE.with_borrow(|t| assert_eq!(t.close, 0));
+                    drop(pcap); // session retains the loaded owner
+                    drop(session);
+                } else {
+                    assert!(result.is_err());
                 }
-            });
-            let pcap = Arc::new(Pcap {
-                _library: None,
-                find_all: find,
-                free_all,
-                open_live: open,
-                close,
-                send_packet: send,
-                next_ex: next,
-                get_error: error,
-                datalink,
-            });
-            let result = pcap.open_capture_with(
-                "test",
-                CaptureApi {
-                    set_nonblock: nonblock,
-                    compile,
-                    set_filter: filter,
-                    free_code: free,
-                    set_buffer: buffer,
-                    set_user_buffer: user_buffer,
-                    set_min_to_copy: min_to_copy,
-                },
-            );
-            if fail == 0 {
-                let mut session = result?;
-                assert_eq!(session.next_packet()?, None);
-                TRACE.with_borrow(|t| assert_eq!(t.close, 0));
-                drop(pcap); // session retains the loaded owner
-                drop(session);
-            } else {
-                assert!(result.is_err());
+                TRACE.with_borrow(|t| {
+                    assert_eq!(t.close, 1);
+                    assert_eq!(t.free, usize::from(fail == 0 || fail == 3));
+                    assert_eq!(t.nonblock, i32::from(fail < 4));
+                    assert_eq!(t.buffers[0], 65536);
+                    if fail != 4 {
+                        assert_eq!(t.buffers[1], 65536);
+                    }
+                    if !matches!(fail, 4 | 5) {
+                        assert_eq!(t.buffers[2], 1);
+                    }
+                    assert_eq!(t.promiscuous, 1);
+                    assert_eq!((t.snaplen, t.timeout), (snaplen, timeout));
+                    if fail != 1 && fail < 4 {
+                        assert_eq!(t.filter, "ether multicast");
+                    }
+                });
             }
-            TRACE.with_borrow(|t| {
-                assert_eq!(t.close, 1);
-                assert_eq!(t.free, usize::from(fail == 0 || fail == 3));
-                assert_eq!(t.nonblock, i32::from(fail < 4));
-                assert_eq!(t.buffers[0], 65536);
-                if fail != 4 {
-                    assert_eq!(t.buffers[1], 65536);
-                }
-                if !matches!(fail, 4 | 5) {
-                    assert_eq!(t.buffers[2], 1);
-                }
-                assert_eq!(t.promiscuous, 1);
-                if fail != 1 && fail < 4 {
-                    assert_eq!(t.filter, "ether multicast");
-                }
-            });
         }
         Ok(())
     }
