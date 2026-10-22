@@ -764,3 +764,9 @@ health-monitor matrix remain. Async fixture ownership stops/disposes apps before
 reader/file cleanup; phase/liveness output plus attempt-unique TRX/console artifacts
 make recurrence reviewable. Production .NET and the immutable manifest are unchanged.
 [Scope, four prior repairs, artifact policy and pending Windows proof](CI2_TEST_INFRA.ru.md).
+
+E23/E24 current: [standalone LAN diagnostic](EMULATOR_E23.ru.md) и
+[launch/default UI/stdin CLI](EMULATOR_E24.ru.md) реализованы; Linux checks
+PASS, Windows exact-head CI/runtime и UI/operator/SDK/hardware acceptance отдельно.
+D22 loader/encoding/Unicode остаётся кодовым backlog; прежние записи о будущих
+selftest/landiag/stdin CLI — исторический статус.

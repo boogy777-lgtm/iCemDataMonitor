@@ -343,3 +343,9 @@ acceptance остаётся OPEN. Далее selftest/landiag и stdin CLI от�
 
 
 E22: [встроенный emulator --selftest](EMULATOR_E22.ru.md): полный mapping T1–T26, first-argument dispatch до startup, read-only EXE-relative emulator catalogs, isolated native TestCtl и полный i32 failCount. Windows process/release smoke tests добавлены; local Linux не доказывает Windows runtime. D22/operator/SDK/hardware gates открыты; E23 — explicit --landiag и stdin CLI.
+
+E23/E24 current: [standalone LAN diagnostic](EMULATOR_E23.ru.md) и
+[launch/default UI/stdin CLI](EMULATOR_E24.ru.md) реализованы; Linux checks
+PASS, Windows exact-head CI/runtime и UI/operator/SDK/hardware acceptance отдельно.
+D22 loader/encoding/Unicode остаётся кодовым backlog; прежние записи о будущих
+selftest/landiag/stdin CLI — исторический статус.

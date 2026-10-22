@@ -24,6 +24,18 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
     let exe = env!("CARGO_BIN_EXE_icem-emulator-engine-dev");
     let directory = std::env::temp_dir().join(format!("icem-engine-{}", std::process::id()));
     std::fs::create_dir_all(&directory)?;
+    for args in [
+        vec!["--desktop"],
+        vec!["--config", "unused.xml"],
+        vec!["--templates", "unused"],
+    ] {
+        let output = Command::new(exe).args(args).output()?;
+        assert_eq!(output.status.code(), Some(2));
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("--config and --templates are required")
+        );
+    }
     let config = directory.join("settings.xml");
     let pipe = format!("icem-engine-test-{}", std::process::id());
     let templates =
@@ -76,6 +88,39 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
         serde_json::from_str(&request(&pipe, "status", Duration::from_secs(3))?)?;
     assert_eq!(updated["data"]["lan"]["equipment"], "0x12345678");
     assert!(std::fs::read_to_string(&config)?.contains("0x12345678"));
+    // Redirected stdin sends each line through the same shared client.
+    let stdin_cli = |bytes: &[u8]| -> Result<std::process::Output> {
+        let input = directory.join("cli-input.txt");
+        std::fs::write(&input, bytes)?;
+        let mut command = Command::new(exe);
+        command
+            .args(["--pipe", &pipe, "--cli"])
+            .stdin(Stdio::from(std::fs::File::open(input)?));
+        selftest_support::bounded(command)
+    };
+    let batch = stdin_cli(b"status\r\nsetpreset 4\rsetequipment 0x12345678\nstatus")?;
+    assert_eq!(batch.status.code(), Some(1));
+    let replies = std::str::from_utf8(&batch.stdout)?
+        .lines()
+        .map(serde_json::from_str::<serde_json::Value>)
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    assert_eq!(replies.len(), 4);
+    assert_eq!(
+        replies
+            .iter()
+            .map(|v| v["ok"].as_bool())
+            .collect::<Vec<_>>(),
+        [Some(true), Some(false), Some(true), Some(true)]
+    );
+    assert_eq!(replies[3]["data"]["lan"]["equipment"], "0x12345678");
+    let mut oversized = vec![b'x'; icem_transport::emulator_control::MAX_LINE_BYTES + 1];
+    oversized.extend_from_slice(b"\nsetequipment 99\n");
+    let rejected = stdin_cli(&oversized)?;
+    assert_eq!(rejected.status.code(), Some(1));
+    assert_eq!(std::str::from_utf8(&rejected.stdout)?.lines().count(), 1);
+    let after: serde_json::Value =
+        serde_json::from_str(&request(&pipe, "status", Duration::from_secs(3))?)?;
+    assert_eq!(after["data"]["lan"]["equipment"], "0x12345678");
     // Selftest is standalone even while the live engine owns its singleton and pipe.
     let mutex = icem_platform_windows::emulator_mutex()?;
     assert!(mutex.lock(Duration::ZERO)?.is_none());
@@ -171,7 +216,8 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
     let usage = Command::new(exe)
         .args(["--pipe", &absent_pipe, "--cli"])
         .output()?;
-    assert_eq!(usage.status.code(), Some(2));
+    assert_eq!(usage.status.code(), Some(0));
+    assert!(usage.stdout.is_empty());
     // Persistence fails after applying; v1 stays compatible and status reports actual memory.
     std::fs::remove_file(&config)?;
     std::fs::create_dir(&config)?;
@@ -185,8 +231,9 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
     request(&pipe, "setequipment 42", Duration::from_secs(3))?;
     let second = spawn()?.wait()?;
     assert!(!second.success(), "singleton must reject a second engine");
-    let quit: serde_json::Value =
-        serde_json::from_str(&request(&pipe, "quit", Duration::from_secs(3))?)?;
+    let quit_output = stdin_cli(b" QuIt \nsetequipment 99\n")?;
+    assert!(quit_output.status.success());
+    let quit: serde_json::Value = serde_json::from_slice(&quit_output.stdout)?;
     assert_eq!(quit["ok"], true);
     assert_eq!(quit["data"]["quitting"], true);
     let deadline = Instant::now() + Duration::from_secs(5);
@@ -200,6 +247,10 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
         }
         std::thread::sleep(Duration::from_millis(20));
     }
+    assert!(
+        std::fs::read_to_string(&config)?.contains("0x0000002A"),
+        "CLI consumed mutation after textual quit"
+    );
     // The same singleton and pipe can be acquired by a successor.
     process.child = spawn()?;
     let start = Instant::now();
@@ -232,6 +283,51 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
             return Err("disconnected quit left engine running".into());
         }
         std::thread::sleep(Duration::from_millis(20));
+    }
+    // No args and unknown args discover station settings and EXE-relative catalogs.
+    // The intentionally absent icon stops before GPUI; both roots are isolated.
+    for args in [vec![], vec!["unknown", "--cli", "status"]] {
+        let staged = selftest_support::Stage::new("default-ui")?;
+        let program_data = staged.root.join("program data");
+        let paths = icem_config::emulator::SettingsPaths::station(&program_data, &staged.local);
+        let legacy = paths.legacy.as_ref().ok_or("legacy path")?;
+        std::fs::create_dir_all(legacy.parent().ok_or("legacy parent")?)?;
+        let settings = icem_config::emulator::EmuSettings {
+            lan_equipment: 0x76543210,
+            ..Default::default()
+        };
+        let original = settings.to_xml();
+        std::fs::write(legacy, &original)?;
+        std::fs::create_dir_all(staged.cwd.join("emulator/templates"))?;
+        for name in [
+            "lantable_registry.json",
+            "firmware_registry.json",
+            "variable_registry.json",
+        ] {
+            std::fs::write(
+                staged.cwd.join("emulator/templates").join(name),
+                "corrupt cwd catalog",
+            )?;
+        }
+        let mut command = staged.command();
+        command.env("PROGRAMDATA", &program_data).args(args);
+        let output = selftest_support::bounded(command)?;
+        assert_eq!(output.status.code(), Some(1));
+        assert!(
+            std::str::from_utf8(&output.stderr)?.contains("application asset missing"),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(std::fs::read_to_string(legacy)?, original);
+        let loaded = icem_config::emulator::EmuSettings::from_xml(&std::fs::read_to_string(
+            &paths.canonical,
+        )?)?;
+        assert_eq!(loaded.lan_equipment, 0x76543210);
+        assert!(!loaded.lan_enabled && !loaded.com_enabled);
+        assert!(
+            mutex.lock(Duration::ZERO)?.is_some(),
+            "default UI did not release singleton"
+        );
     }
     Ok(())
 }

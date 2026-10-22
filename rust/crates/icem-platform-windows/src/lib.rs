@@ -93,3 +93,5 @@ pub fn host_autostart()
 }
 
 pub mod sniffer_catalog;
+
+pub mod landiag;
