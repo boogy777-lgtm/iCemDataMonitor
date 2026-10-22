@@ -1,7 +1,9 @@
 #![forbid(unsafe_code)]
-//! Explicit headless integration executable, independent of the monitor host.
+//! Independent emulator application modes and explicit development engine switches.
 use std::process::ExitCode;
+mod cli;
 mod landiag;
+mod launch;
 mod selftest;
 #[cfg(windows)]
 mod windows {
@@ -13,9 +15,7 @@ mod windows {
         simulation::load_catalog,
     };
     use icem_platform_windows::{ComSerialEmitter, QueuedAceLanEmitter};
-    use icem_transport::emulator_control::{
-        ACK_DRAIN, ClientEnd, ControlServer, Executor, cli_request,
-    };
+    use icem_transport::emulator_control::{ACK_DRAIN, ControlServer, Executor};
     use std::{
         path::PathBuf,
         sync::{
@@ -114,8 +114,8 @@ mod windows {
                     .is_some_and(|request| request.elapsed() >= ACK_DRAIN)
         }
     }
-    pub fn main() -> u8 {
-        match run() {
+    pub fn main(args: Vec<String>, default_ui: bool) -> u8 {
+        match run(args, default_ui) {
             Ok(code) => code,
             Err(error) => {
                 eprintln!("{error}");
@@ -123,28 +123,17 @@ mod windows {
             }
         }
     }
-    fn run() -> Result<u8, Box<dyn std::error::Error>> {
-        let mut args = std::env::args().skip(1);
+    fn run(args: Vec<String>, default_ui: bool) -> Result<u8, Box<dyn std::error::Error>> {
+        let mut args = args.into_iter();
         let mut config = None;
         let mut templates = None;
         let mut pipe = icem_emulation::CONTROL_PIPE.to_owned();
         let mut duration = None;
-        let mut cli = None;
-        let mut desktop = false;
+        let mut desktop = default_ui;
         while let Some(key) = args.next() {
             if key == "--desktop" {
                 desktop = true;
                 continue;
-            }
-            if key == "--help" {
-                eprintln!(
-                    "Usage: icem-emulator-engine-dev --selftest\n       icem-emulator-engine-dev --config PATH --templates DIR [--pipe NAME] [--duration-ms N] [--desktop]\n       icem-emulator-engine-dev [--pipe NAME] --cli <command...>\nDevelopment headless engine; GPUI/tray acceptance pending."
-                );
-                return Ok(0);
-            }
-            if key == "--cli" {
-                cli = Some(args.collect::<Vec<_>>().join(" "));
-                break;
             }
             let Some(value) = args.next() else {
                 eprintln!("{key} requires a value");
@@ -169,40 +158,24 @@ mod windows {
                 }
             }
         }
-        // CLI dispatch never creates a singleton, settings file or emitter.
-        if let Some(command) = cli {
-            if command.is_empty()
-                || config.is_some()
-                || templates.is_some()
-                || duration.is_some()
-                || desktop
-            {
-                eprintln!("invalid CLI arguments");
-                return Ok(2);
-            }
-            use std::io::Write;
-            let mut output = std::io::stdout().lock();
-            let result = cli_request(&pipe, &command, |response| {
-                writeln!(output, "{response}")?;
-                output.flush()?;
-                Ok(std::ops::ControlFlow::Continue(()))
-            });
-            return Ok(match result {
-                Ok(ClientEnd::Reply { ok }) => u8::from(!ok),
-                Ok(ClientEnd::Cancelled) => 0,
-                Err(error) => {
-                    // Serializer escapes operator text. The server's frozen v1 envelope is unchanged.
-                    let value =
-                        icem_emulation::control::to_json(false, "", None, Some(&error.to_string()));
-                    let _ = writeln!(output, "{value}");
-                    eprintln!("{error}");
-                    1
-                }
-            });
-        }
-        let (Some(config), Some(templates)) = (config, templates) else {
+        if !default_ui && (config.is_none() || templates.is_none()) {
             eprintln!("--config and --templates are required; see --help");
             return Ok(2);
+        }
+        let paths = if default_ui {
+            SettingsPaths::station(
+                std::env::var_os("PROGRAMDATA").ok_or("PROGRAMDATA is unavailable")?,
+                std::env::var_os("LOCALAPPDATA").ok_or("LOCALAPPDATA is unavailable")?,
+            )
+        } else {
+            SettingsPaths::explicit(config.ok_or("--config is required; see --help")?)
+        };
+        let templates = if default_ui {
+            std::env::current_exe()?
+                .with_file_name("emulator")
+                .join("templates")
+        } else {
+            templates.ok_or("--templates is required; see --help")?
         };
         let singleton = icem_platform_windows::emulator_mutex()?;
         let Some(_singleton) = singleton.lock(Duration::ZERO)? else {
@@ -211,7 +184,6 @@ mod windows {
         };
         let logs = Arc::new(icem_logging::SharedLogs::new(icem_logging::Owner::Emulator));
         logs.record("Emulator startup");
-        let paths = SettingsPaths::explicit(config);
         let loaded = EmuSettings::load(&paths);
         for diagnostic in loaded.diagnostics {
             logs.record(&diagnostic);
@@ -315,22 +287,35 @@ mod windows {
     }
 }
 fn main() -> ExitCode {
-    if std::env::args()
-        .nth(1)
-        .is_some_and(|s| s.trim().eq_ignore_ascii_case("--landiag"))
-    {
-        return ExitCode::from(landiag::main(std::env::args().nth(2).as_deref()));
-    }
-    if selftest::requested(std::env::args().nth(1).as_deref()) {
-        std::process::exit(selftest::main());
-    }
-    #[cfg(windows)]
-    {
-        ExitCode::from(windows::main())
-    }
-    #[cfg(not(windows))]
-    {
-        eprintln!("The headless integration engine requires Windows COM/Npcap/named pipes.");
-        ExitCode::from(78)
+    match launch::parse(std::env::args().skip(1).collect()) {
+        launch::Mode::SelfTest => std::process::exit(selftest::main()),
+        launch::Mode::LanDiag(adapter) => ExitCode::from(landiag::main(adapter.as_deref())),
+        launch::Mode::Help => {
+            use std::io::Write;
+            let mut out = std::io::stdout().lock();
+            ExitCode::from(
+                if writeln!(out, "{}", launch::USAGE)
+                    .and_then(|()| out.flush())
+                    .is_ok()
+                {
+                    0
+                } else {
+                    1
+                },
+            )
+        }
+        launch::Mode::Cli { pipe, args } => ExitCode::from(cli::main(&pipe, &args)),
+        launch::Mode::Ui { args, default } => {
+            #[cfg(windows)]
+            {
+                ExitCode::from(windows::main(args, default))
+            }
+            #[cfg(not(windows))]
+            {
+                let _ = (args, default);
+                eprintln!("The emulator UI/engine requires Windows COM/Npcap/named pipes.");
+                ExitCode::from(78)
+            }
+        }
     }
 }

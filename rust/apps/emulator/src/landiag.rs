@@ -124,7 +124,7 @@ fn run(port: &mut impl Port, key: &str, out: &mut impl Write) -> Result<u8, Erro
                     "  {}  [{}]  MAC={}",
                     a.description,
                     a.name,
-                    a.mac.map(mac).unwrap_or_default()
+                    a.mac.map(|m| mac(m).replace(':', "")).unwrap_or_default()
                 ),
             )?;
         }
