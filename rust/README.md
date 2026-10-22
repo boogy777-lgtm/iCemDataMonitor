@@ -216,3 +216,9 @@ DTO failure, сохраняет независимые templates и явно о�
 в COM/LAN simulation catalogs и двух Host catalog consumers. Emulator LAN registry
 сохраняет отдельный UTF-8 stream contract; Host byte budgets и file recovery прежние.
 Unicode identity matching и порядок colliding DTO properties остаются следующим кодовым этапом.
+
+[D22d](docs/CATALOG_D22D.ru.md): emulator registry/profile/variable/override lookup
+использует общий Unicode identity mechanism и типизированные LAN keys. Canonical
+LAN signal resolution общий для validation и preview. Таблица исчерпывающе сверяется
+с BCL provider; actual Windows mapping/runtime и JSON property collisions остаются
+отдельными открытыми границами.

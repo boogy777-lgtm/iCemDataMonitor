@@ -1,4 +1,5 @@
 //! Original template-driven COM waveform model; no serial I/O or ambient clock.
+use crate::identity::eq_ignore_case;
 use serde_json::Value;
 use std::{collections::BTreeMap, path::Path};
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -215,7 +216,7 @@ fn build_template(
             for entry in entries.into_iter().flatten() {
                 let matches = |key| match property(entry, key) {
                     None => query.is_empty(), // RegistryVariable's parameterless defaults
-                    Some(Value::String(text)) => text.eq_ignore_ascii_case(query),
+                    Some(Value::String(text)) => eq_ignore_case(text, query),
                     _ => false, // explicit null differs from an empty string in C# Equals
                 };
                 if matches("name") || matches("display") {
@@ -343,24 +344,26 @@ impl Engine {
         &self.last
     }
     pub fn set_template(&mut self, device_type: &str, name: &str) {
-        let same_device = |t: &Template| t.device_type.eq_ignore_ascii_case(device_type);
+        let same_device = |t: &Template| eq_ignore_case(&t.device_type, device_type);
         self.current = self
             .templates
             .iter()
-            .position(|t| same_device(t) && t.name.eq_ignore_ascii_case(name))
+            .position(|t| same_device(t) && eq_ignore_case(&t.name, name))
             .or_else(|| self.templates.iter().position(same_device))
             .or_else(|| (!self.templates.is_empty()).then_some(0));
     }
     pub fn find_variable(&self, name: &str) -> Option<(usize, &Variable)> {
-        self.current()?.variables.iter().enumerate().find(|(_, v)| {
-            v.name.eq_ignore_ascii_case(name) || v.legacy_name.eq_ignore_ascii_case(name)
-        })
+        self.current()?
+            .variables
+            .iter()
+            .enumerate()
+            .find(|(_, v)| eq_ignore_case(&v.name, name) || eq_ignore_case(&v.legacy_name, name))
     }
     pub fn set_override(&mut self, name: &str, value: f64) {
         if let Some((_, current)) = self
             .overrides
             .iter_mut()
-            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .find(|(key, _)| eq_ignore_case(key, name))
         {
             *current = value;
         } else {
@@ -371,7 +374,7 @@ impl Engine {
         let key = self
             .overrides
             .keys()
-            .find(|key| key.eq_ignore_ascii_case(name))
+            .find(|key| eq_ignore_case(key, name))
             .cloned();
         key.is_some_and(|key| self.overrides.remove(&key).is_some())
     }
@@ -399,7 +402,7 @@ impl Engine {
                 if let Some((_, ov)) = self
                     .overrides
                     .iter()
-                    .find(|(key, _)| key.eq_ignore_ascii_case(&var.name))
+                    .find(|(key, _)| eq_ignore_case(key, &var.name))
                 {
                     *value = *ov;
                 }
@@ -420,7 +423,7 @@ impl Engine {
                     .map(|v| {
                         self.overrides
                             .iter()
-                            .find(|(key, _)| key.eq_ignore_ascii_case(&v.name))
+                            .find(|(key, _)| eq_ignore_case(key, &v.name))
                             .map(|(_, value)| *value)
                             .unwrap_or_else(|| compute(v, self.elapsed))
                     })

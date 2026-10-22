@@ -1,6 +1,7 @@
 //! Deterministic emulator service. The application injects time and serializes
 //! commands/ticks; this module owns no timer, thread, pipe or filesystem handle.
 use crate::Channel;
+use crate::identity::eq_ignore_case;
 use crate::{
     cement::Context,
     control::{ControlResult, EmuControl, payload::*},
@@ -247,7 +248,7 @@ impl<C: ComEmitter, L: LanEmitter> Engine<C, L> {
                 vector
                     .signals
                     .iter()
-                    .filter(|signal| signal.name.eq_ignore_ascii_case(name))
+                    .filter(|signal| eq_ignore_case(&signal.name, name))
                     .map(|signal| (*number, signal.clone()))
             })
             .collect()
@@ -551,7 +552,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             let overrides = self.com.snapshot_overrides();
             let manual = overrides
                 .iter()
-                .find(|(name, _)| name.eq_ignore_ascii_case(&variable.name))
+                .find(|(name, _)| eq_ignore_case(name, &variable.name))
                 .map(|(_, value)| *value);
             let value = manual.unwrap_or_else(|| {
                 self.com
@@ -632,8 +633,8 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
             .templates()
             .iter()
             .filter(|t| {
-                t.name.eq_ignore_ascii_case(name)
-                    && device_type.is_none_or(|d| t.device_type.eq_ignore_ascii_case(d))
+                eq_ignore_case(&t.name, name)
+                    && device_type.is_none_or(|d| eq_ignore_case(&t.device_type, d))
             })
             .collect::<Vec<_>>();
         if matches.is_empty() {
@@ -668,7 +669,7 @@ impl<C: ComEmitter, L: LanEmitter> EmuControl for Engine<C, L> {
                             value: self.com.last_values().get(i).copied().unwrap_or(v.base),
                             overridden: com_overrides
                                 .keys()
-                                .any(|name| name.eq_ignore_ascii_case(&v.name)),
+                                .any(|name| eq_ignore_case(name, &v.name)),
                             exclude_from_telemetry: v.exclude,
                         })
                         .collect::<Vec<_>>()

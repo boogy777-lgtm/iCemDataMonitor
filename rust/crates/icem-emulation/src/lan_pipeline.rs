@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     cement::CementNetwork,
+    identity::eq_ignore_case,
     lan::{BaseProvider, SignalDef, VectorData, VectorDef, patch_value},
     units::Settings,
 };
@@ -42,6 +43,11 @@ impl LanPipeline {
         self.base.active_sv_numbers()
     }
     pub fn can_transmit(&self, sv: u32, name: &str) -> Result<(), String> {
+        self.resolve_signal(sv, name).map(|_| ())
+    }
+    /// Resolve the first matching signal and validate its payload span. Callers
+    /// storing exact override keys use the returned signal's original name.
+    pub fn resolve_signal(&self, sv: u32, name: &str) -> Result<&SignalDef, String> {
         let vector = self
             .base
             .registry()
@@ -50,7 +56,7 @@ impl LanPipeline {
         let signal = vector
             .signals
             .iter()
-            .find(|s| s.name.eq_ignore_ascii_case(name))
+            .find(|s| eq_ignore_case(&s.name, name))
             .ok_or_else(|| format!("signal '{name}' not in SV 0x{sv:08X}"))?;
         if signal.span(PAYLOAD_SIZE).is_none() {
             let end = i64::from(signal.byte_offset) - 4 + i64::from(signal.size);
@@ -59,7 +65,7 @@ impl LanPipeline {
                 signal.byte_offset, signal.size,
             ));
         }
-        Ok(())
+        Ok(signal)
     }
     /// Source dictionary keys are case-sensitive. CanTransmit is deliberately
     /// case-insensitive; a caller must resolve the canonical name before setting.

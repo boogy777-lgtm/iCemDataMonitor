@@ -155,3 +155,9 @@ Emulator COM/LAN simulation и Host sniffer/Web читают UTF-8/16/32; emulat
 service-vector registry сохраняет UTF-8 stream boundary. Полные parity gates
 остаются открытыми, включая Unicode identity matching, JSON property collisions
 и Windows/operator/SDK/hardware acceptance.
+
+D22d: P19/P22/P25 дополнены [Unicode named identities](CATALOG_D22D.ru.md):
+registry/profile/variable lookup, COM overrides и LAN simulation keys используют
+один checked mechanism. Exact LAN manual override semantics сохраняются.
+Исчерпывающий actual Windows provider test и operator/hardware acceptance остаются
+открытыми; source-order COM DTO collisions пока не перенесены.

@@ -220,7 +220,8 @@ impl CementNetwork {
             .samples("Sequencer", Direction::Parameter, &mut out);
         out
     }
-    /// Known keys are ASCII. Arbitrary Unicode OrdinalIgnoreCase remains a separate parity gate.
+    /// Fixed ASCII wire keys use the equivalent ASCII comparison; the identity
+    /// table invariant checks that no Unicode class crosses the ASCII boundary.
     pub fn try_wire_value(&self, name: &str) -> Option<f64> {
         WIRE_SIGNALS
             .iter()

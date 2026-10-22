@@ -84,7 +84,9 @@ COM all-or-empty registry recovery и template isolation. Null registry records
 отклоняются явно на file boundary; incidental C# traversal exceptions не повторяются.
 [D22c](CATALOG_D22C.ru.md) переносит File.ReadAllText BOM encoding в общий INI/catalog
 decoder для emulator и Host; emulator service-vector registry сохраняет UTF-8 stream boundary.
-Unicode OrdinalIgnoreCase и DOM case-colliding key order остаются кодовым backlog.
+[D22d](CATALOG_D22D.ru.md) переносит emulator named identities через общий checked
+Unicode mechanism; provider snapshot и Windows exhaustive comparison описаны отдельно.
+DOM case-colliding key order остаётся кодовым backlog.
 Valid pinned ASCII catalogs проверяются отдельно; Windows original-
 method oracle и acceptance фиксируются по exact head.
 

@@ -42,7 +42,10 @@ Read migration/desktop-ui-inventory.json and the original XAML/themes before des
 176 named controls and scoped resources require explicit mapping/state acceptance.
 Web frontend preserves frozen HTML/CSS/JS; do not replace it with a generic control kit.
 The dependency graph is locked; generator-only lint allowances stay scoped to generated proto output.
-Never publish publicly. The user authorized publishing rust/ in boogy777-lgtm/iCemDataMonitor.
+Publication scope is rust/ in boogy777-lgtm/iCemDataMonitor.
+User authorization (2026-10-22): "разрешаю самостоятельно делать push".
+Autonomously push reviewed Rust migration branches and create their PRs here;
+do not repeat a confirmation request for pushes within this authorized scope.
 Do not change original .NET behavior or overwrite source files.
 
 Compiler policy: exact stable Rust from rust-toolchain.toml, currently 1.99.1; Edition 2024,

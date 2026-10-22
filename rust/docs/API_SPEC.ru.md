@@ -367,3 +367,10 @@ variables и Host sniffer/Web catalogs читают UTF-8 по умолчани�
 Внутренний `Registry::from_json` принимает уже декодированный JSON без BOM.
 External wire/API, file recovery и Host size limits сохраняются; Unicode identity
 matching и source-order JSON property collisions остаются отдельными задачами.
+
+[D22d named identities](CATALOG_D22D.ru.md): emulator registry references,
+profile/variable/COM override lookup и LAN simulation lookup используют единый
+фиксированный BCL-derived Unicode snapshot. Original spelling, command results,
+wire encodings и exact LAN manual override keys сохраняются. Windows provider
+mapping проверяется исчерпывающе отдельным BCL test; Linux не является его verdict.
+JSON member grammar/source-order collisions вне этого инкремента.
