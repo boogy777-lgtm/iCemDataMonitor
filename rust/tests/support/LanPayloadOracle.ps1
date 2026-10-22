@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$RepoRoot)
+param([Parameter(Mandatory)][string]$RepoRoot, [string]$LoadingFixtures)
 $ErrorActionPreference = 'Stop'
 $Core = Join-Path $RepoRoot 'iCemEmule.Core'
 $Files = @((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'))
@@ -6,4 +6,4 @@ $Files += @('DeviceTemplate','ISignalValueProvider','SimFileResolver','SignalWir
 $Files += @(Get-ChildItem (Join-Path $Core 'Dfb') -Filter '*.cs' -File -Recurse | ForEach-Object FullName)
 $Files += (Join-Path $PSScriptRoot 'LanPayloadOracle.cs')
 Add-Type -Path $Files -CompilerOptions '/nullable:enable' -IgnoreWarnings
-[LanPayloadOracle]::Run($RepoRoot)
+if ($LoadingFixtures) { [LanPayloadOracle]::Loading($LoadingFixtures) } else { [LanPayloadOracle]::Run($RepoRoot) }

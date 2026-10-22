@@ -45,16 +45,21 @@ pub struct VectorData {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Registry {
     by_sv: BTreeMap<u32, VectorDef>,
+    diagnostics: Vec<String>,
 }
 impl Registry {
     /// Existing legacy definitions win over duplicate legacy and firmware SVs.
-    /// Missing explicit paths are accepted as in the source loader. Invalid JSON
-    /// is reported instead of being swallowed into an implicit partial catalog.
+    /// Each source file is best-effort, as in LantableRegistry.LoadFile:
+    /// retain completed vectors, stop that file on error, then attempt firmware.
     pub fn load(legacy: &Path, firmware: Option<&Path>) -> Result<Self> {
         let mut result = Self::default();
-        result.load_file(legacy)?;
-        if let Some(path) = firmware {
-            result.load_file(path)?;
+        // Source catches around each file, after mutations already completed.
+        for path in std::iter::once(legacy).chain(firmware) {
+            if let Err(error) = result.load_file(path) {
+                result
+                    .diagnostics
+                    .push(format!("LAN registry {}: {error}", path.display()));
+            }
         }
         Ok(result)
     }
@@ -65,13 +70,18 @@ impl Registry {
         }
         result
     }
+    /// At most one owned diagnostic per source file (legacy and optional firmware).
+    /// The application routes these to its existing logger; no install-root writes.
+    pub fn diagnostics(&self) -> &[String] {
+        &self.diagnostics
+    }
     pub fn get(&self, sv: u32) -> Option<&VectorDef> {
         self.by_sv.get(&sv)
     }
     pub fn all(&self) -> &BTreeMap<u32, VectorDef> {
         &self.by_sv
     }
-    /// Same DTO/first-wins rules, without choosing or reading a file. D22 remains explicit.
+    /// Strict DTO/first-wins parser; production file recovery does not hide errors here.
     pub fn from_json(json: &str) -> Result<Self> {
         let mut result = Self::default();
         result.load_value(serde_json::from_str(json.trim_start_matches('\u{feff}'))?)?;
@@ -79,7 +89,7 @@ impl Registry {
     }
     fn load_file(&mut self, path: &Path) -> Result<()> {
         if !path.is_file() {
-            return Ok(());
+            return Err("file not found".into());
         }
         self.load_value(read_json(path)?)
     }
@@ -171,8 +181,9 @@ impl BaseProvider {
             lookup: BTreeMap::new(),
             include_firmware_tables: false,
         };
-        provider.load_sim(selected)?;
-        provider.load_sim(&variable_registry.with_file_name("firmware_variables.json"))?;
+        // AcePayloadProvider.LoadSimFile catches per file and keeps the lookup prefix.
+        let _ = provider.load_sim(selected);
+        let _ = provider.load_sim(&variable_registry.with_file_name("firmware_variables.json"));
         Ok(provider)
     }
     pub fn registry(&self) -> &Registry {
@@ -236,7 +247,17 @@ impl BaseProvider {
         for variable in array(&root, "variables")? {
             let name = string(variable, "name", true)?;
             let display = string(variable, "display", true)?;
+            // C# reads these even though they do not affect LAN payload generation.
+            let _ = string(variable, "uom", false)?;
+            if let Some(exclude) = variable.get("excludeFromTelemetry") {
+                exclude
+                    .as_bool()
+                    .ok_or("excludeFromTelemetry must be bool")?;
+            }
             let sim = variable.get("simulation");
+            if let Some(sim) = sim {
+                sim.as_object().ok_or("simulation must be an object")?;
+            }
             let empty = Value::Object(Default::default());
             let sim = sim.unwrap_or(&empty);
             let string_value = match variable.get("stringValue") {
@@ -251,7 +272,12 @@ impl BaseProvider {
                 toggle_period: number(sim, "togglePeriod", 0.0)?,
                 string_value,
             };
-            if let Some(lan) = variable.get("families").and_then(|f| f.get("lan")) {
+            let families = variable.get("families");
+            if let Some(families) = families {
+                families.as_object().ok_or("families must be an object")?;
+            }
+            if let Some(lan) = families.and_then(|f| f.get("lan")) {
+                lan.as_object().ok_or("lan must be an object")?;
                 let wire = string(lan, "wireName", false)?;
                 let alias = string(lan, "alias", false)?;
                 if !wire.is_empty() {

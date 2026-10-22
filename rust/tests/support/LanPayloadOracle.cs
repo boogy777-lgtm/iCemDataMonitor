@@ -124,4 +124,23 @@ public static class LanPayloadOracle {
         }
         return JsonSerializer.Serialize(new{runtime=Environment.Version.ToString(),inventory,bases,override_name=chosen.Name,transitions,can,codec,ascii,conversions});
     }
+    // D22a: execute the actual file parser, including its catch/partial-commit boundary.
+    // Absolute filename is accepted by the original Path.Combine call. Do not use
+    // Registry() above: its reconstructed DTO loop cannot test source failure behavior.
+    public static string Loading(string fixtures) {
+        var cases = new List<object>();
+        var load = typeof(LantableRegistry).GetMethod("LoadFile", Private)!;
+        foreach (var directory in Directory.GetDirectories(fixtures).OrderBy(x => x, StringComparer.Ordinal)) {
+            var registry = Empty<LantableRegistry>();
+            Field(registry, "_bySv", new Dictionary<uint,LantableRegistry.ServiceVectorDef>());
+            foreach (var file in new[]{"lantable_registry.json","firmware_registry.json"})
+                load.Invoke(registry, new object[]{Path.GetFullPath(Path.Combine(directory,file))});
+            var inventory = registry.All.Values.OrderBy(v => v.SvNumber)
+                .Select(v => new{sv=v.SvNumber,name=v.Name,equipment_type=v.EquipmentType,signals=v.Signals.Select(Def).ToArray()}).ToArray();
+            var provider = Base(registry,directory); // invokes original LoadSimFile for both files
+            cases.Add(new{label=Path.GetFileName(directory),inventory,frames=Frames(provider.GetSuperframe(1,0))});
+        }
+        return JsonSerializer.Serialize(new{runtime=Environment.Version.ToString(),cases});
+    }
+
 }

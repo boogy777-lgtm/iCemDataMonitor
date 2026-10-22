@@ -198,6 +198,10 @@ mod windows {
             &templates.join("lantable_registry.json"),
             Some(&templates.join("firmware_registry.json")),
         )?;
+        for diagnostic in registry.diagnostics() {
+            logs.record(diagnostic);
+            eprintln!("{diagnostic}");
+        }
         let base = BaseProvider::load(registry, &templates.join("variable_registry.json"), None)?;
         let service = Arc::new(Service {
             logs,

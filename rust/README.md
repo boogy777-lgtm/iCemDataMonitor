@@ -203,3 +203,7 @@ E23/E24 current: [standalone LAN diagnostic](docs/EMULATOR_E23.ru.md) и
 PASS, Windows exact-head CI/runtime и UI/operator/SDK/hardware acceptance отдельно.
 D22 loader/encoding/Unicode остаётся кодовым backlog; прежние записи о будущих
 selftest/landiag/stdin CLI — исторический статус.
+
+[D22a](docs/EMULATOR_D22A.ru.md): production LAN loaders сохраняют completed prefix
+при ошибке файла и переходят к firmware; Registry diagnostics направлены в startup
+logger. Strict parser/COM fallback/encoding/Unicode — отдельные границы.
