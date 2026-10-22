@@ -76,11 +76,13 @@ D21 — SignalWireCodec.TryDecodeNative в исходнике складывае
 checked ranges и возвращает None для такого malformed definition; тест включает
 byteOffset=i32::MAX и отрицательную size. Valid wire widths/offsets не меняются.
 
-D22 (E3 input compatibility limits): Rust LAN DTO loader возвращает Err при
-повреждённом JSON; original AcePayloadProvider/LantableRegistry подавляют parse errors
-и могут удержать частично загруженные записи. Rust принимает UTF-8/BOM и ASCII case
-lookup, полные File.ReadAllText encoding/OrdinalIgnoreCase semantics не перенесены.
-Valid pinned ASCII catalogs проверяются отдельно; loader error parity не объявлен PASS.
+D22 (E3 input compatibility limits): [D22a](EMULATOR_D22A.ru.md) восстанавливает
+production LAN per-file recovery: completed prefix сохраняется, остаток ошибочного
+файла пропускается, firmware читается затем; Registry diagnostics остаются видимыми.
+Strict Registry::from_json не меняется. COM TemplateCatalog malformed-registry
+fallback, полные File.ReadAllText encoding/Unicode OrdinalIgnoreCase semantics остаются
+кодовым backlog. Valid pinned ASCII catalogs проверяются отдельно; Windows original-
+method oracle и acceptance фиксируются по exact head.
 
 D23 — E4 pipe вводит явные caps (32 sessions, request 64 KiB, response 8 MiB)
 и запрещает remote clients. Это resource/security delta относительно baseline,

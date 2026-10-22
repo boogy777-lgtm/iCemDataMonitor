@@ -349,3 +349,8 @@ E23/E24 current: [standalone LAN diagnostic](EMULATOR_E23.ru.md) и
 PASS, Windows exact-head CI/runtime и UI/operator/SDK/hardware acceptance отдельно.
 D22 loader/encoding/Unicode остаётся кодовым backlog; прежние записи о будущих
 selftest/landiag/stdin CLI — исторический статус.
+
+[D22a LAN file recovery](EMULATOR_D22A.ru.md): production Registry/BaseProvider
+не прекращают startup из-за одного ошибочного каталога; completed prefix сохраняется,
+firmware читается затем. Registry diagnostics доступны startup logger; simulation
+file errors silent. Strict from_json, wire/API и COM loaders не меняются.

@@ -120,6 +120,9 @@ fn run(o: Options) -> Result<(), Box<dyn std::error::Error>> {
         &o.templates.join("lantable_registry.json"),
         firmware.is_file().then_some(firmware.as_path()),
     )?;
+    for diagnostic in registry.diagnostics() {
+        eprintln!("{diagnostic}");
+    }
     let emulator = o.templates.join("variable_registry.emulator.json");
     let base = BaseProvider::load(
         registry,

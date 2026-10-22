@@ -249,3 +249,92 @@ fn original_lan_providers_byte_for_byte() -> TestResult {
     )?;
     Ok(())
 }
+
+#[path = "support/lan_loading.rs"]
+mod loading_fixtures;
+
+#[test]
+fn original_lan_file_methods_preserve_the_same_partial_results() -> TestResult {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    let stage = loading_fixtures::Stage::new()?;
+    let cases = loading_fixtures::cases();
+    for case in &cases {
+        stage.write(case)?;
+    }
+    let output = std::process::Command::new("pwsh")
+        .args(["-NoProfile", "-File"])
+        .arg(root.join("rust/tests/support/LanPayloadOracle.ps1"))
+        .arg("-RepoRoot")
+        .arg(&root)
+        .arg("-LoadingFixtures")
+        .arg(&stage.root)
+        .output()?;
+    assert!(
+        output.status.success(),
+        "original file-method oracle failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let oracle: Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(rows(&oracle, "cases")?.len(), cases.len());
+    for case in cases {
+        let source = rows(&oracle, "cases")?
+            .iter()
+            .find(|v| v["label"] == case.label)
+            .ok_or("missing oracle case")?;
+        let path = stage.root.join(&case.label);
+        let registry = Registry::load(
+            &path.join("lantable_registry.json"),
+            Some(&path.join("firmware_registry.json")),
+        )?;
+        assert_eq!(
+            registry.all().len(),
+            rows(source, "inventory")?.len(),
+            "{}",
+            case.label
+        );
+        for expected in rows(source, "inventory")? {
+            let actual = registry
+                .get(uint(expected, "sv")?)
+                .ok_or("source retained SV missing")?;
+            assert_eq!(actual.name, string(expected, "name")?, "{}", case.label);
+            assert_eq!(
+                actual.equipment_type,
+                string(expected, "equipment_type")?,
+                "{}",
+                case.label
+            );
+            let signals = rows(expected, "signals")?
+                .iter()
+                .map(signal)
+                .collect::<Result<Vec<_>, _>>()?;
+            assert_eq!(actual.signals, signals, "{}", case.label);
+        }
+        assert_eq!(registry.all().len(), case.expected_vectors.len());
+        let provider = BaseProvider::load(registry, &path.join("variable_registry.json"), None)?;
+        let actual = provider.superframe(1, 0.0);
+        frames(&actual, source)?;
+        let a = actual
+            .iter()
+            .find(|f| f.sv_number == loading_fixtures::A)
+            .ok_or("active A")?;
+        let b = actual
+            .iter()
+            .find(|f| f.sv_number == loading_fixtures::B)
+            .ok_or("active B")?;
+        assert_eq!(
+            &b.payload[..4],
+            &case.expected_b.to_be_bytes(),
+            "{}",
+            case.label
+        );
+        for (chunk, expected) in a.payload[..12]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(case.expected_a)
+        {
+            assert_eq!(*chunk, expected.to_be_bytes(), "{}", case.label);
+        }
+    }
+    Ok(())
+}
