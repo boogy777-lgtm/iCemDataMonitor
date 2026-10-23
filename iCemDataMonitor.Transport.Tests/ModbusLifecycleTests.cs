@@ -15,6 +15,22 @@ public sealed class ModbusLifecycleTests
     private static ModbusTcpPublisher Create(ModbusOptions? options = null) =>
         new(new Absent(), options ?? new ModbusOptions { Port = 0 }, TimeSpan.FromHours(1));
 
+    private sealed class BlockedLatest : ILatestBusState, IDisposable
+    {
+        internal readonly TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal readonly ManualResetEventSlim Release = new();
+        public LatestBusState Current
+        {
+            get
+            {
+                Entered.TrySetResult();
+                Release.Wait();
+                return new(null, false, null, null, null, null, 0);
+            }
+        }
+        public void Dispose() => Release.Dispose();
+    }
+
     private static async Task WaitForAsync(Func<bool> condition)
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -120,5 +136,52 @@ public sealed class ModbusLifecycleTests
             client.Close();
             await WaitForAsync(() => publisher.ActiveClientCount == 0);
         }
+    }
+
+    [Fact]
+    public async Task StartDuringStop_WaitsForPreviousWorkers_AndBoundIsFalseDuringJoin()
+    {
+        using var latest = new BlockedLatest();
+        using var publisher = new ModbusTcpPublisher(latest, new ModbusOptions { Port = 0 }, TimeSpan.FromMilliseconds(1));
+        try
+        {
+            await publisher.StartAsync();
+            await latest.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            var stopping = publisher.StopAsync();
+            Assert.False(stopping.IsCompleted);
+            Assert.False(publisher.IsBound);
+            var starting = publisher.StartAsync();
+            Assert.False(starting.IsCompleted);
+            latest.Release.Set();
+            await Task.WhenAll(stopping, starting).WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.True(publisher.IsBound);
+        }
+        finally { latest.Release.Set(); }
+    }
+
+    [Fact]
+    public async Task DedicatedConcurrentCallers_SerializeStartsStopsAndDispose()
+    {
+        using var publisher = Create();
+        using var gate = new Barrier(8);
+        var workers = Enumerable.Range(0, 8).Select(index => Task.Factory.StartNew(() =>
+        {
+            gate.SignalAndWait(TimeSpan.FromSeconds(30));
+            for (int i = 0; i < 5; i++)
+            {
+                publisher.StartAsync().GetAwaiter().GetResult();
+                publisher.StopAsync().GetAwaiter().GetResult();
+            }
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)).ToArray();
+        await Task.WhenAll(workers).WaitAsync(TimeSpan.FromSeconds(30));
+        await publisher.StartAsync();
+        using var disposeGate = new Barrier(4);
+        var disposers = Enumerable.Range(0, 4).Select(_ => Task.Factory.StartNew(() =>
+        {
+            disposeGate.SignalAndWait(TimeSpan.FromSeconds(30));
+            publisher.Dispose();
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default));
+        await Task.WhenAll(disposers).WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.False(publisher.IsBound);
     }
 }
