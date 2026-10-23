@@ -151,134 +151,55 @@ public sealed partial class MainWindow : Window
 
     // ── ensure-host flow (B.2.1) ───────────────────────────────────────────────
 
-    private async Task RunEnsureHostFlowAsync()
+    private readonly ShellBootstrapCoordinator _bootstrap = new(
+        () => Task.Run(async () => EnsureHost.Decide(EnsureHost.MutexExists(),
+            await EnsureHost.PipeRespondsAsync(TimeSpan.FromSeconds(2)))),
+        () => HostProcessLauncher.ResolveHostExePath(AppContext.BaseDirectory),
+        exe => { HostProcessLauncher.Spawn(exe, ShellLog); },
+        EnsureHost.PipeRespondsAsync, milliseconds => Task.Delay(milliseconds), ShellLog);
+
+    private async Task RunEnsureHostFlowAsync() =>
+        await ConnectOrCreateHostAsync(exitOnFailure: true, viewer: _viewerMode);
+
+    private async Task<bool> ConnectOrCreateHostAsync(bool exitOnFailure, bool viewer = false)
     {
-        // 2026-08-31 (owner decree): --viewer is the ONLY degraded entry
-        // point left — straight into the read-only bus view, no probing, no
-        // dialog (the old «Только просмотр bus» dialog button is gone).
-        if (_viewerMode)
+        BootSplashWindow? splash = null;
+        ShellBootstrapOutcome outcome;
+        try
         {
-            ShellLog("viewer mode (--viewer): bus view WITHOUT control");
+            outcome = await _bootstrap.RunAsync(viewer,
+                () => { splash = new BootSplashWindow(); splash.ShowWaiting(); },
+                async () =>
+                {
+                    using var bootClient = new GrpcHostClient();
+                    var stream = bootClient.SubscribeBootStages();
+                    try
+                    {
+                        bool ready = await splash!.RunBootMirrorAsync(stream, ShellLog);
+                        if (!ready)
+                            ShellLog("[splash] ready stage NOT observed within budget — continuing honestly");
+                    }
+                    finally { stream.Dispose(); }
+                });
+        }
+        finally { splash?.Close(); }
+
+        if (outcome == ShellBootstrapOutcome.Busy) return false;
+        if (outcome == ShellBootstrapOutcome.Viewer)
+        {
             CompleteWithSession(ShellSession.CreateViewerOnly());
-            return;
-        }
-
-        await ConnectOrCreateHostAsync(exitOnFailure: true);
-    }
-
-    // 2026-08-31 (decree 2): the ensure-host flow EXTRACTED so the cold start
-    // AND the «Запустить хост» button run the IDENTICAL code (probe → connect
-    // to the existing instance | spawn immediately — never a dialog, E.3.1
-    // uniqueness law intact). The only difference: a cold-start failure is
-    // fatal (error + exit), a button failure is an honest log line and the
-    // button stays available for a retry.
-    private async Task<bool> ConnectOrCreateHostAsync(bool exitOnFailure)
-    {
-        var verdict = await Task.Run(async () =>
-            EnsureHost.Decide(
-                mutexExists: EnsureHost.MutexExists(),
-                pipeResponds: await EnsureHost.PipeRespondsAsync(TimeSpan.FromSeconds(2))));
-
-        // E.3.1 uniqueness law: Running ⇒ connect to the EXISTING instance,
-        // a new host process is NEVER spawned (ShouldSpawnNewHostProcess is
-        // the unit-tested encoding of the decision).
-        if (!EnsureHost.ShouldSpawnNewHostProcess(verdict))
-        {
-            ShellLog($"host detected: {verdict.Detail}");
-            CompleteWithSession(ShellSession.CreateClient());
             return true;
         }
-
-        // 2026-08-31 (owner decree): NO «Хост не запущен / Запустить хост?»
-        // dialog — the UI spawns the host IMMEDIATELY. The honest failure
-        // path is preserved; a silent hang is not.
-        ShellLog($"host NOT running: {verdict.Detail} — spawning the host immediately (no dialog)");
-        if (await TryLaunchAndWaitForHostAsync())
+        if (outcome is ShellBootstrapOutcome.ExistingHost or ShellBootstrapOutcome.SpawnedHost)
         {
             CompleteWithSession(ShellSession.CreateClient());
             return true;
         }
-
         if (exitOnFailure)
             await ShowFatalAndExitAsync("Не удалось запустить iCemDataMonitor.Host.exe — см. startup.log рядом с программой.");
         else
             ShellLog("[launch] host launch FAILED — the «Запустить хост» button stays available for a retry");
         return false;
-    }
-
-    // TOMBSTONE (2026-08-31, owner decree): ShowEnsureHostDialogAsync REMOVED
-    // — the three-choice «Хост не запущен» dialog must not exist. Its
-    // [Запустить хост] branch is now the unconditional flow above; its
-    // [Только просмотр bus] branch survives only as the --viewer argv flag;
-    // [Выход] is moot (nothing is asked).
-
-    private async Task<bool> TryLaunchAndWaitForHostAsync()
-    {
-        // W21.4 owner decree: the UI BIRTHS the host and its splashscreen is a
-        // CHECKBOX MIRROR of the host's boot stages (SubscribeBootStages:
-        // replay of the pre-Kestrel stages included). The host is the source
-        // of truth; whoever initiates the launch, the flow is identical.
-        var exe = HostProcessLauncher.ResolveHostExePath(AppContext.BaseDirectory);
-        if (exe is null)
-        {
-            ShellLog("host exe NOT FOUND (sibling + dev-layout probes) — launch aborted");
-            return false;
-        }
-
-        BootSplashWindow? splash = null;
-        try
-        {
-            try
-            {
-                HostProcessLauncher.Spawn(exe, ShellLog);
-            }
-            catch (Exception ex)
-            {
-                ShellLog($"host spawn FAILED: {ex.Message}");
-                return false;
-            }
-
-            splash = new BootSplashWindow();
-            splash.ShowWaiting(); // waiting phase: «ожидание ответа хоста…» (XAML initial footer)
-
-            // Wait for the pipe to answer (host startup budget ~30 s).
-            bool pipeUp = false;
-            for (int waitedMs = 0; waitedMs < 30_000; waitedMs += 500)
-            {
-                if (await EnsureHost.PipeRespondsAsync(TimeSpan.FromMilliseconds(400)))
-                {
-                    ShellLog($"host pipe answering after ~{waitedMs} ms");
-                    pipeUp = true;
-                    break;
-                }
-                await Task.Delay(500);
-            }
-            if (!pipeUp)
-            {
-                ShellLog("host did NOT answer on the pipe within 30 s");
-                return false;
-            }
-
-            // Mirror the stages until «ready» completes (bounded; a stream
-            // failure degrades to footer text, never to a fake success).
-            using var bootClient = new GrpcHostClient();
-            var stream = bootClient.SubscribeBootStages();
-            try
-            {
-                bool ready = await splash.RunBootMirrorAsync(stream, ShellLog);
-                if (!ready)
-                    ShellLog("[splash] ready stage NOT observed within budget — continuing honestly");
-            }
-            finally
-            {
-                stream.Dispose();
-            }
-            return true;
-        }
-        finally
-        {
-            splash?.Close();
-        }
     }
 
     private async Task ShowFatalAndExitAsync(string message)
@@ -663,33 +584,11 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // 2026-08-31 (decree 2): single-flight gate for the «Запустить хост» flow
-    // (the VM command cannot gate re-entry across a session rebuild).
-    private int _relaunchInFlight;
-
-    /// <summary>2026-08-31 (decree 2): «Запустить хост» button flow — the SAME
-    /// ensure-host path as the cold start (probe → connect | spawn + boot
-    /// mirror), minus the fatal exit: the shell is already up, a failure stays
-    /// an honest log line and the button remains available. On success the
-    /// session is REBUILT (viewer → client, or a fresh client) — the new VM
-    /// paints the new state; the old VM/session are disposed by
-    /// CompleteWithSession's replacement law.</summary>
+    // Coordinator persists across session replacement and owns launch re-entry.
     private async Task LaunchHostFromButtonAsync()
     {
-        if (Interlocked.Exchange(ref _relaunchInFlight, 1) == 1)
-        {
-            ShellLog("[launch] host launch already in flight — click ignored");
-            return;
-        }
-        try
-        {
-            ShellLog("[launch] «Запустить хост» clicked — running the ensure-host flow");
-            await ConnectOrCreateHostAsync(exitOnFailure: false);
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _relaunchInFlight, 0);
-        }
+        ShellLog("[launch] «Запустить хост» clicked — running the ensure-host flow");
+        await ConnectOrCreateHostAsync(exitOnFailure: false);
     }
 
     private static void ShellLog(string text) => App.ShellLog(text);
