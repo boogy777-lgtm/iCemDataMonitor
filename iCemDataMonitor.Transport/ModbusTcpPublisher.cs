@@ -182,14 +182,6 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
         }
     }
 
-    /// <summary>
-    /// The register map is RUNTIME-SIZED from the bus header (regCount
-    /// self-describing) — no register-map configuration exists. Retained ONLY as
-    /// an inert v1 no-op for the legacy pipeline contract (see IModbusPublisher);
-    /// the publisher mirrors the bus snapshot every tick.
-    /// </summary>
-    public Task ConfigureAsync(IReadOnlyList<ModbusRegisterEntry> registerMap) => Task.CompletedTask;
-
     /// <summary>Starts one generation. Repeated start while bound is idempotent.</summary>
     public async Task StartAsync(CancellationToken ct = default)
     {
