@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using iCemDataMonitor.Core.Config;
+using iCemDataMonitor.Data.Bus;
 using iCemDataMonitor.Host.Core;
 using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Bus;
@@ -11,6 +12,10 @@ namespace iCemDataMonitor.Host.Tests;
 
 public sealed class ModbusStartupTests
 {
+    private sealed class Latest : ILatestBusState
+    {
+        public LatestBusState Current { get; } = new(null, false, null, null, null, null, 0);
+    }
     private sealed class Publisher : IModbusPublisher
     {
         internal int Starts, Stops;
@@ -67,7 +72,11 @@ public sealed class ModbusStartupTests
     {
         using var stopping = new CancellationTokenSource();
         var enteredDelay = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var publisher = new Publisher { Start = _ => throw Busy() };
+        var publisher = new Publisher { Start = token =>
+        {
+            Assert.Equal(stopping.Token, token);
+            throw Busy();
+        } };
         var startup = HostComposition.StartModbusWithPortRetryAsync(publisher, 1502, _ => { }, stopping.Token,
             (_, token) => { enteredDelay.SetResult(); return Task.Delay(Timeout.InfiniteTimeSpan, token); });
         await enteredDelay.Task.WaitAsync(TimeSpan.FromSeconds(30));
@@ -108,5 +117,38 @@ public sealed class ModbusStartupTests
         publisher.Start = _ => throw Busy();
         await Assert.ThrowsAsync<ModbusBindException>(() => actuator.StartModbusAsync());
         Assert.Equal(2, publisher.Starts);
+    }
+
+    [Fact]
+    public async Task ProductionComposition_BootAndDiRuntimeActuatorOperateSamePublisher()
+    {
+        var services = new ServiceCollection();
+        var ini = new IniOptions { ModbusPort = 0 };
+        var layers = new LayerFlags(true, false, false, false);
+        HostComposition.RegisterCoreServices(services, ini, layers, null, _ => { });
+        HostComposition.RegisterLayerController(services, ini, layers, "unused.ini");
+        // No MMF I/O is needed to verify production registrations and listener identity.
+        services.AddSingleton<ILatestBusState>(new Latest());
+        using var provider = services.BuildServiceProvider();
+        var publisher = provider.GetRequiredService<IModbusPublisher>();
+        Assert.IsType<ModbusTcpPublisher>(publisher);
+        await HostComposition.StartLayersAsync(provider, layers, _ => { });
+        Assert.True(publisher.IsBound);
+        var actuator = provider.GetRequiredService<LayerRuntimeController.ILayerActuator>();
+        await actuator.StopModbusAsync();
+        Assert.False(publisher.IsBound);
+        await actuator.StartModbusAsync();
+        Assert.True(publisher.IsBound);
+        Assert.Same(publisher, provider.GetRequiredService<IModbusPublisher>());
+    }
+
+    [Fact]
+    public async Task FailureDiagnostics_ReportActualBindPort()
+    {
+        var publisher = new Publisher { Start = _ => throw new ModbusBindException(3333,
+            new SocketException((int)SocketError.AccessDenied)) };
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            HostComposition.StartModbusWithPortRetryAsync(publisher, 2222, _ => { }, default));
+        Assert.Contains("port 3333", error.Message);
     }
 }

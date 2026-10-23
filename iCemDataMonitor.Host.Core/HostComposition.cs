@@ -310,9 +310,10 @@ public static class HostComposition
             }
             catch (Exception ex)
             {
+                var failedPort = ex is ModbusBindException bind ? bind.Port : port;
                 log($"Modbus StartAsync FAILED after {attempt} attempt(s): {ex}");
                 throw new InvalidOperationException(
-                    $"Failed to bind port {port} after {attempt} attempt(s). Last error: {ex.Message}", ex);
+                    $"Failed to bind port {failedPort} after {attempt} attempt(s). Last error: {ex.Message}", ex);
             }
         }
     }
