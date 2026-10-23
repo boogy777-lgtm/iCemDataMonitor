@@ -1,7 +1,9 @@
 # Legacy C3: station UI theme
 
-23 октября 2026. C3/L08 из legacy-плана v1.4. База:
-`7f89f2fb02626493ee4426512565bd98c2de1297` (C2, merged PR №31).
+23 октября 2026. C3/L08 из [legacy-плана в PR №29](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/29).
+Исследованная база — `7f89f2fb02626493ee4426512565bd98c2de1297` (C2).
+Публикация начинается от `main` после merge C2 №31:
+`fb40607781264e32e75ac9848a0928e8a8cfff13`; деревья этих баз совпадают.
 
 ## Class / Inv / N+1
 
@@ -13,6 +15,8 @@ Inv: канонический station-файл `ui-theme` рядом с `IniConf
 токены `light`/`dark`, default-dark при отсутствии, неизвестном тексте или
 ошибке чтения. После commit — свежая проекция и poke
 `Local\iCemDataMonitorTray_v1_UiTheme`; после неудачной записи poke отсутствует.
+UI применяет reply/readback, а завершения старой или закрытой session не меняют
+новое представление; fault/reconnect tests проверяют эти гарантии.
 
 N+1: Host и Shell используют общий store; новый consumer подключает его либо
 `IHostApi` через узкий coordinator с read/write/apply delegates. Новых сборок,
@@ -104,3 +108,23 @@ healthy Host с closed bus, reconnect без replay offline intent, replacement 
 Closed при задержанном RPC и несколько быстрых toggles. Эта portable проверка
 не заменяет Windows CI и ручную визуальную приёмку. MMF/proto/SPA/AddIn/Rust
 runtime не изменены; source-manifest baseline неизменяем.
+
+## Ревью и происхождение изменений
+
+Три агента GPT-6.1 Sol / medium работали последовательно: анализ,
+реализация, независимое ревью. Ревью исправило stale Down при Connected:
+перед refresh состояние становится unknown и выбирается Host read, без
+повторной локальной записи или replay. Отдельная регрессия проверяет этот путь.
+
+[PR №32](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/32) сохраняет
+раздельные code commits и точную provenance в
+`rust/migration/legacy-divergences.json`. Для HostAppFactory обновлена существующая
+запись C1, без дубликата; read-once boot context сохранён. Исторический manifest
+по-прежнему закреплён на `96e2206562c9389d1543095232115d81eae4b692`.
+
+`Verify-Baseline.ps1 -RequireComplete`: **513/513**, 27 exact approved
+divergences, frozen proto/assets/SPA и REST inventory сохранены.
+Windows CI для C3 ожидается; [проверки PR](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/32/checks)
+содержат результат для точного head. C2 ранее прошёл полный Windows/Rust/browser
+CI №39914648083 и слит в main. Ручная визуальная и аппаратная приёмка остаётся
+отдельной от сборки и автоматических тестов.
