@@ -374,3 +374,10 @@ profile/variable/COM override lookup и LAN simulation lookup использую
 wire encodings и exact LAN manual override keys сохраняются. Windows provider
 mapping проверяется исчерпывающе отдельным BCL test; Linux не является его verdict.
 JSON member grammar/source-order collisions вне этого инкремента.
+
+[D22e COM DTO assignments](CATALOG_D22E.ru.md): `simulation::template_from_str`
+и file loaders сохраняют порядок повторных и case-colliding DTO properties.
+Закрытые typed schemas проверяют известные assignments; reference grammar
+использует exact lowercase `registry`/`index`. `template_from_json(Value, Value)`
+остаётся adapter для однозначных DTO objects: уже потерянный source order и
+числовые lexemes не восстанавливаются. CLI/wire и catalog recovery прежние.
