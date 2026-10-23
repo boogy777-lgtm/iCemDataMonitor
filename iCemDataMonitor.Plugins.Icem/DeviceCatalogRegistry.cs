@@ -1,4 +1,4 @@
-﻿using iCemDataMonitor.Sdk;
+using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Models;
 
 namespace iCemDataMonitor.Plugins.Icem;
@@ -13,71 +13,52 @@ namespace iCemDataMonitor.Plugins.Icem;
 public class DeviceCatalogRegistry : IDeviceCatalogRegistry
 {
     private readonly UnifiedVariableRegistry? _registry;
-    private UnifiedVariableRegistry? _modbusRegistry;
+    private readonly IReadOnlyDictionary<string, IVariableCatalog> _catalogs;
+    private readonly IVariableCatalog _fallback = new FallbackCatalog();
+    private readonly IReadOnlyList<string> _families;
+    private readonly IReadOnlyDictionary<string, IReadOnlyList<ModbusRegisterEntry>> _registerEntries;
 
     public DeviceCatalogRegistry(UnifiedVariableRegistry? registry = null)
+        : this(registry ?? OptionalRegistryLoader.LoadDefault(), true) { }
+
+    // The snapshot may deliberately be absent; never retry loading in catalogs/getters.
+    private DeviceCatalogRegistry(UnifiedVariableRegistry? registry, bool fromSnapshot)
     {
         _registry = registry;
-    }
-
-    public IVariableCatalog GetCatalog(string family)
-    {
-        return family.ToLowerInvariant() switch
+        _catalogs = new Dictionary<string, IVariableCatalog>(StringComparer.OrdinalIgnoreCase)
         {
-            "flecs" => new FlecsVariableCatalog(_registry),
-            "plc"   => new PlcVariableCatalog(_registry),
-            "lan"   => new LanVariableCatalog(_registry),
-            _       => new FallbackCatalog(),
+            ["flecs"] = FlecsVariableCatalog.FromSnapshot(registry),
+            ["plc"] = PlcVariableCatalog.FromSnapshot(registry),
+            ["lan"] = LanVariableCatalog.FromSnapshot(registry),
         };
+        _families = Array.AsReadOnly(registry?.Families.ToArray() ?? Array.Empty<string>());
+        _registerEntries = _families.ToDictionary(f => f, ProjectRegisterEntries, StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Resolves the Modbus register base for a device family from variable_registry.json.
-    /// Lazy-loads the registry once, then caches. Falls back to 2 for unknown families.
-    /// Known bases (2000-register blocks, data at base+2): flecs=2, plc=2002, unipro=4002,
-    /// compupac=6002, other=8002, lan=10002, hes64=12002.
-    /// </summary>
-    public int GetModbusBase(string family)
-    {
-        EnsureRegistryLoaded();
-        return _modbusRegistry?.GetModbusBase(family) ?? 2;
-    }
+    internal static DeviceCatalogRegistry FromLoader(Func<UnifiedVariableRegistry> load) =>
+        new(OptionalRegistryLoader.Load(load), true);
 
-    /// <summary>All family names defined in the variable registry.</summary>
-    public IEnumerable<string> GetFamilies()
-    {
-        EnsureRegistryLoaded();
-        return _modbusRegistry?.Families ?? Array.Empty<string>();
-    }
+    public IVariableCatalog GetCatalog(string family) =>
+        _catalogs.TryGetValue(family, out var catalog) ? catalog : _fallback;
 
-    /// <summary>
-    /// Ordered register entries for a family using canonical names from the registry.
-    /// Register address = GetModbusBase(family) + Index × 2.
-    /// </summary>
-    public IReadOnlyList<iCemDataMonitor.Sdk.Models.ModbusRegisterEntry> GetRegisterEntries(string family)
-    {
-        EnsureRegistryLoaded();
-        if (_modbusRegistry == null)
-            return Array.Empty<iCemDataMonitor.Sdk.Models.ModbusRegisterEntry>();
+    /// <summary>Snapshot family base; unknown families default to 2.</summary>
+    public int GetModbusBase(string family) => _registry?.GetModbusBase(family) ?? 2;
 
-        int baseOffset = _modbusRegistry.GetModbusBase(family);
-        return _modbusRegistry.GetFamilyVariables(family)
+    /// <summary>Only family names declared by the snapshot.</summary>
+    public IEnumerable<string> GetFamilies() => _families;
+
+    /// <summary>Canonical telemetry entries, ordered by Index, at family base + Index × 2.</summary>
+    public IReadOnlyList<ModbusRegisterEntry> GetRegisterEntries(string family) =>
+        _registerEntries.TryGetValue(family, out var entries) ? entries : ProjectRegisterEntries(family);
+
+    // Load permits variable-only families: their entries still use default base 2,
+    // while GetFamilies deliberately exposes declared family metadata only.
+    private IReadOnlyList<ModbusRegisterEntry> ProjectRegisterEntries(string family) =>
+        Array.AsReadOnly(_registry?.GetFamilyVariables(family)
             .Where(e => !e.ExcludeFromTelemetry)
-            .OrderBy(e => e.Index)
-            .Select(e => new iCemDataMonitor.Sdk.Models.ModbusRegisterEntry(
-                e.Name, baseOffset + e.Index * 2))
-            .ToList();
-    }
+            .Select(e => new ModbusRegisterEntry(e.Name, _registry.GetModbusBase(family) + e.Index * 2))
+            .ToArray() ?? Array.Empty<ModbusRegisterEntry>());
 
-    private void EnsureRegistryLoaded()
-    {
-        if (_modbusRegistry == null)
-        {
-            var path = Path.Combine(AppContext.BaseDirectory, "templates", "variable_registry.json");
-            if (File.Exists(path))
-                _modbusRegistry = UnifiedVariableRegistry.Load(path);
-        }
-    }
 }
 
 /// <summary>

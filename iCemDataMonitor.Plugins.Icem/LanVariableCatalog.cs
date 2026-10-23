@@ -1,4 +1,4 @@
-﻿using iCemDataMonitor.Sdk;
+using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Models;
 
 namespace iCemDataMonitor.Plugins.Icem;
@@ -21,12 +21,17 @@ public class LanVariableCatalog : IVariableCatalog
     private readonly IReadOnlyDictionary<string, (string Display, string Uom, int? ModbusOffset)> _lookup;
 
     public LanVariableCatalog(UnifiedVariableRegistry? registry = null)
+        : this(registry ?? OptionalRegistryLoader.LoadDefault(), true) { }
+
+    internal static LanVariableCatalog FromSnapshot(UnifiedVariableRegistry? registry) => new(registry, true);
+
+    private LanVariableCatalog(UnifiedVariableRegistry? registry, bool fromSnapshot)
     {
-        registry ??= TryLoadRegistry();
         if (registry != null)
             (_catalog, _lookup) = BuildFromRegistry(registry);
         else
             (_catalog, _lookup) = BuildFallback();
+        _catalog = Array.AsReadOnly(_catalog.ToArray());
     }
 
     private (VariableDefinition[], IReadOnlyDictionary<string, (string, string, int?)>) BuildFromRegistry(
@@ -43,17 +48,6 @@ public class LanVariableCatalog : IVariableCatalog
             lookup[r.Name] = (r.Alias, r.Uom, modbusOffset);
         }
         return (catalog, lookup);
-    }
-
-    private static UnifiedVariableRegistry? TryLoadRegistry()
-    {
-        try
-        {
-            var path = Path.Combine(AppContext.BaseDirectory, "templates", "variable_registry.json");
-            if (!File.Exists(path)) return null;
-            return UnifiedVariableRegistry.Load(path);
-        }
-        catch { return null; }
     }
 
     private static (VariableDefinition[] Catalog, IReadOnlyDictionary<string, (string, string, int?)> Lookup)
