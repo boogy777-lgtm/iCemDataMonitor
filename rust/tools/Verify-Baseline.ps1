@@ -6,31 +6,85 @@ $SourceRoot = Split-Path $Root -Parent
 $Manifest = Get-Content -Raw (Join-Path $Root 'migration/source-manifest.json') | ConvertFrom-Json
 # Keep the upstream manifest immutable. Approved legacy maintenance has a separate,
 # exact-path ledger; it cannot override frozen protocol, icon or SPA checks.
-$Ledger = Get-Content -Raw (Join-Path $Root 'migration/legacy-divergences.json') | ConvertFrom-Json
-if ($Ledger.schema_version -ne 1 -or $Ledger.source_commit -cne $Manifest.source_commit) {
+function Assert-UniqueJsonKeys([System.Text.Json.JsonElement] $Node) {
+    if ($Node.ValueKind -eq 'Object') {
+        $Names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($Property in $Node.EnumerateObject()) {
+            if (-not $Names.Add($Property.Name)) { throw 'Duplicate ledger JSON key' }
+            Assert-UniqueJsonKeys $Property.Value
+        }
+    } elseif ($Node.ValueKind -eq 'Array') {
+        foreach ($Child in $Node.EnumerateArray()) { Assert-UniqueJsonKeys $Child }
+    }
+}
+function Assert-Fields($Object, [string[]] $Names) {
+    if ($Object -isnot [System.Collections.IDictionary] -or
+        $Object.Count -ne $Names.Count -or @($Object.Keys | Where-Object { $_ -cnotin $Names }).Count) {
+        throw 'Unknown or missing ledger fields'
+    }
+}
+function Test-CanonicalPath($Value) {
+    return ($Value -is [string] -and $Value.Length -gt 0 -and
+        $Value -cnotmatch '(^/|[\\:\x00-\x1f\x7f])' -and
+        @($Value.Split('/') | Where-Object { $_ -cin @('', '.', '..') }).Count -eq 0)
+}
+$LedgerText = [IO.File]::ReadAllText((Join-Path $Root 'migration/legacy-divergences.json'),
+    [Text.UTF8Encoding]::new($false, $true))
+$Json = [System.Text.Json.JsonDocument]::Parse($LedgerText)
+try { Assert-UniqueJsonKeys $Json.RootElement } finally { $Json.Dispose() }
+$Ledger = ConvertFrom-Json -InputObject $LedgerText -AsHashtable
+Assert-Fields $Ledger @('schema_version', 'source_commit', 'changes')
+if ($Ledger.schema_version -isnot [long] -or $Ledger.schema_version -ne 2 -or $Ledger.source_commit -cne $Manifest.source_commit -or
+    $Ledger.changes -isnot [array]) {
     throw 'Legacy divergence ledger schema/source commit mismatch'
 }
 $Baseline = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
 foreach ($Item in $Manifest.files) {
+    if (-not (Test-CanonicalPath $Item.path)) { throw 'Noncanonical baseline path' }
     if (-not $Baseline.TryAdd($Item.path, $Item)) { throw "Duplicate baseline path: $($Item.path)" }
 }
 $Approved = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
 foreach ($Change in $Ledger.changes) {
+    if ($Change.operation -cnotin @('modify', 'delete')) { throw 'Unknown divergence operation' }
+    $Fields = @('path', 'operation', 'baseline_blob_sha1', 'provenance')
+    if ($Change.operation -ceq 'modify') { $Fields += 'approved_blob_sha1' }
+    Assert-Fields $Change $Fields
+    if (-not (Test-CanonicalPath $Change.path)) { throw 'Noncanonical divergence path' }
     if (-not $Baseline.ContainsKey($Change.path)) { throw "Divergence outside baseline: $($Change.path)" }
     if ($Change.path -match '(?i)(\.proto$|^assets/|^iCemDataMonitor.Host/wwwroot/)') {
         throw "Frozen surface cannot be overridden: $($Change.path)"
     }
     if (-not $Approved.TryAdd($Change.path, $Change)) { throw "Duplicate divergence path: $($Change.path)" }
     if ($Change.baseline_blob_sha1 -cne $Baseline[$Change.path].git_blob_sha1 -or
-        $Change.approved_blob_sha1 -cnotmatch '^[0-9a-f]{40}$' -or
-        $Change.approved_blob_sha1 -ceq $Change.baseline_blob_sha1) {
+        ($Change.operation -ceq 'modify' -and
+        ($Change.approved_blob_sha1 -isnot [string] -or $Change.approved_blob_sha1 -cnotmatch '^[0-9a-f]{40}$' -or
+         $Change.approved_blob_sha1 -ceq $Change.baseline_blob_sha1))) {
         throw "Invalid divergence hashes: $($Change.path)"
     }
+    Assert-Fields $Change.provenance @('commit', 'pull_request', 'reason')
     $PullPrefix = 'https://github.com/' + $Manifest.source_repository + '/pull/'
-    if ($Change.provenance.commit -cnotmatch '^[0-9a-f]{40}$' -or
+    if ($Change.provenance.commit -isnot [string] -or $Change.provenance.commit -cnotmatch '^[0-9a-f]{40}$' -or
+        $Change.provenance.pull_request -isnot [string] -or
         $Change.provenance.pull_request -cnotmatch ('^' + [regex]::Escape($PullPrefix) + '[1-9][0-9]*$') -or
-        [string]::IsNullOrWhiteSpace($Change.provenance.reason)) {
+        $Change.provenance.reason -isnot [string] -or [string]::IsNullOrWhiteSpace($Change.provenance.reason)) {
         throw "Missing divergence provenance: $($Change.path)"
+    }
+}
+# Inspect every lexical ancestor: redirected parents cannot prove descendant absence.
+function Assert-DeletedPathAbsent([string] $Relative) {
+    $Current = $SourceRoot
+    $Parts = $Relative.Split('/')
+    for ($Index = 0; $Index -lt $Parts.Count; $Index++) {
+        $Current = Join-Path $Current $Parts[$Index]
+        $Entry = Get-Item -Force -LiteralPath $Current -ErrorAction SilentlyContinue
+        if ($null -ne $Entry) {
+            if (($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $Entry.LinkType) {
+                throw "Deleted path has link or redirected parent: $Relative"
+            }
+            if ($Index -eq $Parts.Count - 1 -or -not $Entry.PSIsContainer) {
+                throw "Approved deleted path exists: $Relative"
+            }
+        }
     }
 }
 function Get-CanonicalHash([string] $FilePath, [string] $Relative) {
@@ -40,7 +94,13 @@ function Get-CanonicalHash([string] $FilePath, [string] $Relative) {
 }
 $Missing = @()
 $Verified = 0
+$Deleted = 0
 foreach ($Item in $Manifest.files) {
+    if ($Approved.ContainsKey($Item.path) -and $Approved[$Item.path].operation -ceq 'delete') {
+        Assert-DeletedPathAbsent $Item.path
+        $Deleted++
+        continue
+    }
     $ExpectedHash = if ($Approved.ContainsKey($Item.path)) { $Approved[$Item.path].approved_blob_sha1 } else { $Item.git_blob_sha1 }
     $Path = Join-Path $SourceRoot $Item.path
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { $Missing += $Item.path; continue }
@@ -112,4 +172,4 @@ if ($Missing.Count -gt 0) {
     Write-Warning ("Missing {0} baseline file(s): {1}" -f $Missing.Count, ($Missing -join ', '))
     if ($RequireComplete) { throw 'Full source copy is required before publication' }
 }
-Write-Host "Baseline: $Verified verified of $($Manifest.files.Count); $($Approved.Count) exact approved legacy divergences; frozen proto/assets, D16/D17 theme predicates and REST inventory OK."
+Write-Host "Baseline: $Verified verified existing files; $Deleted approved deletions of $($Manifest.files.Count) baseline entries; $($Approved.Count) exact approved legacy divergences; frozen proto/assets, D16/D17 theme predicates and REST inventory OK."

@@ -50,9 +50,9 @@ function New-Fixture {
     } | ConvertTo-Json -Depth 8)
     Write-Fixture 'legacy.cs' "approved maintenance`n"
     $script:Ledger = @{
-        schema_version = 1; source_commit = $Commit
+        schema_version = 2; source_commit = $Commit
         changes = @(@{
-            path = 'legacy.cs'; baseline_blob_sha1 = ($Files | Where-Object path -eq 'legacy.cs').git_blob_sha1
+            operation = 'modify'; path = 'legacy.cs'; baseline_blob_sha1 = ($Files | Where-Object path -eq 'legacy.cs').git_blob_sha1
             approved_blob_sha1 = Hash-Fixture 'legacy.cs'
             provenance = @{ pull_request = 'https://github.com/test/repo/pull/2'; commit = '2' * 40; reason = 'Reviewed maintenance' }
         })
@@ -81,11 +81,11 @@ try {
     Check-Case 'missing baseline file' { Remove-Item (Join-Path $Fixture 'legacy.cs') } 'Full source copy is required'
     Check-Case 'missing approval' { $script:Ledger.changes = @(); Save-Ledger } 'Hash mismatch: legacy.cs'
     Check-Case 'wrong upstream commit' { $script:Ledger.source_commit = '3' * 40; Save-Ledger } 'schema/source commit mismatch'
-    Check-Case 'unknown ledger schema' { $script:Ledger.schema_version = 2; Save-Ledger } 'schema/source commit mismatch'
+    Check-Case 'unknown ledger schema' { $script:Ledger.schema_version = 3; Save-Ledger } 'schema/source commit mismatch'
     Check-Case 'wrong original hash' { $script:Ledger.changes[0].baseline_blob_sha1 = '3' * 40; Save-Ledger } 'Invalid divergence hashes'
     Check-Case 'invalid approved hash' { $script:Ledger.changes[0].approved_blob_sha1 = 'bad'; Save-Ledger } 'Invalid divergence hashes'
     Check-Case 'duplicate approval' { $script:Ledger.changes += $script:Ledger.changes[0]; Save-Ledger } 'Duplicate divergence path'
-    Check-Case 'outside baseline' { $script:Ledger.changes[0].path = '../outside'; Save-Ledger } 'Divergence outside baseline'
+    Check-Case 'outside baseline' { $script:Ledger.changes[0].path = '../outside'; Save-Ledger } 'Noncanonical divergence path'
     Check-Case 'missing reason' { $script:Ledger.changes[0].provenance.reason = ''; Save-Ledger } 'Missing divergence provenance'
     Check-Case 'missing commit' { $script:Ledger.changes[0].provenance.commit = ''; Save-Ledger } 'Missing divergence provenance'
     Check-Case 'unrelated PR' { $script:Ledger.changes[0].provenance.pull_request = 'https://github.com/other/repo/pull/2'; Save-Ledger } 'Missing divergence provenance'
@@ -98,7 +98,45 @@ try {
     Check-Case 'SPA outside approved predicates' { Write-Fixture 'rust/web/dashboard/index.html' 'drift' } 'SPA index.html changed beyond'
     Check-Case 'SPA stylesheet drift' { Write-Fixture 'rust/web/dashboard/main.css' 'drift' } 'Original SPA changed'
     Check-Case 'REST inventory drift' { Write-Fixture 'rust/contracts/http/openapi.json' '{"paths":{"/dormant":{}}}' } 'Active REST inventory drift'
-    Write-Host 'Baseline guard regression suite passed (25 cases).'
+    Check-Case 'unknown operation' { $script:Ledger.changes[0].operation = 'remove'; Save-Ledger } 'Unknown divergence operation'
+    Check-Case 'unknown entry field' { $script:Ledger.changes[0].extra = 'bad'; Save-Ledger } 'Unknown or missing ledger fields'
+    Check-Case 'unknown provenance field' { $script:Ledger.changes[0].provenance.extra = 'bad'; Save-Ledger } 'Unknown or missing ledger fields'
+    Check-Case 'duplicate JSON key' {
+        $Path = Join-Path $Fixture 'rust/migration/legacy-divergences.json'
+        [IO.File]::WriteAllText($Path, ([IO.File]::ReadAllText($Path).Replace('"schema_version": 2', '"schema_version": 2, "schema_version": 2')))
+    } 'Duplicate ledger JSON key'
+    foreach ($Path in @('/legacy.cs', 'folder//legacy.cs', 'folder/./legacy.cs', 'folder/../legacy.cs', 'folder\legacy.cs', 'C:legacy.cs')) {
+        Check-Case "noncanonical $Path" { $script:Ledger.changes[0].path = $Path; Save-Ledger } 'Noncanonical divergence path'
+    }
+    function Approve-Deletion {
+        $script:Ledger.changes[0].operation = 'delete'
+        $script:Ledger.changes[0].Remove('approved_blob_sha1')
+        Remove-Item -LiteralPath (Join-Path $Fixture 'legacy.cs')
+        Save-Ledger
+    }
+    Check-Case 'approved delete complete' { Approve-Deletion }
+    Check-Case 'delete with hash rejected' { Approve-Deletion; $script:Ledger.changes[0].approved_blob_sha1 = '3' * 40; Save-Ledger } 'Unknown or missing ledger fields'
+    Check-Case 'delete wrong baseline' { Approve-Deletion; $script:Ledger.changes[0].baseline_blob_sha1 = '3' * 40; Save-Ledger } 'Invalid divergence hashes'
+    Check-Case 'delete missing provenance' { Approve-Deletion; $script:Ledger.changes[0].provenance.reason = ''; Save-Ledger } 'Missing divergence provenance'
+    Check-Case 'deleted file returned' { Approve-Deletion; Write-Fixture 'legacy.cs' 'returned' } 'Approved deleted path exists'
+    Check-Case 'deleted directory returned' { Approve-Deletion; [IO.Directory]::CreateDirectory((Join-Path $Fixture 'legacy.cs')) | Out-Null } 'Approved deleted path exists'
+    foreach ($Target in @('legacy.ps1', 'missing-target')) {
+        Check-Case "deleted symlink $Target" {
+            Approve-Deletion
+            New-Item -ItemType SymbolicLink -Path (Join-Path $Fixture 'legacy.cs') -Target (Join-Path $Fixture $Target) | Out-Null
+        } 'Deleted path has link or redirected parent'
+    }
+    Check-Case 'deleted path with redirected parent' {
+        # Add an exact nested baseline identity; a link parent must never prove absence.
+        $ManifestPath = Join-Path $Fixture 'rust/migration/source-manifest.json'
+        $Document = Get-Content -Raw $ManifestPath | ConvertFrom-Json -AsHashtable
+        $Document.files += @{path = 'nested/gone.cs'; git_blob_sha1 = '4' * 40; size = 0}
+        [IO.File]::WriteAllText($ManifestPath, ($Document | ConvertTo-Json -Depth 8))
+        $script:Ledger.changes += @{operation = 'delete'; path = 'nested/gone.cs'; baseline_blob_sha1 = '4' * 40; provenance = $script:Ledger.changes[0].provenance}
+        Save-Ledger
+        New-Item -ItemType SymbolicLink -Path (Join-Path $Fixture 'nested') -Target (Join-Path $Fixture 'missing-parent') | Out-Null
+    } 'Deleted path has link or redirected parent'
+    Write-Host 'Baseline guard regression suite passed.'
 } finally {
     if (Test-Path $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force }
 }
