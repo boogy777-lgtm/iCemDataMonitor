@@ -76,7 +76,7 @@ public static class CrossProcessNames
     /// AutoReset, ONE waiter. NOT owner-created by the host: OpenExisting —
     /// nobody listening is fine.
     /// </summary>
-    public const string UiThemeChangedEvent = @"Local\iCemDataMonitorTray_v1_UiTheme";
+    public const string UiThemeChangedEvent = iCemDataMonitor.Core.Config.UiThemePreferenceStore.ChangedEventName;
 
     // 2026-08-27 TOMBSTONE: EmuUiShutdownEvent (Local\iCemEmuleUi_v1_Shutdown)
     // REMOVED — the emulator is now a SEPARATE INDEPENDENT app (own exe,

@@ -58,6 +58,5 @@ public sealed class UiPrefsStore
             ev.Set();
         }
         catch (WaitHandleCannotBeOpenedException) { /* nobody listening — ok */ }
-        catch (UnauthorizedAccessException) { /* open-for-write denied — cosmetic */ }
     }
 }

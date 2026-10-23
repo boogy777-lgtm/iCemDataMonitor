@@ -59,7 +59,8 @@ public sealed class UiThemePreferenceStore
             finally
             {
                 if (temp is not null)
-                    try { File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                    try { File.Delete(temp); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
             }
         }
         if (!result.Written)

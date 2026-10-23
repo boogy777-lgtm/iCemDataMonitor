@@ -52,6 +52,13 @@ public sealed partial class MainWindow : Window
     private readonly bool _viewerMode;
     private bool _syncingSwitches; // W11.1: programmatic IsOn sync in progress
 
+    private readonly iCemDataMonitor.Core.Config.UiThemePreferenceStore _themeStore =
+        new(notify: PokeThemeEvent, log: ShellLog);
+    private UiThemeCoordinator? _themeCoordinator;
+    private IDisposable? _themeLinkSubscription;
+    private bool? _themeHostAlive;
+    private bool _closed;
+
     // «Панель» (corrected decree 2026-08-27): one-shot lazy init guard — the
     // WebView2 core and the ini read happen exactly ONCE per process (the
     // station.ini hot-reload is forbidden; re-selecting the tab is a no-op).
@@ -107,15 +114,17 @@ public sealed partial class MainWindow : Window
         // «даже смена темы — тоже CLI: один bool для одновременного
         // использования в web и winui»): the theme is a STATION-WIDE shared
         // bool (ui-theme next to config.ini) + a poke event for the
-        // simultaneous flip in every live UI — details at ThemeFilePath().
+        // simultaneous flip in every live UI — details in UiThemePreferenceStore.
         // 2026-08-31: in client mode the HOST owns the file write (SetUiTheme
         // RPC) — the shell only applies the visual; the file path is the
-        // viewer/fallback writer. The initial IsOn assignment is guarded
+        // viewer/known-Down writer. The initial IsOn assignment is guarded
         // (_syncingSwitches): a read must never re-persist what it just read.
         _syncingSwitches = true;
         ThemeSwitch.IsOn = LoadThemeIsLight();
         _syncingSwitches = false;
         ApplyTheme(ThemeSwitch.IsOn);
+        _themeCoordinator = new UiThemeCoordinator(_themeStore.Read,
+            light => _themeStore.Write(light).CurrentLight, ApplyCurrentTheme, ShellLog);
         StartThemeListener();
 
         // 2026-08-27 (corrected decree): the «Панель» embedded-browser tab is
@@ -131,6 +140,9 @@ public sealed partial class MainWindow : Window
         // via its own tray).
         Closed += (_, _) =>
         {
+            _closed = true;
+            _themeLinkSubscription?.Dispose();
+            _themeCoordinator?.Dispose();
             _vm?.Dispose();
             Session?.Dispose();
             Application.Current.Exit();
@@ -290,7 +302,19 @@ public sealed partial class MainWindow : Window
         // the new ones are built (no UI gap, no double-dispose of nulls).
         var oldVm = _vm;
         var oldSession = Session;
+        _themeLinkSubscription?.Dispose();
         Session = session;
+        _themeHostAlive = null; // unknown until the pipe probe answers
+        _ = _themeCoordinator!.AttachAsync(session.ControlApi, () => _themeHostAlive != false);
+        _themeLinkSubscription = session.Link?.States.Subscribe(state =>
+        {
+            if (state == HostLinkState.Connected)
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!_closed && ReferenceEquals(Session, session))
+                        _ = _themeCoordinator.RefreshAsync();
+                });
+        });
         // TOMBSTONE (2026-08-27): EmulatorViewModel.EngineControl wiring +
         // the engine-control adapter composition REMOVED — the emulator is a
         // separate independent app; the shell has no engine control channel.
@@ -455,7 +479,14 @@ public sealed partial class MainWindow : Window
             // serves GetStatus fine (that conflation disabled «Перезапуск
             // хоста» on a healthy host). Viewer mode: no probe (its state is
             // pinned Down by the degraded-mode law).
-            hostAlive: session.ControlApi is null ? null : HostLivenessTicks(),
+            hostAlive: session.ControlApi is null ? null : HostLivenessTicks().Do(alive =>
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (_closed || !ReferenceEquals(Session, session)) return;
+                    var previous = _themeHostAlive;
+                    _themeHostAlive = alive;
+                    if (alive && previous != true) _ = _themeCoordinator!.RefreshAsync();
+                })),
             // 2026-08-31 (decree 2): «Запустить хост» — both session kinds
             // pass the delegate (client: the host died while the shell was
             // open; viewer: the sanctioned way out of the read-only mode).
@@ -659,53 +690,23 @@ public sealed partial class MainWindow : Window
 
     // ── chrome (unchanged W14 code) ────────────────────────────────────────────
 
-    // 2026-08-31 (owner decree): the toggle is now a TWO-STEP command over the
-    // machine layer. Step 1 — the VISUAL (RequestedTheme + title bar), always
-    // applied immediately (optimistic flip). Step 2 — the PERSIST, routed by
-    // session kind: client mode ⇒ SetUiTheme RPC through session.ControlApi
-    // (the HOST writes the shared ui-theme file + pokes the shell-owned
-    // event — one writer, no shell/host double-write); viewer mode / host
-    // Down ⇒ the file path as fallback (the shell is the writer, same as
-    // before). A failed RPC degrades to the same fallback with an honest log
-    // line — the station bool is never left silently stale.
+    // Visual feedback is immediate; the serialized command then reconciles
+    // current station truth. Unknown outcome after RPC never starts a second writer.
     private void ThemeSwitch_Toggled(object sender, RoutedEventArgs e)
     {
-        if (_syncingSwitches) return; // programmatic sync (listener/ctor) — no persist
+        if (_syncingSwitches || _closed) return;
         var light = ThemeSwitch.IsOn;
         ApplyTheme(light);
-
-        var control = Session?.ControlApi;
-        if (control is null)
-        {
-            SaveTheme(light); // fallback: viewer / host Down — shell owns the write
-            return;
-        }
-        _ = SetThemeViaHostAsync(control, light);
+        if (_themeCoordinator is not null) _ = _themeCoordinator.ToggleAsync(light);
     }
 
-    /// <summary>2026-08-31: client-mode persist — SetUiThemeAsync; the host
-    /// writes ui-theme and pokes Local\iCemDataMonitorTray_v1_UiTheme, so the
-    /// shell's own StartThemeListener re-reads the file and its echo branch
-    /// (light == ThemeSwitch.IsOn) terminates without a second write.</summary>
-    private async Task SetThemeViaHostAsync(GrpcHostClient control, bool light)
+    private void ApplyCurrentTheme(bool light)
     {
-        try
-        {
-            var reply = await control.SetUiThemeAsync(light).ConfigureAwait(true);
-            _syncingSwitches = true;
-            ThemeSwitch.IsOn = reply.ThemeLight;
-            _syncingSwitches = false;
-            ApplyTheme(reply.ThemeLight);
-            ShellLog($"[theme] current host theme: {(reply.ThemeLight ? "light" : "dark")}");
-        }
-        catch (Exception ex)
-        {
-            // Host died / went unreachable between the toggle and the RPC:
-            // honest log + the SAME file path the viewer mode uses — the
-            // station bool still lands, the event still pokes live listeners.
-            ShellLog($"[theme] host write FAILED ({ex.Message}) — file fallback");
-            SaveTheme(light);
-        }
+        if (_closed) return;
+        _syncingSwitches = true;
+        try { ThemeSwitch.IsOn = light; }
+        finally { _syncingSwitches = false; }
+        ApplyTheme(light);
     }
 
     /// <summary>VISUAL application only (2026-08-31): persistence moved OUT —
@@ -752,58 +753,23 @@ public sealed partial class MainWindow : Window
     // mac-theme was per-exe: invisible to any other surface. Migration: a
     // legacy mac-theme is ADOPTED once (copy semantics — the old file stays,
     // inert), exactly like the station.ini → config.ini law.
-    private static string ThemeFilePath() =>
-        Path.Combine(
-            Path.GetDirectoryName(iCemDataMonitor.Core.Config.IniConfig.ProgramDataPath)!,
-            "ui-theme");
-
     private static string LegacyThemeFilePath() =>
         Path.Combine(AppContext.BaseDirectory, "mac-theme");
 
-    // The poke event making the flip SIMULTANEOUS across live UIs: the writer
-    // saves the bool first, then SETs; every listener re-reads the file.
-    // Same event-poke pattern as the shell shutdown event, but ANY UI may set
-    // it (writer = whoever toggled). OWNER: the shell (creates + waits).
-    private const string UiThemeChangedEventName = @"Local\iCemDataMonitorTray_v1_UiTheme";
-
+    private const string UiThemeChangedEventName =
+        iCemDataMonitor.Core.Config.UiThemePreferenceStore.ChangedEventName;
     private readonly System.Threading.ManualResetEventSlim _themeListenerStop = new();
 
-    private static bool LoadThemeIsLight()
-    {
-        try
-        {
-            var shared = ThemeFilePath();
-            if (!File.Exists(shared))
-            {
-                // One-time adoption of the per-exe legacy file (copy, ¬ move).
-                var legacy = LegacyThemeFilePath();
-                if (File.Exists(legacy))
-                {
-                    var legacyValue = File.ReadAllText(legacy).Trim();
-                    try { File.WriteAllText(shared, legacyValue); } catch { /* best effort */ }
-                    return legacyValue == "light";
-                }
-                return false; // default = dark (matches the web default)
-            }
-            return File.ReadAllText(shared).Trim() == "light";
-        }
-        catch { return false; } // default = dark
-    }
+    private bool LoadThemeIsLight() => _themeStore.ReadWithLegacyAdoption(LegacyThemeFilePath());
 
-    private static void SaveTheme(bool light)
+    private static void PokeThemeEvent()
     {
-        try { File.WriteAllText(ThemeFilePath(), light ? "light" : "dark"); }
-        catch { /* best effort */ }
-        // 2026-08-31: poke AFTER the bool is durable — listeners re-read the
-        // file. No listener (sole UI alive) is fine — the next UI adopts the
-        // file value at startup anyway.
         try
         {
             using var ev = EventWaitHandle.OpenExisting(UiThemeChangedEventName);
             ev.Set();
         }
-        catch (WaitHandleCannotBeOpenedException) { /* nobody listening — ok */ }
-        catch { /* cosmetic */ }
+        catch (WaitHandleCannotBeOpenedException) { /* nobody listening */ }
     }
 
     /// <summary>2026-08-31 (shared theme bool): listen for theme pokes from
@@ -820,19 +786,11 @@ public sealed partial class MainWindow : Window
         {
             while (WaitHandle.WaitAny(new WaitHandle[] { themeEvent, _themeListenerStop.WaitHandle }) == 0)
             {
-                var light = LoadThemeIsLight();
+                // Read only after reaching the UI/coordinator queue: never
+                // apply a value captured before a newer command completed.
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    if (light == ThemeSwitch.IsOn)
-                        return; // echo of our own toggle / no real change
-                    // 2026-08-31: the incoming truth is ALREADY persisted (the
-                    // writer poked AFTER its write) — the switch flip is
-                    // guarded (_syncingSwitches) so Toggled never re-persists,
-                    // then the visual applies. Idempotent by construction.
-                    _syncingSwitches = true;
-                    ThemeSwitch.IsOn = light;
-                    _syncingSwitches = false;
-                    ApplyTheme(light);
+                    if (!_closed) _ = _themeCoordinator!.ReadLocalAsync();
                 });
             }
             themeEvent.Dispose();

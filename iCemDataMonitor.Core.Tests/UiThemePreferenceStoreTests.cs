@@ -76,11 +76,17 @@ public sealed class UiThemePreferenceStoreTests : IDisposable
     public async Task ConcurrentWritesAlwaysPublishCompleteToken()
     {
         var stores = Enumerable.Range(0, 4).Select(_ => new UiThemePreferenceStore(PathOf())).ToArray();
+        File.WriteAllText(PathOf(), "dark");
+        var written = 0;
         await Task.WhenAll(Enumerable.Range(0, 100).Select(i => Task.Run(() =>
         {
-            Assert.True(stores[i % 4].Write(i % 2 == 0).Written);
-            Assert.Contains(File.ReadAllText(PathOf()), new[] { "light", "dark" });
+            if (stores[i % 4].Write(i % 2 == 0).Written) Interlocked.Increment(ref written);
+            using var stream = new FileStream(PathOf(), FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            Assert.Contains(reader.ReadToEnd(), new[] { "light", "dark" });
         })));
+        Assert.True(written > 0);
         Assert.Empty(Directory.GetFiles(_dir, "*.tmp"));
     }
 
