@@ -17,8 +17,7 @@ public class LanVariableCatalog : IVariableCatalog
     private const string Family = "lan";
     private const int MbBase = 400;
 
-    private readonly IReadOnlyList<VariableDefinition> _catalog;
-    private readonly IReadOnlyDictionary<string, (string Display, string Uom, int? ModbusOffset)> _lookup;
+    private readonly CatalogProjection _projection;
 
     public LanVariableCatalog(UnifiedVariableRegistry? registry = null)
         : this(registry ?? OptionalRegistryLoader.LoadDefault(), true) { }
@@ -27,31 +26,10 @@ public class LanVariableCatalog : IVariableCatalog
 
     private LanVariableCatalog(UnifiedVariableRegistry? registry, bool fromSnapshot)
     {
-        if (registry != null)
-            (_catalog, _lookup) = BuildFromRegistry(registry);
-        else
-            (_catalog, _lookup) = BuildFallback();
-        _catalog = Array.AsReadOnly(_catalog.ToArray());
+        _projection = CatalogProjection.Create(registry, Family, MbBase, BuildFallback, Colors);
     }
 
-    private (VariableDefinition[], IReadOnlyDictionary<string, (string, string, int?)>) BuildFromRegistry(
-        UnifiedVariableRegistry reg)
-    {
-        var vars = reg.GetFamilyVariables(Family);
-        var catalog = new VariableDefinition[vars.Count];
-        var lookup = new Dictionary<string, (string, string, int?)>(vars.Count, StringComparer.OrdinalIgnoreCase);
-        for (int i = 0; i < vars.Count; i++)
-        {
-            var r = vars[i];
-            int modbusOffset = MbBase + r.Index;
-            catalog[i] = new VariableDefinition(r.Name, r.Alias, r.Uom, r.Color, modbusOffset, false, "registry");
-            lookup[r.Name] = (r.Alias, r.Uom, modbusOffset);
-        }
-        return (catalog, lookup);
-    }
-
-    private static (VariableDefinition[] Catalog, IReadOnlyDictionary<string, (string, string, int?)> Lookup)
-        BuildFallback()
+    private static VariableDefinition[] BuildFallback()
     {
         // Minimal fallback: 6 known service vectors, key signals only
         var catalog = new VariableDefinition[]
@@ -65,9 +43,7 @@ public class LanVariableCatalog : IVariableCatalog
             new("ControlMode",           "Control Mode",          "",     "#004D40", MbBase + 28, false, "catalog"),
             new("MixMode",               "Mix Mode",              "",     "#880E4F", MbBase + 29, false, "catalog"),
         };
-        // Case-insensitive: parity with the registry-built lookup (OrdinalIgnoreCase).
-        var lookup = catalog.ToDictionary(v => v.Name, v => (v.Description, v.Uom, (int?)v.Position), StringComparer.OrdinalIgnoreCase);
-        return (catalog, lookup);
+        return catalog;
     }
 
     private static readonly string[] Colors =
@@ -78,12 +54,11 @@ public class LanVariableCatalog : IVariableCatalog
         "#0D47A1", "#1B5E20", "#F57F17", "#212121", "#01579B",
     };
 
-    public IReadOnlyList<VariableDefinition> GetCatalog() => _catalog;
+    public IReadOnlyList<VariableDefinition> GetCatalog() => _projection.GetCatalog();
 
-    public string GuessUom(string variableName) => VariableUnitGuesser.GuessUom(variableName);
+    public string GuessUom(string variableName) => _projection.GuessUom(variableName);
 
-    public string GetColor(int index) => Colors[index % Colors.Length];
+    public string GetColor(int index) => _projection.GetColor(index);
 
-    public (string Display, string Uom, int? ModbusOffset)? Lookup(string name) =>
-        _lookup.TryGetValue(name, out var v) ? v : null;
+    public (string Display, string Uom, int? ModbusOffset)? Lookup(string name) => _projection.Lookup(name);
 }
