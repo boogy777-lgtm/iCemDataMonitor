@@ -55,7 +55,8 @@ public sealed class BusAddrRingService
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
-        ReadOnlySpan<ushort> words = snapshot.Words;
+        var words = new ushort[Math.Min(PairEndExclusive, snapshot.Words.Count)];
+        snapshot.CopyWordsTo(0, words);
         // Same bounds discipline as MetricsSampler.ComputeDeltas: stop at the
         // live-body end AND at the last COMPLETE pair of THIS dictionary.
         for (int addr = PairStart;

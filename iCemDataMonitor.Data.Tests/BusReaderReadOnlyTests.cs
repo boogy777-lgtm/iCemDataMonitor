@@ -103,7 +103,7 @@ public class BusReaderReadOnlyTests : IDisposable
             Assert.True(reader.TryOpen(out var err), err);
             var snap = reader.Snapshot();
             Assert.NotNull(snap);
-            Assert.Equal(BusLayout.RegCount, snap.Words.Length);
+            Assert.Equal(BusLayout.RegCount, snap.Words.Count);
         }
 
         var after = File.ReadAllBytes(_mmfPath);

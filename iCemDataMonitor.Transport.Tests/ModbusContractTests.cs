@@ -63,6 +63,47 @@ public class ModbusContractTests
     }
 
     [Fact]
+    public async Task FC03AndFC04_RawBitsAndIndependentZones_PreserveFixedComTime()
+    {
+        ushort[] vectors = [0x2345, 0x7FC1, 0x2345, 0xFFC1, 0x2345, 0x7F81,
+            0, 0x8000, 1, 0, 0x0014, 0x00A7];
+        await using var server = await TestServer.CreateAsync(b =>
+        {
+            b.SetZone(ZoneKind.ComMain, true).SetZone(ZoneKind.Lan, true)
+                .SetZone(ZoneKind.RawReserve, true).SetWord(4, 0x00A3).SetWord(5, 0x6553);
+            for (int i = 0; i < vectors.Length; i++) b.SetWord(6 + i, vectors[i]);
+            b.SetWord(200, 0x0014).SetWord(400, 0x00A7);
+        });
+        server.Tick();
+        using var peer = new BusReader(server.MmfPath, server.MapName, server.MutexName);
+        Assert.True(peer.TryOpen(out var error), error);
+        var retained = peer.Snapshot()!;
+        var local = retained.Words.ToArray();
+        local[6] = 99; // caller-owned materialization cannot change snapshot or wire
+        Assert.Equal(vectors[0], retained.Words[6]);
+        foreach (byte function in new byte[] { 0x03, 0x04 })
+        {
+            var (_, words) = await ReadRegistersAsync(function, 6, (ushort)vectors.Length);
+            Assert.Equal(vectors, words);
+        }
+        server.WriteBusFile(b => b.SetZone(ZoneKind.ComMain, true).SetZone(ZoneKind.Lan, true)
+            .SetZone(ZoneKind.RawReserve, true).SetWord(4, 0x00A3).SetWord(5, 0x6553)
+            .SetWord(200, 0xBEEF).SetWord(400, 0x00A7));
+        server.Tick();
+        Assert.Equal(new ushort[] { 0xBEEF }, (await ReadRegistersAsync(0x03, 200, 1)).Words);
+        Assert.Equal(new ushort[] { 0x00A7 }, (await ReadRegistersAsync(0x03, 400, 1)).Words);
+        server.WriteBusFile(b => b.SetZone(ZoneKind.ComMain, true).SetZone(ZoneKind.Lan, true)
+            .SetZone(ZoneKind.RawReserve, true).SetWord(4, 0x00A3).SetWord(5, 0x6553)
+            .SetWord(200, 0xBEEF).SetWord(400, 0xCAFE));
+        server.Tick();
+        Assert.Equal(new ushort[] { 0xBEEF }, (await ReadRegistersAsync(0x04, 200, 1)).Words);
+        Assert.Equal(new ushort[] { 0xCAFE }, (await ReadRegistersAsync(0x04, 400, 1)).Words);
+        Assert.Equal(new ushort[] { 0x00A3, 0x6553 }, (await ReadRegistersAsync(0x03, 4, 2)).Words);
+        Assert.Equal((ushort)0x0014, retained.Words[200]);
+        Assert.Equal((ushort)0x00A7, retained.Words[400]);
+    }
+
+    [Fact]
     public async Task FC03_InactiveZone_NotMirrored_StaysZero()
     {
         // Probe at HR 4: the v5 state block is 0..3 ONLY (always mirrored) —

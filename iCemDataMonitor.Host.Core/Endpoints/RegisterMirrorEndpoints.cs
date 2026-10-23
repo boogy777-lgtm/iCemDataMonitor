@@ -94,7 +94,7 @@ public static class RegisterMirrorEndpoints
             var scalars = new List<object>(SystemRegCount);
             for (int r = 0; r < SystemRegCount; r++)
             {
-                int v = r < snap.Words.Length ? snap.Words[r] : 0;
+                int v = r < snap.Words.Count ? snap.Words[r] : 0;
                 scalars.Add(new
                 {
                     reg = r,
@@ -211,7 +211,7 @@ public static class RegisterMirrorEndpoints
     {
         var pairs = new List<object>(len / RegisterMapV2.WordsPerFloat);
         int idx = 0;
-        for (int addr = baseReg; addr < baseReg + len && addr + 1 < snap.Words.Length; addr += RegisterMapV2.WordsPerFloat, idx++)
+        for (int addr = baseReg; addr < baseReg + len && addr + 1 < snap.Words.Count; addr += RegisterMapV2.WordsPerFloat, idx++)
         {
             var (value, kind) = DecodePair(snap.Words, addr);
             string? name = zoneKey switch
@@ -244,9 +244,9 @@ public static class RegisterMirrorEndpoints
     /// Decode a CDAB pair. Special cases: 4..5 = int32 raw unix seconds; 6..7
     /// (com idx 1) = UnitNum float. Everything else is float via CdabCodec.
     /// </summary>
-    private static (object Value, string Kind) DecodePair(ushort[] words, int addr)
+    private static (object Value, string Kind) DecodePair(IReadOnlyList<ushort> words, int addr)
     {
-        if (addr == 4 && addr + 1 < words.Length)
+        if (addr == 4 && addr + 1 < words.Count)
         {
             // int32 raw bits: low word @ addr, high word @ addr+1 (same layout as CDAB float)
             uint bits = (uint)words[addr] | ((uint)words[addr + 1] << 16);

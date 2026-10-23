@@ -1,4 +1,5 @@
-﻿using System.IO.MemoryMappedFiles;
+﻿using System.Collections;
+using System.IO.MemoryMappedFiles;
 using iCemDataMonitor.Sdk.Bus;
 
 namespace iCemDataMonitor.Data.Bus;
@@ -71,7 +72,7 @@ public sealed record BusSnapshot(
     ushort Version,
     ushort LayoutVersion,
     ushort RegCount,
-    ushort[] Words,
+    IReadOnlyList<ushort> Words,
     BusZoneInfo ComMain,
     BusZoneInfo Lan,
     BusZoneInfo RawReserve,
@@ -79,6 +80,52 @@ public sealed record BusSnapshot(
     bool Stale,
     long CapturedAtTickMs)
 {
+    private OwnedWords _words = Own(Words);
+
+    /// <summary>Owned, read-only words. Every replacement takes a defensive copy.</summary>
+    public IReadOnlyList<ushort> Words
+    {
+        get => _words;
+        init => _words = Own(value);
+    }
+
+    private static OwnedWords Own(IReadOnlyList<ushort> words)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+        var copy = new ushort[words.Count];
+        // Do not hand our backing array to caller-defined ICollection.CopyTo.
+        for (int i = 0; i < copy.Length; i++)
+            copy[i] = words[i];
+        return new OwnedWords(copy);
+    }
+
+    // ReadOnlyCollection over an array leaks that array via ICollection.SyncRoot.
+    // Expose only indexed values/enumeration, never the owner or a memory view.
+    private sealed class OwnedWords : IReadOnlyList<ushort>
+    {
+        private readonly ushort[] _items;
+        public OwnedWords(ushort[] words) => _items = words;
+        public int Count => _items.Length;
+        public ushort this[int index] => _items[index];
+        public IEnumerator<ushort> GetEnumerator()
+        {
+            for (int i = 0; i < _items.Length; i++)
+                yield return _items[i];
+        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    /// <summary>Copy values into caller-owned storage; validate the whole range before writing.</summary>
+    public void CopyWordsTo(int sourceIndex, Span<ushort> destination)
+    {
+        if ((uint)sourceIndex > (uint)_words.Count)
+            throw new ArgumentOutOfRangeException(nameof(sourceIndex));
+        if (destination.Length > _words.Count - sourceIndex)
+            throw new ArgumentException("Source range exceeds the snapshot words.", nameof(destination));
+        for (int i = 0; i < destination.Length; i++)
+            destination[i] = _words[sourceIndex + i];
+    }
+
     /// <summary>
     /// Body header-state register (int16 BE word at body reg `reg`) — guarded:
     /// 0 on dictionaries shorter than the register. Only the 4 LIVE state regs
@@ -86,7 +133,7 @@ public sealed record BusSnapshot(
     /// caseLanState, heartbeat}; the v4 regs 4..15 are com_stream float pairs
     /// now and are NOT exposed as state).
     /// </summary>
-    private short Hdr(int reg) => reg < Words.Length ? unchecked((short)Words[reg]) : (short)0;
+    private short Hdr(int reg) => reg < Words.Count ? unchecked((short)Words[reg]) : (short)0;
 
     // ── LIVE AddIn-owned state regs (v5 map — 4 regs) ──
     /// <summary>reg 0 — comPortActive u16: N of COMN currently feeding; 0=none. D1 first-valid-wins latch. Writer: AddIn.</summary>
@@ -132,7 +179,9 @@ public sealed record BusSnapshot(
     /// 0..RegCount−1 of THIS snapshot's dictionary (live words are 0..599;
     /// throws IndexOutOfRangeException beyond the adopted regCount — callers
     /// guard per INV-31).</summary>
-    public ushort GetRegister(ushort addr) => Words[addr];
+    public ushort GetRegister(ushort addr) => addr < Words.Count
+        ? Words[addr]
+        : throw new IndexOutOfRangeException();
 
     /// <summary>CDAB-decoded floats of a zone (spec-default bounds). Decode happens OUTSIDE the mutex.</summary>
     public float[] GetZoneFloats(ZoneKind kind)
@@ -150,7 +199,7 @@ public sealed record BusSnapshot(
     /// </summary>
     public float[] GetZoneFloats(int baseReg, int regCount)
     {
-        int available = Math.Max(0, Math.Min(regCount, Words.Length - baseReg));
+        int available = Math.Max(0, Math.Min(regCount, Words.Count - baseReg));
         int count = available / RegisterMapV2.WordsPerFloat;
         var floats = new float[count];
         for (int i = 0; i < count; i++)
