@@ -283,7 +283,7 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
 
             // Header mirror — ALWAYS: words 0..HeaderRegCount (=4, layout v5
             // state block 0..3; last-good words when the snapshot is stale).
-            Array.Copy(snap.Words, 0, _registers, 0, BusLayout.HeaderRegCount);
+            snap.CopyWordsTo(0, _registers.AsSpan(0, BusLayout.HeaderRegCount));
 
             if (snap.Stale)
                 return; // stale snapshot ⇒ no zone overwrite (stale-hold, AC3/AC4)
@@ -318,12 +318,12 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
         // CLAMPED to the runtime arrays: a legal smaller bus (650 ≤ regCount)
         // simply skips the absent tail of the zone (e.g. lan_stream_crio
         // 200..399 on a 650-reg file ⇒ copy 0 words, zone holds).
-        int len = Math.Min(zone.RegCount, snap.Words.Length - zone.BaseReg);
+        int len = Math.Min(zone.RegCount, snap.Words.Count - zone.BaseReg);
         len = Math.Min(len, _registers.Length - zone.BaseReg);
         if (len <= 0)
             return;
 
-        Array.Copy(snap.Words, zone.BaseReg, _registers, zone.BaseReg, len);
+        snap.CopyWordsTo(zone.BaseReg, _registers.AsSpan(zone.BaseReg, len));
     }
 
     /// <summary>

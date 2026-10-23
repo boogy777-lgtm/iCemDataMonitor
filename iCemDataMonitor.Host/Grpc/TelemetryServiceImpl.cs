@@ -201,7 +201,8 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
             Heartbeat = snap.Heartbeat,
         };
 
-        ReadOnlySpan<ushort> words = snap.Words.AsSpan();
+        var words = new ushort[Math.Min(endExclusive, snap.Words.Count)];
+        snap.CopyWordsTo(0, words);
 
         // Header state regs 0..3 belong to NO data zone (CONTRACT_BusV2 v5):
         // they are included ONLY in the UNSPECIFIED full sweep, as int32 words.

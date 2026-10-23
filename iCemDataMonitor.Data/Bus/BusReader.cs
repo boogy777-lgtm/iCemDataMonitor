@@ -1,5 +1,6 @@
 ﻿using System.IO.MemoryMappedFiles;
 using iCemDataMonitor.Sdk.Bus;
+using iCemDataMonitor.Sdk.Collections;
 
 namespace iCemDataMonitor.Data.Bus;
 
@@ -71,7 +72,7 @@ public sealed record BusSnapshot(
     ushort Version,
     ushort LayoutVersion,
     ushort RegCount,
-    ushort[] Words,
+    IReadOnlyList<ushort> Words,
     BusZoneInfo ComMain,
     BusZoneInfo Lan,
     BusZoneInfo RawReserve,
@@ -79,6 +80,28 @@ public sealed record BusSnapshot(
     bool Stale,
     long CapturedAtTickMs)
 {
+    private OwnedReadOnlyList<ushort> _words = Own(Words);
+
+    /// <summary>Owned, read-only words. Every replacement takes a defensive copy.</summary>
+    public IReadOnlyList<ushort> Words
+    {
+        get => _words;
+        init => _words = Own(value);
+    }
+
+    private static OwnedReadOnlyList<ushort> Own(IReadOnlyList<ushort> words) => new(words);
+
+    /// <summary>Copy values into caller-owned storage; validate the whole range before writing.</summary>
+    public void CopyWordsTo(int sourceIndex, Span<ushort> destination)
+    {
+        if ((uint)sourceIndex > (uint)_words.Count)
+            throw new ArgumentOutOfRangeException(nameof(sourceIndex));
+        if (destination.Length > _words.Count - sourceIndex)
+            throw new ArgumentException("Source range exceeds the snapshot words.", nameof(destination));
+        for (int i = 0; i < destination.Length; i++)
+            destination[i] = _words[sourceIndex + i];
+    }
+
     /// <summary>
     /// Body header-state register (int16 BE word at body reg `reg`) — guarded:
     /// 0 on dictionaries shorter than the register. Only the 4 LIVE state regs
@@ -86,7 +109,7 @@ public sealed record BusSnapshot(
     /// caseLanState, heartbeat}; the v4 regs 4..15 are com_stream float pairs
     /// now and are NOT exposed as state).
     /// </summary>
-    private short Hdr(int reg) => reg < Words.Length ? unchecked((short)Words[reg]) : (short)0;
+    private short Hdr(int reg) => reg < Words.Count ? unchecked((short)Words[reg]) : (short)0;
 
     // ── LIVE AddIn-owned state regs (v5 map — 4 regs) ──
     /// <summary>reg 0 — comPortActive u16: N of COMN currently feeding; 0=none. D1 first-valid-wins latch. Writer: AddIn.</summary>
@@ -132,7 +155,9 @@ public sealed record BusSnapshot(
     /// 0..RegCount−1 of THIS snapshot's dictionary (live words are 0..599;
     /// throws IndexOutOfRangeException beyond the adopted regCount — callers
     /// guard per INV-31).</summary>
-    public ushort GetRegister(ushort addr) => Words[addr];
+    public ushort GetRegister(ushort addr) => addr < Words.Count
+        ? Words[addr]
+        : throw new IndexOutOfRangeException();
 
     /// <summary>CDAB-decoded floats of a zone (spec-default bounds). Decode happens OUTSIDE the mutex.</summary>
     public float[] GetZoneFloats(ZoneKind kind)
@@ -150,7 +175,7 @@ public sealed record BusSnapshot(
     /// </summary>
     public float[] GetZoneFloats(int baseReg, int regCount)
     {
-        int available = Math.Max(0, Math.Min(regCount, Words.Length - baseReg));
+        int available = Math.Max(0, Math.Min(regCount, Words.Count - baseReg));
         int count = available / RegisterMapV2.WordsPerFloat;
         var floats = new float[count];
         for (int i = 0; i < count; i++)

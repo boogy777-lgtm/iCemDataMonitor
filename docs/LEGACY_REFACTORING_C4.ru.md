@@ -66,3 +66,9 @@ Exact-path ledger `rust/migration/legacy-divergences.json` содержит че
 divergences; frozen proto/assets/SPA и REST inventory сохранены.
 Windows build/tests/MSI результат для точного head — в
 [проверках PR](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33/checks).
+
+## Последующий ownership follow-up при C5
+
+Проверка C5 на .NET 10 обнаружила общий недостаток Array.AsReadOnly: safe cast к ICollection.SyncRoot возвращает backing array, несмотря на запрет IList writes. Это затрагивало cached catalogs/families/register maps C4. Исторические результаты выше относятся к прежней проверке и не утверждают защиту этого пути.
+
+Отдельный follow-up C5 использует общий SDK OwnedReadOnlyList<T> с defensive storage copy и только Count/index/enumeration; cached identities, здоровые vectors, lookup и lifetime policy сохранены. Три regression cases действительно пытаются изменить SyncRoot backing. Подробности Class/Inv/N+1, before/after и validation — в [C5](LEGACY_REFACTORING_C5.ru.md).

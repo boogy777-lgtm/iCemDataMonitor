@@ -497,9 +497,11 @@ public sealed class LiveModbusEmulatorTests
     {
         var snap = bus.Snapshot();
         Assert.True(snap is not null, "DLL bus snapshot failed (no readable state)");
-        Assert.True(snap.Words.Length >= address + length,
-            $"DLL snapshot too small: {snap.Words.Length} regs < {address + length} required");
-        return snap.Words.AsSpan(address, length).ToArray();
+        Assert.True(snap.Words.Count >= address + length,
+            $"DLL snapshot too small: {snap.Words.Count} regs < {address + length} required");
+        var words = new ushort[length];
+        snap.CopyWordsTo(address, words);
+        return words;
     }
 
     /// <summary>Open the peer bus reader (same map the CLI uses) with the typed

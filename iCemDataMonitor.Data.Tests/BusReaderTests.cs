@@ -307,6 +307,14 @@ public class BusReaderTests : IDisposable
         Assert.False(good.Stale);
         Assert.Equal(7.0f, good.GetZoneFloats(ZoneKind.Lan)[0]);
 
+        // A published snapshot remains a point-in-time value after another capture.
+        BusTestFactory.WriteFloat(_mmfPath, 200, -2.25f);
+        var newer = reader.Snapshot();
+        Assert.NotNull(newer);
+        Assert.Equal(7.0f, good.GetZoneFloats(ZoneKind.Lan)[0]);
+        Assert.Equal(-2.25f, newer.GetZoneFloats(ZoneKind.Lan)[0]);
+        Assert.NotSame(good.Words, newer.Words);
+
         // Hold the mutex longer than the reader's 500 ms timeout from a DEDICATED
         // holder thread (Mutex ownership is per-thread ⇒ the snapshot thread is
         // guaranteed not to be the owner).
@@ -327,8 +335,10 @@ public class BusReaderTests : IDisposable
             var stale = reader.Snapshot(); // test thread ≠ owner ⇒ WaitOne(500) must time out
             Assert.NotNull(stale);
             Assert.True(stale.Stale, "Snapshot must be flagged stale when the mutex times out");
-            Assert.Equal(good.CapturedAtTickMs, stale.CapturedAtTickMs); // last-good copy, not fresh
-            Assert.Equal(7.0f, stale.GetZoneFloats(ZoneKind.Lan)[0]);
+            Assert.Equal(newer.CapturedAtTickMs, stale.CapturedAtTickMs); // last-good copy, not fresh
+            Assert.Equal(-2.25f, stale.GetZoneFloats(ZoneKind.Lan)[0]);
+            Assert.Same(newer.Words, stale.Words);
+            Assert.Equal(7.0f, good.GetZoneFloats(ZoneKind.Lan)[0]);
         }
         finally
         {

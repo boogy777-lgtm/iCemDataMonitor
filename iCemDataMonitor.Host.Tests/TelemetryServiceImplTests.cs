@@ -413,6 +413,29 @@ public sealed class TelemetryServiceImplTests : IDisposable
     }
 
     [Fact]
+    public async Task GetRegisters_LanAndRawUpdatesAtFixedComTime_AreIndependent()
+    {
+        var (svc, _, _, provider, _, _) = Build(_reader);
+        try
+        {
+            SeedFullBus();
+            var before = await svc.GetRegisters(new RegistersRequest(), new TestCallContext());
+            WriteFloat(200, 9.5f);
+            var lan = await svc.GetRegisters(new RegistersRequest(), new TestCallContext());
+            WriteFloat(400, -7.25f);
+            var raw = await svc.GetRegisters(new RegistersRequest(), new TestCallContext());
+            foreach (var reply in new[] { before, lan, raw })
+                Assert.Equal(unchecked((int)0x655300A3), reply.Values.Single(v => v.Addr == 4).Int32Value);
+            Assert.Equal(-2.25f, before.Values.Single(v => v.Addr == 200).FloatValue);
+            Assert.Equal(9.5f, lan.Values.Single(v => v.Addr == 200).FloatValue);
+            Assert.Equal(15.79f, lan.Values.Single(v => v.Addr == 400).FloatValue);
+            Assert.Equal(9.5f, raw.Values.Single(v => v.Addr == 200).FloatValue);
+            Assert.Equal(-7.25f, raw.Values.Single(v => v.Addr == 400).FloatValue);
+        }
+        finally { provider.Dispose(); }
+    }
+
+    [Fact]
     public async Task GetRegisters_Unspecified_FullSweep_CoversAllLiveAddresses()
     {
         var (svc, _, _, provider, _, _) = Build(_reader);

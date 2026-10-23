@@ -137,11 +137,12 @@ public sealed class MetricsSampler
             IntervalClamped = intervalClamped,
         };
 
-        ReadOnlySpan<ushort> words = snap.Words.AsSpan();
+        var words = new ushort[snap.Words.Count];
+        snap.CopyWordsTo(0, words);
         var deltas = ComputeDeltas(words, previous);
         sample.Deltas.AddRange(deltas);
 
-        previous = snap.Words.ToArray();
+        previous = words;
         return sample;
     }
 
