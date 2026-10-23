@@ -306,10 +306,19 @@ public class ModbusContractTests
             .SetWord(3, 7)
             .SetFloat(4, 1.0f)); // CDAB pin: [0x0000, 0x3F80]
 
-        // Observe recovery through the TCP surface, not an assumed number
-        // of scheduler ticks in a fixed sleep.
-        while ((await ReadRegistersAsync(0x03, 3, 1)).Words[0] != 7)
+        // A retained stale publication mirrors header7 but deliberately holds
+        // the active zone. Observe the complete recovery in ONE TCP window;
+        // header or cleared error alone cannot acknowledge the zone copy.
+        ushort[] expected = [7, 0x0000, 0x3F80];
+        ushort[] recovered;
+        while (true)
+        {
+            recovered = (await ReadRegistersAsync(0x03, 3, 3)).Words;
+            if (recovered.SequenceEqual(expected) && server.Publisher.LastBusError is null)
+                break;
             await Task.Delay(20, deadline.Token);
+        }
+        Assert.Equal(expected, recovered);
         Assert.Null(server.Publisher.LastBusError);
         Assert.Equal(new ushort[] { 7 }, (await ReadRegistersAsync(0x03, 3, 1)).Words);
         Assert.Equal(new ushort[] { 0x0000, 0x3F80 }, (await ReadRegistersAsync(0x03, 4, 2)).Words);

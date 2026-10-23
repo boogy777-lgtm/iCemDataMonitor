@@ -48,6 +48,7 @@ $Wrapper+=$Method+"`n}"
 New-Item -ItemType Directory -Path $OutputDir -Force|Out-Null
 $WrapperPath=Join-Path $OutputDir 'OriginalComFreezeOracle.cs'
 $Wrapper|Set-Content $WrapperPath -Encoding utf8NoBOM
+$Files += @((Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
 Add-Type -Path ($Files+@($WrapperPath)) -CompilerOptions '/nullable:enable' -IgnoreWarnings
 foreach($File in Get-ChildItem $InputDir -File -Filter '*.xml'){
  [Halliburton.iCemEmule.Core.EmuSettings]::SettingsPathOverride=$File.FullName
