@@ -16,17 +16,42 @@ public sealed class AcquisitionMeasurementsTests(ITestOutputHelper output)
     private static readonly MethodInfo Read = typeof(ModbusTcpPublisher).GetMethod("ProcessRead", BindingFlags.Instance | BindingFlags.NonPublic)!;
     private static readonly MethodInfo Write = typeof(ModbusTcpPublisher).GetMethod("ProcessWriteSingle", BindingFlags.Instance | BindingFlags.NonPublic)!;
 
+    // One-shot test-only handoff. The control thread issues Stop before the
+    // in-flight source call continues into the real Reader's held-mutex wait.
+    private sealed class StopCaptureProbe : IDisposable
+    {
+        public readonly ManualResetEventSlim Entered = new();
+        public readonly ManualResetEventSlim StopRequested = new();
+        public long CaptureEnteredTimestamp, ReaderStartedTimestamp, ReaderCompletedTimestamp;
+        public void Dispose() { Entered.Dispose(); StopRequested.Dispose(); }
+    }
+
     private sealed class CountingSource(BusReader reader) : IBusCaptureSource
     {
         public long Attempts, Successes;
+        public StopCaptureProbe? NextStopProbe;
         public BusSnapshot? LastSnapshot => reader.LastSnapshot;
         public bool IsOpen => reader.IsOpen;
         public string? LastError => reader.LastError;
         public BusSnapshot? Snapshot()
         {
             Interlocked.Increment(ref Attempts);
+            var probe = Interlocked.Exchange(ref NextStopProbe, null);
+            if (probe is not null)
+            {
+                probe.CaptureEnteredTimestamp = Stopwatch.GetTimestamp();
+                probe.Entered.Set();
+                if (!probe.StopRequested.Wait(TimeSpan.FromSeconds(5)))
+                    throw new TimeoutException("Stop control thread did not acknowledge the in-flight capture");
+            }
             var before = reader.LastSnapshot;
-            var value = reader.Snapshot();
+            BusSnapshot? value;
+            if (probe is not null) probe.ReaderStartedTimestamp = Stopwatch.GetTimestamp();
+            try { value = reader.Snapshot(); }
+            finally
+            {
+                if (probe is not null) probe.ReaderCompletedTimestamp = Stopwatch.GetTimestamp();
+            }
             // Healthy test carrier: each returned non-stale snapshot means one copy+decode.
             if (value is { Stale: false } && !ReferenceEquals(before, reader.LastSnapshot))
                 Interlocked.Increment(ref Successes);
@@ -244,32 +269,81 @@ public sealed class AcquisitionMeasurementsTests(ITestOutputHelper output)
             await owner.StartAsync(CancellationToken.None);
             using var startupDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             while (owner.Current.Snapshot is null) await Task.Delay(2, startupDeadline.Token);
-            using var release = new ManualResetEventSlim();
-            using var acquired = new ManualResetEventSlim();
-            Task holder = Task.CompletedTask;
-            if (held) holder = Task.Factory.StartNew(() =>
+            if (!held)
             {
-                using var mutex = new Mutex(false, mutexName);
-                mutex.WaitOne();
-                try { acquired.Set(); release.Wait(); }
-                finally { mutex.ReleaseMutex(); }
-            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-            try
-            {
-                if (held)
-                {
-                    Assert.True(acquired.Wait(TimeSpan.FromSeconds(5)));
-                    long before = source.Attempts;
-                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                    while (source.Attempts == before) await Task.Delay(2, timeout.Token);
-                }
                 long started = Stopwatch.GetTimestamp();
                 await owner.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5));
-                Emit(new { kind = "stop", heldMutex = held, elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds, readerStillOpenBeforeDiDisposal = reader.IsOpen, publishedOpen = owner.Current.IsOpen });
+                Emit(new { kind = "stop", heldMutex = false, captureWasInFlight = (bool?)null,
+                    coverage = "idle load, no induced contention; capture overlap not instrumented", elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+                    readerStillOpenBeforeDiDisposal = reader.IsOpen, publishedOpen = owner.Current.IsOpen });
                 Assert.False(owner.Current.IsOpen);
-                Assert.True(reader.IsOpen); // service joined; DI/caller still owns reader disposal
+                Assert.True(reader.IsOpen);
+                return;
             }
-            finally { release.Set(); await holder; }
+
+            using var probe = new StopCaptureProbe();
+            using var release = new ManualResetEventSlim();
+            var acquired = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var controlReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var holder = Task.Factory.StartNew(() =>
+            {
+                using var mutex = new Mutex(false, mutexName);
+                try
+                {
+                    if (!mutex.WaitOne(TimeSpan.FromSeconds(5)))
+                        throw new TimeoutException("Measurement mutex holder did not acquire the bus mutex");
+                    try { acquired.TrySetResult(); release.Wait(); }
+                    finally { mutex.ReleaseMutex(); }
+                }
+                catch (Exception ex) { acquired.TrySetException(ex); throw; }
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            Task<(long Started, long Completed, bool WasPending)>? control = null;
+            try
+            {
+                await acquired.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                control = Task.Factory.StartNew(() =>
+                {
+                    controlReady.TrySetResult();
+                    if (!probe.Entered.Wait(TimeSpan.FromSeconds(5)))
+                        throw new TimeoutException("No armed source capture entered before stop measurement deadline");
+                    try
+                    {
+                        long started = Stopwatch.GetTimestamp();
+                        var stop = owner.StopAsync(CancellationToken.None);
+                        bool wasPending = !stop.IsCompleted;
+                        probe.StopRequested.Set(); // acknowledge issuance, not completion
+                        stop.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+                        return (started, Stopwatch.GetTimestamp(), wasPending);
+                    }
+                    finally { probe.StopRequested.Set(); }
+                }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                await controlReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Volatile.Write(ref source.NextStopProbe, probe);
+                var measured = await control.WaitAsync(TimeSpan.FromSeconds(10));
+                bool captureWasInFlight = probe.CaptureEnteredTimestamp <= measured.Started &&
+                    measured.Started < probe.ReaderCompletedTimestamp && measured.WasPending;
+                Emit(new { kind = "stop", heldMutex = true, captureWasInFlight,
+                    coverage = "Stop issued during source capture; acknowledged before real Reader held-mutex wait; elapsed includes handoff",
+                    elapsedMs = Stopwatch.GetElapsedTime(measured.Started, measured.Completed).TotalMilliseconds,
+                    sourceCaptureEnteredTimestamp = probe.CaptureEnteredTimestamp, stopStartedTimestamp = measured.Started,
+                    readerCallStartedTimestamp = probe.ReaderStartedTimestamp, readerCallCompletedTimestamp = probe.ReaderCompletedTimestamp,
+                    stopCompletedTimestamp = measured.Completed, stopWasPendingAtHandoff = measured.WasPending,
+                    readerStillOpenBeforeDiDisposal = reader.IsOpen, publishedOpen = owner.Current.IsOpen });
+                Assert.True(captureWasInFlight, "Stop did not overlap the armed source capture; see stop timestamp diagnostics");
+                Assert.True(measured.Started <= probe.ReaderStartedTimestamp);
+                Assert.True(probe.ReaderStartedTimestamp < probe.ReaderCompletedTimestamp);
+                Assert.True(probe.ReaderCompletedTimestamp <= measured.Completed);
+                Assert.False(owner.Current.IsOpen);
+                Assert.True(reader.IsOpen); // joined before caller/DI disposes the reader
+            }
+            finally
+            {
+                probe.StopRequested.Set();
+                release.Set();
+                await holder.WaitAsync(TimeSpan.FromSeconds(5));
+                await owner.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5));
+                if (control is not null) await control.WaitAsync(TimeSpan.FromSeconds(5));
+            }
         }
     }
 

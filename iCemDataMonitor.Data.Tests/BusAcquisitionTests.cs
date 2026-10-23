@@ -121,25 +121,34 @@ public sealed class BusAcquisitionTests
     [Fact]
     public async Task BlockedCapture_ReadsStayNonblocking_StartDoesNotWait_StopJoinsBeforeSourceDisposal()
     {
-        using var entered = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var budget = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         using var release = new ManualResetEventSlim();
         var source = new Source { IsOpen = true };
-        source.Capture = () => { entered.Set(); release.Wait(); return source.LastSnapshot = Snapshot(); };
+        source.Capture = () =>
+        {
+            entered.TrySetResult();
+            // The synchronous native capture stays blocked; only the test's entry wait is asynchronous.
+            release.Wait();
+            return source.LastSnapshot = Snapshot();
+        };
         using var acquisition = new BusAcquisitionService(source, TimeSpan.FromMilliseconds(200), TimeProvider.System);
         Task? stop = null;
         try
         {
-            await acquisition.StartAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
-            Assert.True(entered.Wait(TimeSpan.FromSeconds(2)));
+            await acquisition.StartAsync(CancellationToken.None).WaitAsync(budget.Token);
+            Assert.False(release.IsSet);
+            Assert.Null(acquisition.Current.Snapshot); // startup did not wait for a successful capture
+            await entered.Task.WaitAsync(budget.Token);
             var reads = Task.Run(() => { for (int i = 0; i < 10000; i++) Assert.Null(acquisition.Current.Snapshot); });
-            await reads.WaitAsync(TimeSpan.FromSeconds(2));
+            await reads.WaitAsync(budget.Token);
             using var cancelledDeadline = new CancellationTokenSource();
             cancelledDeadline.Cancel();
             stop = acquisition.StopAsync(cancelledDeadline.Token);
             Assert.False(stop.IsCompleted); // cannot dispose the source while its capture is still running
             Assert.Equal(1, source.Calls);
             release.Set();
-            await stop.WaitAsync(TimeSpan.FromSeconds(2));
+            await stop.WaitAsync(budget.Token);
             Assert.False(acquisition.Current.IsOpen);
             Assert.True(acquisition.Current.Snapshot!.Stale);
             Assert.Contains("stopped", acquisition.Current.LastError!);
