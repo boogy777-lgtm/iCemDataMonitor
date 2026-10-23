@@ -1,4 +1,5 @@
 //! Closed config.ini schema, matching IniConfig/IniOptions in the pinned .NET tree.
+use crate::text_file::decode_read_all_text as decode_text;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::Path;
@@ -264,56 +265,6 @@ fn value<T: FromStr>(
                 fallback
             }
         },
-    }
-}
-fn decode_text(bytes: &[u8]) -> String {
-    // File.ReadAllText BOM detection, including UTF-16/32 operator-edited files.
-    let (body, width, little) = if bytes.starts_with(&[255, 254, 0, 0]) {
-        (&bytes[4..], 4, true)
-    } else if bytes.starts_with(&[0, 0, 254, 255]) {
-        (&bytes[4..], 4, false)
-    } else if bytes.starts_with(&[255, 254]) {
-        (&bytes[2..], 2, true)
-    } else if bytes.starts_with(&[254, 255]) {
-        (&bytes[2..], 2, false)
-    } else {
-        return String::from_utf8_lossy(bytes.strip_prefix(&[239, 187, 191]).unwrap_or(bytes))
-            .into_owned();
-    };
-    if width == 2 {
-        let (pairs, tail) = body.as_chunks::<2>();
-        let words: Vec<u16> = pairs
-            .iter()
-            .map(|pair| {
-                if little {
-                    u16::from_le_bytes(*pair)
-                } else {
-                    u16::from_be_bytes(*pair)
-                }
-            })
-            .collect();
-        let mut text = String::from_utf16_lossy(&words);
-        if !tail.is_empty() {
-            text.push(char::REPLACEMENT_CHARACTER);
-        }
-        text
-    } else {
-        let (groups, tail) = body.as_chunks::<4>();
-        let mut text: String = groups
-            .iter()
-            .map(|group| {
-                char::from_u32(if little {
-                    u32::from_le_bytes(*group)
-                } else {
-                    u32::from_be_bytes(*group)
-                })
-                .unwrap_or(char::REPLACEMENT_CHARACTER)
-            })
-            .collect();
-        if !tail.is_empty() {
-            text.push(char::REPLACEMENT_CHARACTER);
-        }
-        text
     }
 }
 #[cfg(test)]

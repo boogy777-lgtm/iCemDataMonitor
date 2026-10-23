@@ -164,3 +164,59 @@ fn existing_capture_drains_paused_frames_without_decode_and_logs_bounded_witness
     assert!(owner.catalog().is_some());
     Ok(())
 }
+
+#[path = "../../../tests/support/text_encodings.rs"]
+mod text_encodings;
+
+#[test]
+fn host_catalog_decodes_operator_files_once_and_caps_raw_bytes()
+-> Result<(), Box<dyn std::error::Error>> {
+    struct Temp(std::path::PathBuf);
+    impl Drop for Temp {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+    let file = Temp(
+        std::env::temp_dir().join(format!("icem-host-catalog-encoding-{}", std::process::id())),
+    );
+    let json = r#"{"serviceVectors":[{"svNumber":1,"name":"Давление ° 😀","equipmentType":"unit","signals":[{"byteOffset":4,"size":4,"valueType":"FF","dasFactor":2,"name":"Датчик 😀","uom":"psi"}]}]}"#;
+    let expected = Registry::from_json(json)?
+        .get(1)
+        .cloned()
+        .ok_or("missing vector")?;
+    assert!(Registry::from_json(&format!("\u{feff}{json}")).is_err());
+    for bytes in text_encodings::encoded_texts(json) {
+        std::fs::write(&file.0, bytes)?;
+        let mut catalog = Catalog::load(&file.0)?;
+        assert_eq!(catalog.definition(1), Some(&expected));
+        catalog.observe(
+            &build([1; 6], 1, 1, &20f32.to_bits().to_be_bytes()),
+            Duration::ZERO,
+        );
+        assert_eq!(
+            catalog.preview(1),
+            vec![("Датчик 😀".into(), 40., "psi".into(), false)]
+        );
+    }
+    for bytes in text_encodings::encoded_texts(&format!("\u{feff}{json}"))
+        .into_iter()
+        .skip(1)
+    {
+        std::fs::write(&file.0, bytes)?;
+        assert!(Catalog::load(&file.0).is_err());
+    }
+    // The UTF-32 file exceeds the raw cap despite its decoded text fitting it.
+    let padded = format!(
+        "{{\"serviceVectors\":[]}}{}",
+        " ".repeat(MAX_CATALOG_BYTES as usize / 4)
+    );
+    let files = text_encodings::encoded_texts(&padded);
+    assert!(padded.len() < MAX_CATALOG_BYTES as usize);
+    for bytes in &files[4..] {
+        assert!(bytes.len() > MAX_CATALOG_BYTES as usize);
+        std::fs::write(&file.0, bytes)?;
+        assert!(Catalog::load(&file.0).is_err_and(|error| error.contains("2 MiB")));
+    }
+    Ok(())
+}

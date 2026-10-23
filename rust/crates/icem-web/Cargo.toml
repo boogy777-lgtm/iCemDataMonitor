@@ -9,6 +9,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+icem-config = { path = "../icem-config" }
 icem-logging = { path = "../icem-logging" }
 icem-bus = { path = "../icem-bus" }
 icem-core = { path = "../icem-core" }

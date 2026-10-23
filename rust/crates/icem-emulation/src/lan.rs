@@ -81,17 +81,18 @@ impl Registry {
     pub fn all(&self) -> &BTreeMap<u32, VectorDef> {
         &self.by_sv
     }
-    /// Strict DTO/first-wins parser; production file recovery does not hide errors here.
+    /// Strict decoded JSON text/first-wins parser; BOMs belong to the file decoder.
+    /// Production file recovery does not hide errors here.
     pub fn from_json(json: &str) -> Result<Self> {
         let mut result = Self::default();
-        result.load_value(serde_json::from_str(json.trim_start_matches('\u{feff}'))?)?;
+        result.load_value(serde_json::from_str(json)?)?;
         Ok(result)
     }
     fn load_file(&mut self, path: &Path) -> Result<()> {
         if !path.is_file() {
             return Err("file not found".into());
         }
-        self.load_value(read_json(path)?)
+        self.load_value(read_registry_json(path)?)
     }
     fn load_value(&mut self, root: Value) -> Result<()> {
         for vector in array(&root, "serviceVectors")? {
@@ -240,7 +241,7 @@ impl BaseProvider {
         if !path.is_file() {
             return Ok(());
         }
-        let root = read_json(path)?;
+        let root = read_simulation_json(path)?;
         if root.get("variables").is_none() {
             return Ok(());
         }
@@ -353,9 +354,20 @@ pub fn patch_value(payload: &mut [u8], sig: &SignalDef, value: f64) -> bool {
     payload[span.start..span.start + count].copy_from_slice(&encoded[..count]);
     true
 }
-fn read_json(path: &Path) -> Result<Value> {
-    let json = std::fs::read_to_string(path)?;
-    Ok(serde_json::from_str(json.trim_start_matches('\u{feff}'))?)
+// LantableRegistry uses JsonDocument.Parse(Stream), not File.ReadAllText.
+// Preserve UTF-8-only JSON and consume at most one initial UTF-8 BOM. Rust's
+// deliberate malformed-input policy rejects invalid UTF-8 anywhere in the file,
+// including unused JSON strings, before any registry records are inserted.
+fn read_registry_json(path: &Path) -> Result<Value> {
+    let bytes = std::fs::read(path)?;
+    let body = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(&bytes);
+    let json = std::str::from_utf8(body)?;
+    Ok(serde_json::from_str(json)?)
+}
+// AcePayloadProvider.LoadSimFile uses File.ReadAllText for both variable files.
+fn read_simulation_json(path: &Path) -> Result<Value> {
+    let json = icem_config::text_file::read_all_text(path)?;
+    Ok(serde_json::from_str(&json)?)
 }
 fn array<'a>(value: &'a Value, name: &str) -> Result<&'a Vec<Value>> {
     value

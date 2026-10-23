@@ -211,3 +211,8 @@ logger. Strict parser/COM fallback/encoding/Unicode — отдельные гр�
 [D22b](docs/EMULATOR_D22B.ru.md): COM catalog восстанавливает пустой registry при
 DTO failure, сохраняет независимые templates и явно отклоняет null records без
 зависимости от traversal order. Explicit file load строгий; encoding/Unicode и Windows acceptance отдельно.
+
+[D22c](docs/CATALOG_D22C.ru.md): общий текстовый декодер читает BOM UTF-8/16/32
+в COM/LAN simulation catalogs и двух Host catalog consumers. Emulator LAN registry
+сохраняет отдельный UTF-8 stream contract; Host byte budgets и file recovery прежние.
+Unicode identity matching и порядок colliding DTO properties остаются следующим кодовым этапом.
