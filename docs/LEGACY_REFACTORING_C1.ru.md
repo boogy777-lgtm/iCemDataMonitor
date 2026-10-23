@@ -52,6 +52,9 @@ startup-сценария, а не доказательство отсутств�
 - Сборка `iCemDataMonitor.Host.Tests` Debug: успешно, 0 warnings/errors.
 - Portable focused tests: 24/24, включая все 9 новых boot-context регрессий.
 - Routing regression suite: 37/37; baseline guard regression suite: 25/25.
+- `Verify-Baseline.ps1 -RequireComplete`: 513/513 файлов проверены;
+  17 точных legacy divergences, включая два исходника C1; frozen surfaces сохранены.
+- Независимое ревью третьим последовательным агентом: существенных дефектов нет.
 - Расширенный focused run: 24 passed, 7 failed из-за
   `PlatformNotSupportedException: Named pipes transport requires a Windows operating system`.
   Это существующие real-start CompositionSmoke/GrpcChannelIntegration tests.
