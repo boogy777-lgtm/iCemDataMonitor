@@ -44,7 +44,9 @@ Listener ставит в UI очередь запрос на чтение, а н
 
 Initial attach, `HostLink.Connected` и первая подтверждённая pipe-доступность
 либо Down→alive получают Host truth через `GetUiPrefs`; offline intent при
-reconnect не переигрывается. Используется существующая pipe-liveness feed.
+reconnect не переигрывается. Connected сбрасывает предыдущий Down в unknown
+перед refresh, чтобы устаревший probe не направил reconnect-read локально.
+Используется существующая pipe-liveness feed.
 Lost metrics при закрытом MMF не считается доказательством Down: healthy Host
 продолжает получать RPC.
 
@@ -85,11 +87,12 @@ RPC: **1/1** на отдельном fixture с unopened BusReader, без им�
 saved-log; исправление fault позволяет повторить запрос успешно. Сборка этого
 набора компилирует затронутые Host/Core/HostClient.
 
-Coordinator: **13/13**: ответ отличается от запроса, offline-before-send,
+Coordinator: **14/14**: ответ отличается от запроса, offline-before-send,
 Unavailable/DeadlineExceeded/application error без fallback, initial attach /
 refresh, offline save→reconnect без replay, delayed old-session/Closed,
 упорядоченные toggles и listener echo, reentrant callback / queue recovery,
-initial failure→first alive при closed bus, уже поставленное UI continuation.
+initial failure→first alive при closed bus, reconnect после stale Down→unknown,
+уже поставленное UI continuation.
 Единственный warning компиляции UI.Tests — существующий `xUnit1031` в
 `HostClientTests.cs:662`, вне C3.
 

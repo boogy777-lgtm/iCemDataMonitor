@@ -166,6 +166,22 @@ public sealed class UiThemeCoordinatorTests
     }
 
     [Fact]
+    public async Task ReconnectWithStaleDownResetToUnknownReadsHostWithoutReplay()
+    {
+        using var c = Create();
+        bool? pipeAlive = false;
+        await c.AttachAsync(_api.Object, () => pipeAlive != false);
+        await c.ToggleAsync(true);
+        Assert.Equal(1, _writes);
+        pipeAlive = null; // Shell Connected invalidates the previous Down probe
+        await c.RefreshAsync();
+        Assert.False(_applied.Last());
+        Assert.Equal(1, _writes);
+        _api.Verify(x => x.GetUiPrefsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _api.Verify(x => x.SetUiThemeAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task FirstConfirmedAliveRefreshRecoversFailedInitialAttachWithoutIntentReplay()
     {
         using var c = Create();

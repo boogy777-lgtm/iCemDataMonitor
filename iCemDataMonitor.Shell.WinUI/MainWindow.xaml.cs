@@ -312,7 +312,13 @@ public sealed partial class MainWindow : Window
                 DispatcherQueue.TryEnqueue(() =>
                 {
                     if (!_closed && ReferenceEquals(Session, session))
+                    {
+                        // Connected supersedes an earlier Down probe. Unknown
+                        // routes this reconciliation through RPC until the next
+                        // authoritative pipe-liveness result arrives.
+                        _themeHostAlive = null;
                         _ = _themeCoordinator.RefreshAsync();
+                    }
                 });
         });
         // TOMBSTONE (2026-08-27): EmulatorViewModel.EngineControl wiring +
