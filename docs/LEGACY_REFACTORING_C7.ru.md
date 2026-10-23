@@ -39,3 +39,14 @@ N+1: новый журнал задаётся путём и локальной �
 `WriteFormatted` сохраняет прежнюю локальную форматирующую policy и UTF-8 без BOM, добавляя общий cap. Timestamped `Write` сохраняет Encoding.UTF8 прежних SDK/Tap/Crash каналов. Двухаргументная публичная сигнатура StationFileLog.Write сохранена; дополнительная перегрузка задаёт directory/retention policy для фасадов.
 
 `ClearOwned` и `DeleteOwnedOlderThan` принимают явные пути и продолжают работу после ошибки отдельного файла. Новый RPC/UI clear не вводится. Ownership не выводится из расширения или наличия в каталоге. Новые SDK-тесты проверяют также Windows case alias того же пути; net48 helper компилирует те же production sources, а не их модель.
+
+## Локальная проверка
+
+Linux, SDK 10.0.302 / runtime 10.0.10; команды выполняются последовательно с `--no-restore -m:1 /nodeReuse:false -p:UseSharedCompilation=false`.
+
+* SDK.Tests: полный набор, 91 passed, 1 Windows-only net48 test skipped.
+* Data.Tests, `FullyQualifiedName~DataBusLogTests`: 6 passed, включая реальный illegal sink path и Success rearm.
+* Host.Tests, `FullyQualifiedName~StationFileLogHostContractTests`: 7 passed. Прежний тест собирал Windows policy root из platform separator и не работал на Linux; теперь он точно проверяет `Path.Combine(StationFileLog.LogsRoot, appName)`, сохраняя Windows policy root.
+* Emule.Tests, `CrashLogTests|WireFormatTests|PayloadSmokeTests|LanFreezeCouplingTests`: 15 passed; новая SDK reference собирается.
+
+Windows CI должен собрать WinUI callers и выполнить net48 Roslyn golden helper (Linux его не исполняет). Полная vendor AddIn сборка и загрузка в iCem.exe требуют установленного proprietary SDK и остаются отдельной границей приёмки. Межпроцессная clear/append атомарность не проверяется и не обещается.

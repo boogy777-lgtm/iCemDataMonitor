@@ -99,7 +99,7 @@ public class StationFileLogHostContractTests : IDisposable
     }
 
     [Fact]
-    public void StartupLog_FileHasExactlyOneTimestamp_AndConsoleKeepsSingleEcho()
+    public void StartupLog_FileHasExactlyOneTimestamp_AndUtf8Payload()
     {
         // Console is shared process state: verify the file without replacing stdout.
         StartupLog.Create(_dir)("READY café");
@@ -111,10 +111,9 @@ public class StationFileLogHostContractTests : IDisposable
     public void StartupLog_DefaultDirectory_IsProgramDataHostDir()
     {
         // Owner decree: startup.log lives under ProgramData\...\iCemDataMonitor.Host\.
-        Assert.EndsWith(
-            Path.Combine("Halliburton", "iCem", "DataMonitoring", "Logs", "iCemDataMonitor.Host"),
-            iCemDataMonitor.Host.Core.StationLogPaths.HostDir,
-            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(
+            Path.Combine(StationFileLog.LogsRoot, "iCemDataMonitor.Host"),
+            iCemDataMonitor.Host.Core.StationLogPaths.HostDir);
         Assert.EndsWith("startup.log", iCemDataMonitor.Host.Core.StationLogPaths.HostStartupLog, StringComparison.Ordinal);
         // 2026-08-27: HostEngineSupervisorLog REMOVED with engine supervision
         // (the emulator is a separate independent app with its own logs).

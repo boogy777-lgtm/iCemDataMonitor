@@ -38,7 +38,7 @@ namespace iCemDataMonitor.Sdk.Diagnostics
                     }
                     if (createParent)
                     {
-                        string directory = Path.GetDirectoryName(path);
+                        var directory = Path.GetDirectoryName(path);
                         if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
                     }
                     File.AppendAllText(path, text, encoding);
