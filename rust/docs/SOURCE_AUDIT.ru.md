@@ -79,9 +79,10 @@ byteOffset=i32::MAX и отрицательную size. Valid wire widths/offset
 D22 (E3 input compatibility limits): [D22a](EMULATOR_D22A.ru.md) восстанавливает
 production LAN per-file recovery: completed prefix сохраняется, остаток ошибочного
 файла пропускается, firmware читается затем; Registry diagnostics остаются видимыми.
-Strict Registry::from_json не меняется. COM TemplateCatalog malformed-registry
-fallback, полные File.ReadAllText encoding/Unicode OrdinalIgnoreCase semantics остаются
-кодовым backlog. Valid pinned ASCII catalogs проверяются отдельно; Windows original-
+Strict Registry::from_json не меняется. [D22b](EMULATOR_D22B.ru.md) разделяет
+COM all-or-empty registry recovery и template isolation. Null registry records
+отклоняются явно на file boundary; incidental C# traversal exceptions не повторяются. File.ReadAllText encoding/Unicode OrdinalIgnoreCase и DOM case-colliding
+key order остаются кодовым backlog. Valid pinned ASCII catalogs проверяются отдельно; Windows original-
 method oracle и acceptance фиксируются по exact head.
 
 D23 — E4 pipe вводит явные caps (32 sessions, request 64 KiB, response 8 MiB)

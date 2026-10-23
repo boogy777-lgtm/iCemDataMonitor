@@ -354,3 +354,9 @@ selftest/landiag/stdin CLI — исторический статус.
 не прекращают startup из-за одного ошибочного каталога; completed prefix сохраняется,
 firmware читается затем. Registry diagnostics доступны startup logger; simulation
 file errors silent. Strict from_json, wire/API и COM loaders не меняются.
+
+[D22b COM catalog recovery](EMULATOR_D22B.ru.md): malformed registry DTO означает
+пустой validated registry; malformed template отклоняется отдельно.
+Null registry record считается ошибкой файла независимо от позиции; пустой
+reference-only template допустим при documented missing-ref policy. CLI/wire/API и strict explicit file load
+сохранены; encoding/Unicode вне этого инкремента.

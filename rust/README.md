@@ -207,3 +207,7 @@ selftest/landiag/stdin CLI — исторический статус.
 [D22a](docs/EMULATOR_D22A.ru.md): production LAN loaders сохраняют completed prefix
 при ошибке файла и переходят к firmware; Registry diagnostics направлены в startup
 logger. Strict parser/COM fallback/encoding/Unicode — отдельные границы.
+
+[D22b](docs/EMULATOR_D22B.ru.md): COM catalog восстанавливает пустой registry при
+DTO failure, сохраняет независимые templates и явно отклоняет null records без
+зависимости от traversal order. Explicit file load строгий; encoding/Unicode и Windows acceptance отдельно.
