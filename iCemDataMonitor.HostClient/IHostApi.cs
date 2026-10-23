@@ -44,9 +44,9 @@ public interface IHostApi : IDisposable
     //    theme bool — the machine-layer prefs surface ─────────────────────────
 
     /// <summary>Unary UI-preferences snapshot (the station-wide theme bool).
-    /// Missing/foreign ui-theme file ⇒ dark. The shell uses this only for
-    /// diagnostics today — the instant-flip channel is the file+event
-    /// listener; the SPA applies the truth at page load.</summary>
+    /// Missing/foreign/unreadable ui-theme file ⇒ dark. Shell attach and
+    /// reconnect adopt this projection; the file+event listener carries
+    /// station changes. This bool does not acknowledge a successful write.</summary>
     Task<UiPrefs> GetUiPrefsAsync(CancellationToken ct = default);
 
     /// <summary>Idempotent theme command: the HOST writes the shared

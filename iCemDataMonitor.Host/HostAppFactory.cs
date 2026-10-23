@@ -160,7 +160,7 @@ public static class HostAppFactory
         // 2026-08-31 (owner decree «даже смена темы — тоже CLI»): station-wide
         // ui-theme truth behind the GetUiPrefs/SetUiTheme RPCs — the SAME file
         // the WinUI shell reads/writes; the host owns the WRITE in client mode.
-        builder.Services.AddSingleton<Tray.UiPrefsStore>();
+        builder.Services.AddSingleton(new Tray.UiPrefsStore(log: logLine));
         // 2026-08-28 OWNER LAW: the ONE console-visibility service — the tray
         // toggle, the SetConsoleVisible RPC and the --autostart hide all route
         // through this instance (policy table + startup-log evidence).
