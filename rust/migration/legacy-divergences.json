@@ -265,11 +265,11 @@
     {
       "path": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml.cs",
       "baseline_blob_sha1": "0caf4ac714d76b9b397b350268d36d554e9eef61",
-      "approved_blob_sha1": "06f66e318a49f3ac4887f8963d92499621bc9e83",
+      "approved_blob_sha1": "f6081d5caec03675893b2fa6ff849a4b8ccc36aa",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/32",
-        "commit": "468c3d468c56a7c41e5e86ed8b1047b48dd2e2dc",
-        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "074056ec3410ef9a46adc5646f6851f2715a70c1",
+        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
       }
     },
     {
@@ -435,11 +435,11 @@
     {
       "path": "Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj",
       "baseline_blob_sha1": "b2e07d754433cffaa4207850430546dccb11b95a",
-      "approved_blob_sha1": "a425c787447c4db7eec6db2a2196377707f69ffe",
+      "approved_blob_sha1": "4ef07f988d42d93a64f25a599f7ee0764dab79c3",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
-        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
-        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
       }
     },
     {
@@ -495,11 +495,11 @@
     {
       "path": "iCemDataMonitor.Sdk.Tests/iCemDataMonitor.Sdk.Tests.csproj",
       "baseline_blob_sha1": "882d3349d89b2edd2101ebeefc74c690f65030b6",
-      "approved_blob_sha1": "a1983df6b0af62e0c7d30f88cd1eaf2b369bee72",
+      "approved_blob_sha1": "769c6592206d904e9d74a946015a465a490da083",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
-        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
-        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "d473b24833a7ebe9b151979c43bc476d8508ba5c",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
       }
     },
     {
@@ -535,11 +535,11 @@
     {
       "path": "iCemEmule.Core/Core/LantableRegistry.cs",
       "baseline_blob_sha1": "dca824e65cae274a3cf47cd56f54e025b388ec08",
-      "approved_blob_sha1": "eb3209b3c68bf50489464a9d19c000119770d15b",
+      "approved_blob_sha1": "f3c4685c592d6007a2c7ee8a44fdd51cc20328bf",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
-        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
-        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "7d98a9314bb39dff66064f06b2568aad4c4ae539",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
       }
     },
     {
@@ -570,6 +570,86 @@
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
         "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
         "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/DataMonitorEdgeTruthTableTests.cs",
+      "baseline_blob_sha1": "7c37c7726713e2eb044673b7c35b6b7ce34d861c",
+      "approved_blob_sha1": "f14b0d4034e223cff6c4e2c74a7f08f5df51ddb2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/DataMonitorPollLivenessTests.cs",
+      "baseline_blob_sha1": "f3a1605b4a9fd7cac9fe2bf8c595527ddff2cae8",
+      "approved_blob_sha1": "41f1e73991f07e0b90fb0a8d158c938d06ff6b1e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/BusWriter.cs",
+      "baseline_blob_sha1": "ae1d03cbce01108d5894929a5a4c6cb9deed1c46",
+      "approved_blob_sha1": "d6ff53c351f4c6ceeec2750161134fd81d90ed81",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/DataMonitorModule.cs",
+      "baseline_blob_sha1": "407dd96f533fdbf1a477aa75ac270dab3e2cde2e",
+      "approved_blob_sha1": "069b2fa5806583ac0df491a65bfcb6580c41149a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/iCemDataMonitor.UI.Tests.csproj",
+      "baseline_blob_sha1": "e30b3a2af7d868c6ccfdb66587d0890c3949c8e9",
+      "approved_blob_sha1": "a61bc72e34ff682090c7bdc685472e05adede978",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "8522f15f623eab2a024a841490b893ff74aa9f4a",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/Core/EmuEngineHost.cs",
+      "baseline_blob_sha1": "b0bda5f6207ddee0a2f2a3cbef56edbd89057293",
+      "approved_blob_sha1": "b03427cf5dcbb538c7f2ddd481046a6593781af3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "24fe43cc77a8c9d1ef272e527c0d358c3300199c",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/Core/SignalWireCodec.cs",
+      "baseline_blob_sha1": "69fdd84066203c66b31e532fec4a2faaa9914124",
+      "approved_blob_sha1": "a78f822397e7d4b98edc952423cfc7a02ab20ead",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "24fe43cc77a8c9d1ef272e527c0d358c3300199c",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/Core/UnitConvertingPayloadProvider.cs",
+      "baseline_blob_sha1": "49789579088abb47afc599bf5bd6e64c83ab91fd",
+      "approved_blob_sha1": "52398131e07dbe2c38842c09715dc1ba1492d93e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "7d98a9314bb39dff66064f06b2568aad4c4ae539",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
       }
     }
   ]

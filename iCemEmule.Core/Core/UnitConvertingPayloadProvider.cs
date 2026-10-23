@@ -83,63 +83,13 @@ public sealed class UnitConvertingPayloadProvider : IAcePayloadProvider
             // Целевая единица: детальные настройки вкладки (Settings) либо пресет.
             string target = settings.TargetUnit(group);
 
-            if (!TryDecode(payload, sig, out double wireValue))
+            if (!SignalWireCodec.TryDecodeNative(payload, sig, out double wireValue))
                 continue; // декод невозможен → сигнал без изменений
 
             // Общий конвертер: даёт те же множители (42 / (v−32)×5÷9 / 0.119826 / 0.3048 / 0.0689476), что и старый путь.
             double presetValue = UnitConversion.Convert(wireValue, sig.UoM, target);
             if (TryEncode(presetValue, sig, out byte[] encoded))
                 Array.Copy(encoded, 0, payload, sig.ByteOffset - 4, Math.Min(encoded.Length, sig.Size));
-        }
-    }
-
-    // ── декодирование байт в wire-значение (native units) ────────────────
-    private static bool TryDecode(byte[] payload, LantableRegistry.SignalDef sig, out double value)
-    {
-        value = 0;
-        if (sig.ByteOffset < 4 || (sig.ByteOffset - 4) + sig.Size > payload.Length)
-            return false;
-
-        int off = sig.ByteOffset - 4;   // payload_index = ByteOffset − 4
-        int sz = sig.Size;
-        switch (sig.ValueType.ToUpperInvariant())
-        {
-            case "FF": // IEEE 754 float32, big-endian (ace_wire.signal_encoding)
-                if (sz != 4) return false;
-                value = BinaryPrimitives.ReadSingleBigEndian(payload.AsSpan(off, 4));
-                return true;
-
-            case "UL":
-            case "UI":
-            case "HX": // unsigned integer, big-endian
-                double rawU = sz switch
-                {
-                    1 => payload[off],
-                    2 => BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(off, 2)),
-                    4 => BinaryPrimitives.ReadUInt32BigEndian(payload.AsSpan(off, 4)),
-                    8 => (double)BinaryPrimitives.ReadUInt64BigEndian(payload.AsSpan(off, 8)),
-                    _ => double.NaN
-                };
-                if (double.IsNaN(rawU)) return false;
-                value = rawU * sig.DasFactor; // wire value = raw × dasFactor
-                return true;
-
-            case "SI":
-            case "SL": // signed integer, big-endian
-                double rawS = sz switch
-                {
-                    1 => (sbyte)payload[off],
-                    2 => BinaryPrimitives.ReadInt16BigEndian(payload.AsSpan(off, 2)),
-                    4 => BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(off, 4)),
-                    8 => (double)BinaryPrimitives.ReadInt64BigEndian(payload.AsSpan(off, 8)),
-                    _ => double.NaN
-                };
-                if (double.IsNaN(rawS)) return false;
-                value = rawS * sig.DasFactor;
-                return true;
-
-            default:
-                return false; // UC и неизвестные типы — пропуск
         }
     }
 

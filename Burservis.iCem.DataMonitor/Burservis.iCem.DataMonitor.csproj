@@ -114,6 +114,7 @@
     <Compile Include="..\iCemDataMonitor.Sdk\Diagnostics\OwnedFileLog.cs"><Link>Diagnostics\OwnedFileLog.cs</Link></Compile>
     <Compile Include="NameNormalizer.cs" />
     <Compile Include="PollResolution.cs" />
+    <Compile Include="PollPairPreparation.cs" />
     <Compile Include="LanSourceTracker.cs" />
     <Compile Include="RawCsvFields.cs" />
     <Compile Include="UnixTimestamp.cs" />

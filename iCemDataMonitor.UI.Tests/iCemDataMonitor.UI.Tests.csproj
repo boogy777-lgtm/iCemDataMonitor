@@ -25,6 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\iCemDataMonitor.Shell.WinUI\ShellBootstrapCoordinator.cs" Link="ShellBootstrapCoordinator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- W20 F.2: iCemDataMonitor.Tray removed from the solution (legacy backend
          is dead as an entity) — the ProjectReference is gone with it. The
          Sdk/Transport/Host.Core references it used to provide TRANSITIVELY

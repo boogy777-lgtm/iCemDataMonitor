@@ -471,21 +471,10 @@ namespace Burservis.iCem.DataMonitor
             foreach (PollResolution.Entry entry in com.Entries)
             {
                 int address = entry.Address;
-                double d = entry.Value;
+                PreparedPairWrite request = PollPairPreparation.PrepareCom(entry);
                 BusWriteQueue.Post(delegate
                 {
-                    // contract v5.1 CHANGE 1 (user decree 2026-08-18): com idx0
-                    // 'Time & Date' = UnixTimestampSeconds int32 RAW BITS (the
-                    // vendor value arrives as .NET UTC ticks); every other com
-                    // address stays float32 CDAB — the ONLY dispatch row.
-                    if (address == BusLayout.ComTimestampReg)
-                    {
-                        bus.WriteInt32Pair(ZoneKind.ComMain, address, UnixTimestamp.TicksToUnixSeconds(d));
-                    }
-                    else
-                    {
-                        bus.WriteFloatPair(ZoneKind.ComMain, address, (float)d);
-                    }
+                    bus.WritePreparedPair(request);
                     Interlocked.Increment(ref _comPairs);
                 });
                 comWrites++;
@@ -527,10 +516,10 @@ namespace Burservis.iCem.DataMonitor
             foreach (PollResolution.Entry entry in lan.Entries)
             {
                 int address = entry.Address;
-                double d = entry.Value;
+                PreparedPairWrite request = PollPairPreparation.PrepareLan(entry);
                 BusWriteQueue.Post(delegate
                 {
-                    bus.WriteFloatPair(ZoneKind.Lan, address, (float)d);
+                    bus.WritePreparedPair(request);
                     Interlocked.Increment(ref _lanPairs);
                 });
                 lanWrites++;

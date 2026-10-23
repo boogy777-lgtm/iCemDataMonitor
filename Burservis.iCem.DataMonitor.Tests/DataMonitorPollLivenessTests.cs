@@ -112,14 +112,7 @@ public class DataMonitorPollLivenessTests : IDisposable
         PollResolution.Outcome com = PollResolution.Resolve(candidates);
         foreach (PollResolution.Entry e in com.Entries)
         {
-            if (e.Address == BusLayout.ComTimestampReg)
-            {
-                w.WriteInt32Pair(ZoneKind.ComMain, e.Address, UnixTimestamp.TicksToUnixSeconds(e.Value));
-            }
-            else
-            {
-                w.WriteFloatPair(ZoneKind.ComMain, e.Address, (float)e.Value);
-            }
+            w.WritePreparedPair(PollPairPreparation.PrepareCom(e));
         }
         return com.Entries.Count;
     }
@@ -129,7 +122,7 @@ public class DataMonitorPollLivenessTests : IDisposable
         PollResolution.Outcome lan = PollResolution.ResolveLan(candidates);
         foreach (PollResolution.Entry e in lan.Entries)
         {
-            w.WriteFloatPair(ZoneKind.Lan, e.Address, (float)e.Value);
+            w.WritePreparedPair(PollPairPreparation.PrepareLan(e));
         }
         return lan.Entries.Count;
     }

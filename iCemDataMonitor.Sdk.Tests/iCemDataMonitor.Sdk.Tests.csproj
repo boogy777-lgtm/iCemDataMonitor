@@ -10,6 +10,24 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Net48\PairPreparationEntry.cs" />
+    <None Include="Net48\PairPreparationEntry.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Net48\PairPreparationGolden.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Burservis.iCem.DataMonitor\PollPairPreparation.cs" Link="AddIn\PollPairPreparation.cs" />
+    <None Include="..\Burservis.iCem.DataMonitor\PollPairPreparation.cs" Link="Net48\PollPairPreparation.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Burservis.iCem.DataMonitor\PollResolution.cs" Link="AddIn\PollResolution.cs" />
+    <None Include="..\Burservis.iCem.DataMonitor\PollResolution.cs" Link="Net48\PollResolution.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Burservis.iCem.DataMonitor\DataMonitorAddressMap.cs" Link="AddIn\DataMonitorAddressMap.cs" />
+    <None Include="..\Burservis.iCem.DataMonitor\DataMonitorAddressMap.cs" Link="Net48\DataMonitorAddressMap.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Burservis.iCem.DataMonitor\NameNormalizer.cs" Link="AddIn\NameNormalizer.cs" />
+    <None Include="..\Burservis.iCem.DataMonitor\NameNormalizer.cs" Link="Net48\NameNormalizer.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Burservis.iCem.DataMonitor\UnixTimestamp.cs" Link="AddIn\UnixTimestamp.cs" />
+    <None Include="..\Burservis.iCem.DataMonitor\UnixTimestamp.cs" Link="Net48\UnixTimestamp.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Burservis.iCem.DataMonitor\BusLayout.cs" Link="AddIn\BusLayout.cs" />
+    <None Include="..\Burservis.iCem.DataMonitor\BusLayout.cs" Link="Net48\BusLayout.cs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="Net48\TapLogGolden.cs" />
     <None Include="Net48\TapLogGolden.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\iCemDataMonitor.Sdk\Diagnostics\OwnedFileLog.cs" Link="Net48\OwnedFileLog.cs" CopyToOutputDirectory="PreserveNewest" />

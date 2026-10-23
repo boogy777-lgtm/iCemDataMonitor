@@ -26,29 +26,18 @@ public sealed class EmuEngineHost : IEmuControl
     private readonly EmuSettings _settings;
     private readonly ManualResetEventSlim _quitEvent = new(false);
 
-    // engines / emitters / providers (same wiring as TrayApp)
-    private readonly SimulationEngine _comEngine = new();
+    // Logical state is prepared without transports; this host owns all resources.
+    private readonly EmulatorStep _step;
     private readonly IComEmitter _comEmitter;
-    private readonly AcePayloadProvider _baseProvider = new();
-    private readonly DfbNetwork? _dfbNetwork;
-    private readonly FrozenPayloadProvider _frozenProvider;
-    private readonly ManualOverridePayloadProvider _overrideProvider;
-    private readonly UnitConvertingPayloadProvider _lanUnitProvider;
     private readonly IAceLanEmitter _lanEmitter;
-    // 2026-08-29 (Npcap honesty): adapter listing behind a ctor seam so the
-    // «adapters command, Npcap missing ⇒ empty, no crash» path is provable
-    // in tests; production default = the real SharpPcap probe.
     private readonly Func<IReadOnlyList<string>> _adapterLister;
-
-    // state that used to live in the tabs
     private bool _comEnabled;
     private bool _lanEnabled;
-    private bool _comEmulating;   // W14: OFF = freeze waveform, manual writes only
-    private bool _lanEmulating;
-    private UnitSettings _unitSettings = new();
-    private double _lanElapsed;
-    private bool _wasLanActive;
     private bool _lanSending;
+    private Task? _lanSendTask;
+    private bool _stopping;
+    private int _shutdownOwner;
+    private readonly ManualResetEventSlim _shutdownComplete = new(false);
 
     // control plane
     private readonly ControlPipeServer _ctlServer;
@@ -84,29 +73,11 @@ public sealed class EmuEngineHost : IEmuControl
         _lanEmitter = lanEmitter;
         _adapterLister = adapterLister ?? AceLanEmitter.ListAdapters;
 
-        // LAN provider chain: base → DFB decorate → FREEZE gate → manual overrides → units
-        _dfbNetwork = DfbEngineBridge.TryCreateNetwork();
-        var dfbProvider = _dfbNetwork is not null
-            ? DfbEngineBridge.Decorate(_baseProvider, _dfbNetwork)
-            : _baseProvider;
-        _frozenProvider = new FrozenPayloadProvider(dfbProvider);
-        _overrideProvider = new ManualOverridePayloadProvider(_frozenProvider);
-        _lanUnitProvider = new UnitConvertingPayloadProvider(_overrideProvider, (UnitPreset)_settings.UnitPreset);
-
-        // P2 2026-08-26 (owner decree «дефолт у эмулятора — всё выключено
-        // lan\com»): CONSTRUCTION stays fully passive — both emulation gates
-        // OFF, freeze ON, nothing bound. Explicit emule_config.xml enables
-        // (2026-08-31: renamed/moved from the legacy settings.xml) are
-        // applied at Start() (see ApplySettingsAtStartup) — the transport
-        // live gate patches emule_config.xml pre-launch and relies on it
-        // being honored at startup; unpatched defaults stay all-off.
-        _comEmulating = false;
-        _lanEmulating = false;
-        _frozenProvider.Frozen = true;
+        _step = new EmulatorStep((UnitPreset)_settings.UnitPreset);
 
         ApplyUnitNumber();   // W14: unit number = equipment уже на старте (не только по setequipment)
         ApplyUnitSettings();
-        _baseProvider.IncludeFirmwareTables = _settings.LanFirmwareSvEnabled;
+        _step.BaseProvider.IncludeFirmwareTables = _settings.LanFirmwareSvEnabled;
 
         _ctlServer = new ControlPipeServer(Execute, StatusTickJson,
             controlPipeName ?? ControlPipeServer.DefaultPipeName);
@@ -134,9 +105,13 @@ public sealed class EmuEngineHost : IEmuControl
     /// </summary>
     public void Start()
     {
-        ApplySettingsAtStartup();
-        _ctlServer.Start();
-        _timer = new Timer(_ => Tick(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        lock (_gate)
+        {
+            if (_stopping || _timer is not null) return;
+            ApplySettingsAtStartup();
+            _ctlServer.Start();
+            _timer = new Timer(_ => Tick(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        }
     }
 
     /// <summary>Blocks until the 'quit' pipe command requests shutdown.</summary>
@@ -158,17 +133,16 @@ public sealed class EmuEngineHost : IEmuControl
     /// </summary>
     private void ApplySettingsAtStartup()
     {
-        _comEmulating = _settings.ComEmuleEnabled;
-        _lanEmulating = _settings.LanEmuleEnabled;
-        _frozenProvider.Frozen = !_lanEmulating;
-        _baseProvider.IncludeFirmwareTables = _settings.LanFirmwareSvEnabled;
+        _step.ComEmulating = _settings.ComEmuleEnabled;
+        _step.LanEmulating = _settings.LanEmuleEnabled;
+        _step.BaseProvider.IncludeFirmwareTables = _settings.LanFirmwareSvEnabled;
 
         if (_settings.ComEnabled && !string.IsNullOrEmpty(_settings.ComPort))
         {
             if (string.IsNullOrEmpty(_comEmitter.Open(_settings.ComPort)))
             {
                 _comEnabled = true;
-                _comEngine.ResetClock();
+                _step.ComEngine.ResetClock();
             }
         }
         if (_settings.LanEnabled && !string.IsNullOrEmpty(_settings.LanAdapter))
@@ -202,19 +176,37 @@ public sealed class EmuEngineHost : IEmuControl
 
     private void Shutdown()
     {
-        try { _ctlServer.Dispose(); } catch { }
-        try { _timer?.Dispose(); } catch { }
-        try { _comEmitter.Close(); } catch { }
-        try { _lanEmitter.Close(); } catch { }
-        try { _comEmitter.Dispose(); } catch { }
-        try { _lanEmitter.Dispose(); } catch { }
-        try { _settings.Save(); } catch { }
+        if (Interlocked.CompareExchange(ref _shutdownOwner, 1, 0) != 0)
+        {
+            _shutdownComplete.Wait();
+            return;
+        }
+        try
+        {
+            Timer? timer;
+            lock (_gate) { _stopping = true; timer = _timer; _timer = null; }
+            // Commands/timer/send completion acquire _gate: never join under it.
+            try { _ctlServer.Dispose(); } catch { }
+            if (timer is not null)
+            {
+                try { timer.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
+            }
+            Task? send;
+            lock (_gate) send = _lanSendTask;
+            try { send?.GetAwaiter().GetResult(); } catch { }
+            try { _comEmitter.Close(); } catch { }
+            try { _lanEmitter.Close(); } catch { }
+            try { _comEmitter.Dispose(); } catch { }
+            try { _lanEmitter.Dispose(); } catch { }
+            try { _settings.Save(); } catch { }
+        }
+        finally { _shutdownComplete.Set(); }
     }
 
     // ── settings → runtime state ─────────────────────────────────────────────
     private void ApplyUnitSettings()
     {
-        _unitSettings = new UnitSettings
+        _step.Units = new UnitSettings
         {
             Preset = (UnitPreset)_settings.UnitPreset,
             FlowOverride = StrOverride(_settings.UnitFlowOverride),
@@ -224,96 +216,42 @@ public sealed class EmuEngineHost : IEmuControl
             LevelOverride = StrOverride(_settings.UnitLevelOverride),
             PressureOverride = StrOverride(_settings.UnitPressureOverride),
         };
-        _lanUnitProvider.Settings = _unitSettings;
     }
 
     private static string? StrOverride(string s) => string.IsNullOrEmpty(s) ? null : s;
 
-    // ── 1 Hz tick (port of TrayApp.OnTick) ───────────────────────────────────
+    // ── 1 Hz scheduling / emission; logical preparation is deterministic ──
     private void Tick()
     {
         lock (_gate)
         {
-            _baseProvider.IncludeFirmwareTables = _settings.LanFirmwareSvEnabled;
-
-            // ── COM stream ──
+            if (_stopping) return;
+            _step.BaseProvider.IncludeFirmwareTables = _settings.LanFirmwareSvEnabled;
             if (_comEnabled && _comEmitter.IsOpen)
             {
                 try
                 {
-                    // W14: emulation OFF = freeze — переотправляем последние
-                    // значения + актуальные ручные override'ы (генератор не
-                    // двигает провод; старый баг flecsEmu «эмулированные
-                    // данные текут даже при выключенной эмуляции» закрыт).
-                    var values = _comEmulating ? _comEngine.Tick() : FrozenComValues();
-                    var template = _comEngine.Current;
-                    if (template is not null && values.Length > 0)
-                    {
-                        for (int i = 0; i < values.Length && i < template.Variables.Length; i++)
-                        {
-                            var v = template.Variables[i];
-                            if (UnitConversion.IsConvertible(v.UoM))
-                                values[i] = UnitConversion.ToTarget(values[i], v.UoM, _unitSettings);
-                        }
-                        _comEmitter.SendLine(SignalWireCodec.FormatLine(values, template));
-                    }
+                    var line = _step.PrepareCom();
+                    if (line is not null) _comEmitter.SendLine(line);
                 }
-                catch
-                {
-                    // stream error — next tick retries; status reflects IsOpen
-                }
+                catch { /* stream error: next tick retries */ }
             }
 
-            // ── LAN stream ──
             bool lanActive = _lanEnabled && _lanEmitter.IsOpen;
-            if (lanActive)
+            bool wasSending = _lanSending;
+            if (lanActive && !wasSending) _lanSending = true;
+            // DFB exceptions deliberately remain outside the provider catch.
+            var prepared = _step.PrepareLan(lanActive, wasSending, _settings.LanEquipment);
+            if (lanActive && !wasSending)
             {
-                if (!_wasLanActive)
-                    _lanElapsed = 0.0;
-
-                if (!_lanSending)
+                if (prepared is null) { _lanSending = false; return; }
+                _lanSendTask = Task.Run(() =>
                 {
-                    _lanSending = true;
-                    var equipment = _settings.LanEquipment;
-                    var srcMac = "";
-                    var elapsed = _lanElapsed;
-
-                    if (_dfbNetwork is not null && _lanEmulating)
-                        _dfbNetwork.Execute(DfbContext.Create(elapsed, (long)elapsed, DfbEngineBridge.Seed));
-
-                    IReadOnlyList<AceVectorData> vectors;
-                    try
-                    {
-                        vectors = _lanUnitProvider.GetSuperframe(equipment, elapsed);
-                    }
-                    catch
-                    {
-                        _lanSending = false;
-                        _lanElapsed += 1.0;
-                        _wasLanActive = lanActive;
-                        return;
-                    }
-
-                    Task.Run(() =>
-                    {
-                        try
-                        {
-                            _lanEmitter.SendSuperframe(vectors, equipment, srcMac);
-                        }
-                        catch
-                        {
-                            // send error — frames continue next tick
-                        }
-                        finally
-                        {
-                            _lanSending = false;
-                        }
-                    });
-
-                    _lanElapsed += 1.0;
-                }
+                    try { _lanEmitter.SendSuperframe(prepared.Vectors, prepared.Equipment, ""); }
+                    catch { /* send error: frames continue next tick */ }
+                    finally { lock (_gate) _lanSending = false; }
+                });
             }
-            _wasLanActive = lanActive;
         }
     }
 
@@ -342,9 +280,9 @@ public sealed class EmuEngineHost : IEmuControl
         _prevComLines = comLines;
         _prevLanFrames = lanFrames;
 
-        var template = _comEngine.Current;
-        var comOverrides = _comEngine.SnapshotOverrides();
-        var lanOverrides = _overrideProvider.SnapshotOverrides();
+        var template = _step.ComEngine.Current;
+        var comOverrides = _step.ComEngine.SnapshotOverrides();
+        var lanOverrides = _step.OverrideProvider.SnapshotOverrides();
 
         var overrides = new List<object?>();
         foreach (var kv in comOverrides)
@@ -358,7 +296,7 @@ public sealed class EmuEngineHost : IEmuControl
         var comValues = new Dictionary<string, object?>();
         if (template is not null)
         {
-            var last = _comEngine.LastValues;
+            var last = _step.ComEngine.LastValues;
             for (int i = 0; i < template.Variables.Length && i < last.Length; i++)
                 if (!template.Variables[i].ExcludeFromTelemetry)
                     comValues[template.Variables[i].Name] = last[i];
@@ -373,7 +311,7 @@ public sealed class EmuEngineHost : IEmuControl
             ["com"] = new Dictionary<string, object?>
             {
                 ["streaming"] = _comEnabled && _comEmitter.IsOpen,
-                ["emulating"] = _comEmulating,
+                ["emulating"] = _step.ComEmulating,
                 ["portOpen"] = _comEmitter.IsOpen,
                 ["port"] = _comEmitter.PortName ?? (string.IsNullOrEmpty(_settings.ComPort) ? null : _settings.ComPort),
                 ["baud"] = 9600,
@@ -387,7 +325,7 @@ public sealed class EmuEngineHost : IEmuControl
             ["lan"] = new Dictionary<string, object?>
             {
                 ["streaming"] = _lanEnabled && _lanEmitter.IsOpen,
-                ["emulating"] = _lanEmulating,
+                ["emulating"] = _step.LanEmulating,
                 ["adapterOpen"] = _lanEmitter.IsOpen,
                 ["adapter"] = _lanEmitter.AdapterName ?? (string.IsNullOrEmpty(_settings.LanAdapter) ? null : _settings.LanAdapter),
                 ["framesSent"] = lanFrames,
@@ -396,20 +334,20 @@ public sealed class EmuEngineHost : IEmuControl
                 // truth from the 1 Hz status poll (no second probe loop).
                 ["npcapAvailable"] = _lanEmitter.IsOpen || AceLanEmitter.IsNpcapAvailable(),
                 ["equipment"] = $"0x{_settings.LanEquipment:X8}",
-                ["svCount"] = _overrideProvider.ActiveSvNumbers.Count,
-                ["firmwareSv"] = _baseProvider.IncludeFirmwareTables,
-                ["svs"] = _overrideProvider.ActiveSvNumbers.Select(sv => $"0x{sv:X8}").ToList(),
+                ["svCount"] = _step.OverrideProvider.ActiveSvNumbers.Count,
+                ["firmwareSv"] = _step.BaseProvider.IncludeFirmwareTables,
+                ["svs"] = _step.OverrideProvider.ActiveSvNumbers.Select(sv => $"0x{sv:X8}").ToList(),
                 ["targets"] = new List<object?> { "03:00:01:00:00:20" }
             },
             ["units"] = new Dictionary<string, object?>
             {
-                ["preset"] = _unitSettings.Preset.ToString(),
-                ["flowOverride"] = _unitSettings.FlowOverride,
-                ["temperatureOverride"] = _unitSettings.TemperatureOverride,
-                ["densityOverride"] = _unitSettings.DensityOverride,
-                ["volumeOverride"] = _unitSettings.VolumeOverride,
-                ["levelOverride"] = _unitSettings.LevelOverride,
-                ["pressureOverride"] = _unitSettings.PressureOverride
+                ["preset"] = _step.Units.Preset.ToString(),
+                ["flowOverride"] = _step.Units.FlowOverride,
+                ["temperatureOverride"] = _step.Units.TemperatureOverride,
+                ["densityOverride"] = _step.Units.DensityOverride,
+                ["volumeOverride"] = _step.Units.VolumeOverride,
+                ["levelOverride"] = _step.Units.LevelOverride,
+                ["pressureOverride"] = _step.Units.PressureOverride
             },
             ["overrides"] = overrides
         };
@@ -442,6 +380,7 @@ public sealed class EmuEngineHost : IEmuControl
     /// </summary>
     public ControlResult StartChannel(string channel)
     {
+        if (_stopping) return ControlResult.Fail("engine is stopping");
         if (channel.Equals("com", StringComparison.OrdinalIgnoreCase))
         {
             if (_comEnabled && _comEmitter.IsOpen)
@@ -460,7 +399,7 @@ public sealed class EmuEngineHost : IEmuControl
             var err = _comEmitter.Open(port);
             if (!string.IsNullOrEmpty(err))
                 return ControlResult.Fail(err);
-            _comEngine.ResetClock();
+            _step.ComEngine.ResetClock();
             _comEnabled = true;
             _settings.ComEnabled = true;
             _settings.ComPort = port;
@@ -527,13 +466,13 @@ public sealed class EmuEngineHost : IEmuControl
 
         if (wantCom)
         {
-            if (_comEngine.TryFindVariable(name, out var v, out _))
+            if (_step.ComEngine.TryFindVariable(name, out var v, out _))
             {
-                _comEngine.SetOverride(v!.Name, value);
+                _step.ComEngine.SetOverride(v!.Name, value);
                 applied.Add(new Dictionary<string, object?> { ["channel"] = "com", ["name"] = v.Name, ["uom"] = v.UoM });
             }
             else if (channel is not null)
-                return ControlResult.Fail($"COM variable '{name}' not in template '{_comEngine.Current?.Name}' (see 'vars com')");
+                return ControlResult.Fail($"COM variable '{name}' not in template '{_step.ComEngine.Current?.Name}' (see 'vars com')");
         }
 
         if (wantLan)
@@ -542,9 +481,9 @@ public sealed class EmuEngineHost : IEmuControl
             if (cands.Count == 1)
             {
                 var (s, sig) = cands[0];
-                if (!_overrideProvider.CanTransmit(s, sig.Name, out string reason))
+                if (!_step.OverrideProvider.CanTransmit(s, sig.Name, out string reason))
                     return ControlResult.Fail($"lan signal '{sig.Name}': {reason}");
-                _overrideProvider.SetOverride(s, sig.Name, value);
+                _step.OverrideProvider.SetOverride(s, sig.Name, value);
                 applied.Add(new Dictionary<string, object?> { ["channel"] = "lan", ["sv"] = $"0x{s:X8}", ["name"] = sig.Name, ["uom"] = sig.UoM });
             }
             else if (cands.Count > 1)
@@ -573,10 +512,10 @@ public sealed class EmuEngineHost : IEmuControl
         bool wantLan = channel is null || channel.Equals("lan", StringComparison.OrdinalIgnoreCase);
         bool known = false;
 
-        if (wantCom && _comEngine.TryFindVariable(name, out var v, out _))
+        if (wantCom && _step.ComEngine.TryFindVariable(name, out var v, out _))
         {
             known = true;
-            if (_comEngine.ClearOverride(v!.Name))
+            if (_step.ComEngine.ClearOverride(v!.Name))
                 cleared.Add("com");
         }
         if (wantLan)
@@ -588,7 +527,7 @@ public sealed class EmuEngineHost : IEmuControl
             if (cands.Count == 1)
             {
                 known = true;
-                _overrideProvider.ClearOverride(cands[0].Sv, cands[0].Sig.Name);
+                _step.OverrideProvider.ClearOverride(cands[0].Sv, cands[0].Sig.Name);
                 cleared.Add("lan");
             }
         }
@@ -604,7 +543,7 @@ public sealed class EmuEngineHost : IEmuControl
         bool wantLan = channel is null || channel.Equals("lan", StringComparison.OrdinalIgnoreCase);
         TemplateVariable? cv = null;
         int cidx = -1;
-        bool comFound = wantCom && _comEngine.TryFindVariable(name, out cv, out cidx);
+        bool comFound = wantCom && _step.ComEngine.TryFindVariable(name, out cv, out cidx);
         var lanCands = wantLan ? FindLanSignals(name, sv) : new List<(uint Sv, LantableRegistry.SignalDef Sig)>();
 
         if (channel is null && comFound && lanCands.Count > 0)
@@ -612,8 +551,8 @@ public sealed class EmuEngineHost : IEmuControl
 
         if (comFound)
         {
-            var last = _comEngine.LastValues;
-            var ov = _comEngine.SnapshotOverrides();
+            var last = _step.ComEngine.LastValues;
+            var ov = _step.ComEngine.SnapshotOverrides();
             double value = ov.TryGetValue(cv!.Name, out double o)
                 ? o
                 : (cidx >= 0 && cidx < last.Length ? last[cidx] : cv.BaseValue);
@@ -628,13 +567,13 @@ public sealed class EmuEngineHost : IEmuControl
         if (lanCands.Count == 1)
         {
             var (s, sig) = lanCands[0];
-            var vectors = _overrideProvider.GetSuperframe(_settings.LanEquipment, _lanElapsed);
+            var vectors = _step.OverrideProvider.GetSuperframe(_settings.LanEquipment, _step.LanElapsed);
             var vec = vectors.FirstOrDefault(x => x.SvNumber == s);
             if (vec is null)
                 return ControlResult.Fail($"SV 0x{s:X8} not in the current superframe (firmware SVs off?)");
             if (!SignalWireCodec.TryDecodeNative(vec.Payload, sig, out double value))
                 return ControlResult.Fail($"signal '{sig.Name}' is not numeric-decodable (type {sig.ValueType})");
-            bool overridden = _overrideProvider.SnapshotOverrides().ContainsKey((s, sig.Name));
+            bool overridden = _step.OverrideProvider.SnapshotOverrides().ContainsKey((s, sig.Name));
             return ControlResult.Success(new Dictionary<string, object?>
             {
                 ["channel"] = "lan", ["sv"] = $"0x{s:X8}", ["name"] = sig.Name,
@@ -652,14 +591,14 @@ public sealed class EmuEngineHost : IEmuControl
     public ControlResult GetProfiles()
     {
         var list = new List<object?>();
-        foreach (var t in _comEngine.Templates)
+        foreach (var t in _step.ComEngine.Templates)
         {
             list.Add(new Dictionary<string, object?>
             {
                 ["deviceType"] = t.DeviceType,
                 ["name"] = t.Name,
                 ["variableCount"] = t.Variables.Length,
-                ["active"] = ReferenceEquals(t, _comEngine.Current)
+                ["active"] = ReferenceEquals(t, _step.ComEngine.Current)
             });
         }
         return ControlResult.Success(new Dictionary<string, object?> { ["profiles"] = list });
@@ -667,7 +606,7 @@ public sealed class EmuEngineHost : IEmuControl
 
     public ControlResult SetProfile(string? deviceType, string name)
     {
-        var matches = _comEngine.Templates.Where(t =>
+        var matches = _step.ComEngine.Templates.Where(t =>
             string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase) &&
             (deviceType is null || string.Equals(t.DeviceType, deviceType, StringComparison.OrdinalIgnoreCase))).ToList();
         if (matches.Count == 0)
@@ -675,7 +614,7 @@ public sealed class EmuEngineHost : IEmuControl
         if (matches.Count > 1)
             return ControlResult.Fail($"ambiguous profile '{name}'; pass \"deviceType\" in JSON form");
         var t = matches[0];
-        _comEngine.SetTemplate(t.DeviceType, t.Name);
+        _step.ComEngine.SetTemplate(t.DeviceType, t.Name);
         return ControlResult.Success(new Dictionary<string, object?>
         {
             ["deviceType"] = t.DeviceType, ["name"] = t.Name,
@@ -686,14 +625,14 @@ public sealed class EmuEngineHost : IEmuControl
     public ControlResult GetVariables(string? channel)
     {
         var data = new Dictionary<string, object?>();
-        var comOv = _comEngine.SnapshotOverrides();
-        var lanOv = _overrideProvider.SnapshotOverrides();
+        var comOv = _step.ComEngine.SnapshotOverrides();
+        var lanOv = _step.OverrideProvider.SnapshotOverrides();
 
         if (channel is null || channel.Equals("com", StringComparison.OrdinalIgnoreCase))
         {
-            var last = _comEngine.LastValues;
+            var last = _step.ComEngine.LastValues;
             var list = new List<object?>();
-            var t = _comEngine.Current;
+            var t = _step.ComEngine.Current;
             if (t is not null)
             {
                 for (int i = 0; i < t.Variables.Length; i++)
@@ -716,8 +655,8 @@ public sealed class EmuEngineHost : IEmuControl
             var list = new List<object?>();
             // W14: live Value per signal (таблица LAN-вкладки) — один superframe,
             // декод каждого сигнала по offset-закону (как GetVariable)
-            var vectors = _overrideProvider.GetSuperframe(_settings.LanEquipment, _lanElapsed);
-            foreach (uint sv in _overrideProvider.ActiveSvNumbers)
+            var vectors = _step.OverrideProvider.GetSuperframe(_settings.LanEquipment, _step.LanElapsed);
+            foreach (uint sv in _step.OverrideProvider.ActiveSvNumbers)
             {
                 var svDef = _lantable.GetBySvNumber(sv);
                 if (svDef is null) continue;
@@ -732,7 +671,7 @@ public sealed class EmuEngineHost : IEmuControl
                         ["sv"] = $"0x{sv:X8}", ["name"] = sig.Name, ["uom"] = sig.UoM,
                         ["value"] = liveValue,
                         ["valueType"] = sig.ValueType, ["byteOffset"] = sig.ByteOffset, ["size"] = sig.Size,
-                        ["transmittable"] = _overrideProvider.CanTransmit(sv, sig.Name, out _),
+                        ["transmittable"] = _step.OverrideProvider.CanTransmit(sv, sig.Name, out _),
                         ["overridden"] = lanOv.ContainsKey((sv, sig.Name))
                     });
                 }
@@ -789,7 +728,7 @@ public sealed class EmuEngineHost : IEmuControl
                 _settings.ComPort = old ?? "";
                 return ControlResult.Fail(err);
             }
-            _comEngine.ResetClock();
+            _step.ComEngine.ResetClock();
             _comEnabled = true;
         }
         _settings.Save();
@@ -832,7 +771,7 @@ public sealed class EmuEngineHost : IEmuControl
     /// <summary>W14 (owner law): iCem ACE — unit number на проводе = equipment number.</summary>
     private void ApplyUnitNumber()
     {
-        var seq = _dfbNetwork?.Blocks.OfType<JobSequencerBlock>().FirstOrDefault();
+        var seq = _step.DfbNetwork?.Blocks.OfType<JobSequencerBlock>().FirstOrDefault();
         if (seq is not null)
             seq.UnitNumberValue = new DfbParameter<uint>(_settings.LanEquipment);
     }
@@ -845,34 +784,19 @@ public sealed class EmuEngineHost : IEmuControl
     {
         if (channel.Equals("com", StringComparison.OrdinalIgnoreCase))
         {
-            _comEmulating = on;
+            _step.ComEmulating = on;
             _settings.ComEmuleEnabled = on;
             _settings.Save();
             return ControlResult.Success(new Dictionary<string, object?> { ["channel"] = "com", ["emulating"] = on });
         }
         if (channel.Equals("lan", StringComparison.OrdinalIgnoreCase))
         {
-            _lanEmulating = on;
-            _frozenProvider.Frozen = !on;
+            _step.LanEmulating = on;
             _settings.LanEmuleEnabled = on;
             _settings.Save();
             return ControlResult.Success(new Dictionary<string, object?> { ["channel"] = "lan", ["emulating"] = on });
         }
         return ControlResult.Fail($"unknown channel '{channel}' (com|lan)");
-    }
-
-    /// <summary>Frozen COM values: last tick snapshot + current manual overrides.</summary>
-    private double[] FrozenComValues()
-    {
-        var template = _comEngine.Current;
-        var last = _comEngine.LastValues;
-        if (template is null || last.Length == 0)
-            return _comEngine.Tick();   // seed once, then freeze
-        var ov = _comEngine.SnapshotOverrides();
-        for (int i = 0; i < last.Length && i < template.Variables.Length; i++)
-            if (ov.TryGetValue(template.Variables[i].Name, out double o))
-                last[i] = o;
-        return last;
     }
 
     public ControlResult SetFirmware(bool on)
