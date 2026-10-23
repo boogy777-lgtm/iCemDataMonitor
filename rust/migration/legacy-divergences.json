@@ -45,21 +45,21 @@
     {
       "path": "iCemDataMonitor.Data/Bus/BusReader.cs",
       "baseline_blob_sha1": "0de6a74f8f2517e1e946525e958f37b61b156822",
-      "approved_blob_sha1": "b0241d631e7d2ca061f996d29d18305459c1ca28",
+      "approved_blob_sha1": "183321f9afd0c4b43c8f917a6f9cfb04478a3086",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Calculate zone activity and age at the same captured UTC instant."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "4fe2f7ebfb6535c19dbfc27a8b777427eae4d723",
+        "reason": "Calculate zone activity and age at the same captured UTC instant. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Data/Telemetry/MetricsSampler.cs",
       "baseline_blob_sha1": "2cd119edb2fb2ba2c7ee590713c0a5a78fc9885c",
-      "approved_blob_sha1": "32afab2c6225784dbce8fdb7935f4c734c3a7e35",
+      "approved_blob_sha1": "65301b6276972ead97e547a9bc8d917c070584c1",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Use one captured UTC instant for sample zone liveness."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Use one captured UTC instant for sample zone liveness. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
       }
     },
     {
@@ -85,11 +85,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/ModbusContractTests.cs",
       "baseline_blob_sha1": "e01e35d5563db01ed786cff91c151adcd2a6ceda",
-      "approved_blob_sha1": "5977f4221625a544a86c57fbd3ae9e2a91d80301",
+      "approved_blob_sha1": "cfdef2f99f8aa3a5e72d69dfd25387a52ed95394",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Wait for actual tick/recovery results through TCP."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Wait for actual tick/recovery results through TCP. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
       }
     },
     {
@@ -215,11 +215,11 @@
     {
       "path": "iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs",
       "baseline_blob_sha1": "10202f0b8fb32bed197ca0872047d6cb1b87af6f",
-      "approved_blob_sha1": "fe12760481041a4e3c0c48f1d9f15af63fe89b63",
+      "approved_blob_sha1": "af2b0d34e76dbac31d8a929f57b53996a3b1ca0d",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
-        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
-        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
       }
     },
     {
@@ -275,11 +275,11 @@
     {
       "path": "iCemDataMonitor.Plugins.Icem/DeviceCatalogRegistry.cs",
       "baseline_blob_sha1": "b192b5dd6b7996de2efd9dcf7a61ad9f77fec726",
-      "approved_blob_sha1": "69b2d58ea1be7c4fd249e9b75a14e04138338879",
+      "approved_blob_sha1": "91513f2cbd202dcf18c14d879e12313335c5c107",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
-        "commit": "71caa5d1ec0cfb77011890cfa406ccdc9bcb03a0",
-        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "4fe2f7ebfb6535c19dbfc27a8b777427eae4d723",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
       }
     },
     {
@@ -310,6 +310,76 @@
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
         "commit": "15b5a33860e01f2b6ae497492c2f279516256d25",
         "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusReaderReadOnlyTests.cs",
+      "baseline_blob_sha1": "1694a68773a6c894e4dc5c3384704572dee9a5b8",
+      "approved_blob_sha1": "428545e00de3d87ec6c520374a1c7442faab6aec",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusReaderTests.cs",
+      "baseline_blob_sha1": "4d72e2182707ecfc9bc980542665d581939333d9",
+      "approved_blob_sha1": "7e31361d9e54027298faf9550c6e876c98e66ed5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusAddrRingService.cs",
+      "baseline_blob_sha1": "707a2d3110d2ca9487380b875822c52825b89dba",
+      "approved_blob_sha1": "b4e196fa77d5c6c0c1ddb9ced4394efa15430163",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs",
+      "baseline_blob_sha1": "53a06293e2748d4c66af7ed5632c0112d363ce7c",
+      "approved_blob_sha1": "56124daaaefcffa1c9a78ec5db2c171f318efc6f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/TelemetryServiceImplTests.cs",
+      "baseline_blob_sha1": "17e0892b004f2a1df5049d3c0e597ac86f7a8a7a",
+      "approved_blob_sha1": "0fd16232f0c8f454f5a36c036efd3542b14bdbfb",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/LiveModbusEmulatorTests.cs",
+      "baseline_blob_sha1": "5abc1d22a88b5bcd94d5b806941b806bf8002477",
+      "approved_blob_sha1": "219176df02c85f57cf6ec8639d7c160d0e85adff",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Transport/ModbusTcpPublisher.cs",
+      "baseline_blob_sha1": "2af3376650e74e5e7d8ed49c6bf404cdcd2793eb",
+      "approved_blob_sha1": "2596b9d6fe2b31ab08a81cd133df33a6941d6ad2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
       }
     }
   ]

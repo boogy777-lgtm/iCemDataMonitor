@@ -8,7 +8,7 @@ Inv: snapshot владеет отдельной копией слов; construct
 
 N+1: очередной потребитель использует IReadOnlyList либо CopyWordsTo в собственный buffer; новые ownership-transfer factories, pooling, framework, assemblies и dependencies не нужны. Acquisition/scheduling/timing policy (C6) вне scope.
 
-Baseline: main b9a2cd0699bec2b2c8d83a05f162805b1b3be4a3 после C4; 513/513 baseline, 31 approved divergence (передано владельцем). Исторический source-manifest и ledger не изменяются этим commit.
+Baseline: main b9a2cd0699bec2b2c8d83a05f162805b1b3be4a3 после C4; 513/513 baseline, 31 approved divergence (передано владельцем). Исторический source-manifest сохраняется; exact provenance ledger оформлен отдельным metadata commit после ревью (см. ниже).
 
 ## Совместимость и стоимость
 
@@ -26,7 +26,7 @@ Affected compilation до SDK extraction: `dotnet build` Host.Tests и Transport
 
 ## Подтверждённый same-class follow-up C4 — до изменений
 
-Class: опубликованные catalog/families/register-map collections C4 — тот же boundary immutable sequence, что Words. Array.AsReadOnly защищает IList writes, но ICollection.SyncRoot раскрывает mutable backing; это нарушает согласованность cached list и Lookup. Найдено при C5 review, не изменение исторической C4 приёмки.
+Class: опубликованные catalog/families/register-map collections C4 — тот же boundary immutable sequence, что Words. Array.AsReadOnly защищает IList writes, но ICollection.SyncRoot раскрывает mutable backing; это нарушает согласованность cached list и Lookup. Найдено при проверке C5; исторические результаты C4 остаются описанием прежних проверок.
 
 Inv: catalog, declared families и projected register map сохраняют owned storage, cached identity/order/healthy metadata/lookup и degraded snapshot lifetime. Никакой safe cast не должен позволить менять элементы. Сами элементы — value/immutable entries; требуется shallow storage ownership, не deep cloning arbitrary objects.
 
@@ -39,3 +39,31 @@ N+1: минимальный общий sealed OwnedReadOnlyList<T> в сущес
 - `git diff --check` clean. После extraction повторные Host/UI/Transport builds не требуются для этого private-storage изменения; полный Windows solution/CI и runtime checks остаются отдельной проверкой.
 
 API C4 остаётся IReadOnlyList/IEnumerable; конкретные IList/ICollection casts теперь могут отсутствовать. Дополнительные startup copies catalogs/families/maps приняты. Generic owner гарантирует storage ownership, не глубокую неизменность произвольных mutable T; текущие consumers используют ushort, string и readonly value records.
+
+
+## Независимое ревью и публикация
+
+Три агента GPT-6.1 Sol / medium последовательно выполнили анализ,
+реализацию и независимое ревью. Reviewer не нашёл материальных дефектов
+в итоговых двух code commits. Самостоятельно повторены Data **18/18** и
+Plugin **169/169**, без warnings/errors; worktree и diff-check чистые.
+
+[PR №34](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34) сохраняет
+отдельные commits C5 `e126c5100b459b6e5e38d54a828d92c9a1643b9a`
+и подтверждённого C4 follow-up `4fe2f7ebfb6535c19dbfc27a8b777427eae4d723`.
+Опубликованные деревья совпадают с проверенными локальными деревьями.
+
+Exact-path ledger `rust/migration/legacy-divergences.json` обновляет прежние
+записи BusReader, MetricsSampler, TelemetryServiceImpl, ModbusContractTests
+и DeviceCatalogRegistry без дубликатов и с сохранением описаний прошлых
+изменений; остальные затронутые manifest paths добавлены отдельно. Все
+записи содержат реальные PR/code commit SHAs и точные canonical blob hashes.
+Исторический source-manifest остаётся на
+`96e2206562c9389d1543095232115d81eae4b692`.
+
+`Verify-Baseline.ps1 -RequireComplete`: **513/513**, **38** exact approved
+divergences; frozen proto/assets/SPA и REST inventory сохранены.
+[Windows/Rust/packaging CI](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34/checks)
+проверяет итоговый head. Ручная аппаратная/операторская приёмка здесь не выполнялась.
+Следующий пакет плана — C6: единый acquisition owner, отдельные timing measurements
+и согласованная latest-state семантика.
