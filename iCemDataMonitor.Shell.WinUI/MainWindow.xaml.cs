@@ -691,8 +691,12 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            await control.SetUiThemeAsync(light).ConfigureAwait(true);
-            ShellLog($"[theme] SetUiTheme({(light ? "light" : "dark")}) — host persisted the station bool");
+            var reply = await control.SetUiThemeAsync(light).ConfigureAwait(true);
+            _syncingSwitches = true;
+            ThemeSwitch.IsOn = reply.ThemeLight;
+            _syncingSwitches = false;
+            ApplyTheme(reply.ThemeLight);
+            ShellLog($"[theme] current host theme: {(reply.ThemeLight ? "light" : "dark")}");
         }
         catch (Exception ex)
         {
