@@ -241,7 +241,7 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
 
     // ── SetLayer ────────────────────────────────────────────────────────────
 
-    public override Task<LayerState> SetLayer(LayerControlRequest request, ServerCallContext context)
+    public override async Task<LayerState> SetLayer(LayerControlRequest request, ServerCallContext context)
     {
         // Validate the request FIRST: InvalidArgument outranks availability.
         if (request.Layer == LayerKind.Unspecified)
@@ -251,10 +251,10 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
             ?? throw new RpcException(new Status(StatusCode.Unavailable, "layer controller is not registered"));
 
         var kind = MapLayer(request.Layer); // 1:1 mapping, no semantic drift
-        var result = Task.Run(() => controller.Toggle(kind), context.CancellationToken).GetAwaiter().GetResult();
+        var result = await controller.ToggleAsync(kind, context.CancellationToken).ConfigureAwait(false);
         _logger.LogInformation("[telemetry] SetLayer {Layer} -> {Result}", request.Layer, result);
 
-        return Task.FromResult(BuildLayerState(controller));
+        return BuildLayerState(controller);
     }
 
     public static TrayToggleRules.LayerKind MapLayer(LayerKind layer) => layer switch

@@ -27,25 +27,29 @@ public class LayerRuntimeControllerTests : IDisposable
         // them (CS0649); the fake stays minimal, failure injection covers only
         // the start path the controller actually rolls back.
 
-        public void StartModbus()
+        public Task StartModbusAsync()
         {
             StartModbusCalls++;
             if (ModbusStartThrows is not null) throw ModbusStartThrows;
+            return Task.CompletedTask;
         }
 
-        public void StopModbus()
+        public Task StopModbusAsync()
         {
             StopModbusCalls++;
+            return Task.CompletedTask;
         }
 
-        public void StartSniffer()
+        public Task StartSnifferAsync()
         {
             StartSnifferCalls++;
+            return Task.CompletedTask;
         }
 
-        public void StopSniffer()
+        public Task StopSnifferAsync()
         {
             StopSnifferCalls++;
+            return Task.CompletedTask;
         }
     }
 
@@ -266,14 +270,12 @@ public class LayerRuntimeControllerTests : IDisposable
     }
 
     [Fact]
-    public void ToggleWhileBusy_IsRejected()
+    public void FailedToggle_ReleasesBusy()
     {
         var ini = new IniOptions(ModbusOn: 0);
         var act = new FakeActuator { ModbusStartThrows = new Exception("x") };
         var c = NewController(ini, new TrayToggleRules.Layers(false, false, false, false), act);
-        // Busy flag is set inside Toggle; simulate by direct second-call path:
-        // the controller guards re-entry via _busy — verify via reflection-free
-        // behavior: a failing toggle leaves Busy=false (finally).
+        // Busy is observation only; failure must release the command gate.
         c.Toggle(TrayToggleRules.LayerKind.Modbus);
         Assert.False(c.Busy);
     }
