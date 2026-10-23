@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Threading.Channels;
 using iCemDataMonitor.Contracts;
 using iCemDataMonitor.Data.Bus;
@@ -10,23 +10,22 @@ namespace iCemDataMonitor.Data.Telemetry;
 /// Telemetry streaming sampler (D.4). Each subscription is an independent
 /// <see cref="MetricsSubscription"/> backed by a capacity-1 bounded channel with
 /// <see cref="BoundedChannelFullMode.DropOldest"/>; a slow consumer loses the
-/// oldest sample instead of accumulating backlog. The producer reads the shared
-/// <see cref="BusReader"/> directly in every iteration (sensor-at-send law:
-/// no cache, no pre-filled queue) and emits register deltas relative to the
+/// oldest sample instead of accumulating backlog. The producer reads one shared
+/// <see cref="ILatestBusState"/> publication in every iteration and emits register deltas relative to the
 /// previous sample on the same stream.
 /// </summary>
 public sealed class MetricsSampler
 {
-    private const int MinIntervalMs = 200;
+    public const int MinIntervalMs = 200;
     private const int ChannelCapacity = 1;
 
-    private readonly BusReader _reader;
+    private readonly ILatestBusState _latest;
 
-    /// <summary>Creates a sampler bound to the supplied bus reader.</summary>
-    public MetricsSampler(BusReader reader)
+    /// <summary>Creates a sampler bound to the latest acquisition publication.</summary>
+    public MetricsSampler(ILatestBusState latest)
     {
-        ArgumentNullException.ThrowIfNull(reader);
-        _reader = reader;
+        ArgumentNullException.ThrowIfNull(latest);
+        _latest = latest;
     }
 
     /// <summary>
@@ -115,16 +114,16 @@ public sealed class MetricsSampler
 
     private MetricsSample BuildSample(ref ushort[]? previous, bool intervalClamped)
     {
-        // Sensor-at-send law: read the bus directly in the iteration that emits
-        // the sample. No cache, no pre-filled queue.
-        var snap = _reader.Snapshot();
-        if (snap is null || !_reader.IsOpen)
+        // One coherent acquisition publication per subscriber iteration.
+        var state = _latest.Current;
+        var snap = state.Snapshot;
+        if (snap is null || !state.IsOpen)
         {
             // Fail-fast: a telemetry stream without a live bus is useless. Do not
             // emit silent fake samples (e.g. heartbeat=-1 or empty deltas).
             throw new IOException(
                 "Telemetry stream cannot continue: the bus is not open or no snapshot is available " +
-                $"(reader state: {_reader.LastError ?? "unknown"}). " +
+                $"(reader state: {state.LastError ?? "unknown"}). " +
                 "Ensure the iCem AddIn has created the bus file.");
         }
 

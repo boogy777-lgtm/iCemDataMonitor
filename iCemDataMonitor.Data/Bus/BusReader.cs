@@ -1,4 +1,4 @@
-﻿using System.IO.MemoryMappedFiles;
+using System.IO.MemoryMappedFiles;
 using iCemDataMonitor.Sdk.Bus;
 using iCemDataMonitor.Sdk.Collections;
 
@@ -54,7 +54,7 @@ public readonly record struct BusZoneInfo(ZoneKind Kind, long LastWriteTicks, bo
 /// <summary>
 /// Immutable point-in-time copy of the whole bus (64 B header + body).
 /// Header fields little-endian; Words[] big-endian-decoded u16 registers.
-/// Copy happens UNDER the mutex; decode happens outside (CONTRACT_BusV2 §5).
+/// Copy and decode currently happen UNDER the mutex (unchanged in C6).
 /// </summary>
 /// <param name="Magic">'STNB' as LE u32 (0x424E5453) — 0 when never read.</param>
 /// <param name="Version">Bus protocol version.</param>
@@ -260,13 +260,13 @@ public sealed record BusSnapshot(
 ///     degrade and wait for the NEW file — never read the orphan's dead bytes
 ///     (fresh opens refuse at the File.Exists gate too).
 /// </remarks>
-public sealed class BusReader : IDisposable
+public sealed class BusReader : IDisposable, IBusCaptureSource
 {
     public const string DefaultMmfPath = @"C:\ProgramData\Halliburton\iCem\DataMonitoring\Data.dat";
     public const string DefaultMapName = BusLayout.GlobalBusName;
     public const string DefaultMutexName = @"Global\" + BusLayout.MutexName;
 
-    private const int MutexTimeoutMs = 500;
+    internal const int MutexTimeoutMs = 500;
 
     private readonly string _mmfPath;
     private readonly string _mapName;

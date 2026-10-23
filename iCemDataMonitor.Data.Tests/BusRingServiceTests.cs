@@ -48,7 +48,10 @@ public sealed class BusRingServiceTests : IDisposable
         var history = new RingHistory();
         var mapper = new BusAddrRingService(history);
         var startedAt = DateTimeOffset.UtcNow;
-        using var service = new BusRingService(reader, mapper, TimeSpan.FromMilliseconds(50));
+        using var acquisition = new BusAcquisitionService(reader, TimeSpan.FromMilliseconds(20));
+        acquisition.CaptureOnce();
+        await acquisition.StartAsync(CancellationToken.None);
+        using var service = new BusRingService(acquisition, mapper, TimeSpan.FromMilliseconds(50));
 
         await service.StartAsync(CancellationToken.None);
 
@@ -58,6 +61,7 @@ public sealed class BusRingServiceTests : IDisposable
             await Task.Delay(5);
 
         await service.StopAsync(CancellationToken.None); // awaits the loop exit — ticks really stop
+        await acquisition.StopAsync(CancellationToken.None);
         var stoppedAt = DateTimeOffset.UtcNow;
 
         // ── the loop really rang the bus into the history ──

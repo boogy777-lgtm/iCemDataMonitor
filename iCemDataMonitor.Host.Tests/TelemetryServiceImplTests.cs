@@ -65,6 +65,7 @@ public sealed class TelemetryServiceImplTests : IDisposable
     private readonly string _mapName;
     private readonly string _mutexName;
     private readonly BusReader _reader = null!;
+    private BusAcquisitionService? _acquisition;
     private readonly MemoryMappedFile _section = null!;
 
     public TelemetryServiceImplTests()
@@ -92,6 +93,7 @@ public sealed class TelemetryServiceImplTests : IDisposable
 
     public void Dispose()
     {
+        _acquisition?.Dispose();
         _reader.Dispose();
         _section.Dispose();
         try { Directory.Delete(_dir, recursive: true); } catch { /* best effort */ }
@@ -141,6 +143,7 @@ public sealed class TelemetryServiceImplTests : IDisposable
         {
             if (acquired) mutex.ReleaseMutex();
         }
+        _acquisition?.CaptureOnce();
     }
 
     /// <summary>Test-side replacement for the DELETED BusZoneWriter.WriteFloat
@@ -165,12 +168,14 @@ public sealed class TelemetryServiceImplTests : IDisposable
     /// (the owner's live shell listens on the real poke event there); the
     /// theme-specific tests below build their own store through the same
     /// ctor seam with an explicit path + recorded poke.</summary>
-    private static (TelemetryServiceImpl Svc, StationHealthState Health, AutostartManager Autostart, ServiceProvider Provider, ConsoleVisibilityService Console, UiPrefsStore Prefs) Build(
+    private (TelemetryServiceImpl Svc, StationHealthState Health, AutostartManager Autostart, ServiceProvider Provider, ConsoleVisibilityService Console, UiPrefsStore Prefs) Build(
         BusReader reader,
         List<ConsoleWindowAction>? executedActions = null)
     {
         var health = new StationHealthState();
-        var sampler = new MetricsSampler(reader);
+        _acquisition = new BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
+        _acquisition.CaptureOnce();
+        var sampler = new MetricsSampler(_acquisition);
         var autostart = new AutostartManager(
             runKeyPath: $@"Software\iCemDataMonitor.Host.Tests\run_{Guid.NewGuid():N}",
             valueName: $"autostart_{Guid.NewGuid():N}",
@@ -187,7 +192,7 @@ public sealed class TelemetryServiceImplTests : IDisposable
         // E.2.7: the service no longer takes IHostApplicationLifetime � it has
         // NO way to stop the host process (shutdown = host tray only).
         var svc = new TelemetryServiceImpl(
-            health, reader, sampler, autostart, console, uiPrefs,
+            health, _acquisition, sampler, autostart, console, uiPrefs,
             services,
             NullLogger<TelemetryServiceImpl>.Instance);
         return (svc, health, autostart, services, console, uiPrefs);
@@ -200,7 +205,7 @@ public sealed class TelemetryServiceImplTests : IDisposable
         try
         {
             health.Update(new StationHealth(
-                BusOpen: true, AddInAlive: true, Heartbeat: 42, ComPort: 3, CaseLanState: 7,
+                BusOpen: true, AddInAlive: true, Heartbeat: 42, ComPort: 3, CaseLanState: 7, CaseState: 0,
                 Com: new HZone(Active: true, AgeMs: 100),
                 Lan: new HZone(Active: false, AgeMs: 99_999),
                 Raw: new HZone(Active: true, AgeMs: 5),
@@ -535,14 +540,16 @@ public sealed class TelemetryServiceImplTests : IDisposable
             // Snapshot() ? null ? honest UNAVAILABLE (����������� ������ �����).
             var closedPath = Path.Combine(_dir, "no_such_bus.dat");
             using var closedReader = new BusReader(closedPath, $"TsvcClosedMap_{Guid.NewGuid():N}", $"TsvcClosedMutex_{Guid.NewGuid():N}");
-            var sampler = new MetricsSampler(closedReader);
+            using var closedAcquisition = new BusAcquisitionService(closedReader, TimeSpan.FromMilliseconds(200));
+            closedAcquisition.CaptureOnce();
+            var sampler = new MetricsSampler(closedAcquisition);
             var autostart = new AutostartManager(
                 runKeyPath: $@"Software\iCemDataMonitor.Host.Tests\run_{Guid.NewGuid():N}",
                 valueName: $"autostart_{Guid.NewGuid():N}",
                 exePath: @"C:\deploy\iCemDataMonitor.Host.exe");
             var services = new ServiceCollection().BuildServiceProvider();
             var closedSvc = new TelemetryServiceImpl(
-                new StationHealthState(), closedReader, sampler, autostart,
+                new StationHealthState(), closedAcquisition, sampler, autostart,
                 new ConsoleVisibilityService(null, () => ConsolePresence.None, (_, _) => { }),
                 // 2026-08-31: the ctor gained the UiPrefsStore — a throwaway
                 // temp path here (this test never exercises the theme RPCs).
@@ -574,8 +581,9 @@ public sealed class TelemetryServiceImplTests : IDisposable
     {
         var services = new ServiceCollection().BuildServiceProvider();
         var prefs = new UiPrefsStore(uiThemePath, poke, null);
+        var latest = _acquisition ??= new BusAcquisitionService(_reader, TimeSpan.FromMilliseconds(200));
         var svc = new TelemetryServiceImpl(
-            new StationHealthState(), _reader, new MetricsSampler(_reader),
+            new StationHealthState(), latest, new MetricsSampler(latest),
             new AutostartManager(
                 runKeyPath: $@"Software\iCemDataMonitor.Host.Tests\run_{Guid.NewGuid():N}",
                 valueName: $"autostart_{Guid.NewGuid():N}",

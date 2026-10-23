@@ -930,8 +930,9 @@ public class ModbusContractTests
                 Path.Combine(dir, "test_bus.dat"),
                 $"iCemDataMonitorBusTestMap_{Guid.NewGuid():N}",
                 $"iCemDataMonitorBusTestMutex_{Guid.NewGuid():N}");
+            using var latest = new BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                new ModbusTcpPublisher(reader, new ModbusOptions { TickMs = tickMs }));
+                new ModbusTcpPublisher(latest, new ModbusOptions { TickMs = tickMs }));
             Assert.Contains("TickMs", ex.Message);
         }
         finally
@@ -1083,6 +1084,7 @@ public class ModbusContractTests
     {
         private readonly string _dir;
         private readonly BusReader _reader;
+        private readonly BusAcquisitionService _acquisition;
         private readonly CancellationTokenSource _cts = new();
 
         public ModbusTcpPublisher Publisher { get; }
@@ -1091,7 +1093,7 @@ public class ModbusContractTests
         public string MutexName { get; }
 
         private TestServer(string dir, string mmfPath, string mapName, string mutexName,
-            ModbusTcpPublisher publisher, BusReader reader)
+            ModbusTcpPublisher publisher, BusReader reader, BusAcquisitionService acquisition)
         {
             _dir = dir;
             MmfPath = mmfPath;
@@ -1099,6 +1101,7 @@ public class ModbusContractTests
             MutexName = mutexName;
             Publisher = publisher;
             _reader = reader;
+            _acquisition = acquisition;
         }
 
         /// <summary>
@@ -1140,16 +1143,23 @@ public class ModbusContractTests
             var options = new ModbusOptions { Port = TestPort, Total = total ?? BusLayout.RegCount };
             if (tickMs is { } t)
                 options.TickMs = t;
-            var publisher = new ModbusTcpPublisher(reader, options,
+            var acquisition = new BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
+            acquisition.CaptureOnce();
+            if (tickMs is not null) await acquisition.StartAsync(CancellationToken.None);
+            var publisher = new ModbusTcpPublisher(acquisition, options,
                 tickMs is { } ? null : tickInterval ?? TimeSpan.FromHours(1));
 
             await publisher.StartAsync();
             await Task.Delay(150); // listener bind settle
 
-            return new TestServer(dir, mmfPath, mapName, mutexName, publisher, reader);
+            return new TestServer(dir, mmfPath, mapName, mutexName, publisher, reader, acquisition);
         }
 
-        public void Tick() => Publisher.TickOnce();
+        public void Tick()
+        {
+            _acquisition.CaptureOnce();
+            Publisher.TickOnce();
+        }
 
         /// <summary>
         /// Rewrite the bus file mid-test (AddIn update simulation). In-place
@@ -1183,6 +1193,8 @@ public class ModbusContractTests
             _cts.Cancel();
             await Publisher.StopAsync();
             Publisher.Dispose();
+            await _acquisition.StopAsync(CancellationToken.None);
+            _acquisition.Dispose();
             _reader.Dispose();
             _cts.Dispose();
             try { Directory.Delete(_dir, recursive: true); } catch { /* best-effort */ }

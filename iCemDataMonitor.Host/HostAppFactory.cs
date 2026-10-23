@@ -141,7 +141,7 @@ public static class HostAppFactory
             iniPath: context.IniPath);
 
         // === D.2 gRPC endpoint region (transport zone) ===
-        // Telemetry sampler (D.4) over the shared BusReader — sensor-at-send.
+        // Telemetry sampler over the shared latest acquisition publication.
         // E.1 (owner decree 2026-08-24, W19): ALL calls are ANONYMOUS —
         // authorization = closed-contour isolation. No interceptors, no
         // host.token (file neither minted nor read anymore; legacy file on a

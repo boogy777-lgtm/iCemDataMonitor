@@ -164,12 +164,12 @@ static async Task<int> ProgramMain(string[] args)
         boot.Complete("layers", $"modbus={layers.Modbus} sniffer={layers.LanSniffer} opcda={layers.OpcDa}");
 
         var publisher = app.Services.GetService<iCemDataMonitor.Sdk.IModbusPublisher>();
-        var reader = app.Services.GetRequiredService<iCemDataMonitor.Data.Bus.BusReader>();
+        var busState = app.Services.GetRequiredService<iCemDataMonitor.Data.Bus.ILatestBusState>().Current;
         var marker = StartupLog.ReadyMarker(
             modbusConfigured: layers.Modbus,
             modbusBound: publisher?.IsBound ?? false,
             webPort: boundPort,
-            busOpen: reader.IsOpen);
+            busOpen: busState.IsOpen);
         log(marker);
         boot.Begin("ready", "готовность");
         boot.Complete("ready", marker);
