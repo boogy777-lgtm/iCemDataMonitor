@@ -82,5 +82,15 @@ public sealed class EmulatorStepTests
         Assert.Equal(10, Read(step.PrepareLan(true, false, 0x00A86F46)!));
         step.OverrideProvider.SetOverride(sv, sig.Name, 12345);
         Assert.Equal(12345, Read(step.PrepareLan(true, false, 0x00A86F46)!));
+        var temperature = registry.GetBySvNumber(sv)!.Signals.First(s => s.Name == "Display Temperature");
+        step.OverrideProvider.SetOverride(sv, temperature.Name, 212);
+        step.Units = new UnitSettings { Preset = UnitPreset.Metric };
+        step.LanUnitProvider.Settings = step.Units;
+        var metric = step.PrepareLan(true, false, 0x00A86F46)!;
+        Assert.True(SignalWireCodec.TryDecodeNative(metric.Vectors.First(v => v.SvNumber == sv).Payload, temperature, out var converted));
+        Assert.Equal(100, converted, 4);
+        var native = step.OverrideProvider.GetSuperframe(0x00A86F46, step.LanElapsed);
+        Assert.True(SignalWireCodec.TryDecodeNative(native.First(v => v.SvNumber == sv).Payload, temperature, out var raw));
+        Assert.Equal(212, raw); // control get/vars remain before units
     }
 }

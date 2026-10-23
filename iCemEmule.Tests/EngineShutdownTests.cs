@@ -29,6 +29,7 @@ public sealed class EngineShutdownTests
 
     private sealed class Lan : IAceLanEmitter
     {
+        public static IReadOnlyList<string> ListAdapters() => Array.Empty<string>();
         public bool IsOpen { get; private set; }
         public string? AdapterName => "fake";
         public long FramesSent { get; private set; }
