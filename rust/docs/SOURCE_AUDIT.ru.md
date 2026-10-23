@@ -86,7 +86,10 @@ COM all-or-empty registry recovery и template isolation. Null registry records
 decoder для emulator и Host; emulator service-vector registry сохраняет UTF-8 stream boundary.
 [D22d](CATALOG_D22D.ru.md) переносит emulator named identities через общий checked
 Unicode mechanism; provider snapshot и Windows exhaustive comparison описаны отдельно.
-DOM case-colliding key order остаётся кодовым backlog.
+[D22e](CATALOG_D22E.ru.md) переносит COM DTO source-order assignment через typed
+schemas; exact registry/index references имеют отдельную raw JSON grammar.
+Прямой Value adapter отклоняет неоднозначные recognized DTO keys, поскольку
+порядок исходного JSON уже утрачен. Malformed/numeric policy описана отдельно.
 Valid pinned ASCII catalogs проверяются отдельно; Windows original-
 method oracle и acceptance фиксируются по exact head.
 

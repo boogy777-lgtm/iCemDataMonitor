@@ -222,3 +222,9 @@ Unicode identity matching и порядок colliding DTO properties остаю�
 LAN signal resolution общий для validation и preview. Таблица исчерпывающе сверяется
 с BCL provider; actual Windows mapping/runtime и JSON property collisions остаются
 отдельными открытыми границами.
+
+[D22e](docs/CATALOG_D22E.ru.md): COM file/string loaders используют typed DTO
+schemas и сохраняют последний assignment в порядке JSON. Exact registry/index
+references отделены от DTO grammar; один parser обслуживает strict и catalog paths.
+Legacy structure и случайные ошибки не переносятся; malformed file isolation
+проверяется отдельно от сравнения корректных входов с .NET. Windows acceptance открыт.

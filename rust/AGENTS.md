@@ -29,6 +29,8 @@ User clarification (2026-10-22): compatibility is the external facade for valid 
 formats, traffic and results; Rust implementation and control flow are independent.
 Legacy code is evidence, not trusted design. Do not reproduce incidental exceptions,
 null dereferences or traversal-dependent bugs merely to make a differential test pass.
+Do not translate legacy class hierarchies, data structures or control flow unless
+a checked external contract requires them; prefer idiomatic typed Rust boundaries.
 Use explicit validated snapshots and documented file/template isolation for malformed
 input; compare original methods on healthy inputs, and test intentional Rust error
 policy separately. Existing accepted external command semantics still require parity.

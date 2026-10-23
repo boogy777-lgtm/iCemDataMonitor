@@ -11,4 +11,5 @@ workspace = true
 [dependencies]
 icem-config = { path = "../icem-config" }
 icem-protocols = { path = "../icem-protocols" }
-serde_json = { version = "1", features = ["float_roundtrip"] }
+serde = "1"
+serde_json = { version = "1", features = ["float_roundtrip", "raw_value"] }

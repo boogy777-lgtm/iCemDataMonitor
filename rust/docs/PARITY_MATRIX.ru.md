@@ -161,3 +161,9 @@ registry/profile/variable lookup, COM overrides и LAN simulation keys испо�
 один checked mechanism. Exact LAN manual override semantics сохраняются.
 Исчерпывающий actual Windows provider test и operator/hardware acceptance остаются
 открытыми; source-order COM DTO collisions пока не перенесены.
+
+D22e: P19 дополнен [typed COM DTO decoding](CATALOG_D22E.ru.md): file/string
+boundaries сохраняют source-order assignment, nested object replacement и exact
+reference grammar. 159 raw JSON cases сравнивают полные templates и COM lines
+с исходным .NET; malformed policy проверяется отдельно. Windows runtime/provider,
+operator/UI и SDK/hardware acceptance остаются открытыми.

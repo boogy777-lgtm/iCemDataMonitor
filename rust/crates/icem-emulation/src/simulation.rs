@@ -1,5 +1,8 @@
 //! Original template-driven COM waveform model; no serial I/O or ambient clock.
-use crate::identity::eq_ignore_case;
+use crate::{
+    com_config::{CheckedRegistry, ProfileDocument},
+    identity::eq_ignore_case,
+};
 use serde_json::Value;
 use std::{collections::BTreeMap, path::Path};
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -22,41 +25,13 @@ pub struct Template {
     pub auto_select: Vec<i32>,
     pub variables: Vec<Variable>,
 }
-fn property<'a>(value: &'a Value, name: &str) -> Option<&'a Value> {
-    value
-        .as_object()?
-        .iter()
-        .find(|(key, _)| key.eq_ignore_ascii_case(name))
-        .map(|(_, value)| value)
-}
-fn text(value: &Value, name: &str) -> String {
-    property(value, name)
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .into()
-}
-fn number(value: &Value, name: &str) -> f64 {
-    property(value, name).and_then(Value::as_f64).unwrap_or(0.0)
-}
-fn integer(value: &Value, name: &str) -> Result<i32, Box<dyn std::error::Error>> {
-    match property(value, name) {
-        None | Some(Value::Null) => Ok(0),
-        Some(value) => Ok(i32::try_from(
-            value.as_i64().ok_or("template index must be int32")?,
-        )?),
-    }
-}
-fn read_json(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
-    let text = icem_config::text_file::read_all_text(path)?;
-    Ok(serde_json::from_str(&text)?)
-}
 /// Explicit file load, not the production directory catalog/fallback resolver.
 /// Registry override naming follows the original SimFileResolver for this one file.
 pub fn load_template(
     path: &Path,
     registry: Option<&Path>,
 ) -> Result<Template, Box<dyn std::error::Error>> {
-    let template = read_json(path)?;
+    let template = icem_config::text_file::read_all_text(path)?;
     let default = path
         .parent()
         .unwrap_or_else(|| Path::new("."))
@@ -70,234 +45,37 @@ pub fn load_template(
         }
     });
     let registry = if registry_path.is_file() {
-        read_json(registry_path)?
+        icem_config::text_file::read_all_text(registry_path)?
     } else {
-        Value::Null
+        "null".into()
     };
-    template_from_json(&template, &registry)
+    template_from_str(&template, &registry)
 }
-pub fn template_from_json(
-    template: &Value,
-    registry: &Value,
+/// Decode COM DTO assignments in JSON source order. Known fields are typed at
+/// every occurrence; exact reference keys use their separate JSON grammar.
+pub fn template_from_str(
+    template: &str,
+    registry: &str,
 ) -> Result<Template, Box<dyn std::error::Error>> {
-    let registry = ValidatedRegistry::new(registry.clone())?;
+    let registry = CheckedRegistry::parse(registry)?;
     let mut warnings = Vec::new();
-    let result = build_template(template, &registry, &mut warnings);
+    let result = ProfileDocument::parse(template)?.build(&registry, &mut warnings);
     for warning in warnings {
         eprintln!("{warning}");
     }
     result
 }
-/// Owned, checked COM registry. No unchecked registry can reach template resolution.
-struct ValidatedRegistry {
-    root: Value,
-}
-impl ValidatedRegistry {
-    fn new(root: Value) -> Result<Self, Box<dyn std::error::Error>> {
-        validate_registry(&root)?;
-        Ok(Self { root })
-    }
-    fn empty() -> Self {
-        Self { root: Value::Null }
-    }
-    fn entries(&self) -> Option<&Vec<Value>> {
-        property(&self.root, "variables").and_then(Value::as_array)
-    }
-}
-/// File validation is atomic. Null records are malformed configuration, regardless
-/// of reference order; legacy incidental traversal exceptions are not reproduced.
-fn validate_registry(registry: &Value) -> Result<(), Box<dyn std::error::Error>> {
-    if registry.is_null() {
-        return Ok(());
-    }
-    validate_fields(registry, &[], &[], &[], &[])?;
-    if let Some(v) = property(registry, "variables")
-        && !v.is_null()
-        && !v.is_array()
-    {
-        return Err("registry variables must be an array".into());
-    }
-    for v in property(registry, "variables")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
-        validate_fields(
-            v,
-            &["name", "display", "uom"],
-            &[],
-            &[],
-            &["excludeFromTelemetry"],
-        )?;
-        if let Some(sim) = property(v, "simulation")
-            && !sim.is_null()
-        {
-            validate_fields(
-                sim,
-                &["format"],
-                &["base", "amplitude", "frequency", "togglePeriod"],
-                &[],
-                &[],
-            )?;
-        }
-        if let Some(families) = property(v, "families")
-            && !families.is_null()
-        {
-            validate_fields(families, &[], &[], &[], &[])?;
-            for key in ["flecs", "plc", "lan"] {
-                if let Some(f) = property(families, key)
-                    && !f.is_null()
-                {
-                    validate_fields(f, &["alias", "wireName"], &[], &["index"], &[])?;
-                }
-            }
-        }
-    }
-    Ok(())
-}
-fn build_template(
+/// A DOM has lost encounter order. Ambiguous recognized DTO keys are rejected;
+/// callers needing ordered assignment should use the string or file boundary.
+pub fn template_from_json(
     template: &Value,
-    registry: &ValidatedRegistry,
-    warnings: &mut Vec<String>,
+    registry: &Value,
 ) -> Result<Template, Box<dyn std::error::Error>> {
-    validate_fields(template, &["name", "deviceType"], &[], &[], &[])?;
-    for key in ["variables", "autoSelectIndices"] {
-        if let Some(v) = property(template, key)
-            && !v.is_null()
-            && !v.is_array()
-        {
-            return Err(format!("{key} must be an array").into());
-        }
-    }
-    let name = property(template, "name")
-        .and_then(Value::as_str)
-        .ok_or("missing template name")?
-        .into();
-    let device_type = text(template, "deviceType");
-    if property(template, "deviceType")
-        .and_then(Value::as_str)
-        .is_none()
-    {
-        return Err("missing template deviceType".into());
-    }
-    let auto_select = property(template, "autoSelectIndices")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .map(|v| {
-            v.as_i64()
-                .ok_or("autoSelectIndices must be int32")
-                .and_then(|v| i32::try_from(v).map_err(|_| "autoSelectIndices overflow"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let entries = registry.entries();
-    let mut variables = Vec::new();
-    for variable in property(template, "variables")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
-        validate_fields(variable, &[], &[], &[], &[])?;
-        let v = if let Some(reference) = variable.get("registry") {
-            // ResolveVariable uses exact JsonElement property names, independently
-            // of JsonSerializer's case-insensitive inline DTO properties.
-            let reference_index = match variable.get("index") {
-                None => 0,
-                Some(value) => {
-                    i32::try_from(value.as_i64().ok_or("reference index must be int32")?)?
-                }
-            };
-            let query = match reference {
-                Value::Null => "",
-                Value::String(query) => query,
-                _ => return Err("registry reference must be a string".into()),
-            };
-            let mut matched = None;
-            for entry in entries.into_iter().flatten() {
-                let matches = |key| match property(entry, key) {
-                    None => query.is_empty(), // RegistryVariable's parameterless defaults
-                    Some(Value::String(text)) => eq_ignore_case(text, query),
-                    _ => false, // explicit null differs from an empty string in C# Equals
-                };
-                if matches("name") || matches("display") {
-                    matched = Some(entry);
-                    break;
-                }
-            }
-            let Some(entry) = matched else {
-                warnings.push(format!("registry variable '{query}' not found"));
-                continue;
-            };
-            let families = property(entry, "families").unwrap_or(&Value::Null);
-            let family = match device_type.to_ascii_lowercase().as_str() {
-                "flecs" => property(families, "flecs"),
-                "plc" => property(families, "plc"),
-                "lan" => property(families, "lan"),
-                _ => ["flecs", "plc", "lan"]
-                    .into_iter()
-                    .filter_map(|key| property(families, key))
-                    .find(|v| !v.is_null()),
-            }
-            .filter(|v| !v.is_null());
-            let simulation = property(entry, "simulation").unwrap_or(&Value::Null);
-            let alias = family
-                .and_then(|f| property(f, "alias"))
-                .and_then(Value::as_str)
-                .map(str::to_owned)
-                .unwrap_or_else(|| text(entry, "display"));
-            Variable {
-                index: match family {
-                    Some(f) => integer(f, "index")?,
-                    None => reference_index,
-                },
-                name: alias.clone(),
-                legacy_name: alias,
-                unit: text(entry, "uom"),
-                base: number(simulation, "base"),
-                amplitude: number(simulation, "amplitude"),
-                frequency: number(simulation, "frequency"),
-                format: text(simulation, "format"),
-                toggle_period: number(simulation, "togglePeriod"),
-                exclude: property(entry, "excludeFromTelemetry")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false),
-            }
-        } else {
-            validate_fields(
-                variable,
-                &["name", "legacyName", "uom", "format"],
-                &["base", "amplitude", "frequency", "togglePeriod"],
-                &["index"],
-                &["excludeFromTelemetry"],
-            )?;
-            let name = text(variable, "name");
-            Variable {
-                index: integer(variable, "index")?,
-                legacy_name: property(variable, "legacyName")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| name.clone()),
-                name,
-                unit: text(variable, "uom"),
-                base: number(variable, "base"),
-                amplitude: number(variable, "amplitude"),
-                frequency: number(variable, "frequency"),
-                format: text(variable, "format"),
-                toggle_period: number(variable, "togglePeriod"),
-                exclude: property(variable, "excludeFromTelemetry")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false),
-            }
-        };
-        variables.push(v);
-    }
-    variables.sort_by_key(|v| v.index);
-    Ok(Template {
-        name,
-        device_type,
-        auto_select,
-        variables,
-    })
+    crate::com_config::check_dom(template, registry)?;
+    template_from_str(
+        &serde_json::to_string(template)?,
+        &serde_json::to_string(registry)?,
+    )
 }
 pub fn compute(variable: &Variable, elapsed: f64) -> f64 {
     if variable.format.eq_ignore_ascii_case("elapsed") {
@@ -468,47 +246,6 @@ pub fn format_line(values: &[f64], template: &Template) -> String {
         .join(",")
 }
 
-fn validate_fields(
-    value: &Value,
-    strings: &[&str],
-    numbers: &[&str],
-    integers: &[&str],
-    booleans: &[&str],
-) -> Result<(), Box<dyn std::error::Error>> {
-    if !value.is_object() {
-        return Err("template/registry entry must be an object".into());
-    }
-    for key in strings {
-        if let Some(v) = property(value, key)
-            && !v.is_null()
-            && !v.is_string()
-        {
-            return Err(format!("{key} must be a string").into());
-        }
-    }
-    for key in numbers {
-        if let Some(v) = property(value, key)
-            && !v.is_number()
-        {
-            return Err(format!("{key} must be a number").into());
-        }
-    }
-    for key in integers {
-        if let Some(v) = property(value, key)
-            && v.as_i64().and_then(|n| i32::try_from(n).ok()).is_none()
-        {
-            return Err(format!("{key} must be int32").into());
-        }
-    }
-    for key in booleans {
-        if let Some(v) = property(value, key)
-            && !v.is_boolean()
-        {
-            return Err(format!("{key} must be bool").into());
-        }
-    }
-    Ok(())
-}
 /// Original startup discovery; caller owns/caches the result.
 #[derive(Debug)]
 pub struct Catalog {
@@ -530,16 +267,19 @@ pub fn load_catalog(directory: &Path) -> Catalog {
     };
     let registry_path = resolve_sim_file(directory, "variable_registry.json");
     let registry = if registry_path.is_file() {
-        match read_json(&registry_path).and_then(ValidatedRegistry::new) {
+        match icem_config::text_file::read_all_text(&registry_path)
+            .map_err(Into::into)
+            .and_then(|text| CheckedRegistry::parse(&text))
+        {
             Ok(r) => r,
             Err(e) => {
                 out.warnings.push(format!("registry: {e}"));
-                ValidatedRegistry::empty()
+                CheckedRegistry::empty()
             }
         }
     } else {
         out.warnings.push("variable_registry.json not found".into());
-        ValidatedRegistry::empty()
+        CheckedRegistry::empty()
     };
     // Preserve Directory.GetFiles order: default profile is the first valid file.
     match std::fs::read_dir(directory) {
@@ -562,19 +302,16 @@ pub fn load_catalog(directory: &Path) -> Catalog {
                 {
                     continue;
                 }
-                match read_json(&path).and_then(|v| {
-                    if v.is_null() {
-                        return Ok(None);
-                    }
-                    validate_fields(&v, &["name", "deviceType"], &[], &[], &[])?;
-                    if property(&v, "name").is_none_or(Value::is_null)
-                        || property(&v, "deviceType").is_none_or(Value::is_null)
-                    {
-                        Ok(None)
-                    } else {
-                        build_template(&v, &registry, &mut out.warnings).map(Some)
-                    }
-                }) {
+                match icem_config::text_file::read_all_text(&path)
+                    .map_err(Into::into)
+                    .and_then(|text| {
+                        let profile = ProfileDocument::parse(&text)?;
+                        if profile.has_identity() {
+                            profile.build(&registry, &mut out.warnings).map(Some)
+                        } else {
+                            Ok(None)
+                        }
+                    }) {
                     Ok(Some(t)) => out.templates.push(t),
                     Ok(None) => {}
                     Err(e) => out

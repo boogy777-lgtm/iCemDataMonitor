@@ -39,6 +39,7 @@ pub const COMMANDS: &[&str] = &[
     "setunit",
 ];
 
+mod com_config;
 mod identity;
 
 pub mod dfb;

@@ -2251,6 +2251,7 @@ version = "0.1.0"
 dependencies = [
  "icem-config",
  "icem-protocols",
+ "serde",
  "serde_json",
 ]
 
