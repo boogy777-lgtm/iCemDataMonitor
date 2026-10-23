@@ -18,8 +18,18 @@ internal sealed class EmulatorStep
     private double _lanElapsed;
     private bool _wasLanActive;
     internal bool ComEmulating { get; set; }
-    internal bool LanEmulating { get; set; }
-    internal UnitSettings Units { get; set; } = new();
+    private bool _lanEmulating;
+    internal bool LanEmulating
+    {
+        get => _lanEmulating;
+        set { _lanEmulating = value; FrozenProvider.Frozen = !value; }
+    }
+    private UnitSettings _units = new();
+    internal UnitSettings Units
+    {
+        get => _units;
+        set { _units = value; LanUnitProvider.Settings = value; }
+    }
 
     internal EmulatorStep(UnitPreset preset)
         : this(new SimulationEngine(), new AcePayloadProvider(), DfbEngineBridge.TryCreateNetwork(), preset) { }
@@ -35,6 +45,7 @@ internal sealed class EmulatorStep
         FrozenProvider = new FrozenPayloadProvider(decorated) { Frozen = true };
         OverrideProvider = new ManualOverridePayloadProvider(FrozenProvider);
         LanUnitProvider = new UnitConvertingPayloadProvider(OverrideProvider, preset);
+        Units = new UnitSettings { Preset = preset };
         _output = output ?? LanUnitProvider;
     }
 

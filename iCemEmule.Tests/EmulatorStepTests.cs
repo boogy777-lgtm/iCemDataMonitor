@@ -1,11 +1,21 @@
-using System.Buffers.Binary;
 using Halliburton.iCemEmule.Core;
+using Halliburton.iCemEmule.Dfb;
 using Xunit;
 
 namespace iCemEmule.Tests;
 
 public sealed class EmulatorStepTests
 {
+    private sealed class FailingBlock() : DfbBlockBase("failing")
+    {
+        internal int Calls;
+        public override void Execute(DfbContext context)
+        {
+            Calls++;
+            throw new InvalidOperationException("DFB failure");
+        }
+    }
+
     private sealed class RecordingProvider : IAcePayloadProvider
     {
         internal readonly List<double> Elapsed = new();
@@ -17,6 +27,23 @@ public sealed class EmulatorStepTests
             if (Fail) throw new InvalidOperationException("provider failure");
             return Array.Empty<AceVectorData>();
         }
+    }
+
+    [Fact]
+    public void DfbRunsOnlyWhenEmulating_AndFailureEscapesWithoutProviderAdvancement()
+    {
+        var network = new DfbNetwork();
+        var block = new FailingBlock();
+        network.Add(block);
+        var provider = new RecordingProvider();
+        var step = new EmulatorStep(new SimulationEngine(), new AcePayloadProvider(), network, UnitPreset.LanNative, provider);
+        Assert.NotNull(step.PrepareLan(true, false, 7));
+        Assert.Equal(0, block.Calls);
+        step.LanEmulating = true;
+        Assert.Throws<InvalidOperationException>(() => step.PrepareLan(true, false, 7));
+        Assert.Equal(1, block.Calls);
+        Assert.Single(provider.Elapsed);
+        Assert.Equal(1, step.LanElapsed);
     }
 
     [Fact]
@@ -74,18 +101,15 @@ public sealed class EmulatorStepTests
             return value;
         }
         step.LanEmulating = true;
-        step.FrozenProvider.Frozen = false;
         Assert.Equal(0, Read(step.PrepareLan(true, false, 0x00A86F46)!));
         Assert.Equal(10, Read(step.PrepareLan(true, false, 0x00A86F46)!));
         step.LanEmulating = false;
-        step.FrozenProvider.Frozen = true;
         Assert.Equal(10, Read(step.PrepareLan(true, false, 0x00A86F46)!));
         step.OverrideProvider.SetOverride(sv, sig.Name, 12345);
         Assert.Equal(12345, Read(step.PrepareLan(true, false, 0x00A86F46)!));
         var temperature = registry.GetBySvNumber(sv)!.Signals.First(s => s.Name == "Display Temperature");
         step.OverrideProvider.SetOverride(sv, temperature.Name, 212);
         step.Units = new UnitSettings { Preset = UnitPreset.Metric };
-        step.LanUnitProvider.Settings = step.Units;
         var metric = step.PrepareLan(true, false, 0x00A86F46)!;
         Assert.True(SignalWireCodec.TryDecodeNative(metric.Vectors.First(v => v.SvNumber == sv).Payload, temperature, out var converted));
         Assert.Equal(100, converted, 4);

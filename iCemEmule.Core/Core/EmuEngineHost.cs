@@ -135,7 +135,6 @@ public sealed class EmuEngineHost : IEmuControl
     {
         _step.ComEmulating = _settings.ComEmuleEnabled;
         _step.LanEmulating = _settings.LanEmuleEnabled;
-        _step.FrozenProvider.Frozen = !_step.LanEmulating;
         _step.BaseProvider.IncludeFirmwareTables = _settings.LanFirmwareSvEnabled;
 
         if (_settings.ComEnabled && !string.IsNullOrEmpty(_settings.ComPort))
@@ -217,7 +216,6 @@ public sealed class EmuEngineHost : IEmuControl
             LevelOverride = StrOverride(_settings.UnitLevelOverride),
             PressureOverride = StrOverride(_settings.UnitPressureOverride),
         };
-        _step.LanUnitProvider.Settings = _step.Units;
     }
 
     private static string? StrOverride(string s) => string.IsNullOrEmpty(s) ? null : s;
@@ -794,7 +792,6 @@ public sealed class EmuEngineHost : IEmuControl
         if (channel.Equals("lan", StringComparison.OrdinalIgnoreCase))
         {
             _step.LanEmulating = on;
-            _step.FrozenProvider.Frozen = !on;
             _settings.LanEmuleEnabled = on;
             _settings.Save();
             return ControlResult.Success(new Dictionary<string, object?> { ["channel"] = "lan", ["emulating"] = on });

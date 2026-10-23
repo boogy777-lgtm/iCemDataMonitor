@@ -1,8 +1,8 @@
 // SignalWireCodec — decode a signal value (native units) from a 124-byte ACE
-// payload. Same law as UnitConvertingPayloadProvider.TryDecode (offset law:
+// payload. Shared by control reads and unit conversion (offset law:
 // payload_index = ByteOffset − 4; FF=float32BE, UL/UI/HX=uintBE × DasFactor,
 // SI/SL=intBE × DasFactor; UC/unknown ⇒ false). Used by the control channel
-// (EmuControlAdapter `get`) to report the value currently on the wire.
+// and UnitConvertingPayloadProvider to read values before unit conversion.
 
 using System.Buffers.Binary;
 using System.Globalization;
