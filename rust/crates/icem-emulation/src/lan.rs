@@ -1,5 +1,6 @@
 //! Original LAN catalog and base waveforms, without transport or installation probing.
 //! Numeric encoding intentionally keeps the original four-byte-first behavior.
+use crate::identity::{Key, eq_ignore_case, key};
 use serde_json::Value;
 use std::{collections::BTreeMap, ops::Range, path::Path};
 
@@ -154,7 +155,7 @@ impl SimEntry {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BaseProvider {
     registry: Registry,
-    lookup: BTreeMap<String, SimEntry>,
+    lookup: BTreeMap<Key, SimEntry>,
     pub include_firmware_tables: bool,
 }
 impl BaseProvider {
@@ -208,7 +209,7 @@ impl BaseProvider {
                         let Some(span) = sig.span(payload.len()) else {
                             continue;
                         };
-                        let entry = self.lookup.get(&sig.name.to_ascii_lowercase());
+                        let entry = self.lookup.get(&key(&sig.name));
                         let bytes = if sig.value_type.eq_ignore_ascii_case("UC")
                             && let Some(text) = entry.and_then(|e| e.string_value.as_deref())
                         {
@@ -282,22 +283,19 @@ impl BaseProvider {
                 let wire = string(lan, "wireName", false)?;
                 let alias = string(lan, "alias", false)?;
                 if !wire.is_empty() {
-                    self.lookup.insert(wire.to_ascii_lowercase(), entry.clone());
+                    self.lookup.insert(key(&wire), entry.clone());
                 }
-                if !alias.is_empty() && !alias.eq_ignore_ascii_case(&wire) {
-                    self.lookup
-                        .insert(alias.to_ascii_lowercase(), entry.clone());
+                if !alias.is_empty() && !eq_ignore_case(&alias, &wire) {
+                    self.lookup.insert(key(&alias), entry.clone());
                 }
             }
             if !name.is_empty() {
                 self.lookup
-                    .entry(name.to_ascii_lowercase())
+                    .entry(key(&name))
                     .or_insert_with(|| entry.clone());
             }
-            if !display.is_empty() && !display.eq_ignore_ascii_case(&name) {
-                self.lookup
-                    .entry(display.to_ascii_lowercase())
-                    .or_insert(entry);
+            if !display.is_empty() && !eq_ignore_case(&display, &name) {
+                self.lookup.entry(key(&display)).or_insert(entry);
             }
         }
         Ok(())

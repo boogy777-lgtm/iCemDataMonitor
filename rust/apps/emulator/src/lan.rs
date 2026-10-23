@@ -140,19 +140,8 @@ fn run(o: Options) -> Result<(), Box<dyn std::error::Error>> {
         n.sequencer.parameters.unit_number_value = o.equipment;
     }
     for (sv, name, value) in o.overrides {
-        pipeline.can_transmit(sv, &name)?;
-        // The original host resolves names before storing the case-sensitive override key.
-        let canonical = pipeline
-            .base
-            .registry()
-            .get(sv)
-            .and_then(|v| {
-                v.signals
-                    .iter()
-                    .find(|s| s.name.eq_ignore_ascii_case(&name))
-            })
-            .map(|s| s.name.clone())
-            .ok_or("signal disappeared after validation")?;
+        // Store the original spelling required by the exact override dictionary.
+        let canonical = pipeline.resolve_signal(sv, &name)?.name.clone();
         pipeline.set_override(sv, &canonical, value);
     }
     eprintln!(

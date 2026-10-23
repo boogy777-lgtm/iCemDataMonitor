@@ -39,6 +39,8 @@ pub const COMMANDS: &[&str] = &[
     "setunit",
 ];
 
+mod identity;
+
 pub mod dfb;
 pub mod simulation;
 pub mod units;

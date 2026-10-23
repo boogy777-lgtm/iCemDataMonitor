@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "generator": "tools/Generate-OrdinalIdentity.ps1",
+  "table": "crates/icem-emulation/src/identity_table.rs",
+  "sha256": "b58119a77e20ddae2e0e996e8a578ff2a270f2fcfad3c9e1817597dfacc57306",
+  "runtime": ".NET 10.0.13",
+  "powershell": "7.6.7",
+  "os": "Ubuntu 24.04.3 LTS",
+  "provider": "ICU; globalization invariant mode false; Linux libicuuc.so.74",
+  "invariantCultureSortFullVersion": 31129,
+  "scalarCount": 1112064,
+  "classCount": 1110594,
+  "nonidentityMappingCount": 1470,
+  "canonicalRepresentative": "Minimum Unicode scalar in each BCL StringComparer.OrdinalIgnoreCase equivalence class, found by ascending exhaustive Dictionary insertion; dictionary equality resolves hash collisions.",
+  "stringCompositionEvidence": "OrdinalCasing.CompareStringIgnoreCase compares each BMP character or valid surrogate pair independently and preserves UTF-16 width; no context, expansion or normalization. Generator checks every scalar alone and embedded beside NUL, ASCII, a supplementary character and a combining mark.",
+  "algorithmSource": "https://source.dot.net/System.Private.CoreLib/src/runtime/src/libraries/System.Private.CoreLib/src/System/Globalization/OrdinalCasing.Icu.cs.html",
+  "scope": "Valid Unicode scalar strings only. This is an observed .NET ICU baseline, not a claim about every Windows NLS/ICU or .NET Framework version. Run exhaustive BCL differential on Windows production provider; any table mismatch fails instead of silently approximating. Rust runtime has no CLR or ICU dependency."
+}

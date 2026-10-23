@@ -130,3 +130,61 @@ fn invalid_options_and_unknown_signal_do_not_emit_frames() -> TestResult {
     assert!(result.stdout.is_empty());
     Ok(())
 }
+
+#[test]
+fn unicode_override_resolves_original_signal_spelling_before_encoding() -> TestResult {
+    let directory =
+        std::env::temp_dir().join(format!("icem-lan-preview-unicode-{}", std::process::id()));
+    std::fs::create_dir_all(&directory)?;
+    struct Cleanup(PathBuf);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let _cleanup = Cleanup(directory.clone());
+    std::fs::write(
+        directory.join("lantable_registry.json"),
+        serde_json::to_vec(&serde_json::json!({
+            "serviceVectors": [{
+                "svNumber": 0x13120203_u32,
+                "name": "Unicode fixture",
+                "signals": [{
+                    "byteOffset": 4, "size": 4, "valueType": "FF",
+                    "dasFactor": 1, "name": "Давление", "uom": ""
+                }]
+            }]
+        }))?,
+    )?;
+    std::fs::write(
+        directory.join("variable_registry.json"),
+        r#"{"variables":[]}"#,
+    )?;
+    let output = Command::new(env!("CARGO_BIN_EXE_icem-lan-dev"))
+        .arg("--templates")
+        .arg(&directory)
+        .args(["--set", "0x13120203:дАВЛЕНИЕ=42.5", "--interval-ms", "0"])
+        .output()?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = String::from_utf8(output.stdout)?;
+    let rows = text
+        .lines()
+        .map(serde_json::from_str)
+        .collect::<Result<Vec<Value>, _>>()?;
+    assert_eq!(rows.len(), 1);
+    let frame = rows[0]["frames"]
+        .as_array()
+        .ok_or("frames")?
+        .iter()
+        .find(|frame| frame["sv"].as_u64() == Some(0x13120203))
+        .ok_or("fixture frame")?;
+    let raw = bytes(&frame["frame"])?;
+    let parsed = ace::parse(&raw).ok_or("invalid ACE")?;
+    assert_eq!(&parsed.payload[..4], &42.5_f32.to_be_bytes());
+    assert_eq!(parsed.payload.as_slice(), bytes(&frame["payload"])?);
+    Ok(())
+}
