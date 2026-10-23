@@ -122,6 +122,32 @@ public sealed class AcquisitionMeasurementsTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void CachedPublication_StaleFirstHeaderDoesNotProveActiveZoneRecovery()
+    {
+        // Deterministically reproduce the valid state that fooled the loop
+        // test's old header-only recovery condition, without scheduler timing.
+        var words = new ushort[BusLayout.RegCount];
+        words[3] = 7; words[4] = 0; words[5] = 0x3F80;
+        var active = new BusZoneInfo(ZoneKind.ComMain, DateTime.MaxValue.Ticks, true, 1);
+        var snapshot = new BusSnapshot(BusLayout.Magic, BusLayout.Version, BusLayout.LayoutVersion,
+            BusLayout.RegCount, words, active, default, default, default, true, 123);
+        var latest = new Cached { State = new(snapshot, true, "publication expired", 0, 0, 0, 1) };
+        using var publisher = new ModbusTcpPublisher(latest, new ModbusOptions());
+        publisher.TickOnce();
+        Assert.Null(publisher.LastBusError); // a retained snapshot clears the absent-bus error
+        Assert.Equal(7, Word(publisher, 3)); // the old recovery condition already succeeds
+        ushort[] expected = [7, 0, 0x3F80];
+        ushort[] retained = [Word(publisher, 3), Word(publisher, 4), Word(publisher, 5)];
+        Assert.Equal(new ushort[] { 7, 0, 0 }, retained);
+        Assert.False(retained.SequenceEqual(expected)); // the full-window condition must wait
+
+        latest.State = latest.State with { Snapshot = snapshot with { Stale = false }, LastError = null };
+        publisher.TickOnce();
+        Assert.Null(publisher.LastBusError);
+        Assert.Equal(expected, new ushort[] { Word(publisher, 3), Word(publisher, 4), Word(publisher, 5) });
+    }
+
+    [Fact]
     public async Task RealMmf_CallPatternComparison_EmitsReproducibleMetrics()
     {
         if (!OperatingSystem.IsWindows())

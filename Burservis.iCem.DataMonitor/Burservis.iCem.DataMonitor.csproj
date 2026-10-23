@@ -111,6 +111,7 @@
     <Compile Include="ZoneStaleness.cs" />
     <Compile Include="ZoneLiveness.cs" />
     <Compile Include="TapLog.cs" />
+    <Compile Include="..\iCemDataMonitor.Sdk\Diagnostics\OwnedFileLog.cs"><Link>Diagnostics\OwnedFileLog.cs</Link></Compile>
     <Compile Include="NameNormalizer.cs" />
     <Compile Include="PollResolution.cs" />
     <Compile Include="LanSourceTracker.cs" />

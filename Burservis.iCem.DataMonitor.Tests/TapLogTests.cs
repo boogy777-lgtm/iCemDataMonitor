@@ -98,10 +98,9 @@ public class TapLogTests : IDisposable
     }
 
     [Fact]
-    public void DeleteOldLogs_RemovesOnlyOldLogFiles_InSameDirectory()
+    public void DeleteOldLogs_RemovesOnlyExplicitlyOwnedStaleFile()
     {
-        // Operator log policy: at the rotation check, *.log files older than
-        // 7 days are deleted (BCL only, swallow-all).
+        // Retention is explicitly owned: old sibling logs must survive.
         Assert.Equal(7, TapLog.MaxAgeDays);
 
         string dir = Path.GetDirectoryName(_path);
@@ -110,6 +109,8 @@ public class TapLogTests : IDisposable
         string notLog = Path.Combine(dir, "taplog_keep_" + Guid.NewGuid().ToString("N") + ".txt");
         try
         {
+            File.WriteAllText(_path, "owned stale");
+            File.SetLastWriteTimeUtc(_path, DateTime.UtcNow.AddDays(-8));
             File.WriteAllText(oldLog, "stale");
             File.WriteAllText(freshLog, "fresh");
             File.WriteAllText(notLog, "keep");
@@ -118,7 +119,8 @@ public class TapLogTests : IDisposable
 
             TapLog.DeleteOldLogs(_path);
 
-            Assert.False(File.Exists(oldLog), "old .log must be deleted");
+            Assert.False(File.Exists(_path), "owned stale log must be deleted");
+            Assert.True(File.Exists(oldLog), "unregistered old .log must survive");
             Assert.True(File.Exists(freshLog), "fresh .log must survive");
             Assert.True(File.Exists(notLog), "non-.log files must survive");
         }

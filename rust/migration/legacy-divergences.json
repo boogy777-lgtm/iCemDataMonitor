@@ -85,11 +85,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/ModbusContractTests.cs",
       "baseline_blob_sha1": "e01e35d5563db01ed786cff91c151adcd2a6ceda",
-      "approved_blob_sha1": "478be75ebda42224debcee65003e3da2db9e5cca",
+      "approved_blob_sha1": "502b00e4f74b3ae9c3b6c277e70502fa42b52a32",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
-        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
-        "reason": "Wait for actual tick/recovery results through TCP. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "a2c39bddc552785f0c10d9229c7ba93ea31d3303",
+        "reason": "Wait for actual tick/recovery results through TCP. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance. Subsequent C7 CI correction: recovery is acknowledged by one complete TCP window containing header7 and exact active-zone CDAB words [0,0x3F80], not a header that may legally be mirrored from retained stale state. Preserve original deadline, delay and exact assertions; deterministic stale-first/fresh-next vector proves the former handshake was insufficient. No Modbus production change. PR36 and exact remote code commit record provenance."
       }
     },
     {
@@ -420,6 +420,156 @@
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
         "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
         "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/TapLogTests.cs",
+      "baseline_blob_sha1": "3e09f435111a31e4bb25ae036cb0daece0e879ee",
+      "approved_blob_sha1": "06605982fccddc687cd6fe3f4a2cbd92a43f5073",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj",
+      "baseline_blob_sha1": "b2e07d754433cffaa4207850430546dccb11b95a",
+      "approved_blob_sha1": "a425c787447c4db7eec6db2a2196377707f69ffe",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/TapLog.cs",
+      "baseline_blob_sha1": "1be16afeb82f9b4c18939f6b2d176f5051486b0d",
+      "approved_blob_sha1": "9257fbdbfb91117d29254d0034a6920cb455ce2c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/DataBusLogTests.cs",
+      "baseline_blob_sha1": "11d81cf04fa6899de8ecb7227c085e7b4b549f2d",
+      "approved_blob_sha1": "56bbe16b4111831dac810791e9c72cce0fbc2490",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "5b435efb9b4ef1ec5353af0cd851b37b66c09e22",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/UiTrace.cs",
+      "baseline_blob_sha1": "0e6c0a9e0d45765feaaa80b8b739386efb62ac6a",
+      "approved_blob_sha1": "8fc732907b466ad6a0fa96726c6ac937f18587e1",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/StationFileLogHostContractTests.cs",
+      "baseline_blob_sha1": "baf1dfd05946b58b2edf65bb0dfaaca58849e65f",
+      "approved_blob_sha1": "7258fc3db9303f6cfbeb820210eebc3ab0a5ab5a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "2b1c51c22eb865242b1bdf952a6599b812c1b29c",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host/StartupLog.cs",
+      "baseline_blob_sha1": "35c09a47401b34f9f00516ab083db70e3f6beca0",
+      "approved_blob_sha1": "0724726cc17e778ff50b58aacf685f79dec9bab5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/iCemDataMonitor.Sdk.Tests.csproj",
+      "baseline_blob_sha1": "882d3349d89b2edd2101ebeefc74c690f65030b6",
+      "approved_blob_sha1": "a1983df6b0af62e0c7d30f88cd1eaf2b369bee72",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs",
+      "baseline_blob_sha1": "4a203d1f2e1069d360fff60a03fd9b18a93f4979",
+      "approved_blob_sha1": "5e334263315c28a2172cb565a14d1f22709ee1cf",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/App.xaml.cs",
+      "baseline_blob_sha1": "e03b217b11a2d90715f394ea246200fe69de1342",
+      "approved_blob_sha1": "f9bf86d3857013ed0eb168b6c4d2da7d18150b6f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/Core/CrashLog.cs",
+      "baseline_blob_sha1": "a5192ba5ec4853a1ca8387b7896f840ed64d035d",
+      "approved_blob_sha1": "9231078a2199ca61bbf7cc07f22a66f1f6f6e68a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/Core/LantableRegistry.cs",
+      "baseline_blob_sha1": "dca824e65cae274a3cf47cd56f54e025b388ec08",
+      "approved_blob_sha1": "eb3209b3c68bf50489464a9d19c000119770d15b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/Core/TemplateCatalog.cs",
+      "baseline_blob_sha1": "0109931c78282b188338f503f91a7973703c9c6a",
+      "approved_blob_sha1": "8397998079b9be6afa23bdd39848636853127c9f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/iCemEmule.Core.csproj",
+      "baseline_blob_sha1": "8288ec9e14b8f46af50332b19779fb5e5eab60cb",
+      "approved_blob_sha1": "060f9b3892170fcf8d44edfb21b01c28010e2e32",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemEmule.Tests/CrashLogTests.cs",
+      "baseline_blob_sha1": "ab21930f76dc07b685fa9e0ac6d403558411a1aa",
+      "approved_blob_sha1": "463902eebcb60aa7ebaa5920189ca027106791e5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
       }
     }
   ]

@@ -69,9 +69,9 @@ public partial class App : Application
     {
         try
         {
-            File.AppendAllText(
+            StationFileLog.WriteLocalTime(
                 Path.Combine(AppContext.BaseDirectory, "startup.log"),
-                $"{DateTime.Now:HH:mm:ss.fff} [winui] {text}{Environment.NewLine}");
+                $"[winui] {text}");
         }
         catch { /* best effort */ }
     }

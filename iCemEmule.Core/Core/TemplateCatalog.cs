@@ -306,8 +306,7 @@ public static class TemplateCatalog
     {
         try
         {
-            var line = $"{DateTime.UtcNow:O} {msg}{Environment.NewLine}";
-            File.AppendAllText(LogPath, line);
+            iCemDataMonitor.Sdk.Diagnostics.StationFileLog.WriteUtcWithoutBom(LogPath, msg ?? string.Empty);
         }
         catch { /* best-effort logging */ }
     }

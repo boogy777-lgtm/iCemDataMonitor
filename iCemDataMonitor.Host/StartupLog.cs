@@ -29,7 +29,7 @@ public static class StartupLog
         return message =>
         {
             var line = $"{DateTime.UtcNow:O} {message}";
-            StationFileLog.Write(path, line); // best effort + 25 MB cap by contract
+            StationFileLog.Write(path, message); // best effort + 25 MB cap by contract
             try { Console.WriteLine(line); }
             catch
             {

@@ -11,7 +11,6 @@ namespace iCemDataMonitor.Emulator.WinUI;
 /// <summary>Public: the app project (MainWindow pointer probes) also traces.</summary>
 public static class UiTrace
 {
-    private static readonly object Gate = new();
     private static readonly string Path =
         System.IO.Path.Combine(System.IO.Path.GetTempPath(), "emu_ui_trace.log");
 
@@ -19,11 +18,7 @@ public static class UiTrace
     {
         try
         {
-            lock (Gate)
-            {
-                System.IO.File.AppendAllText(Path,
-                    $"[{DateTime.Now:HH:mm:ss.fff} tid={Environment.CurrentManagedThreadId}] {message}\r\n");
-            }
+            iCemDataMonitor.Sdk.Diagnostics.StationFileLog.WriteLocalThread(Path, message ?? string.Empty, Environment.CurrentManagedThreadId);
         }
         catch
         {

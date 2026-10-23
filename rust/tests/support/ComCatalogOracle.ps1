@@ -52,5 +52,6 @@ public static class OriginalComCatalogOracle {
 $WrapperPath=Join-Path $OutputDir 'OriginalComCatalogOracle.cs'
 $Wrapper|Set-Content $WrapperPath -Encoding utf8NoBOM
 $Files=@((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'),(Join-Path $Core 'DeviceTemplate.cs'),(Join-Path $Core 'SimulationEngine.cs'),(Join-Path $Core 'SimFileResolver.cs'),(Join-Path $Core 'SignalWireCodec.cs'),(Join-Path $Core 'LantableRegistry.cs'),$CatalogPath,$WrapperPath)
+$Files += @((Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
 Add-Type -Path $Files -CompilerOptions '/nullable:enable' -IgnoreWarnings
 [OriginalComCatalogOracle]::Run($InputDir)

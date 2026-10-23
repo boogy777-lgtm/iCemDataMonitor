@@ -35,6 +35,7 @@ $Files=@((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'),(Join-Path $Core '
 $temp=Join-Path ([System.IO.Path]::GetTempPath()) ('icem-identity-oracle-'+[guid]::NewGuid()+'.cs')
 try {
  $Wrapper|Set-Content $temp -Encoding utf8NoBOM
+ $Files += @((Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
  Add-Type -Path ($Files+@($temp)) -CompilerOptions '/nullable:enable' -IgnoreWarnings
  [UnicodeIdentityOracle]::Run($PairsPath)
 } finally { Remove-Item $temp -ErrorAction SilentlyContinue }

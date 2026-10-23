@@ -10,6 +10,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Net48\TapLogGolden.cs" />
+    <None Include="Net48\TapLogGolden.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\iCemDataMonitor.Sdk\Diagnostics\OwnedFileLog.cs" Link="Net48\OwnedFileLog.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Burservis.iCem.DataMonitor\TapLog.cs" Link="Net48\TapLog.cs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\iCemDataMonitor.Shell.WinUI\App.xaml.cs" Link="LoggingCallers\App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\iCemDataMonitor.Emulator.WinUI\UiTrace.cs" Link="LoggingCallers\UiTrace.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\iCemEmule.Core\Core\TemplateCatalog.cs" Link="LoggingCallers\TemplateCatalog.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\iCemEmule.Core\Core\LantableRegistry.cs" Link="LoggingCallers\LantableRegistry.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\iCemDataMonitor.Host\StartupLog.cs" Link="LoggingCallers\StartupLog.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\iCemEmule.Core\Core\CrashLog.cs" Link="LoggingCallers\CrashLog.cs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\iCemDataMonitor.Sdk\iCemDataMonitor.Sdk.csproj" />
   </ItemGroup>
 
