@@ -73,7 +73,7 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
     /// <summary>FC16 maximum write quantity (Modbus application spec).</summary>
     private const int MaxWriteQuantity = 123;
 
-    private readonly BusReader _busReader;
+    private readonly ILatestBusState _latest;
     private readonly ModbusOptions _options;
     private readonly TimeSpan _tickInterval;
     private readonly object _regLock = new();
@@ -130,18 +130,18 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
     internal string? LastTickError { get; private set; }
 
     /// <summary>
-    /// Creates the publisher. The BusReader is owned by the CALLER (DI
-    /// singleton in the POC hosts) — this class never disposes it.
+    /// Creates the publisher over a shared latest-state surface; acquisition
+    /// and reader lifetime belong to the host.
     /// </summary>
-    /// <param name="busReader">Shared bus read surface (iCemDataMonitor.Data.Bus.BusReader).</param>
+    /// <param name="latest">Shared immutable acquisition publication.</param>
     /// <param name="options">TCP port (default 502) + configured dictionary Total (ini total)
     /// + tick cadence TickMs (ini modbus_tick_ms, default 500 ms; &lt; 1 ⇒ throw).</param>
     /// <param name="tickInterval">Explicit refresh-period override (tests only). When
     /// absent, the interval comes from options.TickMs — EXTERNAL config wins in
     /// production.</param>
-    public ModbusTcpPublisher(BusReader busReader, ModbusOptions options, TimeSpan? tickInterval = null)
+    public ModbusTcpPublisher(ILatestBusState latest, ModbusOptions options, TimeSpan? tickInterval = null)
     {
-        _busReader = busReader ?? throw new ArgumentNullException(nameof(busReader));
+        _latest = latest ?? throw new ArgumentNullException(nameof(latest));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         if (_options.Total is < BusLayout.HeaderRegCount or > ushort.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(options), _options.Total,
@@ -259,12 +259,13 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
     internal void TickOnce()
     {
         Interlocked.Increment(ref TickCount);
-        var snap = _busReader.Snapshot();
+        var state = _latest.Current;
+        var snap = state.Snapshot;
         // INC-11 observability: a NULL snapshot = bus-absent for this tick —
         // surface WHY (file absent / shape rejected / open failure). The
         // degradation itself is doctrine (header-zeros + hold); the SILENCE
         // was the defect. Clears on the first healthy snapshot.
-        LastBusError = snap is null ? _busReader.LastError : null;
+        LastBusError = snap is null ? state.LastError : null;
         lock (_regLock)
         {
             if (snap is null)

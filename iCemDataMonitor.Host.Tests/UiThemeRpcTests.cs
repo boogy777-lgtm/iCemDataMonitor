@@ -23,7 +23,8 @@ public sealed class UiThemeRpcTests
         using var reader = new BusReader(Path.Combine(dir, "unopened-bus"));
         using var provider = new ServiceCollection().BuildServiceProvider();
         var prefs = new UiPrefsStore(path, () => pokes++, logs.Add);
-        var svc = new TelemetryServiceImpl(new StationHealthState(), reader, new MetricsSampler(reader),
+        using var latest = new iCemDataMonitor.Data.Bus.BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
+        var svc = new TelemetryServiceImpl(new StationHealthState(), latest, new MetricsSampler(latest),
             new AutostartManager(runKeyPath: "unused", valueName: "unused", exePath: "unused"),
             new ConsoleVisibilityService(null, () => ConsolePresence.None, (_, _) => { }),
             prefs, provider, NullLogger<TelemetryServiceImpl>.Instance);

@@ -164,9 +164,10 @@ public sealed class LayerCommandTests : IDisposable
         using var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
             .AddSingleton(controller).BuildServiceProvider();
         using var reader = new iCemDataMonitor.Data.Bus.BusReader(); // unopened: no named MMF dependency
+        using var latest = new iCemDataMonitor.Data.Bus.BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
         var service = new iCemDataMonitor.Host.Grpc.TelemetryServiceImpl(
-            new iCemDataMonitor.Host.Core.Health.StationHealthState(), reader,
-            new iCemDataMonitor.Data.Telemetry.MetricsSampler(reader),
+            new iCemDataMonitor.Host.Core.Health.StationHealthState(), latest,
+            new iCemDataMonitor.Data.Telemetry.MetricsSampler(latest),
             new iCemDataMonitor.Host.Tray.AutostartManager(),
             new iCemDataMonitor.Host.Tray.ConsoleVisibilityService(),
             new iCemDataMonitor.Host.Tray.UiPrefsStore(Path.Combine(_dir, "prefs.json")), services,

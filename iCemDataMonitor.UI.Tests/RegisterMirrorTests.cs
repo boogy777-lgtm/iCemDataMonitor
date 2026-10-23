@@ -425,7 +425,9 @@ public class RegisterMirrorTests : IAsyncLifetime
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddRouting();
-        builder.Services.AddSingleton(reader);
+        var acquisition = new BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
+        acquisition.CaptureOnce();
+        builder.Services.AddSingleton<ILatestBusState>(_ => acquisition);
         if (history is not null)
         {
             builder.Services.AddSingleton(history);

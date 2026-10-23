@@ -34,7 +34,7 @@ namespace iCemDataMonitor.Host.Grpc;
 public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
 {
     private readonly StationHealthState _health;
-    private readonly BusReader _reader;
+    private readonly ILatestBusState _latest;
     private readonly MetricsSampler _sampler;
     private readonly Tray.AutostartManager _autostart;
     private readonly Tray.ConsoleVisibilityService _console;
@@ -44,7 +44,7 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
 
     public TelemetryServiceImpl(
         StationHealthState health,
-        BusReader reader,
+        ILatestBusState latest,
         MetricsSampler sampler,
         Tray.AutostartManager autostart,
         Tray.ConsoleVisibilityService console,
@@ -53,7 +53,7 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
         ILogger<TelemetryServiceImpl> logger)
     {
         _health = health ?? throw new ArgumentNullException(nameof(health));
-        _reader = reader ?? throw new ArgumentNullException(nameof(reader));
+        _latest = latest ?? throw new ArgumentNullException(nameof(latest));
         _sampler = sampler ?? throw new ArgumentNullException(nameof(sampler));
         _autostart = autostart ?? throw new ArgumentNullException(nameof(autostart));
         _console = console ?? throw new ArgumentNullException(nameof(console));
@@ -81,7 +81,7 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
             AddinAlive = s.AddInAlive,
             Heartbeat = s.Heartbeat,
             ComPort = s.ComPort,
-            CaseState = ResolveCaseState(s),
+            CaseState = s.CaseState,
             // 2026-08-28 dishonest-surface fix: case_lan_state = header reg 2
             // (tap-exposed LAN/cRIO state) — was s.LanStatus = header reg 8,
             // which is a com_stream float-pair low word in v5 (garbage).
@@ -105,14 +105,6 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
         });
 
         return status;
-    }
-
-    /// <summary>Reg1 is not part of StationHealth — read it sensor-at-send from
-    /// the bus snapshot; 0 when no live snapshot (honest zero, ¬fake).</summary>
-    private short ResolveCaseState(Core.Health.StationHealth s)
-    {
-        var snap = _reader.Snapshot();
-        return snap?.CaseState ?? 0;
     }
 
     private static Contracts.ZoneHealth Zone(BusZoneKind kind, HealthZone z) => new()
@@ -171,8 +163,7 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
 
     /// <summary>
     /// Unary register snapshot (W20 F.1): bus reads AS RPC for thin clients
-    /// (CLI forwarder). SENSOR-AT-SEND law: the snapshot is taken AT CALL
-    /// TIME — no cache, no pre-computed state. Bus closed ⇒ UNAVAILABLE with a
+    /// (CLI forwarder). The request reads one latest acquisition publication. Bus closed ⇒ UNAVAILABLE with a
     /// meaningful detail (¬молчание, ¬пустой ответ).
     ///
     /// Address semantics = the shared decode law (RegisterDecoder, the SAME
@@ -183,13 +174,14 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
     /// </summary>
     public override Task<RegistersReply> GetRegisters(RegistersRequest request, ServerCallContext context)
     {
-        var snap = _reader.Snapshot();
-        if (snap is null || !_reader.IsOpen)
+        var state = _latest.Current;
+        var snap = state.Snapshot;
+        if (snap is null || !state.IsOpen)
         {
-            _logger.LogWarning("[telemetry] GetRegisters rejected: bus closed ({Error})", _reader.LastError);
+            _logger.LogWarning("[telemetry] GetRegisters rejected: bus closed ({Error})", state.LastError);
             throw new RpcException(new Status(StatusCode.Unavailable,
                 "bus is not open or no snapshot is available " +
-                $"(reader state: {_reader.LastError ?? "unknown"}). " +
+                $"(reader state: {state.LastError ?? "unknown"}). " +
                 "Ensure the iCem AddIn has created the bus file."));
         }
 

@@ -78,10 +78,10 @@ public static class RegisterMirrorEndpoints
     {
         app.MapGet("/api/regs", (HttpContext ctx) =>
         {
-            var reader = ctx.RequestServices.GetRequiredService<BusReader>();
+            var state = ctx.RequestServices.GetRequiredService<ILatestBusState>().Current;
             var registry = ctx.RequestServices.GetService<UnifiedVariableRegistry>();
-            var snap = reader.LastSnapshot ?? reader.Snapshot();
-            if (snap is null)
+            var snap = state.Snapshot;
+            if (snap is null || !state.IsOpen)
                 return Results.Json(new { error = "bus not available" }, statusCode: 503);
 
             var zoneLiveness = new Dictionary<string, object>

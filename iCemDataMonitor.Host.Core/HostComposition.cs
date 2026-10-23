@@ -61,7 +61,11 @@ public static class HostComposition
         Action<string> log)
     {
         services.AddSingleton(ini);
-        services.AddSingleton(new BusReader(ini.MmfPath, ini.MmfName, mutexName: null));
+        services.AddSingleton(_ => new BusReader(ini.MmfPath, ini.MmfName, mutexName: null));
+        services.AddSingleton(sp => new BusAcquisitionService(sp.GetRequiredService<BusReader>(),
+            TimeSpan.FromMilliseconds(Math.Min(ini.ModbusTickMs, iCemDataMonitor.Data.Telemetry.MetricsSampler.MinIntervalMs))));
+        services.AddSingleton<ILatestBusState>(sp => sp.GetRequiredService<BusAcquisitionService>());
+        services.AddHostedService(sp => sp.GetRequiredService<BusAcquisitionService>());
         services.AddSingleton<StationHealthState>();
         services.AddHostedService<BusHealthMonitor>();
 
@@ -76,7 +80,7 @@ public static class HostComposition
         });
         services.AddSingleton<IModbusPublisher>(sp =>
             new ModbusTcpPublisher(
-                sp.GetRequiredService<BusReader>(),
+                sp.GetRequiredService<ILatestBusState>(),
                 sp.GetRequiredService<ModbusOptions>()));
         log("modbus publisher registered (runtime-toggleable)");
 
@@ -105,7 +109,7 @@ public static class HostComposition
             services.AddSingleton<RingHistory>();
             services.AddSingleton(sp => new BusAddrRingService(sp.GetRequiredService<RingHistory>()));
             services.AddHostedService(sp => new BusRingService(
-                sp.GetRequiredService<BusReader>(),
+                sp.GetRequiredService<ILatestBusState>(),
                 sp.GetRequiredService<BusAddrRingService>()));
             log("web layer registered (ring history 600 s @ 1 Hz + SPA dashboard on :web_port)");
         }

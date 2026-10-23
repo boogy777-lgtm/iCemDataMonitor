@@ -23,6 +23,7 @@ public sealed record StationHealth(
     short Heartbeat,
     short ComPort,
     short CaseLanState,
+    short CaseState,
     ZoneHealth Com,
     ZoneHealth Lan,
     ZoneHealth Raw,
@@ -32,7 +33,7 @@ public sealed record StationHealth(
 public sealed class StationHealthState
 {
     private volatile StationHealth _current = new(
-        BusOpen: false, AddInAlive: false, Heartbeat: 0, ComPort: 0, CaseLanState: 0,
+        BusOpen: false, AddInAlive: false, Heartbeat: 0, ComPort: 0, CaseLanState: 0, CaseState: 0,
         Com: default, Lan: default, Raw: default, UpdatedAtUtc: DateTime.UtcNow);
 
     public StationHealth Current => _current;
@@ -63,7 +64,7 @@ public sealed class BusHealthMonitor : BackgroundService
 {
     private const int MaxStagnantSamples = 3; // 3 s window without reg 3 movement ⇒ AddIn dead
 
-    private readonly BusReader _reader;
+    private readonly ILatestBusState _latest;
     private readonly StationHealthState _state;
     private readonly ILogger<BusHealthMonitor> _logger;
     private readonly TimeProvider _timeProvider;
@@ -72,15 +73,15 @@ public sealed class BusHealthMonitor : BackgroundService
     private bool _haveBaseline;
     private int _stagnantSamples;
 
-    public BusHealthMonitor(BusReader reader, StationHealthState state, ILogger<BusHealthMonitor> logger)
-        : this(reader, state, logger, TimeProvider.System)
+    public BusHealthMonitor(ILatestBusState latest, StationHealthState state, ILogger<BusHealthMonitor> logger)
+        : this(latest, state, logger, TimeProvider.System)
     {
     }
 
-    internal BusHealthMonitor(BusReader reader, StationHealthState state, ILogger<BusHealthMonitor> logger,
+    internal BusHealthMonitor(ILatestBusState latest, StationHealthState state, ILogger<BusHealthMonitor> logger,
         TimeProvider timeProvider)
     {
-        _reader = reader;
+        _latest = latest;
         _state = state;
         _logger = logger;
         _timeProvider = timeProvider;
@@ -121,7 +122,8 @@ public sealed class BusHealthMonitor : BackgroundService
     /// </summary>
     internal void Probe()
     {
-        var snap = _reader.Snapshot();
+        var publication = _latest.Current;
+        var snap = publication.Snapshot;
         var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         if (snap is null)
@@ -131,7 +133,7 @@ public sealed class BusHealthMonitor : BackgroundService
             var last = _state.Current;
             _state.Update(last with
             {
-                BusOpen = _reader.IsOpen,
+                BusOpen = publication.IsOpen,
                 UpdatedAtUtc = now,
             });
             return;
@@ -151,7 +153,7 @@ public sealed class BusHealthMonitor : BackgroundService
             var last = _state.Current;
             _state.Update(last with
             {
-                BusOpen = _reader.IsOpen,
+                BusOpen = publication.IsOpen,
                 Com = ToZoneHealth(snap.ComMain, now),
                 Lan = ToZoneHealth(snap.Lan, now),
                 Raw = ToZoneHealth(snap.RawReserve, now),
@@ -180,11 +182,12 @@ public sealed class BusHealthMonitor : BackgroundService
         _lastHeartbeat = snap.Heartbeat;
 
         _state.Update(new StationHealth(
-            BusOpen: _reader.IsOpen,
+            BusOpen: publication.IsOpen,
             AddInAlive: alive,
             Heartbeat: snap.Heartbeat,
             ComPort: snap.ComPort, // v4: renamed ActiveComPort → ComPort (reg 0 unchanged)
             CaseLanState: snap.CaseLanState, // FIX 2026-08-28: header reg 2 (tap-exposed LAN/cRIO state) — was snap.LanStatus (reg 8 = com_stream float-pair low word, garbage)
+            CaseState: snap.CaseState,
             Com: ToZoneHealth(snap.ComMain, now),
             Lan: ToZoneHealth(snap.Lan, now),
             Raw: ToZoneHealth(snap.RawReserve, now),

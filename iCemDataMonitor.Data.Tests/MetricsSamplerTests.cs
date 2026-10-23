@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using iCemDataMonitor.Contracts;
@@ -30,6 +30,14 @@ namespace iCemDataMonitor.Data.Tests;
 public sealed class MetricsSamplerTests : IDisposable
 {
     private readonly string _dir;
+    private BusAcquisitionService? _acquisition;
+
+    private MetricsSampler CreateSampler(BusReader reader)
+    {
+        _acquisition = new BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
+        _acquisition.CaptureOnce();
+        return new MetricsSampler(_acquisition);
+    }
     private readonly string _mmfPath;
     private readonly string _mapName;
     private readonly string _mutexName;
@@ -45,6 +53,7 @@ public sealed class MetricsSamplerTests : IDisposable
 
     public void Dispose()
     {
+        _acquisition?.Dispose();
         try { Directory.Delete(_dir, recursive: true); } catch { /* best-effort */ }
     }
 
@@ -73,6 +82,7 @@ public sealed class MetricsSamplerTests : IDisposable
         {
             if (acquired) mutex.ReleaseMutex();
         }
+        _acquisition?.CaptureOnce();
     }
 
     /// <summary>Writes the four AddIn-owned header state regs (v5 map).</summary>
@@ -105,7 +115,7 @@ public sealed class MetricsSamplerTests : IDisposable
         using var producer = writer;
         WriteHeader(comPort: 1, caseState: 2, caseLanState: 0, heartbeat: 100);
 
-        var sampler = new MetricsSampler(reader);
+        var sampler = CreateSampler(reader);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var samples = new List<MetricsSample>();
         // A capacity-one DropOldest stream may lose its first full sample before
@@ -177,7 +187,7 @@ public sealed class MetricsSamplerTests : IDisposable
         writer.WriteFloat(200, 1.0f);
         WriteHeader(comPort: 1, caseState: 0, caseLanState: 0, heartbeat: 1);
 
-        var sampler = new MetricsSampler(reader);
+        var sampler = CreateSampler(reader);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         // The initial full sample can be evicted before this consumer runs.
         // Retry only observed initial loss; wrong values on a loss-free attempt fail.
@@ -263,7 +273,7 @@ public sealed class MetricsSamplerTests : IDisposable
 
         WriteHeader(comPort: 2, caseState: 7, caseLanState: 0, heartbeat: 7);
 
-        var sampler = new MetricsSampler(reader);
+        var sampler = CreateSampler(reader);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         MetricsSample full;
         MetricsSample delta;
@@ -343,7 +353,7 @@ public sealed class MetricsSamplerTests : IDisposable
         writer.WriteFloat(200, 1.0f);
         WriteHeader(comPort: 0, caseState: 0, caseLanState: 0, heartbeat: 1);
 
-        var sampler = new MetricsSampler(reader);
+        var sampler = CreateSampler(reader);
         var subscription = sampler.Subscribe(intervalMs: 50); // below minimum
 
         var sw = Stopwatch.StartNew();
@@ -368,7 +378,7 @@ public sealed class MetricsSamplerTests : IDisposable
         writer.WriteFloat(200, 1.0f);
         WriteHeader(comPort: 0, caseState: 0, caseLanState: 0, heartbeat: 1);
 
-        var sampler = new MetricsSampler(reader);
+        var sampler = CreateSampler(reader);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var subscription = sampler.Subscribe(intervalMs: 1000, cts.Token);
 
@@ -385,7 +395,7 @@ public sealed class MetricsSamplerTests : IDisposable
         var missingPath = Path.Combine(_dir, "absent", "bus.dat");
         using var reader = new BusReader(missingPath, _mapName, _mutexName);
 
-        var sampler = new MetricsSampler(reader);
+        var sampler = CreateSampler(reader);
         var subscription = sampler.Subscribe(intervalMs: 200);
 
         var ex = await Assert.ThrowsAsync<IOException>(async () =>
@@ -412,7 +422,7 @@ public sealed class MetricsSamplerTests : IDisposable
         writer.WriteFloat(200, 1.0f);
         WriteHeader(comPort: 0, caseState: 0, caseLanState: 0, heartbeat: 1);
 
-        var sampler = new MetricsSampler(reader);
+        var sampler = CreateSampler(reader);
         using var cts = new CancellationTokenSource();
         cts.Cancel(); // cancelled BEFORE Subscribe — producer must still complete the channel
 

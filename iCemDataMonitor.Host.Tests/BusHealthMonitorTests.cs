@@ -39,6 +39,7 @@ public sealed class BusHealthMonitorTests : IDisposable
     private readonly string _mutexName;
     private readonly string _mmfPath;
     private readonly BusReader _reader;
+    private readonly BusAcquisitionService _acquisition;
     private readonly ProbeClock _clock = new();
     private readonly MemoryMappedFile _section;
 
@@ -57,10 +58,12 @@ public sealed class BusHealthMonitorTests : IDisposable
 
         _reader = new BusReader(_mmfPath, _mapName, _mutexName);
         Assert.True(_reader.TryOpen(out var rerr), rerr);
+        _acquisition = new BusAcquisitionService(_reader, TimeSpan.FromMilliseconds(200));
     }
 
     public void Dispose()
     {
+        _acquisition.Dispose();
         _reader.Dispose();
         _section.Dispose();
         try { Directory.Delete(_dir, recursive: true); } catch { /* best effort */ }
@@ -119,8 +122,14 @@ public sealed class BusHealthMonitorTests : IDisposable
         finally { if (acquired) mutex.ReleaseMutex(); }
     }
 
+    private void Probe(BusHealthMonitor monitor)
+    {
+        _acquisition.CaptureOnce();
+        monitor.Probe();
+    }
+
     private BusHealthMonitor BuildMonitor(StationHealthState state) =>
-        new(_reader, state, NullLogger<BusHealthMonitor>.Instance, _clock);
+        new(_acquisition, state, NullLogger<BusHealthMonitor>.Instance, _clock);
 
     private sealed class ProbeClock : TimeProvider
     {
@@ -184,7 +193,7 @@ public sealed class BusHealthMonitorTests : IDisposable
         var state = new StationHealthState();
         var monitor = BuildMonitor(state);
 
-        monitor.Probe(); // fresh snapshot
+        Probe(monitor); // fresh snapshot
 
         var h = state.Current;
         Assert.Equal(0x0102, h.CaseLanState);        // reg 2 — the honest surface
@@ -204,14 +213,14 @@ public sealed class BusHealthMonitorTests : IDisposable
         var monitor = BuildMonitor(state);
 
         // Fresh probe #1: baseline (AddInAlive conservative false), zone active.
-        monitor.Probe();
+        Probe(monitor);
         Assert.True(state.Current.Lan.Active);
         Assert.False(state.Current.AddInAlive);          // first sample: no movement seen yet
 
         // Fresh probe #2 with a heartbeat ADVANCE (reg 3 = movement signal):
         // AddInAlive flips true — the "last verdict" is now a LIVE lan zone.
         WriteRawWords((BusLayout.RegHeartbeat, 101));
-        monitor.Probe();
+        Probe(monitor);
         Assert.True(state.Current.AddInAlive);
         Assert.Equal(101, state.Current.Heartbeat);
         Assert.True(state.Current.Lan.Active);
@@ -230,7 +239,7 @@ public sealed class BusHealthMonitorTests : IDisposable
             Assert.True(staleSnap.Stale);
             Assert.True(staleSnap.Lan.Active); // raw producer flag STILL 1 in the frozen copy
 
-            monitor.Probe(); // stale probe #1 — internal Snapshot times out the same way
+            Probe(monitor); // stale probe #1 — internal Snapshot times out the same way
 
             var h1 = state.Current;
             Assert.False(h1.Lan.Active);                          // THE DECAY PIN: verdict recomputed ⇒ inactive
@@ -246,7 +255,7 @@ public sealed class BusHealthMonitorTests : IDisposable
             Assert.True(h1.BusOpen);
 
             _clock.Advance(TimeSpan.FromMilliseconds(50));
-            monitor.Probe(); // stale probe #2 — decay KEEPS progressing
+            Probe(monitor); // stale probe #2 — decay KEEPS progressing
             Assert.False(state.Current.Lan.Active);
             Assert.Equal(h1.Lan.AgeMs + 50, state.Current.Lan.AgeMs); // age still growing
             return Task.CompletedTask;
@@ -261,7 +270,7 @@ public sealed class BusHealthMonitorTests : IDisposable
         var state = new StationHealthState();
         var monitor = BuildMonitor(state);
 
-        monitor.Probe();
+        Probe(monitor);
         Assert.True(state.Current.Lan.Active);
 
         await HoldBusMutexAsync(_mutexName, () =>
@@ -271,7 +280,7 @@ public sealed class BusHealthMonitorTests : IDisposable
             Assert.NotNull(staleSnap);
             Assert.True(staleSnap.Stale);
 
-            monitor.Probe(); // stale — age still under the 5 s gate
+            Probe(monitor); // stale — age still under the 5 s gate
 
             var h = state.Current;
             Assert.Equal(500, h.Lan.AgeMs);
@@ -289,7 +298,7 @@ public sealed class BusHealthMonitorTests : IDisposable
         WriteZoneHeader(ZoneKind.ComMain, _clock.Now.Ticks, active: true, count: 1);
 
         var state = new StationHealthState();
-        BuildMonitor(state).Probe();
+        Probe(BuildMonitor(state));
 
         Assert.False(state.Current.Lan.Active);  // old tick beats the flag
         Assert.True(state.Current.Lan.AgeMs >= BusZoneInfo.MaxZoneAgeMs);
@@ -322,12 +331,12 @@ public sealed class BusHealthMonitorTests : IDisposable
             Assert.Equal(_clock.Now.UtcDateTime, state.Current.UpdatedAtUtc);
         }
 
-        monitor.Probe();
+        Probe(monitor);
         AssertZones();
         await HoldBusMutexAsync(_mutexName, () =>
         {
             Assert.True(_reader.Snapshot()!.Stale);
-            monitor.Probe();
+            Probe(monitor);
             AssertZones();
             return Task.CompletedTask;
         });

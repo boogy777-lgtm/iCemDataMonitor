@@ -115,6 +115,30 @@ public class BusAccessDeniedTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Acquisition_DenyReadAcl_PublishesStickyDiagnostic_WithoutThrowingHost()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        CreateBusFile(_mmfPath, regCount: BusLayout.RegCount);
+        var original = RestrictToSystemOnly(_mmfPath);
+        try
+        {
+            using var reader = new BusReader(_mmfPath, _mapName, _mutexName);
+            using var acquisition = new BusAcquisitionService(reader, TimeSpan.FromMilliseconds(200));
+            acquisition.CaptureOnce();
+            var first = acquisition.Current;
+            Assert.False(first.IsOpen);
+            Assert.Null(first.Snapshot);
+            Assert.Contains("Remediation", first.LastError!);
+            Assert.Equal(0, first.SuccessfulCaptureSequence);
+            acquisition.CaptureOnce();
+            Assert.Equal(first.LastError, acquisition.Current.LastError);
+            Assert.False(acquisition.Current.IsOpen);
+            Assert.Equal(0, acquisition.Current.SuccessfulCaptureSequence);
+        }
+        finally { RestoreAcl(_mmfPath, original); }
+    }
+
     // ═══ 3. CAPACITY-SKEW regression (production live proof, core-architect
     //        section probes): the LIVE named section keeps its creation-time
     //        capacity until EVERY handle closes. A producer that created the
