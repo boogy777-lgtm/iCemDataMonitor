@@ -2,15 +2,15 @@ param([Parameter(Mandatory)][string]$RepoRoot,[Parameter(Mandatory)][string]$Inp
 $ErrorActionPreference='Stop'
 $Core=Join-Path $RepoRoot 'iCemEmule.Core/Core'
 $Files=@((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'),(Join-Path $Core 'EmuSettings.cs'),(Join-Path $Core 'DeviceTemplate.cs'),(Join-Path $Core 'SimulationEngine.cs'),(Join-Path $Core 'TemplateCatalog.cs'),(Join-Path $Core 'SimFileResolver.cs'),(Join-Path $Core 'UnitConversion.cs'))
-$Source=Get-Content (Join-Path $Core 'EmuEngineHost.cs') -Raw
+$Source=Get-Content (Join-Path $Core 'EmulatorStep.cs') -Raw
 $Start=$Source.IndexOf('    private double[] FrozenComValues()')
-$End=$Source.IndexOf('    public ControlResult SetFirmware',$Start)
+$End=$Source.IndexOf('    internal PreparedLanStep? PrepareLan',$Start)
 if($Start -lt 0 -or $End -lt 0){throw 'Original FrozenComValues missing'}
-$Method=$Source.Substring($Start,$End-$Start)
-$LoopStart=$Source.IndexOf('                        for (int i = 0; i < values.Length && i < template.Variables.Length; i++)')
-$LoopEnd=$Source.IndexOf('                        _comEmitter.SendLine(', $LoopStart)
+$Method=$Source.Substring($Start,$End-$Start).Replace('ComEngine','_comEngine')
+$LoopStart=$Source.IndexOf('        for (int i = 0; i < values.Length && i < template.Variables.Length; i++)')
+$LoopEnd=$Source.IndexOf('        return SignalWireCodec.FormatLine(', $LoopStart)
 if($LoopStart -lt 0 -or $LoopEnd -lt 0){throw 'Original COM unit loop missing'}
-$UnitLoop=$Source.Substring($LoopStart,$LoopEnd-$LoopStart)
+$UnitLoop=$Source.Substring($LoopStart,$LoopEnd-$LoopStart).Replace(', Units)', ', _unitSettings)')
 $Wrapper=@'
 using System;
 using System.Reflection;

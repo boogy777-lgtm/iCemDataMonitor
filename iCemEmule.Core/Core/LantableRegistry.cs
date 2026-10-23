@@ -58,31 +58,13 @@ public sealed class LantableRegistry
 
             foreach (var svElem in svArray.EnumerateArray())
             {
-                var svNumber = svElem.GetProperty("svNumber").GetUInt32();
-                var name = svElem.GetProperty("name").GetString() ?? string.Empty;
-                var equipmentType = svElem.TryGetProperty("equipmentType", out var et)
-                    ? (et.GetString() ?? string.Empty) : string.Empty;
-
-                var sigs = new List<SignalDef>();
-                if (svElem.TryGetProperty("signals", out var sigsElem))
-                {
-                    foreach (var s in sigsElem.EnumerateArray())
-                    {
-                        sigs.Add(new SignalDef(
-                            ByteOffset: s.GetProperty("byteOffset").GetInt32(),
-                            Size: s.GetProperty("size").GetInt32(),
-                            ValueType: s.GetProperty("valueType").GetString() ?? string.Empty,
-                            DasFactor: s.TryGetProperty("dasFactor", out var df) ? df.GetDouble() : 1.0,
-                            Name: s.GetProperty("name").GetString() ?? string.Empty,
-                            UoM: s.TryGetProperty("uom", out var u) ? (u.GetString() ?? string.Empty) : string.Empty
-                        ));
-                    }
-                }
+                var definition = ParseServiceVector(svElem);
+                var svNumber = definition.SvNumber;
 
                 // first occurrence kept per spec (duplicates exist in original)
                 if (!_bySv.ContainsKey(svNumber))
                 {
-                    _bySv[svNumber] = new ServiceVectorDef(svNumber, name, equipmentType, sigs.ToArray());
+                    _bySv[svNumber] = definition;
                 }
             }
         }
@@ -114,26 +96,8 @@ public sealed class LantableRegistry
             var skipped = 0;
             foreach (var svElem in svArray.EnumerateArray())
             {
-                var svNumber = svElem.GetProperty("svNumber").GetUInt32();
-                var name = svElem.GetProperty("name").GetString() ?? string.Empty;
-                var equipmentType = svElem.TryGetProperty("equipmentType", out var et)
-                    ? (et.GetString() ?? string.Empty) : string.Empty;
-
-                var sigs = new List<SignalDef>();
-                if (svElem.TryGetProperty("signals", out var sigsElem))
-                {
-                    foreach (var s in sigsElem.EnumerateArray())
-                    {
-                        sigs.Add(new SignalDef(
-                            ByteOffset: s.GetProperty("byteOffset").GetInt32(),
-                            Size: s.GetProperty("size").GetInt32(),
-                            ValueType: s.GetProperty("valueType").GetString() ?? string.Empty,
-                            DasFactor: s.TryGetProperty("dasFactor", out var df) ? df.GetDouble() : 1.0,
-                            Name: s.GetProperty("name").GetString() ?? string.Empty,
-                            UoM: s.TryGetProperty("uom", out var u) ? (u.GetString() ?? string.Empty) : string.Empty
-                        ));
-                    }
-                }
+                var definition = ParseServiceVector(svElem);
+                var svNumber = definition.SvNumber;
 
                 // Мерж: добавляем только те svNumber, которых ещё нет (приоритет у старых таблиц)
                 if (_bySv.ContainsKey(svNumber))
@@ -142,7 +106,7 @@ public sealed class LantableRegistry
                     continue;
                 }
 
-                _bySv[svNumber] = new ServiceVectorDef(svNumber, name, equipmentType, sigs.ToArray());
+                _bySv[svNumber] = definition;
                 added++;
             }
 
@@ -152,6 +116,31 @@ public sealed class LantableRegistry
         {
             LogLoad($"Failed to parse {fileName}: {ex.Message}");
         }
+    }
+
+    private static ServiceVectorDef ParseServiceVector(JsonElement svElem)
+    {
+        var svNumber = svElem.GetProperty("svNumber").GetUInt32();
+        var name = svElem.GetProperty("name").GetString() ?? string.Empty;
+        var equipmentType = svElem.TryGetProperty("equipmentType", out var et)
+            ? (et.GetString() ?? string.Empty) : string.Empty;
+
+        var sigs = new List<SignalDef>();
+        if (svElem.TryGetProperty("signals", out var sigsElem))
+        {
+            foreach (var s in sigsElem.EnumerateArray())
+            {
+                sigs.Add(new SignalDef(
+                    ByteOffset: s.GetProperty("byteOffset").GetInt32(),
+                    Size: s.GetProperty("size").GetInt32(),
+                    ValueType: s.GetProperty("valueType").GetString() ?? string.Empty,
+                    DasFactor: s.TryGetProperty("dasFactor", out var df) ? df.GetDouble() : 1.0,
+                    Name: s.GetProperty("name").GetString() ?? string.Empty,
+                    UoM: s.TryGetProperty("uom", out var u) ? (u.GetString() ?? string.Empty) : string.Empty
+                ));
+            }
+        }
+        return new ServiceVectorDef(svNumber, name, equipmentType, sigs.ToArray());
     }
 
     public ServiceVectorDef? GetBySvNumber(uint svNumber)
