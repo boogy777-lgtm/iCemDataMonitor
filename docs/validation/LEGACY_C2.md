@@ -42,3 +42,31 @@ The RPC fixture uses an unopened BusReader and does not exercise named MMF.
 Existing `UI.Tests/LayerRuntimeControllerTests`: 14/14 passed on the same Linux
 runner (pure controller tests; this does not exercise WinUI or Windows APIs).
 Builds for Host.Tests and UI.Tests completed successfully with no new dependencies.
+
+## Class / Inv / N+1
+
+Class: layer status and mutations in `Host.Core/LayerRuntimeController.cs`,
+`HostComposition.cs`, and `Host/Grpc/TelemetryServiceImpl.cs`; MMF acquisition is outside this class.
+Inv: one observed capture, distinct requested/persisted plans, and at most one mutation through actuator/persist; executable projection, fault, cancellation and concurrency tests check these guarantees.
+N+1: a new layer handler uses the existing capture and command gate; projection and concurrency tests check the common boundary.
+
+## Independent review and provenance — 2026-10-23
+
+Three GPT-6.1 Sol / medium agents worked sequentially: analysis, implementation,
+then independent review. No material review findings. The combined C1+C2 Host
+regression run passed **38/38**; existing UI controller tests passed **14/14**.
+Routing regression suite passed **37/37**, baseline guard suite **25/25**.
+`Verify-Baseline.ps1 -RequireComplete` verified **513/513** original files with
+23 exact approved divergences, including the six existing C2 source/test files.
+
+The historical source manifest remains pinned to
+`96e2206562c9389d1543095232115d81eae4b692`. C2 provenance in
+`rust/migration/legacy-divergences.json` points to [PR #31](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31)
+and its separate reviewed L02/L04 code commits. MMF layout5, source int32 CDAB
+timestamp in registers4–5, reserved header49–56, proto, SPA, AddIn and Rust runtime
+are unchanged. Independent LAN/RAW delivery with unchanged COM time is unchanged.
+
+Base: `e8b22d919a5f59ebc7b9afca77b61647b77e789a`, after C1 #30 merged following
+successful full Windows build/tests/MSI/baseline. C2 Windows CI is pending;
+[PR checks](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31/checks) provide
+the exact-head result. Hardware/operator acceptance remains separate.
