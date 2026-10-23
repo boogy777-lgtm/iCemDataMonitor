@@ -22,3 +22,20 @@ N+1: новый журнал задаётся путём и локальной �
 Проверяются пределы и хвост байтов, UTF-8, cadence, одна метка времени, явно owned retention/clear, чужие файлы и каталоги, конкурентные операции одного пути и независимость разных файлов. Существующие facade tests адаптируются только при намеренном изменении wildcard ownership. Windows net48 smoke использует точные linked sources и Roslyn текущего SDK с .NET Framework 4.8 reference assemblies; он не заменяет vendor build/loading. Linux не подтверждает Windows-only UI или vendor acceptance.
 
 Исторический manifest и ledger не изменяются. Изменения коммитятся отдельными проверяемыми checkpoint-ами.
+
+## Реализованная карта вызовов
+
+| Канал | Путь / локальная policy | Общий механизм |
+|---|---|---|
+| Host StartupLog | Host ProgramData/startup.log; console echo отдельно | StationFileLog.Write, одна UTC O метка |
+| DataBusLog | Host ProgramData/data-bus.log; прежние dedup/Success/Enabled/test-host guard | StationFileLog.Write |
+| Shell crash | Shell ProgramData/shell-crash.log | StationFileLog.Write |
+| Shell startup | рядом с exe/startup.log; local HH:mm:ss.fff [winui], platform newline | StationFileLog.WriteFormatted |
+| Emulator CrashLog | iCemEmule либо UseAppName, crash.log; default directory try-once, override без mkdir | StationFileLog.Write; retention только текущего owned path |
+| TemplateCatalog / LantableRegistry | общий рядом с exe/iCemEmule.templates.log; UTC O, прежний prefix | StationFileLog.WriteFormatted, один координатор |
+| UiTrace | TEMP/emu_ui_trace.log; local time, tid, CRLF | StationFileLog.WriteFormatted |
+| net48 TapLog | прежний ProgramData/TapOut.log; hooks и directory policy сохранены | Compile Link точного OwnedFileLog.cs; UTC O, owned retention |
+
+`WriteFormatted` сохраняет прежнюю локальную форматирующую policy и UTF-8 без BOM, добавляя общий cap. Timestamped `Write` сохраняет Encoding.UTF8 прежних SDK/Tap/Crash каналов. Двухаргументная публичная сигнатура StationFileLog.Write сохранена; дополнительная перегрузка задаёт directory/retention policy для фасадов.
+
+`ClearOwned` и `DeleteOwnedOlderThan` принимают явные пути и продолжают работу после ошибки отдельного файла. Новый RPC/UI clear не вводится. Ownership не выводится из расширения или наличия в каталоге. Новые SDK-тесты проверяют также Windows case alias того же пути; net48 helper компилирует те же production sources, а не их модель.

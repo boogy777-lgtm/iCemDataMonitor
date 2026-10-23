@@ -113,6 +113,22 @@ public sealed class DataBusLogTests : IDisposable
     }
 
     [Fact]
+    public void FailedSink_IsSwallowed_AndDedupRequiresSuccessToRearm()
+    {
+        const string marker = "DBL-io-fault-rearm";
+        using var enabled = Enable();
+        DataBusLog.Success();
+        DataBusLog.LogDirOverride = "\0illegal";
+        DataBusLog.Error(marker); // path failure must never escape into the bus caller
+        DataBusLog.LogDirOverride = _dir;
+        DataBusLog.Error(marker); // failed best-effort write still participates in dedup
+        Assert.False(File.Exists(LogPath));
+        DataBusLog.Success();
+        DataBusLog.Error(marker);
+        Assert.Equal(1, CountMarker(marker));
+    }
+
+    [Fact]
     public void Disabled_WritesNothing()
     {
         const string marker = "DBL-marker-delta";
