@@ -181,7 +181,7 @@ public class DataMonitorEdgeTruthTableTests
             Assert.Equal(3, before.Entries.Count);
             foreach (PollResolution.Entry e in before.Entries)
             {
-                w.WriteFloatPair(ZoneKind.ComMain, e.Address, (float)e.Value);
+                w.WritePreparedPair(PollPairPreparation.PrepareCom(e));
             }
             byte[] heartbeatBefore = ReadPair(path, BusLayout.RegHeartbeat);
 
@@ -211,7 +211,7 @@ public class DataMonitorEdgeTruthTableTests
                 // addr law: addr=4+idx*2 inside com_stream — no drift, ever.
                 Assert.InRange(e.Address, BusLayout.ComStreamBaseReg, 198);
                 Assert.Equal(0, (e.Address - BusLayout.ComStreamBaseReg) % 2);
-                w.WriteFloatPair(ZoneKind.ComMain, e.Address, (float)e.Value);
+                w.WritePreparedPair(PollPairPreparation.PrepareCom(e));
             }
 
             if (flowing)
@@ -426,7 +426,7 @@ public class DataMonitorEdgeTruthTableTests
             // addr law: addr=200+idx*2 inside lan_stream_crio — no shift on (re)connect.
             Assert.InRange(e.Address, BusLayout.LanStreamCrioBaseReg, 398);
             Assert.Equal(0, (e.Address - BusLayout.LanStreamCrioBaseReg) % 2);
-            w.WriteFloatPair(ZoneKind.Lan, e.Address, (float)e.Value);
+            w.WritePreparedPair(PollPairPreparation.PrepareLan(e));
         }
         Assert.Equal(2, o.Entries.Count);
     }

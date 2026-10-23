@@ -654,6 +654,11 @@ namespace Burservis.iCem.DataMonitor.Bus
         /// when this pair CHANGED vs the last-written pair at that address
         /// (file-seeded — a frozen vendor rewrite never fakes liveness); the
         /// data bytes land unconditionally (recording continuity).</summary>
+        internal void WritePreparedPair(PreparedPairWrite request)
+        {
+            WritePairWords(request.Zone, request.Address, request.Low, request.High);
+        }
+
         private void WritePairWords(ZoneKind zone, int registerAddress, ushort low, ushort high)
         {
             if (!IsOk)

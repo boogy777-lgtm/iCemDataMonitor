@@ -16,7 +16,17 @@ public sealed class Net48LoggingContractTests
     [WindowsLoggingFact]
     public void ExactLinkedCoreAndTapFacade_CompileWithRoslynCSharp73_AndRunOnNet48()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "logging_net48_" + Guid.NewGuid().ToString("N"));
+        var result = Net48ContractRunner.CompileAndRun("TapLogGolden", new[] { "OwnedFileLog.cs", "TapLog.cs", "TapLogGolden.cs" });
+        Assert.Contains("net48 CLR 4.", result);
+        Assert.Contains("net48 TapLog golden vectors passed", result);
+    }
+}
+
+internal static class Net48ContractRunner
+{
+    internal static string CompileAndRun(string executableName, string[] sourceFiles)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "contract_net48_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -28,7 +38,7 @@ public sealed class Net48LoggingContractTests
                 "Reference Assemblies", "Microsoft", "Framework", ".NETFramework", "v4.8");
             if (!Directory.Exists(references))
                 references = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Microsoft.NET", "Framework64", "v4.0.30319");
-            var output = Path.Combine(directory, "TapLogGolden.exe");
+            var output = Path.Combine(directory, executableName + ".exe");
             var compile = new ProcessStartInfo(Path.Combine(dotnetRoot, "dotnet.exe"));
             foreach (var argument in new[] { compiler, "/nologo", "/noconfig", "/nostdlib+", "/langversion:7.3", "/target:exe", "/out:" + output })
                 compile.ArgumentList.Add(argument);
@@ -38,14 +48,13 @@ public sealed class Net48LoggingContractTests
                 Assert.True(File.Exists(reference), "Missing .NET Framework reference: " + reference);
                 compile.ArgumentList.Add("/reference:" + reference);
             }
-            foreach (var name in new[] { "OwnedFileLog.cs", "TapLog.cs", "TapLogGolden.cs" })
+            foreach (var name in sourceFiles)
                 compile.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "Net48", name));
             Run(compile);
             var execute = new ProcessStartInfo(output);
             execute.ArgumentList.Add(Path.Combine(directory, "vectors"));
             var result = Run(execute);
-            Assert.Contains("net48 CLR 4.", result);
-            Assert.Contains("net48 TapLog golden vectors passed", result);
+            return result;
         }
         finally { try { Directory.Delete(directory, true); } catch { } }
     }
@@ -63,7 +72,7 @@ public sealed class Net48LoggingContractTests
         {
             process.Kill(entireProcessTree: true);
             process.WaitForExit();
-            Assert.Fail("net48 logging helper did not finish: " + start.FileName);
+            Assert.Fail("net48 contract helper did not finish: " + start.FileName);
         }
         var output = stdout.GetAwaiter().GetResult() + stderr.GetAwaiter().GetResult();
         Assert.True(process.ExitCode == 0, output);
