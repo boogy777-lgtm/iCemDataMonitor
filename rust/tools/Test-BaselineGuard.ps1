@@ -81,8 +81,10 @@ try {
     Check-Case 'missing baseline file' { Remove-Item (Join-Path $Fixture 'legacy.cs') } 'Full source copy is required'
     Check-Case 'missing approval' { $script:Ledger.changes = @(); Save-Ledger } 'Hash mismatch: legacy.cs'
     Check-Case 'wrong upstream commit' { $script:Ledger.source_commit = '3' * 40; Save-Ledger } 'schema/source commit mismatch'
+    Check-Case 'upstream commit must be scalar string' { $script:Ledger.source_commit = @($script:Ledger.source_commit); Save-Ledger } 'schema/source commit mismatch'
     Check-Case 'unknown ledger schema' { $script:Ledger.schema_version = 3; Save-Ledger } 'schema/source commit mismatch'
     Check-Case 'wrong original hash' { $script:Ledger.changes[0].baseline_blob_sha1 = '3' * 40; Save-Ledger } 'Invalid divergence hashes'
+    Check-Case 'baseline hash must be scalar string' { $script:Ledger.changes[0].baseline_blob_sha1 = @($script:Ledger.changes[0].baseline_blob_sha1); Save-Ledger } 'Invalid divergence hashes'
     Check-Case 'invalid approved hash' { $script:Ledger.changes[0].approved_blob_sha1 = 'bad'; Save-Ledger } 'Invalid divergence hashes'
     Check-Case 'duplicate approval' { $script:Ledger.changes += $script:Ledger.changes[0]; Save-Ledger } 'Duplicate divergence path'
     Check-Case 'outside baseline' { $script:Ledger.changes[0].path = '../outside'; Save-Ledger } 'Noncanonical divergence path'
@@ -117,6 +119,7 @@ try {
     Check-Case 'approved delete complete' { Approve-Deletion }
     Check-Case 'delete with hash rejected' { Approve-Deletion; $script:Ledger.changes[0].approved_blob_sha1 = '3' * 40; Save-Ledger } 'Unknown or missing ledger fields'
     Check-Case 'delete wrong baseline' { Approve-Deletion; $script:Ledger.changes[0].baseline_blob_sha1 = '3' * 40; Save-Ledger } 'Invalid divergence hashes'
+    Check-Case 'delete baseline hash must be scalar string' { Approve-Deletion; $script:Ledger.changes[0].baseline_blob_sha1 = @($script:Ledger.changes[0].baseline_blob_sha1); Save-Ledger } 'Invalid divergence hashes'
     Check-Case 'delete missing provenance' { Approve-Deletion; $script:Ledger.changes[0].provenance.reason = ''; Save-Ledger } 'Missing divergence provenance'
     Check-Case 'deleted file returned' { Approve-Deletion; Write-Fixture 'legacy.cs' 'returned' } 'Approved deleted path exists'
     Check-Case 'deleted directory returned' { Approve-Deletion; [IO.Directory]::CreateDirectory((Join-Path $Fixture 'legacy.cs')) | Out-Null } 'Approved deleted path exists'

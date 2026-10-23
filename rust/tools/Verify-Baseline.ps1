@@ -34,7 +34,7 @@ $Json = [System.Text.Json.JsonDocument]::Parse($LedgerText)
 try { Assert-UniqueJsonKeys $Json.RootElement } finally { $Json.Dispose() }
 $Ledger = ConvertFrom-Json -InputObject $LedgerText -AsHashtable
 Assert-Fields $Ledger @('schema_version', 'source_commit', 'changes')
-if ($Ledger.schema_version -isnot [long] -or $Ledger.schema_version -ne 2 -or $Ledger.source_commit -cne $Manifest.source_commit -or
+if ($Ledger.schema_version -isnot [long] -or $Ledger.schema_version -ne 2 -or $Ledger.source_commit -isnot [string] -or $Ledger.source_commit -cne $Manifest.source_commit -or
     $Ledger.changes -isnot [array]) {
     throw 'Legacy divergence ledger schema/source commit mismatch'
 }
@@ -55,7 +55,7 @@ foreach ($Change in $Ledger.changes) {
         throw "Frozen surface cannot be overridden: $($Change.path)"
     }
     if (-not $Approved.TryAdd($Change.path, $Change)) { throw "Duplicate divergence path: $($Change.path)" }
-    if ($Change.baseline_blob_sha1 -cne $Baseline[$Change.path].git_blob_sha1 -or
+    if ($Change.baseline_blob_sha1 -isnot [string] -or $Change.baseline_blob_sha1 -cne $Baseline[$Change.path].git_blob_sha1 -or
         ($Change.operation -ceq 'modify' -and
         ($Change.approved_blob_sha1 -isnot [string] -or $Change.approved_blob_sha1 -cnotmatch '^[0-9a-f]{40}$' -or
          $Change.approved_blob_sha1 -ceq $Change.baseline_blob_sha1))) {
