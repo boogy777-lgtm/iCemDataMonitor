@@ -76,7 +76,9 @@ function Assert-DeletedPathAbsent([string] $Relative) {
     $Parts = $Relative.Split('/')
     for ($Index = 0; $Index -lt $Parts.Count; $Index++) {
         $Current = Join-Path $Current $Parts[$Index]
-        $Entry = Get-Item -Force -LiteralPath $Current -ErrorAction SilentlyContinue
+        try { $Entry = Get-Item -Force -LiteralPath $Current -ErrorAction Stop }
+        catch [System.Management.Automation.ItemNotFoundException] { return }
+        # Permission, I/O and provider errors propagate; only not-found proves absence.
         if ($null -ne $Entry) {
             if (($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $Entry.LinkType) {
                 throw "Deleted path has link or redirected parent: $Relative"

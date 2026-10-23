@@ -148,22 +148,31 @@ def manifest_entries(document):
     return entries
 
 
-def approvals(document, manifest, baseline):
+def approvals(document, manifest, baseline, *, historical=False):
     if (not isinstance(document, dict) or set(document) != {'schema_version', 'source_commit', 'changes'}
-            or type(document['schema_version']) is not int or document['schema_version'] != 1
+            or type(document['schema_version']) is not int
+            or document['schema_version'] not in ((1, 2) if historical else (2,))
             or document['source_commit'] != manifest['source_commit']
             or not isinstance(document['changes'], list)):
         raise ValueError('Malformed divergence ledger')
     entries = {}
     pull_prefix = 'https://github.com/' + manifest['source_repository'] + '/pull/'
     for item in document['changes']:
-        if (not isinstance(item, dict) or set(item) != {
-                'path', 'baseline_blob_sha1', 'approved_blob_sha1', 'provenance'}
+        if not isinstance(item, dict):
+            raise ValueError('Malformed approval')
+        operation = item.get('operation') if document['schema_version'] == 2 else 'modify'
+        fields = {'path', 'baseline_blob_sha1', 'provenance'}
+        if document['schema_version'] == 2:
+            fields.add('operation')
+        if operation == 'modify':
+            fields.add('approved_blob_sha1')
+        if (operation not in ('modify', 'delete') or set(item) != fields
                 or not canonical_path(item['path']) or item['path'] in entries
                 or item['path'] not in baseline
                 or item['baseline_blob_sha1'] != baseline[item['path']]
-                or not lower_hash(item['approved_blob_sha1'])
-                or item['approved_blob_sha1'] == item['baseline_blob_sha1']):
+                or (operation == 'modify' and
+                    (not lower_hash(item['approved_blob_sha1'])
+                     or item['approved_blob_sha1'] == item['baseline_blob_sha1']))):
             raise ValueError('Malformed/duplicate approval')
         provenance = item['provenance']
         if (not isinstance(provenance, dict) or set(provenance) != {'pull_request', 'commit', 'reason'}
@@ -172,7 +181,7 @@ def approvals(document, manifest, baseline):
                 or re.fullmatch(re.escape(pull_prefix) + '[1-9][0-9]*', provenance['pull_request']) is None
                 or not isinstance(provenance['reason'], str) or not provenance['reason'].strip()):
             raise ValueError('Malformed approval provenance')
-        entries[item['path']] = item
+        entries[item['path']] = dict(item, operation=operation)
     return entries
 
 
@@ -191,7 +200,8 @@ def delegated_approvals(repo, context):
         manifest = metadata(repo, base_manifest)
         baseline = manifest_entries(manifest)
         old, new = (approvals(metadata(repo, regular_blob(repo, revision, LEDGER_PATH)),
-                              manifest, baseline) for revision in (context.base, context.head))
+                              manifest, baseline, historical=(revision == context.base))
+                    for revision in (context.base, context.head))
         if not old.keys() <= new.keys():
             return ()
         changed = tuple(path for path in new if new[path] != old.get(path))
@@ -199,12 +209,23 @@ def delegated_approvals(repo, context):
             return ()
         for path in changed:
             previous = old.get(path)
-            expected_base = previous['approved_blob_sha1'] if previous else baseline[path]
-            expected_head = new[path]['approved_blob_sha1']
-            if (path not in context.paths or expected_base == expected_head
-                    or regular_blob(repo, context.base, path)[0] != expected_base
-                    or regular_blob(repo, context.head, path)[0] != expected_head):
+            # A previous deletion cannot authorize resurrection or provenance-only edits.
+            if previous and previous['operation'] == 'delete':
                 return ()
+            expected_base = previous['approved_blob_sha1'] if previous else baseline[path]
+            if (path not in context.paths
+                    or regular_blob(repo, context.base, path)[0] != expected_base):
+                return ()
+            if new[path]['operation'] == 'delete':
+                # Empty literal ls-tree output alone means exact head absence. Trees,
+                # symlinks and submodules all produce entries and are rejected.
+                if git(repo, '--literal-pathspecs', 'ls-tree', '-z', context.head, '--', path):
+                    return ()
+            else:
+                expected_head = new[path]['approved_blob_sha1']
+                if (expected_base == expected_head
+                        or regular_blob(repo, context.head, path)[0] != expected_head):
+                    return ()
         return changed
     except (KeyError, TypeError, ValueError, UnicodeError, RecursionError,
             subprocess.SubprocessError, OSError):

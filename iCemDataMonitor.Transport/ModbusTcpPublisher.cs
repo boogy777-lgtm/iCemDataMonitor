@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using iCemDataMonitor.Data.Bus;
 using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Bus;
-using iCemDataMonitor.Sdk.Models;
 using iCemDataMonitor.Transport.Models;
 
 namespace iCemDataMonitor.Transport;

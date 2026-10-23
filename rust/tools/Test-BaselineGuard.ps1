@@ -136,6 +136,15 @@ try {
         Save-Ledger
         New-Item -ItemType SymbolicLink -Path (Join-Path $Fixture 'nested') -Target (Join-Path $Fixture 'missing-parent') | Out-Null
     } 'Deleted path has link or redirected parent'
+    Check-Case 'absence probe errors fail closed' {
+        Approve-Deletion
+        # Inject a provider read error, independent of OS privileges (CI may run as root).
+        $GuardPath = Join-Path $Fixture 'rust/tools/Verify-Baseline.ps1'
+        $Text = [IO.File]::ReadAllText($GuardPath).Replace(
+            'try { $Entry = Get-Item -Force -LiteralPath $Current -ErrorAction Stop }',
+            "try { throw [IO.IOException]::new('synthetic absence probe I/O failure') }")
+        [IO.File]::WriteAllText($GuardPath, $Text)
+    } 'synthetic absence probe I/O failure'
     Write-Host 'Baseline guard regression suite passed.'
 } finally {
     if (Test-Path $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force }
