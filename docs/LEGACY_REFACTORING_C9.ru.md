@@ -1,6 +1,6 @@
 # C9: emulator и минимальные AddIn seams
 
-Статус: восстановленный **pre-code план**, production implementation ещё не начата. Основание — фактический main после merge C8: `0b0597b6d9cecd4e8f666e36a40eb6926708345e`, tree `9f1fdda9b0c1ff251cc4ed838f4dae703cb87a97`. Ранее существовавший локальный документ утрачен при восстановлении workspace; этот документ реконструирован из прочитанного плана и read-only preflight, а не объявлен восстановлением прежнего commit. Build/test/restore при составлении не выполнялись.
+Статус: implementation C9 завершена для независимого review; Windows acceptance ещё не выполнен этим исполнителем. Основание — фактический main после merge C8: `0b0597b6d9cecd4e8f666e36a40eb6926708345e`, tree `9f1fdda9b0c1ff251cc4ed838f4dae703cb87a97`. Ранее существовавший локальный документ утрачен при восстановлении workspace; этот документ реконструирован из прочитанного плана и read-only preflight, а не объявлен восстановлением прежнего commit. Pre-code версия сохранена отдельным commit `9c5ad48c1a0b366896f3d5233ee572ab64345483` до production edits; build/test/restore при её составлении не выполнялись.
 
 Цель L12/L13: небольшие concrete helpers в существующих проектах, без новых assemblies/packages, generic framework, второго command bus и механического переноса UI.
 
@@ -58,6 +58,27 @@ ConfigComOracle.ps1 extracts FrozenComValues + COM units loop по host text anc
 
 MMF layout5/names/endian/addresses; AddIn only producer, Host readonly; int32 CDAB time4–5; header49–56 reserve; LAN/RAW independent. Modbus every-tick overwrite/same snapshot/resize/header/stale gates прежние. C2 commands/requested-persisted-observed, C6 single acquisition + expiry200+500=700ms/join-before-reader-dispose, C7 logging и C8 lifecycles неизменны. Proto/routes/CLI/pipe/SPA/assets/Rust production и immutable pin `96e2206562c9389d1543095232115d81eae4b692` не менять. Никаких incidental behavioral deltas/baseline hash updates.
 
-Явная intentional lifecycle delta C9: после начала Stop новый StartChannel возвращает `engine is stopping`, Start не реактивирует stopped host; concurrent Stop имеет одного owner, emitter Close/Dispose ждут завершения timer callbacks и LAN send. Нормальные channel stop/rebind/retry semantics не расширяются. Это закрывает прежний untracked LAN send/use-after-close; actual blocked-send/concurrent-Stop и timer-in-flight tests проверяют owner/join, а не только pure preparations.
+Явная intentional lifecycle delta C9: после начала Stop новый StartChannel возвращает `engine is stopping`, Start не реактивирует stopped host; повторный Start при работающем timer — no-op. Concurrent Stop имеет одного owner, emitter Close/Dispose ждут завершения timer callbacks и LAN send. Нормальные channel stop/rebind/retry semantics не расширяются. Это закрывает прежний untracked LAN send/use-after-close; actual blocked-send/concurrent-Stop и timer-in-flight tests проверяют owner/join, а не только pure preparations.
 
 Оригинальный dirty C3 `/workspace/scratch/972115899d93/iCemDataMonitor` не трогать/reset/stash/clean. SDK `/workspace/scratch/972115899d93/dotnet-sdk/dotnet`, pwsh `/workspace/scratch/972115899d93/powershell/pwsh`, cache `/workspace/scratch/972115899d93/nuget-packages`. Последовательные restore/build/test; no API/push/PR/ledger/sourcepin changes этим исполнителем.
+
+## Фактическая implementation и validation (2026-10-23)
+
+`EmulatorStep` содержит actual staged preparations, COM freeze/cache/units и LAN active-edge/elapsed/provider-failure law. Его Units setter обновляет COM и LAN одной shared settings reference; LanEmulating setter владеет freeze coupling. Host сохраняет прежний command adapter, status projections и persistence. Runtime отслеживает send Task, drains pipe/timer/send вне `_gate`, единолично закрывает resources. DFB остаётся вне provider catch. ConfigCom oracle извлекает actual moved method/loop, не test-authored algorithm.
+
+`ShellBootstrapCoordinator` exact source-linked в UI.Tests; completion callback остаётся внутри single-flight до завершения session installation/failure presentation. MainWindow закрывает splash, создаёт/заменяет session и строит VM; ShellSession owner не изменён. Blocked-completion handshake проверяет эту границу.
+
+`PollPairPreparation` используется actual module и существующими mirrored poll liveness/edge tests; writer request идёт через прежний pair funnel. SDK.Tests source-links exact production closure для portable golden; те же production files компилируются standalone Roslyn C#7.3 helper-ом на Windows. Общий test-only Net48ContractRunner используется logging и pair proofs; отдельный CLR4 entry file не конфликтует с portable testhost entry.
+
+| Фактический check | Результат и предел доказательства |
+|---|---|
+| Последовательные restores emulator/UI/SDK.Tests | Успешны; cold NuGet cache заполнен, workaround feeds не понадобился |
+| Emulator focused tests | **68 passed, 0 failed, 0 skipped**: actual step/decoder/parser/shutdown, default/stream/freeze/payload/diagnostics/format/command parity. Включает DFB exception region, active-edge busy reset, failure advancement, COM cache alias, manual→metric и native pre-units, blocked LAN/concurrent Stop/timer in-flight |
+| UI focused bootstrap/E3/exit/theme tests | **28 passed, 0 failed, 0 skipped**, включая viewer/live/spawn/timeout/retry/single-flight/blocked session completion |
+| SDK.Tests | **100 passed, 0 failed, 2 skipped**: portable actual production pair golden прошёл; обе Windows-only CLR4 proofs (logging и pair) пропущены на Linux |
+| Ранний full emulator run на source checkpoint 209a845 | **110 passed, 8 failed**, total118. Наблюдаемые Linux ограничения: 4 pipe socket Permission denied; 2 pipe-client-dependent app checks; Windows path separators; default-template filesystem traversal выбрал plc basic вместо ожидаемого flecs в одном in-proc test. Это **не** утверждение о проверенном baseline: отдельный base run не выполнялся; unrelated selection/order не менялись |
+| `git diff --check` | Чисто перед final documentation checkpoint |
+
+Все **пять** PowerShell oracle helpers реально скомпилированы и исполнены bundled pwsh runtime9.0.1 (не только просмотрены/условно skipped): ConfigCom — 8 steps + XML load/save fixtures; ComCatalog — один healthy case с real template files; Emulator — 2 templates, 9801 units, 132 settings, 32 DFB, 24 edges, 39 formats, 5 ACE, 180 decodes; LanPayload — inventory208, bases10, transitions16, can8394, codec3600, ascii35, conversions4800; UnicodeIdentity — 3 identity pairs. Сохранены C7 OwnedFileLog + StationFileLog closures. Scratch execution evidence `/tmp/c9-oracles-xk_tggf_` — временное свидетельство, не durable deliverable.
+
+Локально cargo отсутствует; direct PowerShell execution доказывает current-source closure, **не** Rust differential assertions. Windows CI должен выполнить перечисленные Rust targets, обе actual CLR4 proofs, full Windows .NET suite/WinUI build и обычный packaging gate. Полный proprietary AddIn/vendor build/load, live COM/Npcap/MMF и UI launch/replacement acceptance этим Linux check не доказаны. Immutable pin, Rust production/fixtures, proto/SPA/assets и dirty C3 не изменены.
