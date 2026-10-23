@@ -136,14 +136,13 @@
     },
     {
       "path": "iCemDataMonitor.Core.Tests/ContractTests.cs",
+      "operation": "delete",
       "baseline_blob_sha1": "9fc8930f326d3154ff67ff11bc99367f0007bdad",
-      "approved_blob_sha1": "37a6b3f5299ee2730e0e0fdd7c1a20457de7ad1a",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/11",
-        "commit": "e4a17b9c93009865eefde9f74048016d5b10b362",
-        "reason": "User-authorized Legacy CI repair: Wait for the actual MongoDown health event within a bounded async-operation budget, retain exact DbOk assertion and always stop/join/dispose the loop."
-      },
-      "operation": "modify"
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "User-authorized Legacy CI repair: Wait for the actual MongoDown health event within a bounded async-operation budget, retain exact DbOk assertion and always stop/join/dispose the loop. Historical approval retained; Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
     },
     {
       "path": "iCemDataMonitor.Host.Tests/UiNavigationServiceTests.cs",
@@ -411,14 +410,14 @@
     },
     {
       "path": "iCemDataMonitor.Transport/ModbusTcpPublisher.cs",
+      "operation": "modify",
       "baseline_blob_sha1": "2af3376650e74e5e7d8ed49c6bf404cdcd2793eb",
-      "approved_blob_sha1": "48a1f2e9a7cc2cc7109f98b49517c86ba48f3f0d",
+      "approved_blob_sha1": "55c936d7d5d356a5ffc1a77a90bb5123178f9ad8",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/37",
-        "commit": "668ba7aac20216cf7a92a809fc13ed6a9860ca40",
-        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance. Subsequent C8 approval: Owner-authorized L10/L11 concrete Modbus generation lifecycle serializes idempotent start, stop and disposal, joins accept/refresh/client work, releases completed clients, preserves register image and truthful bound status. Boot and runtime use the same singleton; boot retains five attempts/four five-second delays with cancellation and typed address-in-use-only retry, actual-port/socket-cause diagnostics. Host owns both named-event workers and joins before shared handle and final DI disposal; existing host StopAsync and blunt restart remain. Preserve frozen MMF/layout/time/mirror/PDU, C2 commands, C6 acquisition, proto/assets/SPA and Rust runtime. Independent GPT-6.1 Sol medium review found no defects; portable Transport11/11 and Host66 plus5 Windows-only skips passed independently. Windows CI is required before merge. PR37 and exact remote code commits record provenance."
-      },
-      "operation": "modify"
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "b988985d5745eeeadb4fb254ab94d17e93635584",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance. Subsequent C8 approval: Owner-authorized L10/L11 concrete Modbus generation lifecycle serializes idempotent start, stop and disposal, joins accept/refresh/client work, releases completed clients, preserves register image and truthful bound status. Boot and runtime use the same singleton; boot retains five attempts/four five-second delays with cancellation and typed address-in-use-only retry, actual-port/socket-cause diagnostics. Host owns both named-event workers and joins before shared handle and final DI disposal; existing host StopAsync and blunt restart remain. Preserve frozen MMF/layout/time/mirror/PDU, C2 commands, C6 acquisition, proto/assets/SPA and Rust runtime. Independent GPT-6.1 Sol medium review found no defects; portable Transport11/11 and Host66 plus5 Windows-only skips passed independently. Windows CI is required before merge. PR37 and exact remote code commits record provenance. Historical approval retained; Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
     },
     {
       "path": "iCemDataMonitor.Data.Tests/BusAccessDeniedTests.cs",
@@ -716,6 +715,143 @@
         "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
       },
       "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/ArchTests.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "a8c57cb7b2b9dcbfac28008695eecde056166e51",
+      "approved_blob_sha1": "3dbbc6b386d3557a64fbf92ce7a0e0d4f4c3e136",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "2f332af1dcd46ffcd7c7ce7dd91a0cbc3217a2ac",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/iCemDataMonitor.Core.Tests.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "3da90787fd9889a38a9592ff19006a3995de61a4",
+      "approved_blob_sha1": "89d49f70a1a52442ac310472e18f454aa9fd8543",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/Extensions/CoreServicesExtensions.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "ffc3324c3cbb87bd2106579c26c38da60105b554",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/HealthCheckService.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "11448d2eb9d6795924f24732cecc6db9b0be23fc",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/Models/CoreOptions.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "ff9f6f835a23909c813009cb062cc19b2b3443b6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/Models/HealthEvent.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "ce543500262a74bbfc1edf5030b3d4012944f179",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/PipelineWorker.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "a03ae6dfafc29d951a7c372601caa96003337718",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/iCemDataMonitor.Core.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "068177be668d4d244f0ea9317cc66e06aa4a2c83",
+      "approved_blob_sha1": "22cc4c9377497fec467a055ebb66667502eaceb6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data/LogsCleanup.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "8350b47e38d936c942f4a99118977932b02145c0",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IConfigStore.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "c4c09a186421b26915f3cbc2c493c2ec7c552de9",
+      "approved_blob_sha1": "582aa89d97a1aa723a74c6f57d1d129c2102f96e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IModbusPublisher.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "30e930ad40e2bd9ac2146aea68ec2afb491faf4b",
+      "approved_blob_sha1": "a31ca0b766836fd538a85cf77a5f1909235a77dd",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/B5ContractTests.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "808b2bff061b3e2937c60ab1d5169e4d018ab2e9",
+      "approved_blob_sha1": "58c73b9254382247cf115ca424a2b4693ccb7c78",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/ContractTests.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "9a5aa576a5c4d0d1971fa98d6670a265fd5961fa",
+      "approved_blob_sha1": "85e10f2de74403bcbaff27ca90d1cef840a4964a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
     }
   ]
 }
