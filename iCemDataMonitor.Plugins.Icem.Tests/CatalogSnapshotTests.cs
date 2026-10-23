@@ -146,6 +146,26 @@ public sealed class CatalogSnapshotTests
         Assert.Empty(registry.GetFamilies());
         Assert.Equal(2, registry.GetModbusBase("ORPHAN"));
         Assert.Equal(new ModbusRegisterEntry("Orphan", 14), Assert.Single(registry.GetRegisterEntries("ORPHAN")));
+        AssertReadOnly(registry.GetRegisterEntries("orphan"));
+    }
+
+    [Theory]
+    [InlineData("{\"version\":1,\"families\":{\"flecs\":null}}")]
+    [InlineData("{\"version\":1,\"variables\":[null]}")]
+    [InlineData("{\"version\":1,\"variables\":[{\"name\":null,\"families\":{\"flecs\":{}}}]}")]
+    [InlineData("{\"version\":1,\"variables\":[{\"name\":\"Bad\",\"families\":{\"flecs\":null}}]}")]
+    public void OptionalMalformedShape_DegradesWithoutChangingStrictLoad(string json)
+    {
+        Assert.Throws<NullReferenceException>(() => Read(json));
+        var attempts = 0;
+        var registry = DeviceCatalogRegistry.FromLoader(() => { attempts++; return Read(json); });
+        Assert.Equal(34, registry.GetCatalog("flecs").GetCatalog().Count);
+        Assert.Equal(10, registry.GetCatalog("plc").GetCatalog().Count);
+        Assert.Equal(8, registry.GetCatalog("lan").GetCatalog().Count);
+        Assert.Empty(registry.GetFamilies());
+        Assert.Empty(registry.GetRegisterEntries("flecs"));
+        Assert.Equal(2, registry.GetModbusBase("flecs"));
+        Assert.Equal(1, attempts);
     }
 
     [Fact]

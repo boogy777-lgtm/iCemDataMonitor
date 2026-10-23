@@ -110,4 +110,17 @@ public sealed class CatalogProjectionTests
         Assert.Equal("#010203", degraded.GetColor(2));
         Assert.Equal("bbl", healthy.GuessUom("TankLevel"));
     }
+
+    [Fact]
+    public void AcceptedEmptyCanonicalNames_PreserveLastEntryLookup()
+    {
+        var snapshot = CatalogSnapshotTests.Read("""
+            {"version":1,"variables":[
+              {"name":"","families":{"flecs":{"index":2,"alias":"First"}}},
+              {"name":"","families":{"flecs":{"index":5,"alias":"Last"}}}]}
+            """);
+        var catalog = new FlecsVariableCatalog(snapshot);
+        Assert.Equal(2, catalog.GetCatalog().Count);
+        Assert.Equal(("Last", "", (int?)6), catalog.Lookup(""));
+    }
 }

@@ -13,8 +13,11 @@ internal sealed class CatalogProjection
     private CatalogProjection(IEnumerable<VariableDefinition> entries, IReadOnlyList<string> colors)
     {
         _catalog = Array.AsReadOnly(entries.ToArray());
-        _lookup = _catalog.ToFrozenDictionary(v => v.Name,
-            v => (v.Description, v.Uom, (int?)v.Position), StringComparer.OrdinalIgnoreCase);
+        var lookup = new Dictionary<string, (string Display, string Uom, int? ModbusOffset)>(StringComparer.OrdinalIgnoreCase);
+        // Preserve legacy last-write-wins for entries accepted by the strict registry parser.
+        foreach (var entry in _catalog)
+            lookup[entry.Name] = (entry.Description, entry.Uom, entry.Position);
+        _lookup = lookup.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
         _colors = colors.ToArray();
     }
 

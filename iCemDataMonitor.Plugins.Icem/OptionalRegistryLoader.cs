@@ -11,8 +11,10 @@ internal static class OptionalRegistryLoader
     internal static UnifiedVariableRegistry? Load(Func<UnifiedVariableRegistry> load)
     {
         try { return load(); }
+        // Strict Load also dereferences required DTO nodes: JSON null there is malformed
+        // optional deployment data. Keep that compatibility handling at this boundary.
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException
-                                  or InvalidOperationException or ArgumentException)
+                                  or InvalidOperationException or ArgumentException or NullReferenceException)
         {
             return null;
         }

@@ -30,3 +30,15 @@ N+1 проверен synthetic `extra` family непосредственно ч�
 L07 portable validation: Plugin.Tests **161/161**; targeted Data `CatalogSnapshotIntegrationTests` **1/1**. Команда Plugin та же, что для L06. Data: `dotnet test iCemDataMonitor.Data.Tests --no-restore --no-build -m:1 /nodeReuse:false -p:UseSharedCompilation=false --filter FullyQualifiedName~CatalogSnapshotIntegrationTests`. Integration проверяет synthetic injected snapshot после удаления source file: FamilyAwareCatalog переключает flecs → plc, InMemoryConfigStore combined map включает extra family и исключает ExcludeFromTelemetry, без deployment values.
 
 Дополнительный полный Data.Tests запуск: build successful (0 warnings), **56 passed / 60 failed / 116 total** на Linux. Failures относятся к Windows named maps/sections и зависимым Bus assertions; полный suite здесь не является зелёной portable проверкой. Эти Windows runtime проверки не исправлялись и не входят в заявленный C4 validation. Независимое review и provenance по-прежнему pending.
+
+## Независимое review — malformed optional data
+
+До fix: Class — OptionalRegistryLoader является boundary необязательного deployment file; strict Load не меняется. Inv — malformed данные, включая JSON null в обязательных DTO nodes, фиксируют degraded snapshot на lifetime. N+1 — существующий общий loader обслуживает следующие wrappers без нового механизма или dependency.
+
+Review обнаружило regression: синтаксически корректный JSON с null family definition, variable, canonical name или family entry вызывает NullReferenceException внутри strict Load; новый optional exception filter пропускал его, хотя прежние wrappers использовали fallback. Четыре real-JSON regression cases воспроизвели сбой до fix. Optional boundary теперь обрабатывает и этот failure; строгий Load продолжает бросать прежнее исключение.
+
+Уточнение кеша: каталоги и maps объявленных families кешируются. Variable-only family сохраняет legacy GetRegisterEntries с default base 2 и read-only результатом, но его map проецируется по запросу. Произвольные unknown family strings не добавляются в unbounded cache; это не вызывает повторного disk I/O или пересборки catalog.
+
+Второй review fix: Class — CatalogProjection владеет lookup projection; Inv — принятые strict parser entries сохраняют legacy last-write-wins lookup, включая несколько пустых canonical names. N+1 — общий projector применяет ту же политику без дополнительного family-specific кода. Regression с двумя empty-name entries воспроизвёл ArgumentException нового ToFrozenDictionary selector overload; lookup теперь сначала заполняет локальный dictionary присваиванием, затем замораживается. Catalog order и entries не меняются.
+
+Независимое review diff base..L07, registry contracts, Data adapters и tests завершено; других material findings не выявлено. После review fixes: Plugin.Tests **166/166**; Data `CatalogSnapshotIntegrationTests` **1/1** (с rebuild, те же no-restore/single-node flags); `git diff --check` clean. Windows runtime validation остаётся за Windows CI; provenance/ledger завершает владелец задачи.
