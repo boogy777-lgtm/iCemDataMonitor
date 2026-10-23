@@ -109,6 +109,12 @@ public sealed class LayerRuntimeController
         _actuator = actuator;
     }
 
+    /// <summary>One observed sample, with requested and last persisted plans kept distinct.</summary>
+    public LayerRuntimeStatus CaptureStatus() => new(
+        ActualModbusRunning, ActualLanSnifferRunning, SnifferAvailable,
+        Layers.Modbus, Layers.LanSniffer, Layers.Web, Layers.OpcDa,
+        _ini, Busy, LastError);
+
     /// <summary>
     /// Toggle one layer. Returns a human result. Never throws — failures land in
     /// LastError and the state rolls back (Layers unchanged on failure).

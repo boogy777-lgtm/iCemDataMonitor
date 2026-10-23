@@ -133,7 +133,11 @@ public static class HostComposition
             TrayToggleRules.Layers.From(layers),
             sp.GetService<AceSnifferService>() is not null,
             iniPath,
-            sp.GetRequiredService<LayerRuntimeController.ILayerActuator>()));
+            sp.GetRequiredService<LayerRuntimeController.ILayerActuator>())
+        {
+            ModbusBoundProbe = () => sp.GetService<IModbusPublisher>()?.IsBound ?? false,
+            SnifferRunningProbe = () => sp.GetService<AceSnifferService>()?.IsRunning ?? false,
+        });
     }
 
     /// <summary>
@@ -198,9 +202,10 @@ public static class HostComposition
             });
         });
 
-        app.MapGet("/api/status/summary", (StationHealthState h, IModbusPublisher? publisher, AceSnifferService? sniffer, LayerRuntimeController? controller) =>
+        app.MapGet("/api/status/summary", (StationHealthState h, AceSnifferService? sniffer, LayerRuntimeController? controller) =>
         {
             var s = h.Current;
+            var runtime = controller?.CaptureStatus();
             return Results.Ok(new
             {
                 busOpen = s.BusOpen,
@@ -212,14 +217,7 @@ public static class HostComposition
                     lan = new { active = s.Lan.Active, ageMs = s.Lan.AgeMs },
                     raw = new { active = s.Raw.Active, ageMs = s.Raw.AgeMs },
                 },
-                layers = new
-                {
-                    modbus = publisher?.IsBound ?? false,
-                    modbusPort = ini.ModbusPort,
-                    sniffer = sniffer?.IsRunning ?? false,
-                    opcDa = controller?.Layers.OpcDa ?? layers.OpcDa,
-                    setAsDefault = controller?.SetAsDefault ?? (ini.UiSetAsDefault == 1),
-                },
+                layers = GetLayerStatusShape(runtime, ini, layers),
                 // Additive witness surface (2026-08-30): sniffer frame counters ride
                 // the same status path that surfaces IsRunning. The `sniffer` bool
                 // above stays for read-surface compat.
@@ -234,6 +232,15 @@ public static class HostComposition
 
         return app;
     }
+
+    internal static object GetLayerStatusShape(LayerRuntimeStatus? status, IniOptions ini, LayerFlags layers) => new
+    {
+        modbus = status?.ModbusBound ?? false,
+        modbusPort = status?.Ini.ModbusPort ?? ini.ModbusPort,
+        sniffer = status?.SnifferRunning ?? false,
+        opcDa = status?.OpcDa ?? layers.OpcDa,
+        setAsDefault = status?.SetAsDefault ?? (ini.UiSetAsDefault == 1),
+    };
 
     /// <summary>Anonymous shape of the additive /api/status/summary "snifferStats"
     /// witness block (2026-08-30). Kept as a named helper so the shape is pinned
