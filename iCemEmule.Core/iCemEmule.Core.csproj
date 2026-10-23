@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\iCemDataMonitor.Sdk\iCemDataMonitor.Sdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="SharpPcap" Version="6.0.0" />
     <PackageReference Include="PacketDotNet" Version="1.4.7" />
     <!-- 2026-09-01 (owner decree «Блок 2 п.5/6»): Microsoft.* on the 10.0.0 train. -->

@@ -69,7 +69,7 @@ public partial class App : Application
     {
         try
         {
-            File.AppendAllText(
+            StationFileLog.WriteFormatted(
                 Path.Combine(AppContext.BaseDirectory, "startup.log"),
                 $"{DateTime.Now:HH:mm:ss.fff} [winui] {text}{Environment.NewLine}");
         }

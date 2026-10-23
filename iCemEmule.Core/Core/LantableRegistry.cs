@@ -165,7 +165,7 @@ public sealed class LantableRegistry
         try
         {
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "iCemEmule.templates.log");
-            File.AppendAllText(logPath, $"{DateTime.UtcNow:O} LantableRegistry: {msg}{Environment.NewLine}");
+            iCemDataMonitor.Sdk.Diagnostics.StationFileLog.WriteFormatted(logPath, $"{DateTime.UtcNow:O} LantableRegistry: {msg}{Environment.NewLine}");
         }
         catch { }
     }

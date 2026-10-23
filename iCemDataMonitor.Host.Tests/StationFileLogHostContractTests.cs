@@ -99,6 +99,15 @@ public class StationFileLogHostContractTests : IDisposable
     }
 
     [Fact]
+    public void StartupLog_FileHasExactlyOneTimestamp_AndConsoleKeepsSingleEcho()
+    {
+        // Console is shared process state: verify the file without replacing stdout.
+        StartupLog.Create(_dir)("READY café");
+        var line = Assert.Single(File.ReadAllLines(Path_("startup.log")));
+        Assert.Matches(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z READY café$", line);
+    }
+
+    [Fact]
     public void StartupLog_DefaultDirectory_IsProgramDataHostDir()
     {
         // Owner decree: startup.log lives under ProgramData\...\iCemDataMonitor.Host\.

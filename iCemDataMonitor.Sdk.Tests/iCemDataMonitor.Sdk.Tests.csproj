@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Net48\TapLogGolden.cs" />
+    <None Include="Net48\TapLogGolden.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\iCemDataMonitor.Sdk\Diagnostics\OwnedFileLog.cs" Link="Net48\OwnedFileLog.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Burservis.iCem.DataMonitor\TapLog.cs" Link="Net48\TapLog.cs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\iCemDataMonitor.Sdk\iCemDataMonitor.Sdk.csproj" />
   </ItemGroup>
 
