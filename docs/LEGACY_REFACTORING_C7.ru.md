@@ -64,3 +64,9 @@ Review завершён: существенный gap владения timestamp
 Полный Windows CI, CLR4 golden helper и WinUI ожидаются до merge. Результат CI и оставшиеся ограничения фиксируются в PR; vendor AddIn loading и межпроцессная atomic clear не заявляются. После C7 автономно продолжаются C8–C10.
 
 Официальный `Verify-Baseline.ps1 -RequireComplete`: **513/513**, **57 exact approved divergences**, frozen proto/assets, D16/D17 predicates и REST inventory OK. `git diff --check` clean.
+
+## Windows CI — Class / Inv / N+1 до исправлений
+
+Class: asynchronous Modbus recovery observations в `Transport.Tests/ModbusContractTests.cs`; retained stale header — near nonmember полного восстановления активной зоны. Inv: header7 не доказывает copy CDAB [0,0x3F80]: `TickOnce` зеркалирует stale header, но удерживает зоны; проверять один TCP window3–5 и прежний 15s deadline без увеличения задержек. N+1: следующие recovery assertions привязываются к полному наблюдаемому результату; deterministic stale-first/fresh-next vector в `AcquisitionMeasurementsTests.cs` проверяет различие без clock/scheduler зависимости. Production synchronization и stale-hold law не меняются.
+
+Class: differential C# oracle source closures в `rust/tests/support/{ConfigComOracle,ComCatalogOracle,EmulatorOracle,UnicodeIdentityOracle}.ps1`; production Rust и frozen source manifest не входят. Inv: helper компилирует фактические текущие TemplateCatalog/LantableRegistry вместе с exact SDK logging sources, без stub sink или изменения original methods; compilation guards каждой из четырёх closures. N+1: oracle linking нового C# source включает его реальные source dependencies. C7 разрешает это узкое обновление тестовой closure; Rust runtime/fixtures/manifest не меняются.
