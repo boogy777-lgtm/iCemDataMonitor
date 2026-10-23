@@ -1,4 +1,4 @@
-﻿using iCemDataMonitor.Sdk;
+using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Models;
 
 namespace iCemDataMonitor.Plugins.Icem;
@@ -8,47 +8,19 @@ public class FlecsVariableCatalog : IVariableCatalog
     private const string Family = "flecs";
     private const int MbHeartbeat = 0;
 
-    private readonly IReadOnlyList<VariableDefinition> _catalog;
-    private readonly IReadOnlyDictionary<string, (string Display, string Uom, int? ModbusOffset)> _lookup;
+    private readonly CatalogProjection _projection;
 
     public FlecsVariableCatalog(UnifiedVariableRegistry? registry = null)
+        : this(registry ?? OptionalRegistryLoader.LoadDefault(), true) { }
+
+    internal static FlecsVariableCatalog FromSnapshot(UnifiedVariableRegistry? registry) => new(registry, true);
+
+    private FlecsVariableCatalog(UnifiedVariableRegistry? registry, bool fromSnapshot)
     {
-        registry ??= TryLoadRegistry();
-        if (registry != null)
-            (_catalog, _lookup) = BuildFromRegistry(registry);
-        else
-            (_catalog, _lookup) = BuildFallback();
+        _projection = CatalogProjection.Create(registry, Family, 1, BuildFallback, Colors);
     }
 
-    private (VariableDefinition[], IReadOnlyDictionary<string, (string, string, int?)>) BuildFromRegistry(
-        UnifiedVariableRegistry reg)
-    {
-        var vars = reg.GetFamilyVariables(Family);
-        var catalog = new VariableDefinition[vars.Count];
-        var lookup = new Dictionary<string, (string, string, int?)>(vars.Count, StringComparer.OrdinalIgnoreCase);
-        for (int i = 0; i < vars.Count; i++)
-        {
-            var r = vars[i];
-            int modbusOffset = r.Index + 1; // keeps current 1-34 range
-            catalog[i] = new VariableDefinition(r.Name, r.Alias, r.Uom, r.Color, modbusOffset, false, "registry");
-            lookup[r.Name] = (r.Alias, r.Uom, modbusOffset);
-        }
-        return (catalog, lookup);
-    }
-
-    private static UnifiedVariableRegistry? TryLoadRegistry()
-    {
-        try
-        {
-            var path = Path.Combine(AppContext.BaseDirectory, "templates", "variable_registry.json");
-            if (!File.Exists(path)) return null;
-            return UnifiedVariableRegistry.Load(path);
-        }
-        catch { return null; }
-    }
-
-    private static (VariableDefinition[] Catalog, IReadOnlyDictionary<string, (string, string, int?)> Lookup)
-        BuildFallback()
+    private static VariableDefinition[] BuildFallback()
     {
         var catalog = new VariableDefinition[]
         {
@@ -88,10 +60,7 @@ public class FlecsVariableCatalog : IVariableCatalog
             new("VolumetricMeter", "VolumetricMeter",   "bpm",  "#339933", (MbHeartbeat + 68) / 2, false, "catalog"),
         };
 
-        // Case-insensitive: parity with the registry-built lookup (OrdinalIgnoreCase),
-        // so the degraded no-registry path resolves names identically.
-        var lookup = catalog.ToDictionary(v => v.Name, v => (v.Description, v.Uom, (int?)v.Position), StringComparer.OrdinalIgnoreCase);
-        return (catalog, lookup);
+        return catalog;
     }
 
     private static readonly string[] Colors =
@@ -100,12 +69,11 @@ public class FlecsVariableCatalog : IVariableCatalog
         "#FFCC05", "#D86C27", "#009999", "#660066", "#A1A744",
     };
 
-    public IReadOnlyList<VariableDefinition> GetCatalog() => _catalog;
+    public IReadOnlyList<VariableDefinition> GetCatalog() => _projection.GetCatalog();
 
-    public string GuessUom(string variableName) => VariableUnitGuesser.GuessUom(variableName);
+    public string GuessUom(string variableName) => _projection.GuessUom(variableName);
 
-    public string GetColor(int index) => Colors[index % Colors.Length];
+    public string GetColor(int index) => _projection.GetColor(index);
 
-    public (string Display, string Uom, int? ModbusOffset)? Lookup(string name) =>
-        _lookup.TryGetValue(name, out var v) ? v : null;
+    public (string Display, string Uom, int? ModbusOffset)? Lookup(string name) => _projection.Lookup(name);
 }
