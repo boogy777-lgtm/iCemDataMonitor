@@ -1,4 +1,5 @@
 using System.Text;
+using System.Globalization;
 using iCemDataMonitor.Sdk.Diagnostics;
 
 namespace iCemDataMonitor.Sdk.Tests;
@@ -7,8 +8,70 @@ public sealed class OwnedFileLogTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ownedlogs_" + Guid.NewGuid().ToString("N"));
     public OwnedFileLogTests() => Directory.CreateDirectory(_directory);
+    private static void WriteRaw(string path, string record) => OwnedFileLog.Write(path, record, true, 0, new UTF8Encoding(false));
     private string Log(string name = "owned.log") => Path.Combine(_directory, name);
     public void Dispose() { try { Directory.Delete(_directory, true); } catch { } }
+
+    [Fact]
+    public void FixedRecordShapes_PreserveExactTimestampPrefixNewlineCultureAndUtf8()
+    {
+        var timestamp = new DateTime(2026, 10, 23, 12, 34, 56, 789, DateTimeKind.Utc);
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            var culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+            culture.DateTimeFormat.TimeSeparator = "!";
+            CultureInfo.CurrentCulture = culture;
+            const string payload = "[winui] é Я";
+            var utc = "2026-10-23T12:34:56.7890000Z " + payload + Environment.NewLine;
+            Assert.Equal(utc, OwnedFileLog.FormatRecord(payload, timestamp, FileLogFormat.Utc, 7));
+            Assert.Equal(utc, OwnedFileLog.FormatRecord(payload, timestamp, FileLogFormat.UtcWithoutBom, 7));
+            Assert.Equal("12!34!56.789 " + payload + Environment.NewLine,
+                OwnedFileLog.FormatRecord(payload, timestamp, FileLogFormat.LocalTime, 7));
+            Assert.Equal("[12!34!56.789 tid=7] " + payload + "\r\n",
+                OwnedFileLog.FormatRecord(payload, timestamp, FileLogFormat.LocalThread, 7));
+            StationFileLog.Write(Log("bom.log"), payload);
+            Assert.Equal(Encoding.UTF8.GetPreamble(), File.ReadAllBytes(Log("bom.log"))[..3]);
+            foreach (var format in new[] { FileLogFormat.UtcWithoutBom, FileLogFormat.LocalTime, FileLogFormat.LocalThread })
+            {
+                var path = Log(format + ".log");
+                OwnedFileLog.WriteRecord(path, payload, true, 0, format, 7);
+                var text = File.ReadAllText(path);
+                Assert.Equal(new UTF8Encoding(false).GetBytes(text), File.ReadAllBytes(path));
+                Assert.EndsWith(payload + (format == FileLogFormat.LocalThread ? "\r\n" : Environment.NewLine), text);
+                Assert.Matches(format == FileLogFormat.UtcWithoutBom
+                    ? @"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z "
+                    : format == FileLogFormat.LocalTime ? @"^\d{2}!\d{2}!\d{2}\.\d{3} "
+                    : @"^\[\d{2}!\d{2}!\d{2}\.\d{3} tid=7\] ", text);
+            }
+        }
+        finally { CultureInfo.CurrentCulture = previous; }
+    }
+
+    [Theory]
+    [InlineData("App.xaml.cs", "WriteLocalTime(")]
+    [InlineData("UiTrace.cs", "WriteLocalThread(")]
+    [InlineData("TemplateCatalog.cs", "WriteUtcWithoutBom(")]
+    [InlineData("LantableRegistry.cs", "WriteUtcWithoutBom(")]
+    [InlineData("CrashLog.cs", "StationFileLog.Write(path, line,")]
+    [InlineData("StartupLog.cs", "StationFileLog.Write(path, message)")]
+    [InlineData("TapLog.cs", "OwnedFileLog.WriteRecord(path, line,")]
+    public void MigratedCallers_PassPayloadToSink_AndDoNotPreformatFileTimestamp(string name, string sinkCall)
+    {
+        var source = File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            name == "TapLog.cs" ? "Net48" : "LoggingCallers", name));
+        Assert.Contains(sinkCall, source);
+        Assert.DoesNotContain("WriteFormatted", source);
+        Assert.DoesNotContain("File.AppendAllText", source);
+        // Host separately formats its existing console echo; its file call must pass message.
+        if (name != "StartupLog.cs")
+        {
+            var recordSource = source.Replace("DateTime.UtcNow.AddDays(-MaxAgeDays)", "retentionCutoff");
+            Assert.DoesNotContain("DateTime.UtcNow", recordSource);
+            Assert.DoesNotContain("DateTime.Now", recordSource);
+            Assert.DoesNotContain("HH:mm:ss.fff", source);
+        }
+    }
 
     [Theory]
     [InlineData(-1)]
@@ -37,13 +100,13 @@ public sealed class OwnedFileLogTests : IDisposable
     {
         var path = Log("кириллица.log");
         using (var stream = File.Create(path)) stream.SetLength(StationFileLog.MaxBytes + 1);
-        for (int i = 0; i < 59; i++) StationFileLog.WriteFormatted(path, "é\r\n");
+        for (int i = 0; i < 59; i++) WriteRaw(path, "é\r\n");
         Assert.Equal(StationFileLog.MaxBytes + 1 + 59 * 4, new FileInfo(path).Length);
-        StationFileLog.WriteFormatted(path, "[local tid=7] Я\r\n");
+        WriteRaw(path, "[local tid=7] Я\r\n");
         Assert.Equal(StationFileLog.KeepBytes + Encoding.UTF8.GetByteCount("[local tid=7] Я\r\n"), new FileInfo(path).Length);
         Assert.EndsWith("[local tid=7] Я\r\n", File.ReadAllText(path));
         var fresh = Log("fresh.log");
-        StationFileLog.WriteFormatted(fresh, "[12:34:56.789 tid=7] é\r\n");
+        WriteRaw(fresh, "[12:34:56.789 tid=7] é\r\n");
         Assert.Equal(Encoding.UTF8.GetBytes("[12:34:56.789 tid=7] é\r\n"), File.ReadAllBytes(fresh));
     }
 
@@ -108,7 +171,7 @@ public sealed class OwnedFileLogTests : IDisposable
             truncater.Start();
             Assert.True(clearStarted.Wait(TimeSpan.FromSeconds(30)));
             Assert.True(truncateStarted.Wait(TimeSpan.FromSeconds(30)));
-            StationFileLog.WriteFormatted(Log("independent.log"), "independent\n");
+            WriteRaw(Log("independent.log"), "independent\n");
             Assert.Equal("independent\n", File.ReadAllText(Log("independent.log")));
             Assert.False(clearDone.IsSet);
             Assert.False(truncateDone.IsSet);
@@ -120,7 +183,7 @@ public sealed class OwnedFileLogTests : IDisposable
             if (clearer.ThreadState != ThreadState.Unstarted) Assert.True(clearer.Join(TimeSpan.FromSeconds(30)));
             if (truncater.ThreadState != ThreadState.Unstarted) Assert.True(truncater.Join(TimeSpan.FromSeconds(30)));
         }
-        StationFileLog.WriteFormatted(path, "last whole line\n");
+        WriteRaw(path, "last whole line\n");
         Assert.Equal("last whole line\n", File.ReadAllText(path));
     }
 }

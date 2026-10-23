@@ -100,8 +100,7 @@ public class TapLogTests : IDisposable
     [Fact]
     public void DeleteOldLogs_RemovesOnlyExplicitlyOwnedStaleFile()
     {
-        // Operator log policy: at the rotation check, *.log files older than
-        // 7 days are deleted (BCL only, swallow-all).
+        // Retention is explicitly owned: old sibling logs must survive.
         Assert.Equal(7, TapLog.MaxAgeDays);
 
         string dir = Path.GetDirectoryName(_path);

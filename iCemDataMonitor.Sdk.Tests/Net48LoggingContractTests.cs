@@ -43,7 +43,9 @@ public sealed class Net48LoggingContractTests
             Run(compile);
             var execute = new ProcessStartInfo(output);
             execute.ArgumentList.Add(Path.Combine(directory, "vectors"));
-            Assert.Contains("net48 TapLog golden vectors passed", Run(execute));
+            var result = Run(execute);
+            Assert.Contains("net48 CLR 4.", result);
+            Assert.Contains("net48 TapLog golden vectors passed", result);
         }
         finally { try { Directory.Delete(directory, true); } catch { } }
     }

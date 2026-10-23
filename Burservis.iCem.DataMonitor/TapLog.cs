@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
 
 namespace Burservis.iCem.DataMonitor.Bus
 {
@@ -52,9 +51,8 @@ namespace Burservis.iCem.DataMonitor.Bus
                         }
                         catch { }
                     }
-                    iCemDataMonitor.Sdk.Diagnostics.OwnedFileLog.Write(path,
-                        DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture)
-                        + " " + line + Environment.NewLine, false, MaxAgeDays, Encoding.UTF8);
+                    iCemDataMonitor.Sdk.Diagnostics.OwnedFileLog.WriteRecord(path, line,
+                        false, MaxAgeDays, iCemDataMonitor.Sdk.Diagnostics.FileLogFormat.Utc);
                 }
             }
             catch { }

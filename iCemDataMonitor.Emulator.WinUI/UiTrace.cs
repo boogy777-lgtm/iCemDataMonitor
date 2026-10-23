@@ -18,8 +18,7 @@ public static class UiTrace
     {
         try
         {
-            iCemDataMonitor.Sdk.Diagnostics.StationFileLog.WriteFormatted(Path,
-                    $"[{DateTime.Now:HH:mm:ss.fff} tid={Environment.CurrentManagedThreadId}] {message}\r\n");
+            iCemDataMonitor.Sdk.Diagnostics.StationFileLog.WriteLocalThread(Path, message ?? string.Empty, Environment.CurrentManagedThreadId);
         }
         catch
         {

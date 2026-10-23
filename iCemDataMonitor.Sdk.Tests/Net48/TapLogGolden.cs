@@ -10,11 +10,18 @@ internal static class TapLogGolden
     private static void Check(bool value, string message) { if (!value) throw new Exception(message); }
     public static int Main(string[] args)
     {
+        Check(Environment.Version.Major == 4, "helper must execute on CLR4 / .NET Framework");
+        Console.WriteLine("net48 CLR " + Environment.Version);
         string directory = args[0];
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, "Я owned.log");
+        var timestamp = new DateTime(2026, 10, 23, 12, 34, 56, 789, DateTimeKind.Utc);
+        Check(OwnedFileLog.FormatRecord("é Я", timestamp, FileLogFormat.Utc, 0)
+            == "2026-10-23T12:34:56.7890000Z é Я" + Environment.NewLine, "sink UTC record format");
         TapLog.PathOverride = path;
         TapLog.Log("é Я");
+        byte[] firstBytes = File.ReadAllBytes(path);
+        Check(firstBytes[0] == 0xEF && firstBytes[1] == 0xBB && firstBytes[2] == 0xBF, "net48 UTF8 BOM preserved");
         string line = File.ReadAllText(path).TrimEnd();
         Check(line.Length > 29 && line.Substring(28) == " é Я", "UTC O single timestamp / UTF8 payload");
         Check(DateTime.Parse(line.Substring(0, 28), System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime().Date == DateTime.UtcNow.Date, "UTC timestamp");

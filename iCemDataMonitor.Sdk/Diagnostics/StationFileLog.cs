@@ -1,6 +1,3 @@
-using System.Globalization;
-using System.Text;
-
 namespace iCemDataMonitor.Sdk.Diagnostics;
 
 /// <summary>Best-effort bounded diagnostic files. Operations on one path share an
@@ -18,17 +15,20 @@ public static class StationFileLog
     /// Optionally retain only this explicitly owned file; no directory scan occurs.</summary>
     public static void Write(string path, string line) => Write(path, line, true, 0);
 
-    public static void Write(string path, string line, bool createParent, int retentionDays)
-    {
-        if (line is null) return;
-        OwnedFileLog.Write(path, DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)
-            + " " + line + Environment.NewLine, createParent, retentionDays, Encoding.UTF8);
-    }
+    public static void Write(string path, string line, bool createParent, int retentionDays) =>
+        OwnedFileLog.WriteRecord(path, line, createParent, retentionDays, FileLogFormat.Utc);
 
-    /// <summary>Append an already formatted record verbatim, UTF-8 without BOM.
-    /// The caller owns timestamp, prefix and newline policy; size policy is shared.</summary>
-    public static void WriteFormatted(string path, string record) =>
-        OwnedFileLog.Write(path, record, true, 0, new UTF8Encoding(false));
+    /// <summary>UTC O and platform newline, UTF-8 without BOM.</summary>
+    public static void WriteUtcWithoutBom(string path, string line) =>
+        OwnedFileLog.WriteRecord(path, line, true, 0, FileLogFormat.UtcWithoutBom);
+
+    /// <summary>Local HH:mm:ss.fff and platform newline, UTF-8 without BOM.</summary>
+    public static void WriteLocalTime(string path, string line) =>
+        OwnedFileLog.WriteRecord(path, line, true, 0, FileLogFormat.LocalTime);
+
+    /// <summary>[local HH:mm:ss.fff tid=N] and CRLF, UTF-8 without BOM.</summary>
+    public static void WriteLocalThread(string path, string line, int threadId) =>
+        OwnedFileLog.WriteRecord(path, line, true, 0, FileLogFormat.LocalThread, threadId);
 
     public static void TruncateIfNeeded(string path) => OwnedFileLog.TruncateIfNeeded(path);
 
