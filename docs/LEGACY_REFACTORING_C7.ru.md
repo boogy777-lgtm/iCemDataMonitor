@@ -56,3 +56,11 @@ Windows CI должен собрать WinUI callers и выполнить net48
 Class: фиксированные существующие формы записи (UTC O с/без BOM, local HH:mm:ss.fff, local HH:mm:ss.fff с thread id). Inv: время захватывает и форматирует только общий sink; callers передают payload/prefix/thread id, сохраняя прежнюю культуру, кодировку и newline. N+1: новый канал выбирает существующую форму, не копирует timestamp expression. Review обнаружил, что WriteFormatted оставлял владельца timestamp в callers; этот новый escape API заменяется закрытым набором форм. Проверки: точные векторы формы/байтов и source call-map guard всех мигрированных callers, включая linked net48 TapLog.
 
 Review завершён: существенный gap владения timestamp исправлен; сырое форматирование осталось только внутренним IO-механизмом и test vectors. Полный SDK набор после исправления: 99 passed / 1 Windows-only skipped; DataBus 6, Host logging 7, Emule targeted 15 passed. Source guard покрывает семь мигрированных callers; UTC/local record vectors отдельно проверяют культуру, BOM, prefix и newline. Нулевой payload в UiTrace/TemplateCatalog по-прежнему форматируется как пустая строка. `git diff --check` проходит. Windows execution/helper и vendor acceptance на Linux не заявляются.
+
+## Публикация и provenance
+
+Последовательные агенты GPT-6.1 Sol medium выполнили analysis → implementation → independent review. Review исправило единственного владельца timestamp и сохранило capture/format под координатором файла. [PR36](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36) публикует точный reviewed tree `4094a923a020ac09ac586651e433d8f0952abaaf`; reviewed code commit `10e5474fff0b9553e73ecb48a5303e26ef9f5807`. Ledger обновляет только изменённые historical paths с canonical Git blob hashes, фактическим последним source commit и сохранением прежних reasons. Historical manifest остаётся на `96e2206562c9389d1543095232115d81eae4b692`.
+
+Полный Windows CI, CLR4 golden helper и WinUI ожидаются до merge. Результат CI и оставшиеся ограничения фиксируются в PR; vendor AddIn loading и межпроцессная atomic clear не заявляются. После C7 автономно продолжаются C8–C10.
+
+Официальный `Verify-Baseline.ps1 -RequireComplete`: **513/513**, **57 exact approved divergences**, frozen proto/assets, D16/D17 predicates и REST inventory OK. `git diff --check` clean.
