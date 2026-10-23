@@ -2,6 +2,7 @@ using System.Net.Sockets;
 using iCemDataMonitor.Core.Config;
 using iCemDataMonitor.Host.Core;
 using iCemDataMonitor.Sdk;
+using iCemDataMonitor.Sdk.Bus;
 using iCemDataMonitor.Sdk.Models;
 using iCemDataMonitor.Transport;
 using Microsoft.Extensions.DependencyInjection;

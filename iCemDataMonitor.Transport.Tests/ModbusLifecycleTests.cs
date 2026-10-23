@@ -37,6 +37,17 @@ public sealed class ModbusLifecycleTests
         while (!condition()) await Task.Delay(10, deadline.Token);
     }
 
+    private static async Task AssertClosedAsync(TcpClient client)
+    {
+        try
+        {
+            Assert.Equal(0, await client.GetStream().ReadAsync(new byte[1]).AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(30)));
+        }
+        catch (IOException) { /* TCP may reset a peer closed with unread input. */ }
+        catch (SocketException) { /* Platform-specific reset reporting also proves closure. */ }
+    }
+
     [Fact]
     public async Task RepeatedConcurrentLifecycle_RebindsAndPreservesRegisterImage()
     {
@@ -85,8 +96,8 @@ public sealed class ModbusLifecycleTests
             await WaitForAsync(() => publisher.ActiveClientCount == 2);
             await publisher.StopAsync().WaitAsync(TimeSpan.FromSeconds(30));
             Assert.Equal(0, publisher.ActiveClientCount);
-            Assert.Equal(0, await header.GetStream().ReadAsync(new byte[1]).AsTask().WaitAsync(TimeSpan.FromSeconds(30)));
-            Assert.Equal(0, await body.GetStream().ReadAsync(new byte[1]).AsTask().WaitAsync(TimeSpan.FromSeconds(30)));
+            await AssertClosedAsync(header);
+            await AssertClosedAsync(body);
             using var replacement = new TcpListener(IPAddress.Any, port);
             replacement.Start();
             replacement.Stop();
@@ -96,7 +107,7 @@ public sealed class ModbusLifecycleTests
             await WaitForAsync(() => publisher.ActiveClientCount == 1);
             publisher.Dispose();
             Assert.False(publisher.IsBound);
-            Assert.Equal(0, await blocked.GetStream().ReadAsync(new byte[1]).AsTask().WaitAsync(TimeSpan.FromSeconds(30)));
+            await AssertClosedAsync(blocked);
             await publisher.StopAsync();
             await Assert.ThrowsAsync<ObjectDisposedException>(() => publisher.StartAsync());
         }
