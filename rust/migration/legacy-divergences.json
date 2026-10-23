@@ -271,6 +271,46 @@
         "commit": "468c3d468c56a7c41e5e86ed8b1047b48dd2e2dc",
         "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged."
       }
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/DeviceCatalogRegistry.cs",
+      "baseline_blob_sha1": "b192b5dd6b7996de2efd9dcf7a61ad9f77fec726",
+      "approved_blob_sha1": "69b2d58ea1be7c4fd249e9b75a14e04138338879",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
+        "commit": "71caa5d1ec0cfb77011890cfa406ccdc9bcb03a0",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/FlecsVariableCatalog.cs",
+      "baseline_blob_sha1": "f7f246f46f10c98f7145b923e7453740eb748278",
+      "approved_blob_sha1": "f88c7dc09e70589c27ac08b39ccea87e7cffe01d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
+        "commit": "15b5a33860e01f2b6ae497492c2f279516256d25",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/LanVariableCatalog.cs",
+      "baseline_blob_sha1": "d63bb61d85a6db1e236696ff38660ae677e3203e",
+      "approved_blob_sha1": "13453fbcc2019845a280ecb9a94248ddcf55830e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
+        "commit": "15b5a33860e01f2b6ae497492c2f279516256d25",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/PlcVariableCatalog.cs",
+      "baseline_blob_sha1": "d18b4093dc5660bac7857114b08136ca7063d9ce",
+      "approved_blob_sha1": "1357b331a01dbb58ded77bc6fe09cc5f58a673af",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
+        "commit": "15b5a33860e01f2b6ae497492c2f279516256d25",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      }
     }
   ]
 }
