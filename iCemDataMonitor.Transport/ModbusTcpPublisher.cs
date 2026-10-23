@@ -87,10 +87,19 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
     /// </summary>
     private ushort[] _registers;
 
-    private TcpListener? _listener;
-    private CancellationTokenSource? _cts;
-    private Task? _acceptLoop;
-    private Task? _refreshLoop;
+    private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private Generation? _generation;
+    private bool _disposed;
+
+    private sealed class Generation(TcpListener listener, CancellationTokenSource cancellation)
+    {
+        internal readonly TcpListener Listener = listener;
+        internal readonly CancellationTokenSource Cancellation = cancellation;
+        internal int Bound = 1;
+        internal Task Accept = Task.CompletedTask;
+        internal Task Refresh = Task.CompletedTask;
+        internal readonly HashSet<Task> Clients = new();
+    }
 
     /// <summary>
     /// Current register file size in registers (dynamic). = ini Total before the
@@ -159,9 +168,19 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
 
     // ── IModbusPublisher ────────────────────────────────────────────────────
 
-    /// <summary>W10.1: truth signal for lamps — the listener reference is nulled
-    /// on stop AND on a failed bind, so this reflects the actual socket state.</summary>
-    public bool IsBound => _listener is not null;
+    /// <summary>W10.1: only a successfully bound generation is published.</summary>
+    public bool IsBound => Volatile.Read(ref _generation) is { } generation && Volatile.Read(ref generation.Bound) == 1;
+
+    internal int BoundPort => ((IPEndPoint)_generation!.Listener.LocalEndpoint).Port;
+    internal int ActiveClientCount
+    {
+        get
+        {
+            var generation = Volatile.Read(ref _generation);
+            if (generation is null) return 0;
+            lock (generation.Clients) return generation.Clients.Count;
+        }
+    }
 
     /// <summary>
     /// The register map is RUNTIME-SIZED from the bus header (regCount
@@ -171,64 +190,78 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
     /// </summary>
     public Task ConfigureAsync(IReadOnlyList<ModbusRegisterEntry> registerMap) => Task.CompletedTask;
 
-    /// <summary>
-    /// Starts the Modbus TCP listener and the accept/refresh loops. Bind
-    /// failure surfaces as a SYNCHRONOUS SocketException
-    /// (SocketError.AddressAlreadyInUse = port busy) — thrown before any loop
-    /// starts. A failed StartAsync never starts accept/refresh loops and leaves
-    /// no resources behind, so callers MAY retry StartAsync on the same
-    /// instance (the host retry re-binds the same publisher).
-    /// </summary>
-    /// <param name="ct">Cancellation token linked into the loop lifetime.</param>
-    public Task StartAsync(CancellationToken ct = default)
+    /// <summary>Starts one generation. Repeated start while bound is idempotent.</summary>
+    public async Task StartAsync(CancellationToken ct = default)
     {
-        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var token = _cts.Token;
-
-        _listener = new TcpListener(IPAddress.Any, _options.Port);
+        await _lifecycle.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            _listener.Start();
-        }
-        catch
-        {
-            // bind failure ⇒ instance stays restartable: host retry re-binds
-            // on the same publisher (no leaked listener, no stale CTS).
-            _listener.Dispose();
-            _listener = null;
-            _cts.Dispose();
-            _cts = null;
-            throw;
-        }
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ct.ThrowIfCancellationRequested();
+            if (_generation is not null) return;
 
-        _acceptLoop = AcceptLoopAsync(token);
-        _refreshLoop = RefreshLoopAsync(token);
-        return Task.CompletedTask;
+            var listener = new TcpListener(IPAddress.Any, _options.Port);
+            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            try
+            {
+                try { listener.Start(); }
+                catch (SocketException ex) { throw new ModbusBindException(_options.Port, ex); }
+                var generation = new Generation(listener, cancellation);
+                generation.Accept = AcceptLoopAsync(generation);
+                generation.Refresh = RefreshLoopAsync(cancellation.Token);
+                Volatile.Write(ref _generation, generation);
+            }
+            catch
+            {
+                listener.Dispose();
+                cancellation.Dispose();
+                throw;
+            }
+        }
+        finally { _lifecycle.Release(); }
     }
 
     public async Task StopAsync()
     {
-        _cts?.Cancel();
-        try { _listener?.Stop(); } catch { /* already stopped */ }
-
-        var tasks = new List<Task>();
-        if (_acceptLoop != null) tasks.Add(_acceptLoop);
-        if (_refreshLoop != null) tasks.Add(_refreshLoop);
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-
-        _listener?.Dispose();
-        _listener = null;
+        await _lifecycle.WaitAsync().ConfigureAwait(false);
+        try { await StopGenerationAsync().ConfigureAwait(false); }
+        finally { _lifecycle.Release(); }
     }
 
-    public void Dispose()
+    private async Task StopGenerationAsync()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _listener?.Dispose();
-        // Truth-lamp law (W10.1/INV-36): IsBound ⇔ live socket — a disposed
-        // publisher is NOT bound; null the reference exactly like StopAsync
-        // and the failed-bind path do.
-        _listener = null;
+        var generation = _generation;
+        if (generation is null) return;
+        try
+        {
+            generation.Cancellation.Cancel();
+            Volatile.Write(ref generation.Bound, 0);
+            generation.Listener.Stop();
+            // Accept must finish before the final client snapshot: no late client escapes join.
+            await generation.Accept.ConfigureAwait(false);
+            Task[] clients;
+            lock (generation.Clients) clients = generation.Clients.ToArray();
+            await Task.WhenAll(clients.Append(generation.Refresh)).ConfigureAwait(false);
+        }
+        finally
+        {
+            generation.Listener.Dispose();
+            generation.Cancellation.Dispose();
+            Volatile.Write(ref _generation, null);
+        }
+    }
+
+    public void Dispose() => DisposeAsync().GetAwaiter().GetResult();
+
+    private async Task DisposeAsync()
+    {
+        await _lifecycle.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            _disposed = true;
+            await StopGenerationAsync().ConfigureAwait(false);
+        }
+        finally { _lifecycle.Release(); }
     }
 
     // ── tick-loop bus→register-file copy (A4/A5; interval = options.TickMs) ──
@@ -381,21 +414,26 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
 
     // ── TCP accept loop ─────────────────────────────────────────────────────
 
-    private async Task AcceptLoopAsync(CancellationToken ct)
+    private async Task AcceptLoopAsync(Generation generation)
     {
+        var ct = generation.Cancellation.Token;
         while (!ct.IsCancellationRequested)
         {
             TcpClient client;
             try
             {
-                client = await _listener!.AcceptTcpClientAsync(ct).ConfigureAwait(false);
+                client = await generation.Listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { return; }
             catch (ObjectDisposedException) { return; }
             catch { continue; }
 
-            // Fire-and-forget per-connection handler
-            _ = HandleClientAsync(client, ct);
+            var task = HandleClientAsync(client, ct);
+            lock (generation.Clients) generation.Clients.Add(task);
+            _ = task.ContinueWith(completed =>
+            {
+                lock (generation.Clients) generation.Clients.Remove(completed);
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
     }
 

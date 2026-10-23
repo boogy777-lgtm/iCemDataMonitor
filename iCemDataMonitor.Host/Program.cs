@@ -141,6 +141,7 @@ static async Task<int> ProgramMain(string[] args)
 
     // ── 6. Start + layers + READY marker + tray (A.2.4 / E.2) ───────────────
     HostTray? tray = null;
+    HostCommandListeners? commandListeners = null;
     try
     {
         boot.Begin("web", "веб-сервер");
@@ -160,7 +161,8 @@ static async Task<int> ProgramMain(string[] args)
 
         var layers = LayerFlags.From(bootContext.Ini);
         boot.Begin("layers", "слои");
-        await HostComposition.StartLayersAsync(app.Services, layers, log);
+        await HostComposition.StartLayersAsync(app.Services, layers, log,
+            app.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping);
         boot.Complete("layers", $"modbus={layers.Modbus} sniffer={layers.LanSniffer} opcda={layers.OpcDa}");
 
         var publisher = app.Services.GetService<iCemDataMonitor.Sdk.IModbusPublisher>();
@@ -175,7 +177,7 @@ static async Task<int> ProgramMain(string[] args)
         boot.Complete("ready", marker);
 
         ApplyConsoleMode(parsed, log, app.Services.GetRequiredService<ConsoleVisibilityService>());
-        tray = StartTray(app, boundPort, args, log);
+        tray = StartTray(app, boundPort, args, log, out commandListeners);
 
         await app.WaitForShutdownAsync();
     }
@@ -190,6 +192,8 @@ static async Task<int> ProgramMain(string[] args)
         // before any other teardown — otherwise a dead icon lingers in the
         // tray corner until the operator hovers it.
         try { tray?.Dispose(); } catch { /* best effort */ }
+
+        try { commandListeners?.Dispose(); } catch (Exception ex) { log($"host command listener teardown: {ex}"); }
 
         IHost host = app;
         try { await host.StopAsync(TimeSpan.FromSeconds(5)); } catch { /* best effort */ }
@@ -260,7 +264,8 @@ static void ApplyConsoleMode(HostArgs parsed, Action<string> log, ConsoleVisibil
 /// tooltip no longer carries an engine pid (engine supervision deleted — the
 /// emulator is a separate independent app).
 /// </summary>
-static HostTray StartTray(WebApplication app, int webPort, string[] args, Action<string> log)
+static HostTray StartTray(WebApplication app, int webPort, string[] args, Action<string> log,
+    out HostCommandListeners commandListeners)
 {
     var health = app.Services.GetRequiredService<StationHealthState>();
     var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
@@ -276,41 +281,19 @@ static HostTray StartTray(WebApplication app, int webPort, string[] args, Action
     // (a mechanism as a code fact, not a convention). E.2.7 intact.
     var lifecycle = new HostLifecycle(args, lifetime, log);
 
-    // 2026-08-31 (owner decree): the shell's «Перезапуск хоста» button SETS
-    // this named event; the host OWNS it (creates + waits). Reset() first —
-    // named kernel events PERSIST their signalled state across process
-    // lifetimes (P4 stale-signal zombie lesson): a Set from a previous host
-    // life must not restart this one seconds after boot. The waiters exit on
-    // ApplicationStopping so the handles are disposed on the drain path.
-    var restartEvent = new EventWaitHandle(false, EventResetMode.AutoReset, CrossProcessNames.HostRestartEvent);
-    restartEvent.Reset();
-    // 2026-08-31 (слой CLI, «закрой пробел CLI»): the CLI `stop` verb pokes
-    // the host-owned shutdown event — the host closes ITSELF through the SAME
-    // HostLifecycle.RequestClose as the tray [Закрыть]. One stop signal
-    // (eventWaitStop) ends BOTH waiters on the drain path.
-    var shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, CrossProcessNames.HostShutdownEvent);
-    shutdownEvent.Reset();
-    var eventWaitStop = new ManualResetEventSlim(false);
-    lifetime.ApplicationStopping.Register(() => eventWaitStop.Set());
-    _ = Task.Run(() =>
-    {
-        while (WaitHandle.WaitAny(new WaitHandle[] { restartEvent, eventWaitStop.WaitHandle }) == 0)
+    commandListeners = new HostCommandListeners(
+        CrossProcessNames.HostRestartEvent, CrossProcessNames.HostShutdownEvent,
+        lifetime.ApplicationStopping,
+        restart: () =>
         {
             log("[restart] shell signalled the restart event — running the tray [Перезапуск] path");
             lifecycle.RequestRestart();
-        }
-        restartEvent.Dispose();
-    });
-    _ = Task.Run(() =>
-    {
-        while (WaitHandle.WaitAny(new WaitHandle[] { shutdownEvent, eventWaitStop.WaitHandle }) == 0)
+        },
+        close: () =>
         {
             log("[close] cli signalled the shutdown event — running the tray [Закрыть] path");
             lifecycle.RequestClose();
-        }
-        shutdownEvent.Dispose();
-        eventWaitStop.Dispose();
-    });
+        });
 
     var tray = new HostTray(
         tooltipProvider: () => TrayTooltipFormatter.Format(
@@ -333,9 +316,17 @@ static HostTray StartTray(WebApplication app, int webPort, string[] args, Action
     // pre-exit chore is the icon hide (ghost-icon lesson).
     lifecycle.Tray = tray;
 
-    tray.Start();
-    log("tray icon active (E.2)");
-    return tray;
+    try
+    {
+        tray.Start();
+        log("tray icon active (E.2)");
+        return tray;
+    }
+    catch
+    {
+        tray.Dispose();
+        throw;
+    }
 }
 
 /// <summary>[Открыть панель]: signal-or-spawn per PanelOpenDecision table.</summary>
