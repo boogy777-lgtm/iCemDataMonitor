@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Reflection;
+using iCemDataMonitor.Contracts;
 using iCemDataMonitor.Data.Bus;
 using iCemDataMonitor.Data.Telemetry;
 using iCemDataMonitor.Sdk.Bus;
@@ -122,7 +124,8 @@ public sealed class BusAcquisitionTests
     public async Task BlockedCapture_ReadsStayNonblocking_StartDoesNotWait_StopJoinsBeforeSourceDisposal()
     {
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var budget = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        // A scheduling/deadlock guard per stage, not a Current latency or product SLA.
+        var stageGuard = TimeSpan.FromSeconds(10);
         using var release = new ManualResetEventSlim();
         var source = new Source { IsOpen = true };
         source.Capture = () =>
@@ -134,21 +137,33 @@ public sealed class BusAcquisitionTests
         };
         using var acquisition = new BusAcquisitionService(source, TimeSpan.FromMilliseconds(200), TimeProvider.System);
         Task? stop = null;
+        Task? reads = null;
         try
         {
-            await acquisition.StartAsync(CancellationToken.None).WaitAsync(budget.Token);
+            await acquisition.StartAsync(CancellationToken.None).WaitAsync(stageGuard);
             Assert.False(release.IsSet);
-            Assert.Null(acquisition.Current.Snapshot); // startup did not wait for a successful capture
-            await entered.Task.WaitAsync(budget.Token);
-            var reads = Task.Run(() => { for (int i = 0; i < 10000; i++) Assert.Null(acquisition.Current.Snapshot); });
-            await reads.WaitAsync(budget.Token);
+            // Startup completed although the capture cannot succeed until release is set.
+            await entered.Task.WaitAsync(stageGuard);
+            // A dedicated worker can run while the native capture occupies a pool thread.
+            // If Current waits for capture, this worker cannot finish before the stage guard;
+            // finally releases capture and joins both workers before disposing the source.
+            reads = Task.Factory.StartNew(() =>
+            {
+                var state = acquisition.Current;
+                Assert.Null(state.Snapshot);
+                Assert.False(state.IsOpen);
+                Assert.Equal(0, state.SuccessfulCaptureSequence);
+                Assert.Null(acquisition.Current.Snapshot);
+                Assert.Equal(1, source.Calls);
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            await reads.WaitAsync(stageGuard);
             using var cancelledDeadline = new CancellationTokenSource();
             cancelledDeadline.Cancel();
             stop = acquisition.StopAsync(cancelledDeadline.Token);
             Assert.False(stop.IsCompleted); // cannot dispose the source while its capture is still running
             Assert.Equal(1, source.Calls);
             release.Set();
-            await stop.WaitAsync(budget.Token);
+            await stop.WaitAsync(stageGuard);
             Assert.False(acquisition.Current.IsOpen);
             Assert.True(acquisition.Current.Snapshot!.Stale);
             Assert.Contains("stopped", acquisition.Current.LastError!);
@@ -160,8 +175,12 @@ public sealed class BusAcquisitionTests
         finally
         {
             release.Set();
-            await (stop ?? acquisition.StopAsync(CancellationToken.None)).WaitAsync(TimeSpan.FromSeconds(5));
-            source.Dispose();
+            await (stop ?? acquisition.StopAsync(CancellationToken.None)).WaitAsync(stageGuard);
+            try
+            {
+                if (reads is not null) await reads.WaitAsync(stageGuard);
+            }
+            finally { source.Dispose(); }
         }
     }
 
@@ -186,27 +205,59 @@ public sealed class BusAcquisitionTests
     }
 
     [Fact]
-    public async Task Metrics_IndependentSubscribers_ReadLatestWithoutCapture_AndKeepTheirOwnDeltas()
+    public void Metrics_PerStreamSampleSteps_ReadLatestOnce_AndKeepIndependentDeltas()
     {
         var latest = new Latest { State = new(Snapshot(), true, null, 0, 0, 0, 1) };
         var sampler = new MetricsSampler(latest);
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var a = sampler.Subscribe(1, cancellation.Token);
-        var b = sampler.Subscribe(400, cancellation.Token);
-        await using var ea = a.GetAsyncEnumerator(cancellation.Token);
-        await using var eb = b.GetAsyncEnumerator(cancellation.Token);
-        Assert.True(await ea.MoveNextAsync());
-        Assert.True(await eb.MoveNextAsync());
-        Assert.True(ea.Current.IntervalClamped);
-        Assert.False(eb.Current.IntervalClamped);
-        Assert.Equal(302, ea.Current.Deltas.Count);
-        Assert.Equal(302, eb.Current.Deltas.Count);
-        Assert.True(await ea.MoveNextAsync());
-        Assert.Empty(ea.Current.Deltas);
-        Assert.True(await eb.MoveNextAsync());
-        Assert.Empty(eb.Current.Deltas);
-        cancellation.Cancel();
-        await Task.WhenAll(a.ProducerCompletion, b.ProducerCompletion);
+        // Drive the existing per-stream projection deterministically. Subscribe's capacity-1
+        // DropOldest channel can legally evict the first full frame before it is consumed;
+        // channel delivery, interval clamp and lifecycle have separate real-loop tests.
+        var build = typeof(MetricsSampler).GetMethod("BuildSample", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        ushort[]? previousA = null, previousB = null;
+        int steps = 0;
+        MetricsSample Step(ref ushort[]? previous, bool clamped)
+        {
+            object?[] args = { previous, clamped };
+            var sample = (MetricsSample)build.Invoke(sampler, args)!;
+            previous = (ushort[]?)args[0];
+            Assert.Equal(++steps, latest.Reads); // exactly one latest publication per iteration
+            return sample;
+        }
+        void Publish(ushort heartbeat, float value, long sequence)
+        {
+            var words = new ushort[600];
+            words[3] = heartbeat;
+            (words[200], words[201]) = CdabCodec.Split(value);
+            latest.State = latest.State with
+            {
+                Snapshot = Snapshot() with { Words = words }, SuccessfulCaptureSequence = sequence,
+            };
+        }
+        static void AssertChanged(MetricsSample sample, int heartbeat, float value)
+        {
+            Assert.Equal(heartbeat, sample.Heartbeat);
+            Assert.Equal(2, sample.Deltas.Count);
+            Assert.Equal(heartbeat, sample.Deltas.Single(d => d.Addr == 3).Int32Value);
+            Assert.Equal(value, sample.Deltas.Single(d => d.Addr == 200).FloatValue);
+        }
+
+        var firstA = Step(ref previousA, clamped: true);
+        Assert.True(firstA.IntervalClamped); // flag projection, not a timing assertion
+        Assert.Equal(302, firstA.Deltas.Count);
+        Assert.Equal(0, firstA.Deltas.Single(d => d.Addr == 200).FloatValue);
+        Publish(9, 1.5f, 2);
+        AssertChanged(Step(ref previousA, clamped: true), 9, 1.5f);
+        var firstB = Step(ref previousB, clamped: false);
+        Assert.False(firstB.IntervalClamped);
+        Assert.Equal(302, firstB.Deltas.Count); // A's previous steps cannot initialize B
+        Assert.Equal(9, firstB.Deltas.Single(d => d.Addr == 3).Int32Value);
+        Assert.Equal(1.5f, firstB.Deltas.Single(d => d.Addr == 200).FloatValue);
+        Assert.NotSame(previousA, previousB);
+        Assert.Empty(Step(ref previousA, clamped: true).Deltas);
+        Publish(10, 2.5f, 3);
+        AssertChanged(Step(ref previousB, clamped: false), 10, 2.5f);
+        AssertChanged(Step(ref previousA, clamped: true), 10, 2.5f); // B did not advance A's baseline
+        Assert.Empty(Step(ref previousB, clamped: false).Deltas);
     }
 
     [Fact]
