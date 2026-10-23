@@ -33,72 +33,19 @@ public sealed class UiPrefsStore
 {
     /// <summary>The station-wide theme file name — MUST match the WinUI
     /// shell's MainWindow.ThemeFilePath literal ("ui-theme").</summary>
-    public const string DefaultThemeFileName = "ui-theme";
+    public const string DefaultThemeFileName = UiThemePreferenceStore.FileName;
 
-    private readonly string _filePath;
-    private readonly Action? _poke;
-    private readonly Action<string>? _log;
+    private readonly UiThemePreferenceStore _store;
 
-    /// <param name="filePath">Absolute path of the ui-theme file
-    /// (tests inject a temp path; production = the ProgramData station root).</param>
-    /// <param name="poke">Post-write poke action (tests record; production
-    /// = <see cref="PokeShellThemeEvent"/>).</param>
-    /// <param name="log">Optional startup-log sink (host log-line style).</param>
     public UiPrefsStore(string? filePath = null, Action? poke = null, Action<string>? log = null)
     {
-        _filePath = filePath ?? DefaultFilePath;
-        _poke = poke ?? PokeShellThemeEvent;
-        _log = log;
+        _store = new UiThemePreferenceStore(filePath, poke ?? PokeShellThemeEvent, log);
     }
 
-    /// <summary>Production truth path: ui-theme in the folder of the canonical
-    /// config.ini (the ProgramData station root) — byte-identical derivation
-    /// to Shell.WinUI MainWindow.ThemeFilePath.</summary>
-    public static string DefaultFilePath =>
-        Path.Combine(Path.GetDirectoryName(IniConfig.ProgramDataPath)!, DefaultThemeFileName);
-
-    /// <summary>The poke event the store SETs after writing (mirrored literal
-    /// of Shell.WinUI MainWindow.UiThemeChangedEventName; OWNER: the shell).</summary>
-    public string FilePath => _filePath;
-
-    /// <summary>TRUTH probe at call time: file text trimmed == "light".
-    /// Missing file / unreadable file / any other text ⇒ dark (false) — the
-    /// station default, same semantics as the shell's LoadThemeIsLight.</summary>
-    public bool IsThemeLight()
-    {
-        try
-        {
-            return File.ReadAllText(_filePath).Trim() == "light";
-        }
-        catch (FileNotFoundException) { return false; } // absent = default dark
-        catch (DirectoryNotFoundException) { return false; }
-        catch (IOException) { return false; }           // unreadable = honest default, ¬exception into the RPC
-        catch (UnauthorizedAccessException) { return false; }
-    }
-
-    /// <summary>SetUiTheme body: write the bool (best-effort — a failed write
-    /// is logged and the caller still answers the CURRENT truth, never a fake
-    /// success), then poke the shell-owned event so a live WinUI flips
-    /// instantly. Idempotent: repeated identical writes are the same state.</summary>
-    public void SetThemeLight(bool light)
-    {
-        try
-        {
-            File.WriteAllText(_filePath, light ? "light" : "dark");
-        }
-        catch (Exception ex)
-        {
-            _log?.Invoke($"ui-theme write FAILED ({_filePath}): {ex.Message} — answering current truth");
-        }
-
-        // 2026-08-31: poke AFTER the bool is durable — listeners re-read the
-        // file (the shell's SaveTheme ordering law, mirrored).
-        try { _poke?.Invoke(); }
-        catch (Exception ex)
-        {
-            _log?.Invoke($"ui-theme poke FAILED: {ex.Message} (file state is already durable)");
-        }
-    }
+    public static string DefaultFilePath => UiThemePreferenceStore.DefaultFilePath;
+    public string FilePath => _store.FilePath;
+    public bool IsThemeLight() => _store.Read();
+    public void SetThemeLight(bool light) => _store.Write(light);
 
     /// <summary>Production poke: SET the shell-owned theme event. A missing
     /// event means the shell is not running — fine (the next shell start
