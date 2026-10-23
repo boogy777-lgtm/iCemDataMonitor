@@ -47,12 +47,4 @@ internal static class PairPreparationGolden
         Check(PollPairPreparation.PrepareLan(frozen.Entries[0]).High == 0x3F80, "all frozen fallback");
     }
 
-    public static int Main(string[] args)
-    {
-        Check(Environment.Version.Major == 4, "helper must execute on CLR4 / .NET Framework");
-        Console.WriteLine("net48 CLR " + Environment.Version);
-        RunVectors();
-        Console.WriteLine("net48 pair preparation golden vectors passed");
-        return 0;
-    }
 }

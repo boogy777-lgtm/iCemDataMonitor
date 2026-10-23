@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Net48\PairPreparationEntry.cs" />
+    <None Include="Net48\PairPreparationEntry.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Net48\PairPreparationGolden.cs" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\Burservis.iCem.DataMonitor\PollPairPreparation.cs" Link="AddIn\PollPairPreparation.cs" />
     <None Include="..\Burservis.iCem.DataMonitor\PollPairPreparation.cs" Link="Net48\PollPairPreparation.cs" CopyToOutputDirectory="PreserveNewest" />
