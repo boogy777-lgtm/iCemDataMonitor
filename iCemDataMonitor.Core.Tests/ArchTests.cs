@@ -62,17 +62,20 @@ public sealed class ArchTests
             foreach (var parameter in constructor.GetParameters()) yield return parameter.ParameterType;
     }
 
-    private static IEnumerable<Type> ExpandType(Type type)
+    private static IEnumerable<Type> ExpandType(Type type) => ExpandType(type, []);
+
+    private static IEnumerable<Type> ExpandType(Type type, HashSet<Type> visited)
     {
+        if (!visited.Add(type)) yield break;
         yield return type;
         if (type.HasElementType)
-            foreach (var nested in ExpandType(type.GetElementType()!)) yield return nested;
+            foreach (var nested in ExpandType(type.GetElementType()!, visited)) yield return nested;
         if (type.IsGenericType)
             foreach (var argument in type.GetGenericArguments())
-                foreach (var nested in ExpandType(argument)) yield return nested;
+                foreach (var nested in ExpandType(argument, visited)) yield return nested;
         if (type.IsGenericParameter)
             foreach (var constraint in type.GetGenericParameterConstraints())
-                foreach (var nested in ExpandType(constraint)) yield return nested;
+                foreach (var nested in ExpandType(constraint, visited)) yield return nested;
     }
 
     private sealed class DependencyVector
