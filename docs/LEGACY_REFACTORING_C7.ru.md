@@ -50,3 +50,7 @@ Linux, SDK 10.0.302 / runtime 10.0.10; команды выполняются п�
 * Emule.Tests, `CrashLogTests|WireFormatTests|PayloadSmokeTests|LanFreezeCouplingTests`: 15 passed; новая SDK reference собирается.
 
 Windows CI должен собрать WinUI callers и выполнить net48 Roslyn golden helper (Linux его не исполняет). Полная vendor AddIn сборка и загрузка в iCem.exe требуют установленного proprietary SDK и остаются отдельной границей приёмки. Межпроцессная clear/append атомарность не проверяется и не обещается.
+
+## Независимый review — уточнение до исправления
+
+Class: фиксированные существующие формы записи (UTC O с/без BOM, local HH:mm:ss.fff, local HH:mm:ss.fff с thread id). Inv: время захватывает и форматирует только общий sink; callers передают payload/prefix/thread id, сохраняя прежнюю культуру, кодировку и newline. N+1: новый канал выбирает существующую форму, не копирует timestamp expression. Review обнаружил, что WriteFormatted оставлял владельца timestamp в callers; этот новый escape API заменяется закрытым набором форм. Проверки: точные векторы формы/байтов и source call-map guard всех мигрированных callers, включая linked net48 TapLog.
