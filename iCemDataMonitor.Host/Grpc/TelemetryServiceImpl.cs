@@ -122,20 +122,20 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
         AgeMs = z.AgeMs,
     };
 
-    private static LayerState BuildLayerState(LayerRuntimeController? c) => new()
+    internal static LayerState BuildLayerState(LayerRuntimeController? c) => ProjectLayerState(c?.CaptureStatus());
+
+    internal static LayerState ProjectLayerState(LayerRuntimeStatus? status) => new()
     {
-        Modbus = c?.ActualModbusRunning ?? false,
-        ModbusBound = c?.ActualModbusRunning ?? false,
-        ModbusPort = c?.Ini.ModbusPort ?? 0,
-        // RESTORED 2026-08-27 (corrected decree): web truth = the persist-only
-        // layer plan (LayerState.web=4 exists again in telemetry.proto).
-        Web = c?.Layers.Web ?? false,
-        Sniffer = c?.ActualLanSnifferRunning ?? false,
-        SnifferAvailable = c?.SnifferAvailable ?? false,
-        OpcDa = c?.Layers.OpcDa ?? false,
-        SetAsDefault = c?.SetAsDefault ?? false,
-        Busy = c?.Busy ?? false,
-        LastError = c?.LastError ?? string.Empty,
+        Modbus = status?.ModbusBound ?? false,
+        ModbusBound = status?.ModbusBound ?? false,
+        ModbusPort = status?.Ini.ModbusPort ?? 0,
+        Web = status?.Web ?? false,
+        Sniffer = status?.SnifferRunning ?? false,
+        SnifferAvailable = status?.SnifferAvailable ?? false,
+        OpcDa = status?.OpcDa ?? false,
+        SetAsDefault = status?.SetAsDefault ?? false,
+        Busy = status?.Busy ?? false,
+        LastError = status?.LastError ?? string.Empty,
     };
 
     // ── SubscribeMetrics ────────────────────────────────────────────────────
@@ -241,7 +241,7 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
 
     // ── SetLayer ────────────────────────────────────────────────────────────
 
-    public override Task<LayerState> SetLayer(LayerControlRequest request, ServerCallContext context)
+    public override async Task<LayerState> SetLayer(LayerControlRequest request, ServerCallContext context)
     {
         // Validate the request FIRST: InvalidArgument outranks availability.
         if (request.Layer == LayerKind.Unspecified)
@@ -251,10 +251,10 @@ public sealed class TelemetryServiceImpl : TelemetryService.TelemetryServiceBase
             ?? throw new RpcException(new Status(StatusCode.Unavailable, "layer controller is not registered"));
 
         var kind = MapLayer(request.Layer); // 1:1 mapping, no semantic drift
-        var result = Task.Run(() => controller.Toggle(kind), context.CancellationToken).GetAwaiter().GetResult();
+        var result = await controller.ToggleAsync(kind, context.CancellationToken).ConfigureAwait(false);
         _logger.LogInformation("[telemetry] SetLayer {Layer} -> {Result}", request.Layer, result);
 
-        return Task.FromResult(BuildLayerState(controller));
+        return BuildLayerState(controller);
     }
 
     public static TrayToggleRules.LayerKind MapLayer(LayerKind layer) => layer switch

@@ -19,31 +19,31 @@ public sealed class DefaultLayerActuator : LayerRuntimeController.ILayerActuator
         _sniffer = sniffer;
     }
 
-    public void StartModbus()
+    public async Task StartModbusAsync()
     {
         if (_publisher is null)
             throw new InvalidOperationException("Modbus publisher not registered");
-        _publisher.StartAsync().GetAwaiter().GetResult();
+        await _publisher.StartAsync().ConfigureAwait(false);
     }
 
-    public void StopModbus()
+    public async Task StopModbusAsync()
     {
         if (_publisher is null)
             throw new InvalidOperationException("Modbus publisher not registered");
-        _publisher.StopAsync().GetAwaiter().GetResult();
+        await _publisher.StopAsync().ConfigureAwait(false);
     }
 
-    public void StartSniffer()
+    public async Task StartSnifferAsync()
     {
         if (_sniffer is null)
             throw new InvalidOperationException("Sniffer service not registered");
-        _sniffer.StartSnifferAsync().GetAwaiter().GetResult();
+        await _sniffer.StartSnifferAsync().ConfigureAwait(false);
     }
 
-    public void StopSniffer()
+    public async Task StopSnifferAsync()
     {
         if (_sniffer is null)
             throw new InvalidOperationException("Sniffer service not registered");
-        _sniffer.StopSnifferAsync().GetAwaiter().GetResult();
+        await _sniffer.StopSnifferAsync().ConfigureAwait(false);
     }
 }

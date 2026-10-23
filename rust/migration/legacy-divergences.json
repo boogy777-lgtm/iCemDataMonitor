@@ -171,6 +171,66 @@
         "commit": "db4f6051b29b95e7bada322ff45a706521929ac4",
         "reason": "Owner-requested legacy refactoring plan C1/L01, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Load one HostBootContext (options, actual absolute INI path, bind plan) and share it across Program, DI, endpoints and startup layers. Preserve config schema/search/migration, CLI override persistence and external contracts. New fault regressions cover changed/invalid INI after load and independent ActivePath changes; historical manifest and oracle fixtures are unchanged."
       }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/DefaultLayerActuator.cs",
+      "baseline_blob_sha1": "49c9e7b470048549d1e6e0585506bc561e71c7ad",
+      "approved_blob_sha1": "91a92a0b44f5f2431b8c69c21304a6bbc312e346",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/HostComposition.cs",
+      "baseline_blob_sha1": "213428c7d9b689f1caaf38737a02453be9abcb05",
+      "approved_blob_sha1": "0b40aff5eab996ff638e175b248f5c7134171434",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "22aa889341dbe49c66312b47651ba9399751f753",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/LayerRuntimeController.cs",
+      "baseline_blob_sha1": "f88a44393efe1e3e833d7b50fbb2edc11ca98b30",
+      "approved_blob_sha1": "c6e4773f0338d5d3bfd47f6ed2a8f8e57dce9534",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs",
+      "baseline_blob_sha1": "86e60a66a6e2af8f8d11c13a3cb21714c957dafa",
+      "approved_blob_sha1": "885e77287b07bdb00ecff0149cfa1e44c295a0b1",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "22aa889341dbe49c66312b47651ba9399751f753",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs",
+      "baseline_blob_sha1": "10202f0b8fb32bed197ca0872047d6cb1b87af6f",
+      "approved_blob_sha1": "fe12760481041a4e3c0c48f1d9f15af63fe89b63",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/LayerRuntimeControllerTests.cs",
+      "baseline_blob_sha1": "c032db27af2fb8fab941123b33936d1f38841b5b",
+      "approved_blob_sha1": "00880be7e49a3f870f66a26dafa4f7d4dac7c0d7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      }
     }
   ]
 }

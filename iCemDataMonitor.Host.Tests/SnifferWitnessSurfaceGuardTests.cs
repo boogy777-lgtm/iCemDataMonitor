@@ -94,7 +94,7 @@ public class SnifferWitnessSurfaceGuardTests
         var src = LoadSource("iCemDataMonitor.Host.Core", "HostComposition.cs");
 
         // The legacy bool stays (read-surface compat)…
-        Assert.Contains("sniffer = sniffer?.IsRunning ?? false", src, StringComparison.Ordinal);
+        Assert.Contains("layers = GetLayerStatusShape(runtime, ini, layers)", src, StringComparison.Ordinal);
         // …and the additive witness block rides the same endpoint.
         var shapeStart = src.IndexOf("internal static object GetSnifferStatsShape", StringComparison.Ordinal);
         Assert.True(shapeStart >= 0,
