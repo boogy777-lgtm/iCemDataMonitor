@@ -111,11 +111,12 @@ static async Task<int> ProgramMain(string[] args)
 
     // ── 4. station config (canonical config.ini search order or explicit --ini) ──
     boot.Begin("ini", "конфигурация");
-    IniOptions ini;
+    HostBootContext bootContext;
     try
     {
-        ini = HostAppFactory.LoadIni(new HostBuildSpec(args, parsed.IniPath), log);
-        boot.Complete("ini", $"port={ini.WebPort} modbus={ini.ModbusOn}");
+        bootContext = HostAppFactory.LoadBootContext(
+            new HostBuildSpec(args, parsed.IniPath, parsed.Port), log);
+        boot.Complete("ini", $"port={bootContext.Ini.WebPort} modbus={bootContext.Ini.ModbusOn}");
     }
     catch (Exception ex)
     {
@@ -129,7 +130,7 @@ static async Task<int> ProgramMain(string[] args)
     WebApplication app;
     try
     {
-        app = HostAppFactory.Build(new HostBuildSpec(args, parsed.IniPath, parsed.Port), log, boot);
+        app = HostAppFactory.Build(bootContext, log, boot);
         boot.Complete("composition");
     }
     catch (Exception ex)
@@ -157,7 +158,7 @@ static async Task<int> ProgramMain(string[] args)
         var boundPort = HostAppFactory.GetBoundPort(app);
         boot.Complete("web", $"http://localhost:{boundPort}");
 
-        var layers = LayerFlags.From(ini);
+        var layers = LayerFlags.From(bootContext.Ini);
         boot.Begin("layers", "слои");
         await HostComposition.StartLayersAsync(app.Services, layers, log);
         boot.Complete("layers", $"modbus={layers.Modbus} sniffer={layers.LanSniffer} opcda={layers.OpcDa}");
