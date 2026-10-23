@@ -1,6 +1,6 @@
-﻿using System.Collections;
-using System.IO.MemoryMappedFiles;
+﻿using System.IO.MemoryMappedFiles;
 using iCemDataMonitor.Sdk.Bus;
+using iCemDataMonitor.Sdk.Collections;
 
 namespace iCemDataMonitor.Data.Bus;
 
@@ -80,7 +80,7 @@ public sealed record BusSnapshot(
     bool Stale,
     long CapturedAtTickMs)
 {
-    private OwnedWords _words = Own(Words);
+    private OwnedReadOnlyList<ushort> _words = Own(Words);
 
     /// <summary>Owned, read-only words. Every replacement takes a defensive copy.</summary>
     public IReadOnlyList<ushort> Words
@@ -89,31 +89,7 @@ public sealed record BusSnapshot(
         init => _words = Own(value);
     }
 
-    private static OwnedWords Own(IReadOnlyList<ushort> words)
-    {
-        ArgumentNullException.ThrowIfNull(words);
-        var copy = new ushort[words.Count];
-        // Do not hand our backing array to caller-defined ICollection.CopyTo.
-        for (int i = 0; i < copy.Length; i++)
-            copy[i] = words[i];
-        return new OwnedWords(copy);
-    }
-
-    // ReadOnlyCollection over an array leaks that array via ICollection.SyncRoot.
-    // Expose only indexed values/enumeration, never the owner or a memory view.
-    private sealed class OwnedWords : IReadOnlyList<ushort>
-    {
-        private readonly ushort[] _items;
-        public OwnedWords(ushort[] words) => _items = words;
-        public int Count => _items.Length;
-        public ushort this[int index] => _items[index];
-        public IEnumerator<ushort> GetEnumerator()
-        {
-            for (int i = 0; i < _items.Length; i++)
-                yield return _items[i];
-        }
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    }
+    private static OwnedReadOnlyList<ushort> Own(IReadOnlyList<ushort> words) => new(words);
 
     /// <summary>Copy values into caller-owned storage; validate the whole range before writing.</summary>
     public void CopyWordsTo(int sourceIndex, Span<ushort> destination)

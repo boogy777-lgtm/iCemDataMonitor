@@ -60,11 +60,60 @@ public sealed class CatalogSnapshotTests
 
     private static void AssertReadOnly<T>(IReadOnlyList<T> entries)
     {
-        var list = Assert.IsAssignableFrom<IList<T>>(entries);
-        Assert.True(list.IsReadOnly);
-        Assert.Throws<NotSupportedException>(() => list.Add(default!));
-        if (entries.Count > 0)
-            Assert.Throws<NotSupportedException>(() => list[0] = default!);
+        var before = entries.ToArray();
+        if (entries is IList<T> list)
+        {
+            Assert.True(list.IsReadOnly);
+            Assert.Throws<NotSupportedException>(() => list.Add(default!));
+            if (entries.Count > 0)
+                Assert.Throws<NotSupportedException>(() => list[0] = default!);
+        }
+        if (entries is IList nongeneric)
+        {
+            Assert.True(nongeneric.IsReadOnly);
+            Assert.Throws<NotSupportedException>(() => nongeneric.Add(default(T)));
+            if (entries.Count > 0)
+                Assert.Throws<NotSupportedException>(() => nongeneric[0] = default(T));
+        }
+        Assert.Equal(before, entries.ToArray());
+    }
+
+    [Theory]
+    [InlineData("catalog")]
+    [InlineData("families")]
+    [InlineData("register-map")]
+    public void CachedProjections_CannotBeCorruptedThroughSyncRoot(string surface)
+    {
+        var registry = new DeviceCatalogRegistry(Read(SyntheticJson));
+        switch (surface)
+        {
+            case "catalog":
+                var catalog = registry.GetCatalog("flecs");
+                var lookup = catalog.Lookup("Late");
+                VerifyNoSyncRootAlias(catalog.GetCatalog(), catalog.GetCatalog);
+                Assert.Equal(lookup, catalog.Lookup("Late"));
+                break;
+            case "families":
+                VerifyNoSyncRootAlias((IReadOnlyList<string>)registry.GetFamilies(),
+                    () => (IReadOnlyList<string>)registry.GetFamilies());
+                break;
+            case "register-map":
+                VerifyNoSyncRootAlias(registry.GetRegisterEntries("flecs"),
+                    () => registry.GetRegisterEntries("FLECS"));
+                break;
+            default: throw new ArgumentOutOfRangeException(nameof(surface));
+        }
+    }
+
+    private static void VerifyNoSyncRootAlias<T>(IReadOnlyList<T> entries, Func<IReadOnlyList<T>> readAgain)
+    {
+        var before = entries.ToArray();
+        Assert.NotEmpty(before);
+        if (entries is ICollection collection && collection.SyncRoot is T[] backing)
+            backing[0] = default!; // Actual safe-API attack against Array.AsReadOnly, no reflection.
+        Assert.Equal(before, entries.ToArray());
+        Assert.Same(entries, readAgain());
+        Assert.Equal(before, readAgain().ToArray());
     }
 
     [Theory]

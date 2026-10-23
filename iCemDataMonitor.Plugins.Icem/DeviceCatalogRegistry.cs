@@ -1,5 +1,6 @@
 using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Models;
+using iCemDataMonitor.Sdk.Collections;
 
 namespace iCemDataMonitor.Plugins.Icem;
 
@@ -31,7 +32,7 @@ public class DeviceCatalogRegistry : IDeviceCatalogRegistry
             ["plc"] = PlcVariableCatalog.FromSnapshot(registry),
             ["lan"] = LanVariableCatalog.FromSnapshot(registry),
         };
-        _families = Array.AsReadOnly(registry?.Families.ToArray() ?? Array.Empty<string>());
+        _families = new OwnedReadOnlyList<string>(registry?.Families.ToArray() ?? Array.Empty<string>());
         _registerEntries = _families.ToDictionary(f => f, ProjectRegisterEntries, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -54,7 +55,7 @@ public class DeviceCatalogRegistry : IDeviceCatalogRegistry
     // Load permits variable-only families: their entries still use default base 2,
     // while GetFamilies deliberately exposes declared family metadata only.
     private IReadOnlyList<ModbusRegisterEntry> ProjectRegisterEntries(string family) =>
-        Array.AsReadOnly(_registry?.GetFamilyVariables(family)
+        new OwnedReadOnlyList<ModbusRegisterEntry>(_registry?.GetFamilyVariables(family)
             .Where(e => !e.ExcludeFromTelemetry)
             .Select(e => new ModbusRegisterEntry(e.Name, _registry.GetModbusBase(family) + e.Index * 2))
             .ToArray() ?? Array.Empty<ModbusRegisterEntry>());

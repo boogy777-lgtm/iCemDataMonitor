@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using iCemDataMonitor.Sdk.Models;
+using iCemDataMonitor.Sdk.Collections;
 
 namespace iCemDataMonitor.Plugins.Icem;
 
@@ -12,7 +13,7 @@ internal sealed class CatalogProjection
 
     private CatalogProjection(IEnumerable<VariableDefinition> entries, IReadOnlyList<string> colors)
     {
-        _catalog = Array.AsReadOnly(entries.ToArray());
+        _catalog = new OwnedReadOnlyList<VariableDefinition>(entries.ToArray());
         var lookup = new Dictionary<string, (string Display, string Uom, int? ModbusOffset)>(StringComparer.OrdinalIgnoreCase);
         // Preserve legacy last-write-wins for entries accepted by the strict registry parser.
         foreach (var entry in _catalog)
