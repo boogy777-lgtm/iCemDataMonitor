@@ -1,10 +1,96 @@
-# C10 / L14–L15 — pre-code план удаления dormant v1
+# C10 / L14–L15 — удаление dormant v1: план и implementation evidence
 
-## Статус и исходная точка
+## Текущий статус реализации / 2026-10-23
 
-Это восстановленный **план до кода**, а не реализация C10. Основание — L14/L15 и разделы 2–5, 9–12 плана `b973e50ca5853f3804ace7853183a9f3bc94ec92:docs/LEGACY_REFACTORING_PLAN.ru.md`. Первичная read-only карта проверялась на C7, C8 consumers дополнительно проверены на C8 final tree `9f1fdda9b0c1ff251cc4ed838f4dae703cb87a97`. Текущий checkpoint опирается на remote C9 head `a98718b555d5fc49729872a34a9d21cf7fb26eac`, tree `66c54bda951bfba965ebb1d29c1e34bdb00722ee`, PR #38. C9 review завершён без findings; CI/merge ожидаются. **Source implementation C10 запрещена до merge C9 и rebase плана root на фактический C9 main**, с повторной проверкой всех use sites.
+C10 реализован после фактического merge C9: main
+`243ae3b27d2eba8eb1f9c42f507e78ea234885a0`, tree
+`66c54bda951bfba965ebb1d29c1e34bdb00722ee`. Предкодовый checkpoint
+`2ea8ca6cda00fe8c19b4992cbd783d11a032e4aa` включает этот main; запрет source
+edits до merge C9 выполнен. PR C10: #39. Ниже сохранён исторический план;
+этот раздел фиксирует результаты реализации.
 
-Разрешение пользователя охватывает C10. Здесь восстанавливается только документ после потери прежнего plan commit `c4f85ac7903cf4264e1e74d83c3a45b4c951465c`; старый commit object в текущем checkout недоступен. Production/tests/projects/ledger/APIs/workflows сейчас не меняются. Restore/build/tests и SDK processes не запускаются; original dirty C3 worktree не затрагивается.
+Actual C9 use-site scan подтвердил таблицу: production ConfigureAsync вызывался
+только PipelineWorker; AddCorePipeline и LogsCleanup repository callers не имели.
+Остальные ConfigureAsync references — два Host fake и synthetic UI endpoint/test.
+Удалены ровно семь перечисленных файлов, инертный ConfigureAsync, synthetic
+handler/test и unused mocks/imports. Core сохраняет SDK и active configuration;
+Data/Transport/Plugins, Hosting/ServiceController и Core.Tests Moq dependencies
+удалены после проверки use sites. Новые ArchTests проверяют project/assembly
+references и type signatures (base/interfaces/fields/methods/constructors/generic
+arguments/constraints), с negative generic-field vector и visited set для циклов.
+
+Strict schema 2 guard проверяет operation modify/delete, точные поля, hashes,
+provenance, canonical paths, duplicate JSON keys и frozen bans. Delete проверяет
+exact path и lexical parents на file/directory/reparse/symlink/dangling link;
+только ItemNotFoundException доказывает отсутствие, I/O/permission ошибки
+распространяются. Existing files и approved deletions считаются отдельно.
+Router принимает schema 1 только historical base, schema 2 head, и требует
+exact regular base blob + deleted source в verified diff + literal head absence.
+Неоднозначность, provenance-only и resurrection сохраняют full workload closure.
+Allowlist и source routing rules не расширены. Все 65 существующих approvals
+мигрированы только добавлением operation=modify; сравнение каждого baseline/
+approved hash и provenance с actual C9 подтвердило идентичность. Actual C10
+approvals вносит root после публикации кода; их provenance здесь не выдумывалась.
+Source-manifest и pin `96e2206562c9389d1543095232115d81eae4b692` не менялись.
+
+Повторный bounded consumer scan: production assembly/plugin loader этих contracts
+не найден, Assembly.Load относится к Transport architecture test; в release/
+scripts/installer не найден SDK/Core pack/push/nuspec pipeline. Active Host
+composition сохраняет acquisition, ILatestBusState, publisher lifecycle и frozen
+ops. В документированных composition/extension/release paths поддерживаемый
+внешний consumer v1 APIs не выявлен. Публичные assemblies входят в application
+payload; произвольный сторонний binary consumer или вручную опубликованный
+package универсально исключить нельзя. Это разрешённая product cleanup,
+не универсальное утверждение об отсутствии внешних clients.
+
+### Фактическая проверка
+
+SDK `/workspace/scratch/972115899d93/dotnet-sdk/dotnet` сообщает 10.0.302.
+Restore UI/Core/Sdk/Host/Transport Tests выполнены последовательно с
+`--packages /workspace/scratch/972115899d93/nuget-packages --disable-parallel -m:1 /nodeReuse:false`.
+Все dotnet test (включая build) выполнялись последовательно с
+`--no-restore -m:1 /nodeReuse:false -p:UseSharedCompilation=false`.
+
+| Проверка | Результат |
+|---|---|
+| `pwsh -NoProfile -File rust/tools/Test-BaselineGuard.ps1` | PASS, 45 cases, включая returning file/directory/symlink/dangling/parent link и synthetic provider I/O error |
+| `python -m unittest discover -s rust/tools/ci -p 'test_*.py'` | PASS, 42 tests: 28 routing + 14 cache |
+| `python rust/tools/ci/cache_contract.py --help` | PASS: script проверяет contract независимо от аргумента; invocation/order/owner identity сохранены |
+| Core.Tests full | 58 passed, 0 failed |
+| Sdk.Tests full | 100 passed, 2 skipped (net48/CLR4 contracts), 0 failed |
+| UI ContractTests/B5ContractTests/LayerRuntimeControllerTests/TrayToggleRulesTests | 49 passed, 6 failed, total 55 |
+| Host LayerRuntimeStatusTests/LayerCommandTests/HostBootContextTests/ModbusStartupTests | 28 passed, 0 failed |
+| Transport TransportArchitectureTests/CachedPublication_/ModbusLifecycleTests | 11 passed, 0 failed |
+| Real `Verify-Baseline.ps1 -RequireComplete` | Expected FAIL: `Hash mismatch: iCemDataMonitor.Core.Tests/ArchTests.cs`, actual C10 approval metadata root pending |
+| `git diff --check`; source-manifest diff против actual C9 | PASS; manifest diff пуст |
+
+Selected test filters используют `FullyQualifiedName~` с указанными class/method
+fragments через `|`. Наблюдались nullable warnings в unchanged linked AddIn sources
+SDK tests и xUnit1031 в unchanged UI HostClientTests.
+
+Шесть UI failures — B5ContractTests.Com0Com_Degraded_WithoutDriver,
+Com0ComStatus_ReturnsFullShape, Com0ComRefresh_ReturnsOk,
+Com0ComOpenConfig_ValidTool_ReturnsOk, Com0ComOpenConfig_EvilTool_ReturnsBadRequest,
+Com0ComOpenConfig_PathTraversal_ReturnsBadRequest. Получен HTTP 501 вместо
+ожидаемых OK/BadRequest: unchanged production Com0ComEndpoints явно возвращает
+501 при !OperatingSystem.IsWindows(). Отдельное baseline SDK исполнение не
+проводилось; baseline-pass/fail не заявляется. Tests не ослаблялись.
+
+Linux не доказывает Windows native IPC/MMF/WinUI/net48/vendor/hardware acceptance.
+Обязательны Windows CI.slnf Category!=Live, MSI и native/operator gates. Cargo
+не запускался. Rust production, MMF, proto, frozen SPA/assets, historical oracle
+fixtures и original dirty worktree не менялись. Complete guard требует повтора
+после actual root approvals; этот checkpoint не объявляет его зелёным.
+
+## Исторический предкодовый план
+
+Основание — L14/L15 и разделы 2–5, 9–12 плана
+`b973e50ca5853f3804ace7853183a9f3bc94ec92:docs/LEGACY_REFACTORING_PLAN.ru.md`.
+Read-only карта сначала проверялась на C7; C8 consumers — на final tree
+`9f1fdda9b0c1ff251cc4ed838f4dae703cb87a97`; pre-code C9 reference — remote
+`a98718b555d5fc49729872a34a9d21cf7fb26eac`, PR #38. Первичный восстановленный
+checkpoint не менял source/projects/tests/ledger и не запускал SDK. Формулировки
+ниже описывают план до реализации; фактические результаты находятся выше.
 
 ## Class / Inv / N+1
 
