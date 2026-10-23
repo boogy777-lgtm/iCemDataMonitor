@@ -281,48 +281,40 @@ public static class HostComposition
         if (layers.Modbus && publisher is not null)
         {
             var ini = services.GetRequiredService<IniOptions>();
-            StartModbusWithPortRetry(publisher, ini.ModbusPort, log);
+            await StartModbusWithPortRetryAsync(publisher, ini.ModbusPort, log, ct).ConfigureAwait(false);
         }
     }
 
-    private static void StartModbusWithPortRetry(IModbusPublisher publisher, int port, Action<string> log)
+    internal static async Task StartModbusWithPortRetryAsync(
+        IModbusPublisher publisher, int port, Action<string> log, CancellationToken ct,
+        Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
         const int maxAttempts = 5;
-        const int retryDelayMs = 5_000;
-        Exception? lastEx = null;
-
-        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        var retryDelay = TimeSpan.FromSeconds(5);
+        delay ??= Task.Delay;
+        for (int attempt = 1; ; attempt++)
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
-                publisher.StartAsync();
+                await publisher.StartAsync(ct).ConfigureAwait(false);
                 log($"Modbus bound :{port} on attempt {attempt}/{maxAttempts}");
                 return;
             }
-            catch (Exception ex) when (attempt < maxAttempts && IsPortBusy(ex))
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (ModbusBindException ex) when (
+                ex.SocketErrorCode == System.Net.Sockets.SocketError.AddressAlreadyInUse && attempt < maxAttempts)
             {
-                lastEx = ex;
-                log($"Modbus port :{port} busy (attempt {attempt}/{maxAttempts}) — retrying in {retryDelayMs / 1000}s: {ex.Message}");
-                Thread.Sleep(retryDelayMs);
+                log($"Modbus port :{ex.Port} busy (attempt {attempt}/{maxAttempts}) — retrying in {retryDelay.TotalSeconds}s: {ex.Message}");
+                await delay(retryDelay, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                lastEx = ex;
-                log($"Modbus StartAsync FAILED (non-retryable): {ex}");
-                break;
+                var failedPort = ex is ModbusBindException bind ? bind.Port : port;
+                log($"Modbus StartAsync FAILED after {attempt} attempt(s): {ex}");
+                throw new InvalidOperationException(
+                    $"Failed to bind port {failedPort} after {attempt} attempt(s). Last error: {ex.Message}", ex);
             }
         }
-
-        throw new InvalidOperationException(
-            $"Failed to bind port {port} after {maxAttempts} attempts. Last error: {lastEx?.Message}",
-            lastEx);
-    }
-
-    private static bool IsPortBusy(Exception ex)
-    {
-        var messages = new[] { ex.Message, ex.InnerException?.Message ?? "" };
-        return messages.Any(m =>
-            m.Contains("address") || m.Contains("port") ||
-            m.Contains("already in use") || m.Contains("EADDRINUSE"));
     }
 }
