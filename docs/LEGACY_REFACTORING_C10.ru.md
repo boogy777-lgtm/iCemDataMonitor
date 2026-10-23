@@ -29,8 +29,8 @@ exact regular base blob + deleted source в verified diff + literal head absence
 Неоднозначность, provenance-only и resurrection сохраняют full workload closure.
 Allowlist и source routing rules не расширены. Все 65 существующих approvals
 мигрированы только добавлением operation=modify; сравнение каждого baseline/
-approved hash и provenance с actual C9 подтвердило идентичность. Actual C10
-approvals вносит root после публикации кода; их provenance здесь не выдумывалась.
+approved hash и provenance с actual C9 подтвердило идентичность. После публикации кода root внёс actual C10 approvals с PR39 и последними remote
+source commits: теперь 78 записей, включая семь explicit deletions.
 Source-manifest и pin `96e2206562c9389d1543095232115d81eae4b692` не менялись.
 
 Повторный bounded consumer scan: production assembly/plugin loader этих contracts
@@ -43,6 +43,13 @@ payload; произвольный сторонний binary consumer или вр
 package универсально исключить нельзя. Это разрешённая product cleanup,
 не универсальное утверждение об отсутствии внешних clients.
 
+Независимый review GPT-6.1 Sol medium нашёл и воспроизвёл strict-schema defect:
+PowerShell принимал JSON array вместо scalar source_commit/baseline_blob_sha1.
+Commit `1ed9959bead80e587ac86fa760f87d5360e0389e` добавил string checks и три
+negative vectors; до исправления fixture обнаружил ошибочное принятие массива.
+После исправления 48 baseline cases и complete guard прошли. Других регрессий
+review не обнаружил; Python routing/cache 42 tests и cache contract повторно прошли.
+
 ### Фактическая проверка
 
 SDK `/workspace/scratch/972115899d93/dotnet-sdk/dotnet` сообщает 10.0.302.
@@ -53,7 +60,7 @@ Restore UI/Core/Sdk/Host/Transport Tests выполнены последоват
 
 | Проверка | Результат |
 |---|---|
-| `pwsh -NoProfile -File rust/tools/Test-BaselineGuard.ps1` | PASS, 45 cases, включая returning file/directory/symlink/dangling/parent link и synthetic provider I/O error |
+| `pwsh -NoProfile -File rust/tools/Test-BaselineGuard.ps1` | PASS, 48 cases, включая returning file/directory/symlink/dangling/parent link и synthetic provider I/O error |
 | `python -m unittest discover -s rust/tools/ci -p 'test_*.py'` | PASS, 42 tests: 28 routing + 14 cache |
 | `python rust/tools/ci/cache_contract.py --help` | PASS: script проверяет contract независимо от аргумента; invocation/order/owner identity сохранены |
 | Core.Tests full | 58 passed, 0 failed |
@@ -61,7 +68,7 @@ Restore UI/Core/Sdk/Host/Transport Tests выполнены последоват
 | UI ContractTests/B5ContractTests/LayerRuntimeControllerTests/TrayToggleRulesTests | 49 passed, 6 failed, total 55 |
 | Host LayerRuntimeStatusTests/LayerCommandTests/HostBootContextTests/ModbusStartupTests | 28 passed, 0 failed |
 | Transport TransportArchitectureTests/CachedPublication_/ModbusLifecycleTests | 11 passed, 0 failed |
-| Real `Verify-Baseline.ps1 -RequireComplete` | Expected FAIL: `Hash mismatch: iCemDataMonitor.Core.Tests/ArchTests.cs`, actual C10 approval metadata root pending |
+| Real `Verify-Baseline.ps1 -RequireComplete` | PASS после actual root approvals: 506 existing + 7 approved deletions / 513 entries, 78 exact approvals |
 | `git diff --check`; source-manifest diff против actual C9 | PASS; manifest diff пуст |
 
 Selected test filters используют `FullyQualifiedName~` с указанными class/method
@@ -79,8 +86,8 @@ Com0ComOpenConfig_PathTraversal_ReturnsBadRequest. Получен HTTP 501 вм�
 Linux не доказывает Windows native IPC/MMF/WinUI/net48/vendor/hardware acceptance.
 Обязательны Windows CI.slnf Category!=Live, MSI и native/operator gates. Cargo
 не запускался. Rust production, MMF, proto, frozen SPA/assets, historical oracle
-fixtures и original dirty worktree не менялись. Complete guard требует повтора
-после actual root approvals; этот checkpoint не объявляет его зелёным.
+fixtures и original dirty worktree не менялись. Complete guard повторно прошёл после actual root approvals. Exact-head Windows CI
+остаётся обязательным; его фактический результат фиксируется в PR39.
 
 ## Исторический предкодовый план
 
