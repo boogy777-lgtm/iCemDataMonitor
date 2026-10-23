@@ -118,12 +118,20 @@ public sealed class HostCommandListenersTests
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var owner = new HostCommandListeners(restartName, shutdownName, default,
             () => { entered.TrySetResult(); throw new InvalidOperationException("dispatch failed"); }, () => { });
-        using (var signal = EventWaitHandle.OpenExisting(restartName)) signal.Set();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        Assert.Throws<InvalidOperationException>(() => owner.Dispose());
-        Assert.True(owner.Completion.IsCompleted);
-        Assert.Throws<WaitHandleCannotBeOpenedException>(() => EventWaitHandle.OpenExisting(restartName));
-        Assert.Throws<WaitHandleCannotBeOpenedException>(() => EventWaitHandle.OpenExisting(shutdownName));
-        owner.Dispose();
+        try
+        {
+            using (var signal = EventWaitHandle.OpenExisting(restartName)) signal.Set();
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Throws<InvalidOperationException>(() => owner.Dispose());
+            Assert.True(owner.Completion.IsCompleted);
+            Assert.Throws<WaitHandleCannotBeOpenedException>(() => EventWaitHandle.OpenExisting(restartName));
+            Assert.Throws<WaitHandleCannotBeOpenedException>(() => EventWaitHandle.OpenExisting(shutdownName));
+            owner.Dispose();
+        }
+        finally
+        {
+            try { owner.Dispose(); }
+            catch (InvalidOperationException) { /* Expected dispatch fault, resources still released. */ }
+        }
     }
 }

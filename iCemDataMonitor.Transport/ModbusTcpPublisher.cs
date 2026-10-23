@@ -200,12 +200,13 @@ public sealed class ModbusTcpPublisher : IModbusPublisher, IDisposable
             ct.ThrowIfCancellationRequested();
             if (_generation is not null) return;
 
-            var listener = new TcpListener(IPAddress.Any, _options.Port);
+            var port = _options.Port;
+            var listener = new TcpListener(IPAddress.Any, port);
             var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
             try
             {
                 try { listener.Start(); }
-                catch (SocketException ex) { throw new ModbusBindException(_options.Port, ex); }
+                catch (SocketException ex) { throw new ModbusBindException(port, ex); }
                 var generation = new Generation(listener, cancellation);
                 generation.Accept = AcceptLoopAsync(generation);
                 generation.Refresh = RefreshLoopAsync(cancellation.Token);

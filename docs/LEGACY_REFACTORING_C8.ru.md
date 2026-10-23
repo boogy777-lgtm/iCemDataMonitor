@@ -2,7 +2,7 @@
 
 ## Статус и исходные данные
 
-План до существенного кода, по L10/L11 документа `b973e50ca5853f3804ace7853183a9f3bc94ec92:docs/LEGACY_REFACTORING_PLAN.ru.md`. Проверен исходный tree C7 `eb45dc58342e8f22cbd37ef3ee6a25dd0a141bfe`. Этот checkpoint содержит только документ: production/tests не изменены, restore/build/tests не запускались. Реализация начинается отдельным разрешённым checkpoint после merge C7 и переноса плана на фактический main.
+План до существенного кода, по L10/L11 документа `b973e50ca5853f3804ace7853183a9f3bc94ec92:docs/LEGACY_REFACTORING_PLAN.ru.md`. Проверен исходный tree C7 `eb45dc58342e8f22cbd37ef3ee6a25dd0a141bfe`. Первый checkpoint содержал только документ, без production/tests, restore/build/tests. После green merge C7 план перенесён на фактический main `8dd9dccf207b6d67be79dc0e4fa26f92a7c11223`; реализация отдельно разрешена. Исходные решения ниже сохранены как план до кода, фактическая реализация и проверки описаны в конце.
 
 ## Class / Inv / N+1
 
@@ -54,3 +54,24 @@ Historical manifest остаётся pinned на `96e2206562c9389d1543095232115d
 | Transport/Data regression | `ModbusContractTests`, `TransportArchitectureTests`, `AcquisitionMeasurementsTests`; общий фильтр `Category!=Live` |
 
 Restore/build/test только последовательно, отдельный unrestored worktree без shared obj: SDK `dotnet-sdk/dotnet` (версия 10.0.302), NuGet `nuget-packages`; restore `--packages <path> --disable-parallel -m:1 /nodeReuse:false`; build/test `--no-restore -m:1 /nodeReuse:false -p:UseSharedCompilation=false`. Точные результаты записываются после исполнения. Windows CI должен подтвердить native named events/MMF/WinUI; Linux loopback и unit tests не доказывают Windows/vendor/hardware acceptance. Original dirty C3 worktree не трогается.
+
+
+## Реализованный checkpoint
+
+`ModbusTcpPublisher` владеет конкретным generation с неизменными listener/CTS и accept/refresh tasks. Semaphore сериализует start/stop/dispose; повторный start активного generation не делает новый bind. Client task регистрируется до completion-removal continuation и удаляется сразу после завершения, поэтому history всех соединений не накапливается. Stop отменяет I/O, делает IsBound=false при закрытии listener, ждёт accept, затем refresh и финальный набор client tasks; только после этого освобождает generation. Dispose использует тот же join. Register image живёт вне generation и сохраняется при restart. Port захватывается на каждый новый start и используется также в typed bind diagnostics.
+
+`HostComposition.StartModbusWithPortRetryAsync` awaits каждый start и cancellable delay, имеет ровно пять попыток / четыре задержки при постоянном AddressAlreadyInUse. Иные причины завершаются после фактического числа попыток; `ModbusBindException` сохраняет SocketException, код и фактический port. Program передаёт ApplicationStopping. Runtime actuator и C2 controller не менялись.
+
+`HostCommandListeners` удерживает два LongRunning workers, оба named events, shared stop и регистрацию отмены. Partial-start cleanup и обычный Dispose ждут workers до освобождения handles; callback failure также освобождает все handles после join. Program хранит owner, очищает tray первым, затем listeners до host disposal; ошибка старта tray также освобождает созданный tray. Настоящий `HostLifecycle.RequestRestart` остаётся spawn → icon dispose → Environment.Exit(0); его реализация не менялась.
+
+## Локальная проверка реализации
+
+Linux, SDK 10.0.302, отдельные последовательные restores Transport.Tests и Host.Tests с указанными выше flags прошли. Обе production graphs и test assemblies собраны. Portable проверки выполнялись с `Category!=Live`:
+
+* Transport: `ModbusLifecycleTests|TransportArchitectureTests|CachedPublication_` — 11 passed. Это 6 lifecycle tests, 3 architecture guards и 2 pure cached-publication vectors. Lifecycle включает dedicated concurrent start/stop/dispose callers, blocked-refresh handshake с queued restart и IsBound=false во время join, accepted clients без полного request, busy-bind cleanup, cancellation admission, same-instance rebind, сохранение reserve register и удаление завершённых client tasks. TCP shutdown допускает EOF либо connection reset/IO close, но timeout остаётся ошибкой.
+* Host: `ModbusStartupTests|HostCommandListenersTests|LayerCommandTests|LayerRuntimeStatusTests|HostLifecycleTests|CliForwarderTests|SingleInstanceGuardTests` — 66 passed / 5 skipped. Девять startup cases включают exact attempt/delay/cancel policy, awaited async start, отсутствие message heuristic, actual-port diagnostics и реальный production DI registration: boot и runtime actuator меняют один loopback publisher с заменой только latest-state source.
+* Пять skipped cases требуют Windows native named events: повторные lifetimes и dispatch обоих verbs, join обоих заблокированных callbacks до dispose, partial-start cleanup при конфликте имени с Mutex, reset stale signals / stop priority, cleanup после faulted callback.
+
+Дополнительно первоначально запущенный Transport regression filter с полным `ModbusContractTests` дал 30 passed / 20 failed. Все 20 failures относятся к MMF-derived integration scenarios: actual LastError содержит `Bus open failed: the station bus mapping requires ...`; `BusMapping.OpenReadOnly` явно бросает PlatformNotSupportedException вне Windows. Первоначальный более широкий Host filter дал 118 passed / 5 skipped / 9 failed: 4 CompositionSmoke cases требуют Windows named-pipe transport, 2 TrayLogic cases вызывают kernel32, ещё 3 зависят от Windows exe/path layout. Эти результаты не объявляются baseline comparison и не скрываются; production MMF, named-pipe и path semantics не изменялись ради Linux тестов.
+
+После последних малых правок portable наборы проверяются повторно на конечном checkpoint. Windows CI должен исполнить полный Modbus/Host regression, пять native-event cases и сборку WinUI. Linux не доказывает native IPC/MMF, proprietary AddIn loading, live hardware или process-exit cleanup. Source manifest, ledger и исходный dirty C3 worktree не изменены.
