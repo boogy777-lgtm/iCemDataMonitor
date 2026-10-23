@@ -24,7 +24,7 @@ StandaloneShellSession.ViewerOnly вызывает TryOpen + LastSnapshot, но 
 
 ## Проверка и измерения
 
-Будут записаны после реализации. Windows MMF execution и сравнительные числа требуют Windows CI; Linux build/pure tests не являются доказательством Windows lifecycle или hardware performance.
+Windows MMF execution и сравнительные числа требуют Windows CI; Linux build/pure tests не являются доказательством Windows lifecycle или hardware performance.
 
 ### Windows measurement harness
 
@@ -46,3 +46,9 @@ Build closure Data.Tests / Transport.Tests / Host.Tests / UI.Tests прошёл 
 - UI.Tests: `FullyQualifiedName~LatestRegisterMirrorTests` — 1/1: только ILatestBusState в DI, один Current на request, first/closed 503 и known-open stale available; source IO невозможно без Reader в контейнере.
 
 Новые Windows-only проверки: BusAcquisitionWindowsTests (absent→present, идентичные bytes/time дают новый sequence, mid-life name-removal→recreate, repeated non-Stale Reader fallback не является успехом, mutex timeout/terminal state); BusAccessDeniedTests.Acquisition_DenyReadAcl_PublishesStickyDiagnostic_WithoutThrowingHost; AcquisitionMeasurementsTests.RealMmf_CallPatternComparison_EmitsReproducibleMetrics; LatestBusConsumerTests.StatusAndControls_ReadHealthCaseState_WithoutReadingLatestOrSource. Мигрированные real-MMF классы MetricsSamplerTests, BusRingServiceTests, BusHealthMonitorTests, TelemetryServiceImplTests, ModbusContractTests, RegisterMirrorTests требуют полного Windows CI. Здесь результаты их выполнения и performance numbers не заявлены.
+
+## Независимое review и provenance
+
+Три последовательных агента GPT-6.1 Sol medium завершили analysis → implementation → independent review. Существенных production дефектов review не обнаружило; независимый rerun Data6/6, Host13/13 reported (HKCU guard на Linux не выполняет тело), Transport1/1. Reviewed local tree a6a789a4e99af2f68f94322157908b8500bd9f3d опубликован с тем же Git tree: code commit `86dcb27c376ab5ed03ad04d579bf3d6059f527c8`, docs clarification `1a3c68d47c81b06c5dfe8b754c50b4381f70c650`, [PR35](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35). Historical source manifest остаётся закреплён на `96e2206562c9389d1543095232115d81eae4b692`; ledger обновляет существующие approvals без потери прежнего reason и использует точные Git blob hashes.
+
+Официальный `Verify-Baseline.ps1 -RequireComplete`: **513/513**, **42 exact approved divergences**, frozen proto/assets, D16/D17 theme predicates и REST inventory OK. `git diff --check` clean. Full Windows CI и анализ measurement artifact ожидаются до merge. Следующий пакет после C6 — C7 (logs); в C6 он не реализован.

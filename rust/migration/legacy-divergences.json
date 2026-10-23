@@ -35,61 +35,61 @@
     {
       "path": "iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs",
       "baseline_blob_sha1": "faded2621f43084b8298713488c354e3a77c4834",
-      "approved_blob_sha1": "e1daef0a905d57519a8fac62c27f3132207a6c9f",
+      "approved_blob_sha1": "b415ec92e9ac96557182a4580349c0473509eddd",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/16",
-        "commit": "ba8d1af1ca49e4ade40070ff13a358b93cb9a850",
-        "reason": "User-authorized D48 legacy test repair following post-merge E19 CI failure: the DropOldest overflow test acquires its initial full sample on an observed-loss-free attempt within the original shared 15s budget; wrong values still fail. Preserve original float assertion, actual overflow/drop thresholds, post-full heartbeat marker, producer stop/join, exact single retained sample and heartbeat3, 10s cleanup. Dispose test writer. Production sampler unchanged; D45 freshness and all other methods unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "User-authorized D48 legacy test repair following post-merge E19 CI failure: the DropOldest overflow test acquires its initial full sample on an observed-loss-free attempt within the original shared 15s budget; wrong values still fail. Preserve original float assertion, actual overflow/drop thresholds, post-full heartbeat marker, producer stop/join, exact single retained sample and heartbeat3, 10s cleanup. Dispose test writer. Production sampler unchanged; D45 freshness and all other methods unchanged. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Data/Bus/BusReader.cs",
       "baseline_blob_sha1": "0de6a74f8f2517e1e946525e958f37b61b156822",
-      "approved_blob_sha1": "183321f9afd0c4b43c8f917a6f9cfb04478a3086",
+      "approved_blob_sha1": "5ea5d5e093e0279dfdb3b1f276f487a992cbf2b3",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "4fe2f7ebfb6535c19dbfc27a8b777427eae4d723",
-        "reason": "Calculate zone activity and age at the same captured UTC instant. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Calculate zone activity and age at the same captured UTC instant. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Data/Telemetry/MetricsSampler.cs",
       "baseline_blob_sha1": "2cd119edb2fb2ba2c7ee590713c0a5a78fc9885c",
-      "approved_blob_sha1": "65301b6276972ead97e547a9bc8d917c070584c1",
+      "approved_blob_sha1": "8c69b27cdbf7ae4a5936321ca68c0730cdc16a2d",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
-        "reason": "Use one captured UTC instant for sample zone liveness. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Use one captured UTC instant for sample zone liveness. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Host.Core/Health/BusHealthMonitor.cs",
       "baseline_blob_sha1": "5f5aa0b001d1d0d71d8ef21f6a42aebcd31de043",
-      "approved_blob_sha1": "0c7bd957f59d6ae447ceb5cd7ccd27d6512b21b4",
+      "approved_blob_sha1": "77ad56d9bf77c64c2323099362a0f375a2f81a1c",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Inject UTC clock and evaluate all zones at the same instant."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Inject UTC clock and evaluate all zones at the same instant. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Host.Tests/BusHealthMonitorTests.cs",
       "baseline_blob_sha1": "99f4cd70c791d65204b3c7ec3de72ce706f0614b",
-      "approved_blob_sha1": "208d18593b36c6c32e0d46a5c6f27811cd8f558e",
+      "approved_blob_sha1": "5dcae4bb33fbf859d47085e1a77d4f4d83438bc3",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Hold the real mutex on its owning thread; deterministic UTC boundary cases."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Hold the real mutex on its owning thread; deterministic UTC boundary cases. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Transport.Tests/ModbusContractTests.cs",
       "baseline_blob_sha1": "e01e35d5563db01ed786cff91c151adcd2a6ceda",
-      "approved_blob_sha1": "cfdef2f99f8aa3a5e72d69dfd25387a52ed95394",
+      "approved_blob_sha1": "478be75ebda42224debcee65003e3da2db9e5cca",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
-        "reason": "Wait for actual tick/recovery results through TCP. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Wait for actual tick/recovery results through TCP. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
@@ -145,31 +145,31 @@
     {
       "path": "iCemDataMonitor.UI.Tests/RegisterMirrorTests.cs",
       "baseline_blob_sha1": "54a32036f138fa28a6fa717da69f1fd1855a34a4",
-      "approved_blob_sha1": "27e97a9957acf04042f1812d662ef2827da90b6c",
+      "approved_blob_sha1": "f15a80494f214060e123a2509460de23e573f1e9",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21",
-        "commit": "843331ece3efa6e243fbe7dec357523054e389ea",
-        "reason": "User-authorized D55 synthetic register fixture repair: explicit future-clock LAN/COM exercise age clamp0, all46 original assertions plus claim/age/count checks; exact staleLAN now-6000 and health boundary matrix preserved. Await startup, own clients/apps/readers, dispose responses and cleanup, report monotonic phase/liveness diagnostics. Original CI activefalse cause remains inferred because age was unlogged. No production .NET behavior, dependencies, retries, sleeps or request-timeout increase."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "User-authorized D55 synthetic register fixture repair: explicit future-clock LAN/COM exercise age clamp0, all46 original assertions plus claim/age/count checks; exact staleLAN now-6000 and health boundary matrix preserved. Await startup, own clients/apps/readers, dispose responses and cleanup, report monotonic phase/liveness diagnostics. Original CI activefalse cause remains inferred because age was unlogged. No production .NET behavior, dependencies, retries, sleeps or request-timeout increase. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Host/HostAppFactory.cs",
       "baseline_blob_sha1": "08db0675da20e42f7e4a01668513e6d469eee062",
-      "approved_blob_sha1": "c1492fd5db4e21009e0277561ab7bda0e6057b9e",
+      "approved_blob_sha1": "2c2701ca9ab23e01411c240fe8a1b40975c13044",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/32",
-        "commit": "7ee9735a15fb14a15cedc709cccf0e9af34b8610",
-        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged. Replaces the prior approved C1 factory blob from PR30 while preserving its read-once boot context."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged. Replaces the prior approved C1 factory blob from PR30 while preserving its read-once boot context. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Host/Program.cs",
       "baseline_blob_sha1": "9b1cfeb146c218ad9055ff0f5bb15f3540a91697",
-      "approved_blob_sha1": "3b406fc93a121240181ff0a0689c5342c8605394",
+      "approved_blob_sha1": "4714d0e668add7b37d290dfb5a3348856ce14284",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/30",
-        "commit": "db4f6051b29b95e7bada322ff45a706521929ac4",
-        "reason": "Owner-requested legacy refactoring plan C1/L01, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Load one HostBootContext (options, actual absolute INI path, bind plan) and share it across Program, DI, endpoints and startup layers. Preserve config schema/search/migration, CLI override persistence and external contracts. New fault regressions cover changed/invalid INI after load and independent ActivePath changes; historical manifest and oracle fixtures are unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-requested legacy refactoring plan C1/L01, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Load one HostBootContext (options, actual absolute INI path, bind plan) and share it across Program, DI, endpoints and startup layers. Preserve config schema/search/migration, CLI override persistence and external contracts. New fault regressions cover changed/invalid INI after load and independent ActivePath changes; historical manifest and oracle fixtures are unchanged. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
@@ -185,11 +185,11 @@
     {
       "path": "iCemDataMonitor.Host.Core/HostComposition.cs",
       "baseline_blob_sha1": "213428c7d9b689f1caaf38737a02453be9abcb05",
-      "approved_blob_sha1": "0b40aff5eab996ff638e175b248f5c7134171434",
+      "approved_blob_sha1": "c59096b924fb0711521c9a07b088c5bea0073640",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
-        "commit": "22aa889341dbe49c66312b47651ba9399751f753",
-        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
@@ -215,11 +215,11 @@
     {
       "path": "iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs",
       "baseline_blob_sha1": "10202f0b8fb32bed197ca0872047d6cb1b87af6f",
-      "approved_blob_sha1": "af2b0d34e76dbac31d8a929f57b53996a3b1ca0d",
+      "approved_blob_sha1": "ad159a13cbe9cf870c16e15aad2cf76e859d0cd0",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
-        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
@@ -345,21 +345,21 @@
     {
       "path": "iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs",
       "baseline_blob_sha1": "53a06293e2748d4c66af7ed5632c0112d363ce7c",
-      "approved_blob_sha1": "56124daaaefcffa1c9a78ec5db2c171f318efc6f",
+      "approved_blob_sha1": "4d449b8c82b74c336e050510c73d9618ef625023",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
-        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
       "path": "iCemDataMonitor.Host.Tests/TelemetryServiceImplTests.cs",
       "baseline_blob_sha1": "17e0892b004f2a1df5049d3c0e597ac86f7a8a7a",
-      "approved_blob_sha1": "0fd16232f0c8f454f5a36c036efd3542b14bdbfb",
+      "approved_blob_sha1": "c2ae1c1da3b2583de38486b3d974006b05a75c9d",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
-        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     },
     {
@@ -375,11 +375,51 @@
     {
       "path": "iCemDataMonitor.Transport/ModbusTcpPublisher.cs",
       "baseline_blob_sha1": "2af3376650e74e5e7d8ed49c6bf404cdcd2793eb",
-      "approved_blob_sha1": "2596b9d6fe2b31ab08a81cd133df33a6941d6ad2",
+      "approved_blob_sha1": "0a09573a41fcd2cfdc0a4b69b9c2ecbde181b446",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
-        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusAccessDeniedTests.cs",
+      "baseline_blob_sha1": "5b3df6e7adeb6a2ce539e1177348e58b5e4ac4f2",
+      "approved_blob_sha1": "b780a4469aa433d0c9a9204eb40494c299a46fa6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusRingServiceTests.cs",
+      "baseline_blob_sha1": "c5d65a88cdd3477637f4f9ea28fcc80c58c09337",
+      "approved_blob_sha1": "c78a8cda6760ee92424ace5f78f2a49494d245d2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusRingService.cs",
+      "baseline_blob_sha1": "14e1451d73a5a472ae1e5ec6c2796677ab2a0d54",
+      "approved_blob_sha1": "66b226620171daaca4cf013f4d736641c76ab412",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data/iCemDataMonitor.Data.csproj",
+      "baseline_blob_sha1": "338696acd1e8ddda2283d6376c6371ed58249a92",
+      "approved_blob_sha1": "c6ac40484bf587ecbfc44fefa8a04a5776643821",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
       }
     }
   ]
