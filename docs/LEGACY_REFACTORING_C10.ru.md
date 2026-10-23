@@ -1,0 +1,110 @@
+# C10 / L14–L15 — pre-code план удаления dormant v1
+
+## Статус и исходная точка
+
+Это восстановленный **план до кода**, а не реализация C10. Основание — L14/L15 и разделы 2–5, 9–12 плана `b973e50ca5853f3804ace7853183a9f3bc94ec92:docs/LEGACY_REFACTORING_PLAN.ru.md`. Первичная read-only карта проверялась на C7, C8 consumers дополнительно проверены на C8 final tree `9f1fdda9b0c1ff251cc4ed838f4dae703cb87a97`. Текущий checkpoint опирается на remote C9 head `a98718b555d5fc49729872a34a9d21cf7fb26eac`, tree `66c54bda951bfba965ebb1d29c1e34bdb00722ee`, PR #38. C9 review завершён без findings; CI/merge ожидаются. **Source implementation C10 запрещена до merge C9 и rebase плана root на фактический C9 main**, с повторной проверкой всех use sites.
+
+Разрешение пользователя охватывает C10. Здесь восстанавливается только документ после потери прежнего plan commit `c4f85ac7903cf4264e1e74d83c3a45b4c951465c`; старый commit object в текущем checkout недоступен. Production/tests/projects/ledger/APIs/workflows сейчас не меняются. Restore/build/tests и SDK processes не запускаются; original dirty C3 worktree не затрагивается.
+
+## Class / Inv / N+1
+
+Class: dormant v1 orchestration, её DI channels, эксклюзивные models/tests и инертный ConfigureAsync: `Core/{Extensions,Models,PipelineWorker.cs,HealthCheckService.cs}`, `Sdk/IModbusPublisher.cs`, `Transport/ModbusTcpPublisher.cs`. Ближайшие nonmembers — активные Core.Config, acquisition, publisher lifecycle/periodic publication и внешние протоколы.
+
+Inv: документированные application entry points сохраняют композицию и поведение; каждое удаление historical file имеет exact baseline identity, explicit deletion approval, provenance и absence proof. Неодобренный missing file продолжает проваливать complete gate; frozen source manifest/proto/assets не переопределяются.
+
+N+1: новая Core configuration feature добавляет собственные behavior/tests без data/transport/plugin dependency и constructor-count metric. Следующее удаление требует отдельной exact-path записи и absence proof, а не exemption каталога.
+
+## Call map и proposed deletion
+
+| Путь | Доказательство и действие |
+|---|---|
+| HostAppFactory → HostComposition.RegisterCoreServices | Активны BusReader, C6 BusAcquisitionService/ILatestBusState, BusHealthMonitor, singleton IModbusPublisher → ModbusTcpPublisher, optional sniffer/history. Сохранить |
+| Host/Program → StartLayersAsync; C2 controller → DefaultLayerActuator | Используют publisher lifecycle/IsBound, а не ConfigureAsync. Сам publisher и интерфейс сохраняются |
+| CoreServicesExtensions.AddCorePipeline | Repository call sites не найдены. Только он регистрирует unbounded Channel<TimeSeriesSample>, Channel<HealthEvent>, PipelineWorker и HealthCheckService |
+| PipelineWorker → IModbusPublisher.ConfigureAsync | Единственный production call site inert v1 метода; concrete publisher возвращает CompletedTask. Удалить вместе с slice |
+| CoreOptions/HealthEvent | Найденные consumers ограничены этим slice и Core.Tests/ContractTests. Активный health monitor — другой BusHealthMonitor |
+| Core.Tests/ContractTests | Все пять tests относятся к slice: data flow, configure activation, Mongo health, shutdown, continuous harvest. Удалить с реализацией |
+| Host.Tests/LayerRuntimeStatusTests | Fake ConfigureAsync только удовлетворяет интерфейсу; удалить метод, сохранить status behavior |
+| C8 Host.Tests/ModbusStartupTests | Fake Publisher.ConfigureAsync также только interface implementation. Удалить метод/неиспользуемый Sdk.Models import, сохранить все startup/composition tests |
+| UI.Tests/ContractTests | Synthetic test host сам создаёт /api/config/activate и вызывает ConfigureAsync. Удалить этот handler и ActivateConfigTriggersPublishers, затем unused publisher mock/registration. Остальные tests сохранить |
+| HostAppFactory → MapFrozenOpsSurface | Действующая композиция не регистрирует /api/config/activate; synthetic route не доказательство production usage. Frozen ops routes сохраняются |
+| Data/LogsCleanup | Только declaration, repository callers не найдены. Не путать с активными TapLog/CrashLog.DeleteOldLogs |
+
+Точный список семи удаляемых файлов (полные project prefixes):
+
+1. `iCemDataMonitor.Core/Extensions/CoreServicesExtensions.cs`
+2. `iCemDataMonitor.Core/PipelineWorker.cs`
+3. `iCemDataMonitor.Core/HealthCheckService.cs`
+4. `iCemDataMonitor.Core/Models/CoreOptions.cs`
+5. `iCemDataMonitor.Core/Models/HealthEvent.cs`
+6. `iCemDataMonitor.Core.Tests/ContractTests.cs`
+7. `iCemDataMonitor.Data/LogsCleanup.cs`
+
+В SDK interface и concrete ModbusTcpPublisher удалить **только ConfigureAsync**, obsolete v1 comments и действительно unused imports. Удалить fake methods выше. В UI.Tests/B5ContractTests есть ещё publisher mock: проверять конкретные uses после rebase, удалять только при их отсутствии. В Sdk/IConfigStore поправить stale PipelineWorker comment, сохранить contract.
+
+## Dependencies и architecture rules
+
+Core проект остаётся: Config/IniConfig, LayerFlags, UiThemePreferenceStore активно используются и зависят от BCL/SDK.Bus. После удаления concrete use sites убрать из Core.csproj ProjectReference на Data/Transport/Plugins.Icem и PackageReference на Microsoft.Extensions.Hosting/System.ServiceProcess.ServiceController. SDK reference и config tests остаются. Moq в Core.Tests использовался только удаляемым ContractTests; package удалить после проверки actual C9 base. Новые assemblies/packages не нужны.
+
+Не расширять deletion на IDataSource, ITimeseriesStore, IConfigStore, ISourceReader, TimeSeriesSample, ModbusRegisterEntry: retained Data/Transport/endpoints/tests имеют ссылки. Data → Plugins остаётся concretely нужен InMemoryConfigStore; Data → Contracts — MetricsSampler. Зависимости не чистятся по эстетике.
+
+Core.Tests/ArchTests переключается на surviving anchor typeof(IniConfig).Assembly. Убираются >=6 constructor arguments, domain-keyword heuristic и vacuous startup Assert.True(true), относящиеся к удаляемым типам. Вместо них:
+
+* ProjectReference guard запрещает Core → Data/Transport/Plugins/Host/Host.Core/UI; SDK допускается.
+* Assembly-reference guard запрещает concrete data/transport/plugin/database/UI dependencies.
+* Type/namespace dependency scan учитывает base/interfaces, fields, method return/parameter signatures и generic arguments; constructor-only scan не ловит Generic<ForbiddenType>.
+* Малый negative vector доказывает обнаружение forbidden dependency, включая generic argument. Не вводить LOC/count/style constraints.
+
+IniConfigTests/UiThemePreferenceStoreTests сохраняют behavior guards. Активная orchestration проверяется Host/C8 composition/status/lifecycle tests, а не восстановлением legacy pipeline tests.
+
+## Public/external consumer proof: bounded conclusion
+
+Проверены README, docs/architecture.md, development.md, release.md, install.md; SDK/Core csproj и Directory.Build.props; release/legacy-build workflows; scripts/make-release.ps1; installer/build-msi.ps1 и gen-payload.ps1; production source на assembly/plugin discovery.
+
+Документированная поставка — application MSI. Release workflow строит MSI и публикует MSI/checksums. Installer публикует Host/Shell/Emulator, при наличии vendor SDK строит net48 AddIn, harvest собирает application payload. Не найдены .nuspec, dotnet pack, nuget push, GeneratePackageOnBuild, PackageId или отдельный SDK publication pipeline. SDK/Core имеют default SDK packability: отсутствие pipeline не означает невозможность самостоятельной упаковки.
+
+Production Assembly.Load/LoadFrom/LoadFile, AssemblyLoadContext, exported-type scan или DLL plugin directory discovery для этих contracts не найдены. Plugins.Icem статически referenced. Assembly.Load hit относится к Transport architecture test; Activator.CreateInstance в Rust test oracle не является production loader. Vendor AddIn — отдельная net48 boundary без Core pipeline/SDK publisher configuration consumer. README содержит некоторые исторические self-contained/release инструкции; фактический publish проверен по scripts и более новым install/release docs.
+
+Вывод: **в документированных composition/extension/release paths репозитория не выявлен поддерживаемый внешний consumer этих v1 APIs**. Сборки публичны и входят в application payload; произвольный сторонний binary consumer или вручную опубликованный ранее package универсально исключить нельзя. Это bounded product cleanup в разрешённой пользователем области, а не доказательство отсутствия любых внешних clients. Оговорка должна остаться в implementation evidence/PR. Активные wire/REST/gRPC/CLI/plugin contracts не меняются.
+
+## Baseline schema 2 и строгая проверка удаления
+
+Текущая schema1 требует approved_blob_sha1 из 40 lowercase hex, отличный от baseline; missing file всегда incomplete. **Она не выражает approved deletion.** Нельзя удалить manifest entries, изменить historical hash или выключить RequireComplete. Manifest с pin `96e2206562c9389d1543095232115d81eae4b692` неизменен. Текущее количество approvals и их identities сверяются на actual C9 base; старые hashes/provenance сохраняются.
+
+Минимальный формат: schema_version=2, каждый entry имеет explicit operation modify|delete. Modify сохраняет approved_blob_sha1; delete его **не содержит**, но сохраняет exact baseline_blob_sha1 и provenance {pull_request, commit, reason}. Unknown operation/fields, mixed forms, duplicates, noncanonical paths и wrong baseline hash отвергаются. Existing entries мигрируют в modify без изменения hashes/provenance. Router может принимать historical schema1 только как modification-only base; current baseline guard требует schema2. Неоднозначная миграция безопасно ведёт к full-workload fallback.
+
+Verify-Baseline.ps1 сначала валидирует entry/frozen bans, затем для delete проверяет отсутствие exact path до обычной missing-file ветки. Returning file, directory, symlink/reparse entry, dangling link — failure. Проверить path parents на symlink/reparse traversal: отсутствующий descendant через redirected parent не является доказанной absence. Не вводить path traversal, directory exemptions или blanket allowlist. Unapproved missing baseline files по-прежнему fail RequireComplete. Вывод отдельно считает verified existing files и approved deletions, не выдаёт удалённые за существующие 513/513.
+
+Frozen proto/assets/SPA override bans, immutable baseline identity, canonical Git/CRLF modification hashing, D16/D17 и REST inventory сохраняются. Provenance указывает actual PR, последний remote source-code commit и конкретную причину. Удаление не оформляется hash пустого файла. Никаких historical manifest edits.
+
+## Router/cache/schema consumers
+
+Прямые consumers: rust/tools/Verify-Baseline.ps1, Test-BaselineGuard.ps1, ci/routing.py (approvals/delegated_approvals), ci/test_routing.py. Router сейчас требует strict schema1 и regular blobs в обеих ревизиях; deletion branch должна быть узкой:
+
+1. Manifest остаётся одним неизменённым regular Git blob; strict UTF-8 JSON/duplicate-key/canonical-path/provenance validation и metadata size bounds сохраняются.
+2. New delete: regular base blob имеет exact previous approved hash либо immutable baseline hash для нового approval; exact deleted source path входит в verified diff.
+3. Head exact path действительно отсутствует по literal ls-tree. Tree/symlink/submodule/ambiguous result не равны absence. Missing в обеих ревизиях не доказывает deletion.
+4. Unchanged existing delete допустим. Provenance-only edit, ledger-only deletion и delete→modify resurrection не получают metadata delegation. Modify сохраняет прежний exact base/head proof.
+5. Любая ambiguity оставляет ledger в classification и включает полный workload closure. Exemption касается только proven ledger metadata path; source deletion paths продолжают обычные JSON routing rules. **Никакого eligibility allowlist или path exemption ради skip.**
+
+Verify-ScaffoldInputs.ps1 продолжает вызывать baseline suite и complete guard. ci/cache_identity.py не парсит ledger: COMMON_SCAFFOLD_INPUTS уже содержит оба baseline scripts, изменения автоматически меняют cache compatibility digest. ci/cache_contract.py фиксирует порядок guard invocations и coverage command owners. Новый cache path/workflow bypass не нужен. Если нужен новый helper, он тоже должен входить в identity/contract; предпочтительно ограничиться существующими owners.
+
+В rust/docs/CI_CD.ru.md обновить schema/base-head deletion proof: сейчас текст требует regular blobs с обеих сторон. Historical counts в SOURCE_AUDIT не переписываются; C10 evidence дополняется фактическими данными. Rust production не меняется; необходимая baseline-guard adaptation следует явно разрешённому legacy refactor и сохраняет frozen policy.
+
+## Regression vectors и acceptance после реализации
+
+| Набор | Обязательные vectors |
+|---|---|
+| Baseline guard suite | Approved delete проходит RequireComplete; unapproved missing fails; wrong baseline/provenance/frozen path; unknown schema/op/fields; delete+hash; returning file/directory/symlink/dangling link/parent link; сохраняются modification/CRLF/proto/icons/SPA/D16/D17/REST cases |
+| CI routing | Baseline delete; previously modified approved file deletion; mixed modify/delete; wrong/missing base; head file/tree/symlink/submodule; absent both revisions; source/ledger без counterpart diff; changed deletion provenance; resurrection; immutable manifest drift; schema1 base/schema2 head; malformed metadata и existing CRLF proof. Ambiguity всегда full fallback |
+| Cache/guards | Python routing/cache suites и cache contract; invocation/order и owner identity coverage; real Verify-Baseline -RequireComplete; manifest unchanged |
+| Portable .NET | Полные Core.Tests/Sdk.Tests; UI ContractTests/B5ContractTests/LayerRuntimeControllerTests/TrayToggleRulesTests; Host LayerRuntimeStatusTests/LayerCommandTests/HostBootContextTests/ModbusStartupTests; TransportArchitectureTests/CachedPublication_/ModbusLifecycleTests |
+| Windows | CI.slnf build/test Category!=Live и MSI; C8 native HostCommandListeners cases, full Modbus/MMF/Host regression, WinUI build; vendor AddIn/live operator boundaries отдельно при доступном окружении |
+
+Restore/build/test только после C9 merge и реализации, последовательно, в отдельном worktree: SDK 10.0.302, общий NuGet cache, restore --disable-parallel -m:1 /nodeReuse:false; build/test --no-restore -m:1 /nodeReuse:false -p:UseSharedCompilation=false. Фактические commands/results/counts/failures записать после исполнения; этот plan checkpoint проверок C10 не заявляет. Linux не доказывает Windows native IPC/MMF/WinUI/vendor/hardware acceptance.
+
+## Сохраняемые активные контракты
+
+C8 concrete generation owner, start/stop serialization, accept/refresh/client joins, completed-client removal и same-instance rebind сохраняются. Typed ModbusBindException сохраняет socket cause/фактический port. Boot retry — пять attempts, четыре cancellable delays по пять секунд только AddressAlreadyInUse; runtime actuator остаётся одной попыткой на том же DI singleton. HostCommandListeners владеет обоими workers/shared handles: cancel/join до disposal. Fake ConfigureAsync removal не ослабляет эти tests.
+
+MMF layout5, time4–5 int32/CDAB, header/reserve49–56, независимый LAN/RAW; Modbus overwrite каждый tick включая same publication, resize/header/stale gates; C2 mutation serialization/status/toggle/Web persist-only/OpcDa no-op; C6 single acquisition и join до Reader.Dispose; C7 owned logging; C9 codecs/engine/AddIn seams сохраняются. Proto/SPA/assets, production Rust и historical oracle fixtures не меняются. Перед source edits после rebase повторить deletion/call/dependency proof на actual merged C9 tree.
