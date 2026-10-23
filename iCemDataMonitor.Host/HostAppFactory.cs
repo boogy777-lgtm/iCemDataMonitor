@@ -37,6 +37,23 @@ public sealed record HostBuildSpec(
     int? PortOverride = null,
     string? ContentRootOverride = null);
 
+/// <summary>One startup config load, its actual persistence target and binding decision.</summary>
+public sealed class HostBootContext
+{
+    internal HostBootContext(HostBuildSpec spec, IniOptions ini, string iniPath, KestrelBindPlan bindPlan)
+    {
+        Spec = spec;
+        Ini = ini;
+        IniPath = iniPath;
+        BindPlan = bindPlan;
+    }
+
+    internal HostBuildSpec Spec { get; }
+    public IniOptions Ini { get; }
+    public string IniPath { get; }
+    public KestrelBindPlan BindPlan { get; }
+}
+
 public static class HostAppFactory
 {
     /// <summary>2026-08-31 (owner decree «ускорить перезапуск — сохранение
@@ -61,12 +78,25 @@ public static class HostAppFactory
     /// event (legacy station.ini → canonical config.ini, or an honest copy
     /// failure) is emitted on the startup log — evidence, ¬ молчание.</summary>
     public static IniOptions LoadIni(HostBuildSpec spec, Action<string>? log = null)
+        => LoadIniWithPath(spec, log).Ini;
+
+    private static (IniOptions Ini, string Path) LoadIniWithPath(HostBuildSpec spec, Action<string>? log)
     {
         bool searched = string.IsNullOrWhiteSpace(spec.IniPath);
         var ini = searched ? IniConfig.Load() : IniConfig.Load(spec.IniPath!);
+        // Capture before logging or building: another load may change the global active path.
+        var path = Path.GetFullPath(searched ? IniConfig.ActivePath : spec.IniPath!);
         if (searched && IniConfig.LastLoadNote is { } note)
             log?.Invoke(note);
-        return ini;
+        return (ini, path);
+    }
+
+    /// <summary>Read config once and select the bind plan without changing persisted options.</summary>
+    public static HostBootContext LoadBootContext(HostBuildSpec spec, Action<string>? log = null)
+    {
+        var (ini, path) = LoadIniWithPath(spec, log);
+        var bind = KestrelBinding.Plan(spec.PortOverride ?? ini.WebPort, ini.WebRemoteOn == 1);
+        return new HostBootContext(spec, ini, path, bind);
     }
 
     /// <summary>
@@ -78,16 +108,21 @@ public static class HostAppFactory
     /// </summary>
     public static WebApplication Build(HostBuildSpec spec, Action<string>? log = null,
         Boot.BootStageTracker? bootStages = null)
+        => Build(LoadBootContext(spec, log), log, bootStages);
+
+    /// <summary>Build from the loaded startup context without reading INI again.</summary>
+    public static WebApplication Build(HostBootContext context, Action<string>? log = null,
+        Boot.BootStageTracker? bootStages = null)
     {
         var logLine = log ?? (_ => { });
-        var ini = LoadIni(spec, logLine);
+        var spec = context.Spec;
+        var ini = context.Ini;
         var layers = LayerFlags.From(ini);
         var registry = HostComposition.LoadRegistry(logLine);
 
-        var port = spec.PortOverride ?? ini.WebPort;
-        var bind = KestrelBinding.Plan(port, ini.WebRemoteOn == 1);
+        var bind = context.BindPlan;
         logLine($"config.ini OK — modbus={ini.ModbusOn} sniffer={ini.LansnifferOn} web={ini.WebOn} " +
-                $"port={port} bind={bind.Address}");
+                $"port={bind.Port} bind={bind.Address}");
 
         var builder = HostComposition.CreateWebApplicationBuilder(spec.Args, bind, spec.ContentRootOverride);
 
@@ -103,7 +138,7 @@ public static class HostAppFactory
             // Load() actually used (canonical after a migration, legacy on a
             // failed copy) — the old next-to-exe fallback silently LOST toggles
             // when the config was loaded from ProgramData.
-            iniPath: string.IsNullOrWhiteSpace(spec.IniPath) ? IniConfig.ActivePath : spec.IniPath);
+            iniPath: context.IniPath);
 
         // === D.2 gRPC endpoint region (transport zone) ===
         // Telemetry sampler (D.4) over the shared BusReader — sensor-at-send.

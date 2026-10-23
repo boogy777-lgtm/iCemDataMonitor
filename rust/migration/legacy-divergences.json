@@ -151,6 +151,26 @@
         "commit": "843331ece3efa6e243fbe7dec357523054e389ea",
         "reason": "User-authorized D55 synthetic register fixture repair: explicit future-clock LAN/COM exercise age clamp0, all46 original assertions plus claim/age/count checks; exact staleLAN now-6000 and health boundary matrix preserved. Await startup, own clients/apps/readers, dispose responses and cleanup, report monotonic phase/liveness diagnostics. Original CI activefalse cause remains inferred because age was unlogged. No production .NET behavior, dependencies, retries, sleeps or request-timeout increase."
       }
+    },
+    {
+      "path": "iCemDataMonitor.Host/HostAppFactory.cs",
+      "baseline_blob_sha1": "08db0675da20e42f7e4a01668513e6d469eee062",
+      "approved_blob_sha1": "345b3de939da1ae10e2b20fd2bfc01d6d1686bf2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/30",
+        "commit": "db4f6051b29b95e7bada322ff45a706521929ac4",
+        "reason": "Owner-requested legacy refactoring plan C1/L01, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Load one HostBootContext (options, actual absolute INI path, bind plan) and share it across Program, DI, endpoints and startup layers. Preserve config schema/search/migration, CLI override persistence and external contracts. New fault regressions cover changed/invalid INI after load and independent ActivePath changes; historical manifest and oracle fixtures are unchanged."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host/Program.cs",
+      "baseline_blob_sha1": "9b1cfeb146c218ad9055ff0f5bb15f3540a91697",
+      "approved_blob_sha1": "3b406fc93a121240181ff0a0689c5342c8605394",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/30",
+        "commit": "db4f6051b29b95e7bada322ff45a706521929ac4",
+        "reason": "Owner-requested legacy refactoring plan C1/L01, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Load one HostBootContext (options, actual absolute INI path, bind plan) and share it across Program, DI, endpoints and startup layers. Preserve config schema/search/migration, CLI override persistence and external contracts. New fault regressions cover changed/invalid INI after load and independent ActivePath changes; historical manifest and oracle fixtures are unchanged."
+      }
     }
   ]
 }
