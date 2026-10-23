@@ -180,26 +180,23 @@ public sealed partial class MainWindow : Window
                             ShellLog("[splash] ready stage NOT observed within budget — continuing honestly");
                     }
                     finally { stream.Dispose(); }
+                },
+                async completed =>
+                {
+                    splash?.Close();
+                    splash = null;
+                    if (completed == ShellBootstrapOutcome.Viewer)
+                        CompleteWithSession(ShellSession.CreateViewerOnly());
+                    else if (completed is ShellBootstrapOutcome.ExistingHost or ShellBootstrapOutcome.SpawnedHost)
+                        CompleteWithSession(ShellSession.CreateClient());
+                    else if (exitOnFailure)
+                        await ShowFatalAndExitAsync("Не удалось запустить iCemDataMonitor.Host.exe — см. startup.log рядом с программой.");
+                    else
+                        ShellLog("[launch] host launch FAILED — the «Запустить хост» button stays available for a retry");
                 });
         }
         finally { splash?.Close(); }
-
-        if (outcome == ShellBootstrapOutcome.Busy) return false;
-        if (outcome == ShellBootstrapOutcome.Viewer)
-        {
-            CompleteWithSession(ShellSession.CreateViewerOnly());
-            return true;
-        }
-        if (outcome is ShellBootstrapOutcome.ExistingHost or ShellBootstrapOutcome.SpawnedHost)
-        {
-            CompleteWithSession(ShellSession.CreateClient());
-            return true;
-        }
-        if (exitOnFailure)
-            await ShowFatalAndExitAsync("Не удалось запустить iCemDataMonitor.Host.exe — см. startup.log рядом с программой.");
-        else
-            ShellLog("[launch] host launch FAILED — the «Запустить хост» button stays available for a retry");
-        return false;
+        return outcome is ShellBootstrapOutcome.Viewer or ShellBootstrapOutcome.ExistingHost or ShellBootstrapOutcome.SpawnedHost;
     }
 
     private async Task ShowFatalAndExitAsync(string message)

@@ -63,6 +63,26 @@ public sealed class ShellBootstrapCoordinatorTests
     }
 
     [Fact]
+    public async Task SessionInstallationRemainsInsideFlight_UntilCompletionFinishes()
+    {
+        var effects = new Effects { Running = true };
+        var coordinator = effects.Create();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = coordinator.RunAsync(false, effects.Waiting, effects.Mirror, async outcome =>
+        {
+            Assert.Equal(ShellBootstrapOutcome.ExistingHost, outcome);
+            entered.SetResult();
+            await release.Task;
+        });
+        await entered.Task;
+        Assert.Equal(ShellBootstrapOutcome.Busy, await coordinator.RunAsync(false, effects.Waiting, effects.Mirror));
+        release.SetResult();
+        Assert.Equal(ShellBootstrapOutcome.ExistingHost, await first);
+        Assert.Equal(ShellBootstrapOutcome.ExistingHost, await coordinator.RunAsync(false, effects.Waiting, effects.Mirror));
+    }
+
+    [Fact]
     public async Task MirrorFailureReleasesFlight_WhileMissingReadyMayCompleteNormally()
     {
         var effects = new Effects();
