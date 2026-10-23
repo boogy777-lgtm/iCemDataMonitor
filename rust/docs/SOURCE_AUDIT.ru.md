@@ -781,3 +781,40 @@ E23/E24 current: [standalone LAN diagnostic](EMULATOR_E23.ru.md) и
 PASS, Windows exact-head CI/runtime и UI/operator/SDK/hardware acceptance отдельно.
 D22 loader/encoding/Unicode остаётся кодовым backlog; прежние записи о будущих
 selftest/landiag/stdin CLI — исторический статус.
+
+
+## Legacy C9/C10 — explicit retirement without moving the historical baseline
+
+C9 [PR38](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38) merged as
+`243ae3b27d2eba8eb1f9c42f507e78ea234885a0` after CI40039860188 passed all seven
+selected jobs. Nine Windows TRX files report 1102/1102 passed, zero failures/skips,
+including actual C#7.3/CLR4 linked logging and pair-preparation executables.
+WinUI/MSI, native installer, Rust differential/browser checks passed. These are
+automated boundaries, not vendor AddIn build or physical hardware acceptance.
+
+C10 [PR39](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39) retires seven
+exact dormant v1 files, their exclusive dependencies and inert ConfigureAsync API.
+Supported repository application/release/extension paths contain no identified
+consumer; arbitrary third-party binary consumers cannot be universally excluded.
+Active Core.Config, Host composition, acquisition and publisher lifecycle remain.
+The original source manifest and its commit 96e2206562c9389d1543095232115d81eae4b692
+are unchanged. Ledger schema 2 explicitly distinguishes modify/delete; deletion
+has no fictitious approved blob. The complete guard reports 506 verified existing
+files plus 7 approved deletions of 513 historical entries, 78 exact approvals.
+Every changed/deleted historical path has actual PR39 and last remote source
+commit provenance; old approval reasons are retained.
+
+Deletion proof rejects files/directories/links/dangling links/redirected parents
+and non-NotFound read errors. CI metadata delegation requires exact regular base
+blob identity, a verified source-path diff and literal Git head absence; unknown
+metadata or ambiguous proof selects the full workload closure. Source deletions
+retain ordinary routing. No eligibility allowlist, manifest exemption, frozen
+surface override or cache/guard bypass was added. Historical schema 1 is accepted
+only for comparison with a schema 2 head in routing.
+
+Local C10 evidence: baseline 45 regression scenarios; routing/cache 42 tests and
+cache contract passed; Core 58, SDK 100 + 2 Windows-only skips, Host 28, Transport 11
+passed. Selected UI 49 passed / 6 failed with observed Linux HTTP 501 Com0Com replies;
+no verified-baseline claim is made. Independent review and exact-head Windows CI
+remain pending at this checkpoint. See docs/LEGACY_REFACTORING_C10.ru.md for scope
+and bounded evidence; actual CI verdict is recorded in PR39.
