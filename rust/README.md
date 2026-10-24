@@ -228,3 +228,5 @@ schemas и сохраняют последний assignment в порядке JS
 references отделены от DTO grammar; один parser обслуживает strict и catalog paths.
 Legacy structure и случайные ошибки не переносятся; malformed file isolation
 проверяется отдельно от сравнения корректных входов с .NET. Windows acceptance открыт.
+
+MQTT N+1 state publisher (optional startup-only JSON config, real MQTT3.1.1 QoS0/1/2): [config, schema, lifecycle and acceptance](docs/MQTT_P6.ru.md). Linux real Mosquitto interop PASS; Windows/MMF acceptance remains OPEN.

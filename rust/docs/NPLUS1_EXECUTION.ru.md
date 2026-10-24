@@ -9,9 +9,9 @@
 | 1. Типизированный MMF / identity / geometry | Реализован; проверки ниже |
 | 2. Published snapshot и read-only handles | Реализован; Linux allocator profile добавлен в отчёте P4 |
 | 3. Единственный acquisition 200 мс | Реализован; Windows/runtime acceptance отдельно |
-| 4. Modbus/Web и измерения | Не начат |
-| 5. Consumer lifecycle / harness | Не начат |
-| 6. MQTT | Не начат |
+| 4. Modbus/Web и измерения | Реализован; Linux Release/perf отчёт ниже |
+| 5. Consumer lifecycle / harness | Реализован; scoped Linux checks ниже |
+| 6. MQTT | Реализован; Linux checks и real Mosquitto interop ниже; Windows OPEN |
 | 7. OPC UA / OPC DA sidecar | Не начат |
 | 8. Необязательный словарь | Не начат; подключается при практической потребности |
 
@@ -367,3 +367,29 @@ iterator — проекции, не набор var1..varN fields. Canonical stor
 
 Benchmark harness проверен реальными loopback Modbus/gRPC-Web ответами baseline
 `7360b19` и P4`bba4516`; это synthetic fixture/Linux, не Windows MMF/hardware.
+
+## Этап 6: MQTT (до реализации)
+
+Class: независимый MQTT 3.1.1 state publisher, Host `mqtt_consumer/`; command subscriptions, durable event journal и MMF writer — вне класса.
+Inv: только read-only SnapshotReader; full typed state, исходные bits/COM/zone provenance, capture/completion age и явный status; один latest pending и один protocol in-flight. Loopback wire tests проверяют reconnect, outage, coalescing, deadlines, quality и сохранение clocks.
+N+1: только новый module + validated typed Config + Host CLI/composition registration; reader/core/Modbus/Web не меняются. Lifecycle trait/registry — executable completeness guard, runtime TCP отказ изолирован от acquisition.
+
+### Dependency review до добавления
+
+Выбран `rumqttc = =0.25.1`, `default-features=false`, для реального MQTT 3.1.1 TCP codec, CONNACK/PUBLISH/PUBACK/PUBREC/PUBREL/PUBCOMP, keepalive и bounded async event loop. Apache-2.0; published manifest MSRV 1.64.0, ниже pinned workspace 1.99.1. Источники: https://docs.rs/crate/rumqttc/0.25.1/source/Cargo.toml и https://docs.rs/rumqttc/0.25.1/rumqttc/struct.EventLoop.html ; локально проверен опубликованный crate 0.25.1, его src не содержит unsafe. Transitive selected dependencies используют уже принятые workspace Tokio/bytes/flume/futures/thiserror/fixedbitset; platform/runtime unsafe остаётся внутри external dependencies, application forbid не ослабляется. После resolution lockfile/delta проверяются отдельно.
+
+TLS/rustls/native-tls, WebSocket, proxy, URL features не включены: первый scope — plain TCP к explicit numeric socket address, без DNS, credentials и управляющих subscriptions. serde derive/serde_json — существующая workspace serialization family; Tokio теперь явная cross-platform зависимость Host (`rt,time,macros`), worker имеет свой current-thread runtime. Официальный EventLoop документирует pending на reconnect; здесь clean-session owner пересоздаётся при connection error, поэтому не накапливает старые QoS payloads. QoS относится к текущему соединению, не гарантирует журнал промежуточных состояний между reconnect.
+
+### Результат P6
+
+Новый `mqtt_consumer/{config,payload,mod,tests}.rs` + optional `--mqtt-config FILE` и регистрация `mqtt` в Host. Изменения shared contracts, acquisition, Modbus/Web отсутствуют. Подробные config/schema/delivery/lifecycle границы: [MQTT_P6](MQTT_P6.ru.md).
+
+Полный typed payload лениво сериализуется из shared canonical snapshot, ID через serde collect_str без временного String на variable. COM raw int32, IEEE754 raw bits/NaN/−0 и per-zone writer metadata сохранены. Явные capture status, source error, capture/completion age и acquisition-only quality обновляются независимо от generation; D09 Fresh не применяется. Не назначается LAN/RAW measurement time.
+
+Latest pending ограничен одним Arc, serialized queued/in-flight — одним request; channel1, inflight1, payload≤16MiB, inbound≤1024B. При disconnect новый clean-session owner коалесцирует latest state, не replay history. QoS0/1/2/retain реальные; shutdown cancellable по deadline, status отражает CONNACK/offline/cancel/worker completion. Нет event journal/command subscriptions/TLS/auth/DNS/Will.
+
+Dependency delta lock: только rumqttc0.25.1 (checksum зафиксирован), остальные выбранные packages уже в workspace lock. [Manifest/license review](../migration/mqtt-dependencies.json); new application unsafe нет, pin1.99.1 неизменён.
+
+Exact Rust1.99.1 Linux: Host19 tests PASS (12 прежних +7 новых), fmt/check/build/clippy all-targets с --locked --offline PASS. Wire tests покрывают QoS0/1/2, reconnect500 versions, failure без смены generation, fixed COM/zone clocks, absence/retained/expiry/raw bits/types, offline/slow ACK/unresponsive CONNACK/deadline,2000 pending replacements/max65535 layout и independent actual acquisition+Modbus.
+
+Отдельный real Mosquitto2.0.18 process smoke PASS: QoS2 subscribe, broker restart, generation1→3, retained generation20 после Host exit0/retain flag1, source clocks/bits не меняются. [Evidence](perf/nplus1-p6-mosquitto-linux.json), reusable `tools/acceptance/nplus1_mqtt_broker.py`. Linux fixture не заменяет Windows/MMF/hardware/security acceptance; эти gates OPEN.

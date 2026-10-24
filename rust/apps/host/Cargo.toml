@@ -14,6 +14,9 @@ path = "src/main.rs"
 
 [dependencies]
 serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+rumqttc = { version = "=0.25.1", default-features = false }
+tokio = { version = "1", features = ["rt", "time", "macros"] }
 icem-logging = { path = "../../crates/icem-logging" }
 icem-transport = { path = "../../crates/icem-transport" }
 icem-platform-windows = { path = "../../crates/icem-platform-windows" }
@@ -25,10 +28,6 @@ icem-core = { path = "../../crates/icem-core" }
 icem-web = { path = "../../crates/icem-web" }
 
 [target.'cfg(windows)'.dependencies]
-tokio = { version = "1", features = ["rt", "time"] }
 icem-windows-native = { path = "../../crates/icem-windows-native" }
 icem-desktop = { path = "../../crates/icem-desktop" }
-
-[dev-dependencies]
-tokio = { version = "1", features = ["rt", "time"] }
 

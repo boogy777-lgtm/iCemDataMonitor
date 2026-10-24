@@ -30,6 +30,7 @@ mod cli;
 mod consumers;
 mod layers;
 mod modbus_consumer;
+mod mqtt_consumer;
 mod web_consumer;
 #[cfg(windows)]
 mod windows;
@@ -59,6 +60,7 @@ struct Options {
     tray_icon: Option<PathBuf>,
     station: Option<(PathBuf, IniOptions)>,
     sniffer_adapter: Option<String>,
+    mqtt: Option<mqtt_consumer::Config>,
 }
 fn options() -> Result<Options, String> {
     let mut args = std::env::args().skip(1);
@@ -78,6 +80,7 @@ fn options() -> Result<Options, String> {
     let mut rpc_pipe = None;
     let mut tray_icon = None;
     let mut sniffer_adapter = None;
+    let mut mqtt = None;
     while let Some(key) = args.next() {
         if key == "--autostart" {
             autostart = true;
@@ -117,6 +120,12 @@ fn options() -> Result<Options, String> {
             "--rpc-pipe" => rpc_pipe = Some(value),
             "--registry" => registry = Some(PathBuf::from(value)),
             "--sniffer-adapter" => sniffer_adapter = Some(value),
+            "--mqtt-config" => {
+                if mqtt.is_some() {
+                    return Err("duplicate --mqtt-config".into());
+                }
+                mqtt = Some(mqtt_consumer::Config::load(std::path::Path::new(&value))?);
+            }
             "--duration-ms" => {
                 duration = value.parse().map_err(|_| "invalid duration")?;
                 duration_explicit = true;
@@ -219,6 +228,7 @@ fn options() -> Result<Options, String> {
         tray_icon,
         station: config.map(|path| (path, settings)),
         sniffer_adapter,
+        mqtt,
     })
 }
 struct Fixture(Arc<Snapshot>);
@@ -324,6 +334,12 @@ fn run<D: icem_platform_windows::console::Device>(
     boot.complete("composition", None)?;
     boot.begin("layers", "слои")?;
     let mut consumers = consumers::Registry::new();
+    if let Some(config) = options.mqtt {
+        let publisher = mqtt_consumer::start(config, acquisition.snapshot_reader())?;
+        consumers
+            .register(consumers::ConsumerId("mqtt"), Box::new(publisher))
+            .map_err(|_| "duplicate or full consumer registration")?;
+    }
     let (server_slot, modbus_handle) = modbus_consumer::start(
         modbus_consumer::Config {
             address: options.bind,
@@ -469,9 +485,10 @@ fn run<D: icem_platform_windows::console::Device>(
     ));
     drop(server);
     diagnostic!(
-        "Consumers: modbus={:?} web={:?}",
+        "Consumers: modbus={:?} web={:?} mqtt={:?}",
         consumers.status(consumers::ConsumerId("modbus")),
-        consumers.status(consumers::ConsumerId("web"))
+        consumers.status(consumers::ConsumerId("web")),
+        consumers.status(consumers::ConsumerId("mqtt"))
     );
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
@@ -609,7 +626,7 @@ fn main() -> ExitCode {
         .any(|a| matches!(a.as_str(), "--help" | "-h"))
     {
         diagnostic!(
-            "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH"
+            "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH\nOptional MQTT publisher: --mqtt-config FILE"
         );
         return ExitCode::SUCCESS;
     }
@@ -663,7 +680,7 @@ fn main() -> ExitCode {
         Err(error) => {
             logs.record(&format!("Configuration failed: {error}"));
             diagnostic!(
-                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH]"
+                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH] [--mqtt-config FILE]"
             );
             return ExitCode::from(2);
         }

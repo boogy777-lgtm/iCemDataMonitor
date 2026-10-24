@@ -1,0 +1,75 @@
+{
+  "role": "MQTT 3.1.1 plain TCP state publisher; runtime codec/session library",
+  "selected": "rumqttc =0.25.1; default-features=false; no TLS/proxy/url/websocket",
+  "new_lock_packages": [
+    "rumqttc 0.25.1"
+  ],
+  "application_unsafe": "forbid unchanged; published rumqttc src contains no unsafe; external runtime dependency unsafe stays under existing dependency policy",
+  "msrv": "rumqttc declared 1.64.0; checked with workspace exact1.99.1",
+  "sources": [
+    "https://docs.rs/crate/rumqttc/0.25.1/source/Cargo.toml",
+    "https://docs.rs/rumqttc/0.25.1/rumqttc/struct.EventLoop.html"
+  ],
+  "packages": [
+    {
+      "name": "rumqttc",
+      "version": "0.25.1",
+      "license": "Apache-2.0",
+      "rust-version": "1.64.0"
+    },
+    {
+      "name": "bytes",
+      "version": "1.12.1",
+      "license": "MIT",
+      "rust-version": "1.57"
+    },
+    {
+      "name": "fixedbitset",
+      "version": "0.5.7",
+      "license": "MIT OR Apache-2.0",
+      "rust-version": "1.56"
+    },
+    {
+      "name": "flume",
+      "version": "0.11.1",
+      "license": "Apache-2.0/MIT"
+    },
+    {
+      "name": "futures-util",
+      "version": "0.3.34",
+      "license": "MIT OR Apache-2.0",
+      "rust-version": "1.71"
+    },
+    {
+      "name": "log",
+      "version": "0.4.34",
+      "license": "MIT OR Apache-2.0",
+      "rust-version": "1.71.0"
+    },
+    {
+      "name": "thiserror",
+      "version": "2.0.21",
+      "license": "MIT OR Apache-2.0",
+      "rust-version": "1.77"
+    },
+    {
+      "name": "tokio",
+      "version": "1.53.3",
+      "license": "MIT",
+      "rust-version": "1.71"
+    },
+    {
+      "name": "tokio-stream",
+      "version": "0.1.19",
+      "license": "MIT",
+      "rust-version": "1.71"
+    },
+    {
+      "name": "tokio-util",
+      "version": "0.7.20",
+      "license": "MIT",
+      "rust-version": "1.85"
+    }
+  ],
+  "note": "Selected package manifest inventory, not an independent security audit. Other selected packages already in locked workspace; complete versions/checksums in Cargo.lock."
+}
