@@ -146,6 +146,329 @@
  pub mod client;
  pub mod server;
 
+--- /dev/null
++++ b/opc_da_bindings/src/server/callback_health.rs
+@@ -0,0 +1,138 @@
++//! iCem SDK extension: process-scoped health contains no COM references.
++#![forbid(unsafe_code)]
++use std::{
++    collections::BTreeMap,
++    sync::{Arc, Mutex},
++    time::{Duration, Instant},
++};
++const MAX_WORKERS: usize = 128;
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++pub struct CallbackHealth {
++    pub live_workers: usize,
++    pub in_flight: usize,
++    pub oldest_in_flight: Duration,
++    pub failed: bool,
++}
++impl CallbackHealth {
++    pub fn healthy(&self, deadline: Duration) -> bool {
++        !self.failed && (self.in_flight == 0 || self.oldest_in_flight < deadline)
++    }
++}
++#[derive(Default)]
++struct State {
++    workers: BTreeMap<u64, Option<Instant>>,
++    next: u64,
++    failed: bool,
++}
++#[derive(Clone, Default)]
++pub struct CallbackMonitor(Arc<Mutex<State>>);
++impl CallbackMonitor {
++    pub fn new() -> Self {
++        Self::default()
++    }
++    pub fn health(&self, now: Instant) -> CallbackHealth {
++        let Ok(s) = self.0.lock() else {
++            return CallbackHealth {
++                failed: true,
++                ..CallbackHealth::default()
++            };
++        };
++        let mut h = CallbackHealth {
++            live_workers: s.workers.len(),
++            failed: s.failed,
++            ..CallbackHealth::default()
++        };
++        for start in s.workers.values().flatten() {
++            h.in_flight += 1;
++            h.oldest_in_flight = h
++                .oldest_in_flight
++                .max(now.saturating_duration_since(*start));
++        }
++        h
++    }
++    pub(crate) fn worker(&self) -> Option<WorkerLease> {
++        let mut s = self.0.lock().ok()?;
++        if s.failed || s.workers.len() >= MAX_WORKERS || s.next == u64::MAX {
++            return None;
++        }
++        let id = s.next;
++        s.next += 1;
++        s.workers.insert(id, None);
++        Some(WorkerLease(Arc::new(WorkerRegistration {
++            monitor: self.clone(),
++            id,
++        })))
++    }
++}
++#[derive(Clone)]
++pub(crate) struct WorkerLease(Arc<WorkerRegistration>);
++struct WorkerRegistration {
++    monitor: CallbackMonitor,
++    id: u64,
++}
++impl WorkerLease {
++    pub(crate) fn begin(&self, now: Instant) {
++        if let Ok(mut s) = self.0.monitor.0.lock() {
++            if let Some(start) = s.workers.get_mut(&self.0.id) {
++                *start = Some(now);
++            }
++        }
++    }
++    pub(crate) fn finish(&self) {
++        if let Ok(mut s) = self.0.monitor.0.lock() {
++            if let Some(start) = s.workers.get_mut(&self.0.id) {
++                *start = None;
++            }
++        }
++    }
++    pub(crate) fn fail(&self) {
++        if let Ok(mut s) = self.0.monitor.0.lock() {
++            s.failed = true;
++        }
++    }
++}
++impl Drop for WorkerRegistration {
++    fn drop(&mut self) {
++        if let Ok(mut s) = self.monitor.0.lock() {
++            s.workers.remove(&self.id);
++        }
++    }
++}
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn retired_stays_charged_until_exit() {
++        let m = CallbackMonitor::new();
++        let w = m.worker().unwrap();
++        let now = Instant::now();
++        w.begin(now);
++        let h = m.health(now + Duration::from_secs(3));
++        assert_eq!(h.in_flight, 1);
++        assert!(!h.healthy(Duration::from_secs(2)));
++        w.finish();
++        assert!(m.health(now).healthy(Duration::from_secs(2)));
++        let retained = w.clone();
++        drop(w);
++        assert_eq!(m.health(now).live_workers, 1);
++        drop(retained);
++        assert_eq!(m.health(now).live_workers, 0);
++    }
++    #[test]
++    fn repeated_disconnect_cannot_bypass_cap() {
++        let m = CallbackMonitor::new();
++        let workers: Vec<_> = (0..MAX_WORKERS).map(|_| m.worker().unwrap()).collect();
++        assert!(m.worker().is_none());
++        drop(workers);
++        assert!(m.worker().is_some());
++    }
++    #[test]
++    fn failure_sticky_after_worker_exit() {
++        let m = CallbackMonitor::new();
++        let w = m.worker().unwrap();
++        w.fail();
++        drop(w);
++        assert!(!m.health(Instant::now()).healthy(Duration::from_secs(2)));
++        assert!(m.worker().is_none());
++    }
++}
+--- /dev/null
++++ b/opc_da_bindings/src/server/callback_queue.rs
+@@ -0,0 +1,179 @@
++//! iCem SDK extension: finite owned queue, independent of COM.
++#![forbid(unsafe_code)]
++use std::collections::{BTreeSet, VecDeque};
++pub(crate) const MAX_REQUESTS: usize = 32;
++pub(crate) const MAX_SINKS: usize = 4;
++pub(crate) const MAX_ITEMS: usize = 4096;
++#[derive(Debug, PartialEq, Eq)]
++pub(crate) enum QueueError {
++    Full,
++    Closed,
++    Unknown,
++}
++pub(crate) struct DeliveryQueue<T> {
++    latest: Option<T>,
++    completions: VecDeque<(u32, T)>,
++    reserved: BTreeSet<u32>,
++    cancelled: BTreeSet<u32>,
++    next: u32,
++    closed: bool,
++}
++impl<T> DeliveryQueue<T> {
++    pub(crate) fn new() -> Self {
++        Self {
++            latest: None,
++            completions: VecDeque::new(),
++            reserved: BTreeSet::new(),
++            cancelled: BTreeSet::new(),
++            next: 1,
++            closed: false,
++        }
++    }
++    pub(crate) fn reserve(&mut self) -> Result<u32, QueueError> {
++        if self.closed {
++            return Err(QueueError::Closed);
++        }
++        if self.reserved.len() >= MAX_REQUESTS || self.next == u32::MAX {
++            return Err(QueueError::Full);
++        }
++        let id = self.next;
++        self.next += 1;
++        self.reserved.insert(id);
++        Ok(id)
++    }
++    pub(crate) fn pending(&self, id: u32) -> bool {
++        self.reserved.contains(&id)
++    }
++    pub(crate) fn cancellable(&self, id: u32) -> bool {
++        !self.closed
++            && !self.cancelled.contains(&id)
++            && self.completions.iter().any(|(key, _)| *key == id)
++    }
++    pub(crate) fn complete(&mut self, id: u32, value: T) -> Result<(), QueueError> {
++        if self.closed {
++            return Err(QueueError::Closed);
++        }
++        if !self.reserved.contains(&id) || self.completions.iter().any(|(key, _)| *key == id) {
++            return Err(QueueError::Unknown);
++        }
++        self.completions.push_back((id, value));
++        Ok(())
++    }
++    pub(crate) fn cancel(&mut self, id: u32, value: T) -> Result<(), QueueError> {
++        if !self.cancellable(id) {
++            return Err(QueueError::Unknown);
++        }
++        if let Some((_, pending)) = self.completions.iter_mut().find(|(key, _)| *key == id) {
++            *pending = value;
++            self.cancelled.insert(id);
++            Ok(())
++        } else {
++            Err(QueueError::Unknown)
++        }
++    }
++    pub(crate) fn latest(&mut self, value: T) -> Result<(), QueueError> {
++        if self.closed {
++            return Err(QueueError::Closed);
++        }
++        self.latest = Some(value);
++        Ok(())
++    }
++    pub(crate) fn pop(&mut self) -> Option<T> {
++        if let Some((id, value)) = self.completions.pop_front() {
++            self.reserved.remove(&id);
++            self.cancelled.remove(&id);
++            Some(value)
++        } else {
++            self.latest.take()
++        }
++    }
++    pub(crate) fn release(&mut self, id: u32) {
++        self.reserved.remove(&id);
++        self.cancelled.remove(&id);
++        self.completions.retain(|(key, _)| *key != id);
++    }
++    pub(crate) fn clear_latest(&mut self) {
++        self.latest = None;
++    }
++    pub(crate) fn close(&mut self) {
++        self.closed = true;
++        self.latest = None;
++        self.completions.clear();
++        self.reserved.clear();
++        self.cancelled.clear();
++    }
++}
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn coalescing_preserves_completion_credits() {
++        let mut q = DeliveryQueue::new();
++        for n in 0..100_000 {
++            q.latest(n).unwrap();
++        }
++        for n in 0..MAX_REQUESTS {
++            let id = q.reserve().unwrap();
++            q.complete(id, n).unwrap();
++        }
++        assert_eq!(q.reserve(), Err(QueueError::Full));
++        for n in 0..MAX_REQUESTS {
++            assert_eq!(q.pop(), Some(n));
++        }
++        assert_eq!(q.pop(), Some(99_999));
++        assert!(q.reserve().is_ok());
++    }
++    #[test]
++    fn cancel_linearizes_before_dequeue() {
++        let mut q = DeliveryQueue::new();
++        let id = q.reserve().unwrap();
++        assert!(q.pending(id));
++        q.complete(id, "read").unwrap();
++        assert_eq!(q.complete(id, "duplicate"), Err(QueueError::Unknown));
++        q.cancel(id, "cancel").unwrap();
++        assert_eq!(q.cancel(id, "duplicate"), Err(QueueError::Unknown));
++        assert_eq!(q.pop(), Some("cancel"));
++        assert_eq!(q.cancel(id, "late"), Err(QueueError::Unknown));
++    }
++    #[test]
++    fn close_releases_and_rejects() {
++        let mut q = DeliveryQueue::new();
++        let id = q.reserve().unwrap();
++        q.complete(id, vec![1; MAX_ITEMS]).unwrap();
++        q.latest(vec![2; MAX_ITEMS]).unwrap();
++        q.clear_latest();
++        q.release(id);
++        q.close();
++        assert_eq!(q.reserve(), Err(QueueError::Closed));
++        assert_eq!(q.latest(Vec::new()), Err(QueueError::Closed));
++        assert_eq!(q.complete(id, Vec::new()), Err(QueueError::Closed));
++        assert_eq!(q.pop(), None);
++    }
++    #[test]
++    fn finite_profile() {
++        assert_eq!(MAX_SINKS * 32, 128);
++    }
++    #[test]
++    fn competing_cancel_and_dequeue_have_one_terminal_result() {
++        for _ in 0..200 {
++            let mut q = DeliveryQueue::new();
++            let id = q.reserve().unwrap();
++            q.complete(id, "read").unwrap();
++            let q = std::sync::Arc::new(std::sync::Mutex::new(q));
++            let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
++            let worker_q = q.clone();
++            let worker_b = barrier.clone();
++            let worker = std::thread::spawn(move || {
++                worker_b.wait();
++                worker_q.lock().unwrap().pop().unwrap()
++            });
++            barrier.wait();
++            let cancelled = q.lock().unwrap().cancel(id, "cancel").is_ok();
++            assert_eq!(
++                worker.join().unwrap(),
++                if cancelled { "cancel" } else { "read" }
++            );
++            assert!(q.lock().unwrap().pop().is_none());
++        }
++    }
++}
 --- a/opc_da_bindings/src/server/mod.rs
 +++ b/opc_da_bindings/src/server/mod.rs
 @@ -92,8 +92,12 @@
