@@ -20,7 +20,6 @@ public class B5ContractTests : IAsyncLifetime
     private readonly Mock<ITeeService> _teeMock = new();
     private readonly Mock<ICom0ComMonitor> _com0comMock = new();
     private readonly Mock<IConfigStore> _configMock = new();
-    private readonly Mock<IModbusPublisher> _modbusMock = new();
     private readonly Mock<ITimeseriesStore> _timeseriesMock = new();
     private HttpClient _client = null!;
     // W20 F.2: the old Tray wwwroot\mock fixtures path is GONE with the Tray
@@ -136,7 +135,6 @@ public class B5ContractTests : IAsyncLifetime
         appBuilder.Services.AddSingleton(_teeMock.Object);
         appBuilder.Services.AddSingleton(_com0comMock.Object);
         appBuilder.Services.AddSingleton(_configMock.Object);
-        appBuilder.Services.AddSingleton(_modbusMock.Object);
         appBuilder.Services.AddSingleton(_timeseriesMock.Object);
 
         var app = appBuilder.Build();

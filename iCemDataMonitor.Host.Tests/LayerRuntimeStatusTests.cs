@@ -4,7 +4,6 @@ using iCemDataMonitor.Host.Core;
 using iCemDataMonitor.Host.Grpc;
 using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Bus;
-using iCemDataMonitor.Sdk.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace iCemDataMonitor.Host.Tests;
@@ -16,7 +15,6 @@ public class LayerRuntimeStatusTests
         public bool IsBound => false;
         public Task StartAsync(CancellationToken ct = default) => Task.CompletedTask;
         public Task StopAsync() => Task.CompletedTask;
-        public Task ConfigureAsync(IReadOnlyList<ModbusRegisterEntry> map) => Task.CompletedTask;
     }
 
     [Fact]

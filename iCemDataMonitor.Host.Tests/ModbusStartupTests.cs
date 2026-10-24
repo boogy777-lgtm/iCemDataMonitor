@@ -4,7 +4,6 @@ using iCemDataMonitor.Data.Bus;
 using iCemDataMonitor.Host.Core;
 using iCemDataMonitor.Sdk;
 using iCemDataMonitor.Sdk.Bus;
-using iCemDataMonitor.Sdk.Models;
 using iCemDataMonitor.Transport;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,7 +22,6 @@ public sealed class ModbusStartupTests
         public bool IsBound { get; private set; }
         public async Task StartAsync(CancellationToken ct = default) { Starts++; await Start(ct); IsBound = true; }
         public Task StopAsync() { Stops++; IsBound = false; return Task.CompletedTask; }
-        public Task ConfigureAsync(IReadOnlyList<ModbusRegisterEntry> map) => Task.CompletedTask;
     }
 
     private static ModbusBindException Busy() => new(1502, new SocketException((int)SocketError.AddressAlreadyInUse));

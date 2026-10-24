@@ -1,5 +1,3 @@
-﻿using iCemDataMonitor.Sdk.Models;
-
 namespace iCemDataMonitor.Sdk;
 
 /// <summary>
@@ -8,14 +6,7 @@ namespace iCemDataMonitor.Sdk;
 /// v3 contract (dynamic-regCount law): the register file is RUNTIME-SIZED from
 /// the bus header regCount (default dictionary 10001 HR — v5, D3) and refreshed
 /// by a 1 Hz pure-word mirror of the bus snapshot — the publisher needs NO
-/// runtime configuration (ModbusTcpPublisher.ConfigureAsync is an inert no-op).
-///
-/// ConfigureAsync is retained ONLY as the v1 pipeline contract surface
-/// (iCemDataMonitor.Core.PipelineWorker config-activation path, covered by
-/// iCemDataMonitor.Core.Tests.ContractTests). The v1 pipeline is not wired into any
-/// host (CoreServicesExtensions has no call sites); when it is removed, this
-/// member goes with it. ¬ [Obsolete]: keeping the attribute would make every
-/// v1-pipeline caller emit CS0618 for code we still deliberately test.
+/// runtime configuration.
 /// </summary>
 public interface IModbusPublisher
 {
@@ -25,9 +16,6 @@ public interface IModbusPublisher
     bool IsBound { get; }
 
     Task StartAsync(CancellationToken ct = default);
-
-    /// <summary>v1 pipeline no-op — v3 publishers mirror the bus, ¬ a configured map.</summary>
-    Task ConfigureAsync(IReadOnlyList<ModbusRegisterEntry> registerMap);
 
     Task StopAsync();
 }

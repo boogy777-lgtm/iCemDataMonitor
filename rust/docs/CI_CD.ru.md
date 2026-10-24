@@ -103,13 +103,22 @@ blob ограничен 1 MiB (текущие документы меньше 12
 ошибка Git или любая неоднозначность оставляет ledger и полный набор workloads.
 Git path queries используют `--literal-pathspecs`; source contents не загружаются.
 
-Нужен минимум один добавленный/обновлённый approval без удаления существующих.
-Каждый изменённый approval обязан относиться к пути фактического diff и regular
-blob в обеих ревизиях: base hash равен прежнему approved hash либо immutable
-manifest baseline hash для нового approval; head hash равен новому approved hash
-и отличается от base. Existing baseline identity не меняется. Ledger-only,
-format/reorder-only, provenance-only и approval к неизменённому/постороннему source
-не проходят proof. Все исходные пути, кроме единственного доказанного ledger,
+Current ledger использует schema 2 с explicit `operation: modify|delete`; schema 1
+принимается только как historical modification-only base. Migration schema 1 → 2
+не меняет смысл старых approvals. Нужен минимум один реально изменённый approval
+без удаления существующих. Для modify обязательны regular base/head blobs:
+base hash равен прежнему approved hash либо immutable manifest baseline hash,
+head hash равен новому approved hash и отличается от base. Для delete нет
+approved hash: обязательны exact baseline identity, provenance, regular base blob
+с тем же exact previous/baseline hash, source path в verified diff и literal
+отсутствие exact head entry. Tree/symlink/submodule не являются отсутствием.
+Missing base, absence с обеих сторон, ledger-only, provenance-only и resurrection
+из delete в modify не проходят proof; unchanged existing delete допустим.
+Неоднозначность возвращает полный workload closure. Verify-Baseline отдельно
+проверяет schema 2, frozen bans и отсутствие file/directory/link/dangling link,
+включая reparse/link parents; ошибки чтения не доказывают отсутствие.
+Вывод guard отдельно считает existing files и approved deletions; unapproved missing
+по-прежнему проваливает RequireComplete. Все исходные пути, кроме доказанного ledger,
 по-прежнему проходят JSON rules: independent Legacy approval запускает Legacy;
 shared/frozen input, workflow или unknown path сохраняет полный dependency closure.
 Новый компонент добавляется в JSON rules, без project-specific ветвей в proof.

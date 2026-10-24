@@ -17,7 +17,6 @@ public class ContractTests : IAsyncLifetime
     private readonly Mock<ITimeseriesStore> _timeseriesMock = new();
     private readonly Mock<IConfigStore> _configMock = new();
     private readonly Mock<IDataSource> _dataSourceMock = new();
-    private readonly Mock<IModbusPublisher> _modbusMock = new();
     private HttpClient _client = null!;
 
     public async Task InitializeAsync()
@@ -36,7 +35,6 @@ public class ContractTests : IAsyncLifetime
         builder.Services.AddSingleton(_timeseriesMock.Object);
         builder.Services.AddSingleton(_configMock.Object);
         builder.Services.AddSingleton(_dataSourceMock.Object);
-        builder.Services.AddSingleton(_modbusMock.Object);
 
         var app = builder.Build();
 
@@ -83,28 +81,6 @@ public class ContractTests : IAsyncLifetime
             }
             var family = FindFamilyForConfig(config, active.Value.Name);
             return ctx.Response.WriteAsJsonAsync(new { family = family ?? "", name = active.Value.Name });
-        });
-
-        // endpoint 6: POST /api/config/activate
-        app.MapPost("/api/config/activate", async (HttpContext ctx) =>
-        {
-            var req = await ctx.Request.ReadFromJsonAsync<ActivateConfigRequest>();
-            if (req is null || string.IsNullOrWhiteSpace(req.Name))
-            {
-                ctx.Response.StatusCode = 400;
-                await ctx.Response.WriteAsJsonAsync(new { ok = false, error = "name is required" });
-                return;
-            }
-            var config = ctx.RequestServices.GetRequiredService<IConfigStore>();
-            var modbus = ctx.RequestServices.GetRequiredService<IModbusPublisher>();
-
-            await config.ActivateConfigAsync(req.Family ?? "", req.Name);
-            var modbusMap = config.GetModbusRegisterMap();
-            await modbus.ConfigureAsync(modbusMap);
-            var activeVars = config.GetActiveVariables();
-            var varNames = activeVars.Select(v => v.Name).ToList();
-
-            await ctx.Response.WriteAsJsonAsync(new { ok = true, variables = varNames.Count });
         });
 
         // endpoint 7: GET /api/status
@@ -188,36 +164,6 @@ public class ContractTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ContractTest_ActivateConfigTriggersPublishers()
-    {
-        var vars = new List<VariableDefinition>
-        {
-            new("FLOW", "Flow Rate", "bpm", "#e94560", 0, false, "modbus"),
-            new("PRESS", "Pressure", "psi", "#4caf50", 1, false, "modbus")
-        };
-        var modbusMap = new List<ModbusRegisterEntry>
-        {
-            new("FLOW", 100), new("PRESS", 200)
-        };
-
-        _configMock.Setup(c => c.GetActiveVariables()).Returns(vars);
-        _configMock.Setup(c => c.GetModbusRegisterMap()).Returns(modbusMap);
-        _configMock.Setup(c => c.ActivateConfigAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
-        _modbusMock.Setup(m => m.ConfigureAsync(It.IsAny<IReadOnlyList<ModbusRegisterEntry>>()))
-            .Returns(Task.CompletedTask);
-
-        var response = await _client.PostAsJsonAsync("/api/config/activate",
-            new { family = "flecs", name = "flecs_ver4p53" });
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        // Verify publishers were triggered
-        _configMock.Verify(c => c.ActivateConfigAsync("flecs", "flecs_ver4p53"), Times.Once);
-        _modbusMock.Verify(m => m.ConfigureAsync(modbusMap), Times.Once);
-    }
-
-    [Fact]
     public async Task ContractTest_StatusReturnsDbAndIcem()
     {
         _dataSourceMock.Setup(d => d.DiscoverAsync())
@@ -287,5 +233,4 @@ public class ContractTests : IAsyncLifetime
         return null;
     }
 
-    private record ActivateConfigRequest(string? Family, string Name);
 }

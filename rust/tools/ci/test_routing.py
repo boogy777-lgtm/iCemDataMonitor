@@ -299,7 +299,7 @@ class LedgerRoutingTests(GitFixture):
             self.manifest['files'].append({'path': path, 'git_blob_sha1': self.hash(path),
                                            'size': 8, 'available': True})
         self.write_content(self.A, 'old approval\n')
-        self.old = {'schema_version': 1, 'source_commit': 'a' * 40,
+        self.old = {'schema_version': 2, 'source_commit': 'a' * 40,
                     'changes': [self.approval(self.A)]}
         self.write_json(routing.MANIFEST_PATH, self.manifest)
         self.write_json(routing.LEDGER_PATH, self.old)
@@ -319,7 +319,7 @@ class LedgerRoutingTests(GitFixture):
 
     def approval(self, path):
         baseline = next(item['git_blob_sha1'] for item in self.manifest['files'] if item['path'] == path)
-        return {'path': path, 'baseline_blob_sha1': baseline,
+        return {'operation': 'modify', 'path': path, 'baseline_blob_sha1': baseline,
                 'approved_blob_sha1': self.hash(path),
                 'provenance': {'pull_request': 'https://github.com/fixture/repository/pull/1',
                                'commit': 'c' * 40, 'reason': 'Fixture approved source change'}}
@@ -363,6 +363,120 @@ class LedgerRoutingTests(GitFixture):
                 self.assertEqual(set(delegated), set(paths))
                 # Raw paths never acquire metadata exemption.
                 self.assertEqual(routing.classify(self.paths(head)), dict.fromkeys(routing.COMPONENTS, 'true'))
+
+    def delete_approval(self, *paths):
+        new = copy.deepcopy(self.old)
+        for path in paths:
+            baseline = next(item['git_blob_sha1'] for item in self.manifest['files'] if item['path'] == path)
+            item = {'operation': 'delete', 'path': path, 'baseline_blob_sha1': baseline,
+                    'provenance': copy.deepcopy(self.old['changes'][0]['provenance'])}
+            new['changes'] = [entry for entry in new['changes'] if entry['path'] != path] + [item]
+            (self.repo / path).unlink()
+        self.write_json(routing.LEDGER_PATH, new)
+        return new
+
+    def test_baseline_and_previously_modified_deletions(self):
+        for paths in ((self.A,), (self.B,), (self.A, self.B)):
+            with self.subTest(paths=paths):
+                self.run_git('reset', '--hard', '-q', self.base)
+                self.delete_approval(*paths)
+                selected, delegated = self.selection(self.commit())
+                self.assertEqual(selected, routing.classify(paths))
+                self.assertEqual(set(delegated), set(paths))
+
+    def test_mixed_modify_delete_and_unchanged_existing_delete(self):
+        new = self.delete_approval(self.B)
+        self.write_content(self.A, 'updated alongside deletion\n')
+        new['changes'][0] = self.approval(self.A)
+        self.write_json(routing.LEDGER_PATH, new)
+        head = self.commit()
+        self.assertEqual(set(self.selection(head)[1]), {self.A, self.B})
+        self.old = new
+        self.base = head
+        self.update(self.A)
+        self.assertEqual(self.selection(self.commit())[1], (self.A,))
+
+    def test_historical_schema1_base_schema2_head(self):
+        historical = copy.deepcopy(self.old)
+        historical['schema_version'] = 1
+        for item in historical['changes']:
+            del item['operation']
+        self.write_json(routing.LEDGER_PATH, historical)
+        self.base = self.commit()
+        self.delete_approval(self.A, self.B)
+        self.assertEqual(set(self.selection(self.commit())[1]), {self.A, self.B})
+        self.run_git('reset', '--hard', '-q', self.base)
+        new = self.update()
+        new['schema_version'] = 1
+        for item in new['changes']:
+            del item['operation']
+        self.write_json(routing.LEDGER_PATH, new)
+        self.assert_full(self.commit())
+
+    def test_delete_ambiguities_keep_full_workload(self):
+        variants = ('hash-field', 'wrong-baseline', 'operation', 'missing-operation',
+                    'wrong-base', 'missing-base', 'absent-both', 'base-symlink',
+                    'head-file', 'head-tree', 'head-symlink', 'head-submodule',
+                    'ledger-only', 'source-only', 'provenance-field')
+        for variant in variants:
+            with self.subTest(variant=variant):
+                self.run_git('reset', '--hard', '-q', self.base)
+                base = self.base
+                if variant in ('wrong-base', 'missing-base', 'absent-both', 'base-symlink'):
+                    if variant == 'wrong-base':
+                        self.write_content(self.B, 'unexpected base\n')
+                    elif variant == 'base-symlink':
+                        self.run_git('update-index', '--cacheinfo', '120000,' + self.hash(self.B) + ',' + self.B)
+                        self.run_git('commit', '-qm', 'base link')
+                    else:
+                        (self.repo / self.B).unlink()
+                    if variant != 'base-symlink':
+                        base = self.commit()
+                    else:
+                        base = self.run_git('rev-parse', 'HEAD')
+                    if not (self.repo / self.B).exists():
+                        self.write_content(self.B, 'temporary deletion source\n')
+                new = self.delete_approval(self.B)
+                item = new['changes'][-1]
+                if variant == 'hash-field': item['approved_blob_sha1'] = 'd' * 40
+                elif variant == 'wrong-baseline': item['baseline_blob_sha1'] = 'd' * 40
+                elif variant == 'operation': item['operation'] = 'remove'
+                elif variant == 'missing-operation': del item['operation']
+                elif variant == 'provenance-field': item['provenance']['extra'] = True
+                elif variant in ('head-file', 'ledger-only'):
+                    self.run_git('restore', '--source', self.base, '--', self.B)
+                elif variant == 'head-tree': self.write_content(self.B + '/child.cs', 'tree\n')
+                elif variant == 'source-only': new = self.old
+                self.write_json(routing.LEDGER_PATH, new)
+                if variant in ('head-symlink', 'head-submodule'):
+                    self.run_git('add', '-A')
+                    mode, oid = ('120000', self.hash(self.A)) if variant == 'head-symlink' else ('160000', self.base)
+                    self.run_git('update-index', '--add', '--cacheinfo', mode + ',' + oid + ',' + self.B)
+                    self.run_git('commit', '-qm', 'nonregular head')
+                    head = self.run_git('rev-parse', 'HEAD')
+                else:
+                    head = self.commit()
+                if variant == 'source-only':
+                    # No metadata path exists to delegate; source keeps its normal closure.
+                    self.assertEqual(self.selection(head, base)[1], ())
+                else:
+                    self.assert_full(head, base)
+
+    def test_deletion_provenance_edit_and_resurrection_fail_closed(self):
+        new = self.delete_approval(self.B)
+        deleted = self.commit()
+        for resurrection in (False, True):
+            self.run_git('reset', '--hard', '-q', deleted)
+            edited = copy.deepcopy(new)
+            item = edited['changes'][-1]
+            if resurrection:
+                self.write_content(self.B, 'resurrected\n')
+                item['operation'] = 'modify'
+                item['approved_blob_sha1'] = self.hash(self.B)
+            else:
+                item['provenance']['reason'] = 'Changed deletion provenance'
+            self.write_json(routing.LEDGER_PATH, edited)
+            self.assert_full(self.commit(), deleted)
 
     def test_crlf_checkout_hashes_match_new_and_updated_git_approvals(self):
         self.run_git('config', 'core.autocrlf', 'true')
@@ -456,7 +570,7 @@ class LedgerRoutingTests(GitFixture):
                 if revision == 'base':
                     self.run_git('reset', '--hard', '-q', self.base)
                 item = document['changes'][0]
-                if variant == 'version': document['schema_version'] = 2
+                if variant == 'version': document['schema_version'] = 3
                 elif variant == 'bool-version': document['schema_version'] = True
                 elif variant == 'source-commit': document['source_commit'] = 'd' * 40
                 elif variant == 'extra-field': document['extra'] = True
@@ -473,7 +587,7 @@ class LedgerRoutingTests(GitFixture):
                 elif variant == 'empty-reason': item['provenance']['reason'] = '   '
                 self.write_json(routing.LEDGER_PATH, document)
                 if variant == 'duplicate-json':
-                    self.write_content(routing.LEDGER_PATH, json.dumps(document).replace('"schema_version": 1', '"schema_version": 1, "schema_version": 1'))
+                    self.write_content(routing.LEDGER_PATH, json.dumps(document).replace('"schema_version": 2', '"schema_version": 2, "schema_version": 2'))
                 elif variant == 'bad-utf8': self.write_content(routing.LEDGER_PATH, b'\xff')
                 elif variant == 'malformed-json': self.write_content(routing.LEDGER_PATH, '{')
                 elif variant == 'missing': (self.repo / routing.LEDGER_PATH).unlink()
