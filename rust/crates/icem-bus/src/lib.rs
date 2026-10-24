@@ -3,6 +3,9 @@
 //! Never create Rust references into a mapping concurrently changed by .NET.
 use std::fmt;
 
+mod views;
+pub use views::{Region, RegionView, ServiceView, Value, Variable, VariableId};
+
 pub const HEADER_BYTES: usize = 64;
 pub const DEFAULT_REG_COUNT: u16 = 10_001;
 pub const MIN_REG_COUNT: u16 = 650;
