@@ -3,7 +3,7 @@ use std::{
     io,
     net::{SocketAddr, TcpListener},
     thread::{self, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::sync::watch;
 
@@ -11,6 +11,7 @@ pub struct WebServer {
     address: SocketAddr,
     stop: watch::Sender<bool>,
     thread: Option<JoinHandle<io::Result<()>>>,
+    shutdown_waited: bool,
 }
 impl WebServer {
     /// Bind synchronously; a failed endpoint never looks like a started layer.
@@ -43,12 +44,17 @@ impl WebServer {
                     }
                 })
             })?;
-        wait.recv()
-            .map_err(|_| io::Error::other("web runtime failed before readiness"))?;
+        if let Err(error) = wait.recv_timeout(Duration::from_secs(2)) {
+            let _ = stop.send(true);
+            return Err(io::Error::other(format!(
+                "web runtime readiness deadline: {error}"
+            )));
+        }
         Ok(Self {
             address,
             stop,
             thread: Some(thread),
+            shutdown_waited: false,
         })
     }
     pub fn local_addr(&self) -> SocketAddr {
@@ -57,8 +63,27 @@ impl WebServer {
     pub fn stop(mut self) -> io::Result<()> {
         self.join()
     }
-    fn join(&mut self) -> io::Result<()> {
+    pub fn request_stop(&self) {
         let _ = self.stop.send(true);
+    }
+    pub fn is_running(&self) -> bool {
+        self.thread
+            .as_ref()
+            .is_some_and(|worker| !worker.is_finished())
+    }
+    /// Timeout retains the owner so callers can await completion again.
+    pub fn stop_until(&mut self, deadline: Instant) -> io::Result<()> {
+        self.request_stop();
+        self.shutdown_waited = true;
+        while self.is_running() {
+            if Instant::now() >= deadline {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "Web shutdown deadline",
+                ));
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
         if let Some(thread) = self.thread.take() {
             thread
                 .join()
@@ -66,10 +91,16 @@ impl WebServer {
         }
         Ok(())
     }
+    fn join(&mut self) -> io::Result<()> {
+        self.stop_until(Instant::now() + Duration::from_secs(2))
+    }
 }
 impl Drop for WebServer {
     fn drop(&mut self) {
-        if let Err(error) = self.join() {
+        self.request_stop();
+        if !self.shutdown_waited
+            && let Err(error) = self.join()
+        {
             eprintln!("web shutdown: {error}");
         }
     }

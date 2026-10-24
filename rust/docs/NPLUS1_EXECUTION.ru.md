@@ -7,7 +7,7 @@
 | Этап | Фактический статус |
 |---|---|
 | 1. Типизированный MMF / identity / geometry | Реализован; проверки ниже |
-| 2. Published snapshot и read-only handles | Реализован; allocator profile открыт, см. ниже |
+| 2. Published snapshot и read-only handles | Реализован; Linux allocator profile добавлен в отчёте P4 |
 | 3. Единственный acquisition 200 мс | Реализован; Windows/runtime acceptance отдельно |
 | 4. Modbus/Web и измерения | Не начат |
 | 5. Consumer lifecycle / harness | Не начат |
@@ -289,3 +289,81 @@ runtime, hardware and Windows integration remain unproven. No dependencies,
 lockfile, unsafe policy, legacy, frozen proto, web assets or UI were changed.
 Release baseline/network/allocator/codegen measurements are recorded separately;
 this ownership change does not itself establish a numeric performance win.
+
+## Этап 5: lifecycle потребителей (до реализации)
+
+Class: Host-owned independently started Modbus/Web servers and future typed adapters;
+legacy LayerKind plans/sniffer and physical source ownership are near nonmembers.
+Inv: ConsumerId is unique and bounded, cancellation precedes deadline wait, actual
+socket ownership is controlled by registered handles; tests bind/stop real listeners,
+failed startup, duplicate registration and independent publication during slow/faulted stop.
+N+1: add adapter module + typed config/factory + composition registration only;
+reader/publication/other adapters remain unchanged. Trait implementation and registry
+capacity/duplicate rejection provide executable completeness/resource guards.
+
+### Результат P5
+
+Host `consumers.rs` содержит ConsumerId, максимум 16 уникальных регистраций,
+Lifecycle (actual status/cancel/stop) и небольшой ServerHandle для действующих
+server owners. Это lifecycle-only registry: source, преобразование данных,
+protocol dispatch, retry, очередей и дополнительных workers в нём нет.
+`modbus_consumer.rs` и `web_consumer.rs` имеют собственные typed Config/factory;
+composition root регистрирует их handles. Modbus facade использует тот же shared
+Option<ModbusServer>, поэтому SetLayer продолжает legacy toggle и actual socket
+projection. Web toggle остаётся next-start планом SPA/history, OPC DA — no-op.
+
+Modbus/Web servers предоставляют request_stop/is_running/stop_until. Shutdown
+сначала отменяет все consumer owners, затем ждёт единый общий deadline 2 s.
+Timeout сохраняет тот же entry/server для повторного ожидания, не создаёт новый
+worker; fault не запрещает отмену остальных. После consumer drain acquisition
+тоже получает stop даже при ошибке drain; ошибка запрещает нормальный restart.
+Обычный Drop ограничен 2 s и не повторяет истёкшее ожидание. Это cooperative
+thread cancellation: по deadline безопасно отсоединяется оставшийся поток с
+его собственными ресурсами, а не насильно убивается. Deadline не real-time SLA.
+Web readiness ограничен 2 s; Modbus bind/spawn синхронно сообщает start failure.
+Existing Modbus connection/accept bounds и Web bounded streams остаются прежними;
+новый harness не добавляет I/O buffers и capture payload copies.
+
+`Acquisition::snapshot_reader` выдаёт только core SnapshotReader. Состояние там —
+последний completed attempt, не watchdog: следующий adapter должен явно проверять
+monotonic capture/completion age, например выбранный budget 5 s; D09 facade
+Fresh не используется как универсальная health. После смерти worker прежний
+CaptureStatus сам не меняется. COM time, writer metadata и local time не смешаны.
+P6 требует новый module + собственный typed Config/factory + регистрацию в Host;
+reader, публикация, Modbus/Web modules и core protocols менять не требуется.
+
+Exact Rust 1.99.1 Linux: fmt, scoped all-target check, build, tests и clippy -D warnings
+(--locked --offline) PASS для icem-host-app/icem-transport/icem-web.
+Host 12 tests (9 previous + 3 lifecycle), transport 14, Web 34; 0 failures.
+Real harness запускает оба действующих TCP servers, проверяет occupied-port start
+failures, actual running state, остановку Modbus при работающем Web, cancel/drain,
+повторный stop и освобождение обоих портов. Registry проверяет capacity/duplicates,
+cancel-all перед slow wait, один общий deadline и сохранённые entries после timeout.
+Slow/failing harness не останавливает acquisition; core reader видит изменение
+raw bits LAN/RAW с фиксированными COM bits, а source outage сохраняет последний
+Arc и позволяет последующим failed attempts продвигать completion time.
+
+Linux не доказывает Windows/MMF/native runtime и hardware acceptance. Новых
+dependencies/unsafe, frozen API/proto, legacy, web assets и UI изменений нет.
+Linux process smoke: fixture + ephemeral Modbus/Web listeners + duration 700 ms,
+actual registry diagnostics Running/Running, clean exit 0. Shared server slots are
+Host-owner control capabilities only; network/acquisition workers never lock them.
+
+## Дополнение оркестратора: P4 measurements и представление массива
+
+[Отчёт NPLUS1_PERFORMANCE.ru.md](NPLUS1_PERFORMANCE.ru.md) и raw results
+`docs/perf/nplus1-p4-linux.json` фиксируют независимые frozen-worktree Release
+сравнения до/после на 650 и10001 registers, decode/publication workload,
+реальный внешний Valgrind heap profile и generated-code inspection.
+Установленный отдельно profiler измерил20020 total-process allocations /
+13887876 allocated bytes,0 detected memory errors/definitely lost bytes;
+это уточняет прежнее P2 NOT_MEASURED для Linux, не закрывает Windows profile.
+
+Уточнение пользователя про массив/SIMD: данные хранятся одним непрерывным
+`Box<[u16]>` внутри общего `Arc<Snapshot>`; Service/Region и typed variable
+iterator — проекции, не набор var1..varN fields. Canonical storage не становится
+`Vec<f32>`/`Vec<Value>`, тип COM int32 не теряется. Ручной SIMD не добавлен: объём
+пользы на полном пути не доказан; исследованный byte-swap loop скалярный.
+
+Benchmark harness проверен реальными loopback Modbus/gRPC-Web ответами baseline
+`7360b19` и P4`bba4516`; это synthetic fixture/Linux, не Windows MMF/hardware.

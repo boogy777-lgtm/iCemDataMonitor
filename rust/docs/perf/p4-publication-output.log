@@ -1,0 +1,5 @@
+fixture_registers=650 captures=10000 consumer_reads=80000
+decoded_payload_constructions=10000 decoded_register_bytes=13000000
+peak_live_snapshots=2 peak_live_register_bytes=2600
+elapsed_us=226024 allocator_allocations=NOT_MEASURED allocator_bytes=NOT_MEASURED
+process_peak_rss_VmHWM:	   66620 kB

@@ -5,8 +5,8 @@ use icem_config::IniOptions;
 use icem_core::{Freshness, SnapshotOrigin, SnapshotRead, SnapshotSource, SourceError};
 use icem_platform_windows::sniffer::{Capture, SystemCapture};
 use icem_protocols::modbus::{MirrorInput, RegisterBank};
-use icem_transport::modbus_tcp::{ModbusServer, ServerOptions};
-use icem_web::{BusReply, HostLayers, WebServer, WebState};
+use icem_transport::modbus_tcp::ServerOptions;
+use icem_web::{BusReply, HostLayers, WebState};
 use std::io::Read;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -27,7 +27,10 @@ macro_rules! diagnostic {
 mod acquisition;
 #[cfg(windows)]
 mod cli;
+mod consumers;
 mod layers;
+mod modbus_consumer;
+mod web_consumer;
 #[cfg(windows)]
 mod windows;
 
@@ -312,6 +315,7 @@ fn run<D: icem_platform_windows::console::Device>(
     let mut acquisition =
         acquisition::Acquisition::start(move || source(input).map_err(|e| e.to_string()))?;
     let reader = acquisition.reader();
+    let _publication = acquisition.snapshot_reader();
     let bank = Arc::new(Mutex::new(
         RegisterBank::new(options.total).map_err(|error| format!("{error:?}"))?,
     ));
@@ -319,15 +323,19 @@ fn run<D: icem_platform_windows::console::Device>(
     let first = refresh(&reader, &bank, &mut last_error, logs)?;
     boot.complete("composition", None)?;
     boot.begin("layers", "слои")?;
-    let mut server = if options.modbus_on {
-        Some(ModbusServer::bind(
-            options.bind,
-            Arc::clone(&bank),
-            ServerOptions::default(),
-        )?)
-    } else {
-        None
-    };
+    let mut consumers = consumers::Registry::new();
+    let (server_slot, modbus_handle) = modbus_consumer::start(
+        modbus_consumer::Config {
+            address: options.bind,
+            enabled: options.modbus_on,
+            options: ServerOptions::default(),
+        },
+        Arc::clone(&bank),
+    )?;
+    consumers
+        .register(consumers::ConsumerId("modbus"), Box::new(modbus_handle))
+        .map_err(|_| "duplicate or full consumer registration")?;
+    let server = server_slot.lock().map_err(|_| "Modbus slot poisoned")?;
     diagnostic!(
         "DEVELOPMENT HOST; full Host/UI acceptance pending. Modbus {}",
         server
@@ -410,12 +418,22 @@ fn run<D: icem_platform_windows::console::Device>(
     web.observe(&first);
     boot.complete("layers", None)?;
     boot.begin("web", "веб-сервер")?;
-    let web_server = options
-        .web
-        .map(|address| WebServer::bind(address, web.clone()))
-        .transpose()?;
-    if let Some(server) = &web_server {
-        diagnostic!("Web http://{}", server.local_addr());
+    let (web_slot, web_handle) = web_consumer::start(
+        web_consumer::Config {
+            address: options.web,
+        },
+        web.clone(),
+    )?;
+    consumers
+        .register(consumers::ConsumerId("web"), Box::new(web_handle))
+        .map_err(|_| "duplicate or full consumer registration")?;
+    let web_address = web_slot
+        .lock()
+        .map_err(|_| "Web slot poisoned")?
+        .as_ref()
+        .map(|server| server.local_addr());
+    if let Some(address) = web_address {
+        diagnostic!("Web http://{}", address);
     }
     boot.complete("web", None)?;
     boot.begin("ipc", "локальный канал и lifecycle")?;
@@ -446,11 +464,15 @@ fn run<D: icem_platform_windows::console::Device>(
         } else {
             "off"
         },
-        web_server
-            .as_ref()
-            .map_or(0, |server| server.local_addr().port()),
+        web_address.map_or(0, |address| address.port()),
         if first.is_open { "open" } else { "closed" }
     ));
+    drop(server);
+    diagnostic!(
+        "Consumers: modbus={:?} web={:?}",
+        consumers.status(consumers::ConsumerId("modbus")),
+        consumers.status(consumers::ConsumerId("web"))
+    );
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
     let mut health_due = started;
@@ -522,7 +544,7 @@ fn run<D: icem_platform_windows::console::Device>(
             }
             let result = layers::toggle(
                 request.layer,
-                &mut server,
+                &mut *server_slot.lock().map_err(|_| "Modbus slot poisoned")?,
                 options.bind,
                 &bank,
                 &web,
@@ -557,7 +579,10 @@ fn run<D: icem_platform_windows::console::Device>(
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
-    acquisition.stop(acquisition::STOP_DEADLINE)?;
+    let drain = consumers.stop_all(Duration::from_secs(2));
+    let acquisition_stop = acquisition.stop(acquisition::STOP_DEADLINE);
+    drain?;
+    acquisition_stop?;
     if let Some(capture) = &mut sniffer {
         capture.stop();
     }
@@ -570,12 +595,6 @@ fn run<D: icem_platform_windows::console::Device>(
     #[cfg(windows)]
     if let Some(server) = pipe_server {
         server.stop()?;
-    }
-    if let Some(web) = web_server {
-        web.stop()?;
-    }
-    if let Some(server) = server {
-        diagnostic!("Stopped: {:?}", server.stop()?);
     }
     Ok(restart)
 }

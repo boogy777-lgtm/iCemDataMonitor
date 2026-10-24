@@ -149,6 +149,13 @@ impl Acquisition {
             }
         }
     }
+    /// Protocol-neutral read-only capability; excludes compatibility D09 policy.
+    /// Status is the last completed attempt, not a watchdog. Consumers must check
+    /// monotonic capture/completion age themselves; worker silence never rewrites it.
+    pub fn snapshot_reader(&self) -> SnapshotReader {
+        self.reader.publication.clone()
+    }
+
     pub fn reader(&self) -> Reader {
         self.reader.clone()
     }

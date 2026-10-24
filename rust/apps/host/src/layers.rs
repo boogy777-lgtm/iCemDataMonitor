@@ -37,8 +37,12 @@ fn apply<D: CaptureDevice>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     match layer {
         LayerKind::Modbus => {
-            let operation = if let Some(listener) = server.take() {
-                listener.stop().map(|_| ())
+            let operation = if let Some(listener) = server.as_mut() {
+                listener
+                    .stop_until(std::time::Instant::now() + std::time::Duration::from_secs(2))
+                    .map(|()| {
+                        *server = None;
+                    })
             } else {
                 ModbusServer::bind(bind, Arc::clone(bank), ServerOptions::default())
                     .map(|listener| *server = Some(listener))

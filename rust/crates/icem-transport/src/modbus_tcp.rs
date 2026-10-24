@@ -6,7 +6,7 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const MAX_BODY: usize = 254;
 const MAX_ADU: usize = 6 + MAX_BODY;
@@ -55,6 +55,7 @@ pub struct ModbusServer {
     address: SocketAddr,
     shutdown: Arc<AtomicBool>,
     counters: Arc<Counters>,
+    shutdown_waited: bool,
     thread: Option<JoinHandle<io::Result<()>>>,
 }
 impl ModbusServer {
@@ -86,6 +87,7 @@ impl ModbusServer {
             address,
             shutdown,
             counters,
+            shutdown_waited: false,
             thread: Some(thread),
         })
     }
@@ -99,8 +101,27 @@ impl ModbusServer {
         self.join()?;
         Ok(self.stats())
     }
-    fn join(&mut self) -> io::Result<()> {
+    pub fn request_stop(&self) {
         self.shutdown.store(true, Ordering::Release);
+    }
+    pub fn is_running(&self) -> bool {
+        self.thread
+            .as_ref()
+            .is_some_and(|worker| !worker.is_finished())
+    }
+    /// Deadline bounds waiting; a timed-out owner retains the worker for retry.
+    pub fn stop_until(&mut self, deadline: Instant) -> io::Result<()> {
+        self.request_stop();
+        self.shutdown_waited = true;
+        while self.is_running() {
+            if Instant::now() >= deadline {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "Modbus shutdown deadline",
+                ));
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
         if let Some(thread) = self.thread.take() {
             thread
                 .join()
@@ -108,10 +129,16 @@ impl ModbusServer {
         }
         Ok(())
     }
+    fn join(&mut self) -> io::Result<()> {
+        self.stop_until(Instant::now() + Duration::from_secs(2))
+    }
 }
 impl Drop for ModbusServer {
     fn drop(&mut self) {
-        if let Err(error) = self.join() {
+        self.request_stop();
+        if !self.shutdown_waited
+            && let Err(error) = self.join()
+        {
             eprintln!("Modbus shutdown: {error}");
         }
     }
