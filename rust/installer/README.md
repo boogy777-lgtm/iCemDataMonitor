@@ -88,7 +88,7 @@ launchers remain optional. Hardware/UI/iCem acceptance stays open.
 
 ## Payload integrity
 
-`windows-payload.json` schema 2 inventories three runtime roles, original icons,
+`windows-payload.json` schema 2 inventories Host, Shell, emulator and the OPC DA sidecar, original icons,
 logo, launchers, canonical templates and mandatory AddIn mount. New runtime files
 enter this inventory once. The unchanged legacy harvester receives a staged runtime
 and a separate AddIn mount; its output must cover every file exactly once and
@@ -147,3 +147,9 @@ Windows Rust CI passed that same head. That lifecycle race is recorded in PR #4,
 not bypassed by packaging. SDK-backed release, visual wizard acceptance, iCem DLL
 loading, production/offline/rollback/failure/running-process acceptance remain open.
 
+
+The bundled `icem-opc-da-sidecar.exe` remains opt-in through Host
+`--opc-da-config`; installation does not start it or register COM classes,
+proxy/stubs, OPCEnum or DCOM permissions. The synchronous DA development profile
+and its open client/registration acceptance gates are documented in
+[OPCDA_P7B](../docs/OPCDA_P7B.ru.md).

@@ -185,17 +185,24 @@ pub struct Sample {
 }
 pub struct Received {
     frame: Frame,
-    receipt: Instant,
+    credit_issued: Instant,
 }
 impl Received {
-    pub fn new(frame: Frame, receipt: Instant) -> Self {
-        Self { frame, receipt }
+    /// `credit_issued` must precede sending READY/the previous ACK. Host samples
+    /// this frame only after reading that credit. Adding receiver elapsed to Host
+    /// ages conservatively includes idle, transport and decode without comparing
+    /// process-local clocks; it can overestimate age but cannot rejuvenate it.
+    pub fn new(frame: Frame, credit_issued: Instant) -> Self {
+        Self {
+            frame,
+            credit_issued,
+        }
     }
     pub fn frame(&self) -> &Frame {
         &self.frame
     }
     pub fn current(&self, now: Instant) -> bool {
-        let elapsed = now.checked_duration_since(self.receipt);
+        let elapsed = now.checked_duration_since(self.credit_issued);
         let fresh = |base: Option<Duration>| {
             base.zip(elapsed)
                 .and_then(|(b, e)| b.checked_add(e))
@@ -227,6 +234,7 @@ impl Received {
         let metadata = zone.map(|z| snapshot.zone(z));
         // .NET ticks since 0001 -> FILETIME ticks since 1601. Never derive from COM var4.
         let filetime = metadata
+            .filter(|m| m.last_write_utc_ticks <= 3_155_378_975_999_999_999)
             .and_then(|m| m.last_write_utc_ticks.checked_sub(504_911_232_000_000_000))
             .and_then(|v| u64::try_from(v).ok())
             .unwrap_or(0);
@@ -327,6 +335,53 @@ mod tests {
                 .map(|s| s.quality),
             Some(0x44)
         );
+        Ok(())
+    }
+    #[test]
+    fn credit_anchor_includes_blocked_transit_decode_and_later_reads() -> io::Result<()> {
+        let credit = Instant::now();
+        let mut source = frame()?;
+        source.capture_age = Some(Duration::from_secs(2));
+        source.completion_age = Some(Duration::from_secs(2));
+        // Host sampled after credit; delivery/decode took four more seconds.
+        // A receipt-after-decode anchor would incorrectly produce GOOD here.
+        let body = source.encode()?;
+        let received = Received::new(Frame::decode(&body)?, credit);
+        assert_eq!(
+            received
+                .sample(10, credit + Duration::from_secs(4))
+                .map(|s| s.quality),
+            Some(0x44)
+        );
+        assert!(!received.current(credit + Duration::from_secs(4)));
+        assert!(received.current(credit + Duration::from_secs(2)));
+        assert!(!received.current(credit + Duration::from_secs(3)));
+        assert!(!received.current(credit + Duration::from_secs(60)));
+        let mut source = frame()?;
+        source.capture_age = Some(Duration::MAX);
+        let overflow = Received::new(source, credit);
+        assert!(!overflow.current(credit + Duration::from_secs(1)));
+        Ok(())
+    }
+    #[test]
+    fn writer_clock_requires_representable_dotnet_datetime() -> io::Result<()> {
+        let now = Instant::now();
+        for (ticks, expected) in [
+            (504_911_231_999_999_999i64, 0u64),
+            (504_911_232_000_000_001, 1),
+            (3_155_378_975_999_999_999, 2_650_467_743_999_999_999),
+            (3_155_378_976_000_000_000, 0),
+            (i64::MAX, 0),
+        ] {
+            let mut bytes = include_bytes!("../../../tests/fixtures/bus-v5-minimal.bin").to_vec();
+            bytes[10..18].copy_from_slice(&ticks.to_le_bytes());
+            let mut source = frame()?;
+            source.snapshot = Some(Arc::new(Snapshot::decode(&bytes).map_err(|_| invalid())?));
+            let received = Received::new(source, now);
+            let sample = received.sample(10, now).ok_or_else(invalid)?;
+            assert_eq!(sample.filetime, expected);
+            assert_eq!(sample.quality, if expected == 0 { 0x44 } else { 0xc0 });
+        }
         Ok(())
     }
     #[test]

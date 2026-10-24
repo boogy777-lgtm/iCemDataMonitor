@@ -452,7 +452,7 @@ proxy/stubs installation, DCOM и production packaging не объявлены �
 Canonical storage — raw Box<[u16]>+Arc. Stable var{address}, U16/I32/F32 raw bits,
 COM int32, acquisition status/ages и producer active сохранены. Sample FILETIME —
 только writer metadata соответствующей зоны с .NET→1601 offset, неизвестный0;
-COMvalue/now не подставляются. Capture age продолжает монотонно расти послеreceipt.
+COMvalue/now не подставляются. Capture age продолжает монотонно расти; final review ниже уточняет IPC transit.
 
 ExactRust1.99.1 Linux: Host26/26 и codec3/3 PASS, scoped check/build/test/clippy
 locked/offline, fmt и diff-check PASS. Windows x64 target codec+sidecar all-target
@@ -500,3 +500,93 @@ acquisition sequence/completion age/error. Ранее этот тест прош
 fmt all/check, scoped Host all-target check, build, test и clippy `-D warnings`
 с `--locked --offline`, `git diff --check` PASS. Эти результаты не заменяют
 повторное actual Windows выполнение трёх исправленных tests и legacy suite.
+
+## P7b final review follow-up
+
+[OPCDA_P7B final review](OPCDA_P7B.ru.md) фиксирует исправление P1 stale→GOOD
+при blocked IPC: receiver credit Instant до READY/предыдущегоACK даёт
+консервативную верхнюю границу возраста с idle/transit/decode, без UTC clock.
+Исправлены noncommitting ValidateItems при полном quota, DEVICE/item-active
+и invalid writerDateTime; sidecar добавлен в Windows payload inventory.
+Group-active/SetState и плановые callbacks остаются точными P2 safe SDK blockers;
+P7 PARTIAL. Профиль sync-read не заменяет обязательные COM groups/callbacks
+из плана§7. Никакого speculative native fork/unsafe exception не добавлено.
+
+Local final-review evidence: exact1.99.1 codec5/5, Host26/26, routing/cache42/42
+PASS; fmt/check, Linux codec clippy and Windows sidecar+codec all-target
+check/clippy locked/offline PASS. Windows runtime/service/packaging tests remain
+pending; no actual COM/MMF/hardware result is inferred from cross compilation.
+
+## P7b upstream safe SDK feasibility, 2026-10-24
+
+Read-first проверка [OPCDA_P7B](OPCDA_P7B.ru.md) повторно сверила live upstream
+HEAD/master, все девять branch heads, tags/releases/open PR и реальные safe API.
+Default ref по-прежнему `da44a99265f9706618bbe506c98f714f2aa46f0b` (наш pin),
+tags нет, releases/open PR пусты. `refactor/safe-opc-bindings` и
+`ci/opc-classic-integration` не добавляют ни coherent state hook, ни DA callbacks.
+Safe `client::DaGroup::state()` существует, но service не получает эту capability,
+public safe lookup client-created group отсутствует; polling не даёт atomic
+ordering с SetState/Read и не реализует callbacks.
+
+Старые server/connection-point branches проверены отдельно: ABI-shaped traits,
+safe raw-pointer→arbitrary-lifetime helpers и отсутствие проверенного owned sink
+marshalling/bounded lifecycle не позволяют принять их как safe SDK. Другие
+найденные Rust проекты являются DA clients/gateways; experimental .NET SDK не
+предоставляет готовой Rust границы. Таблица exact refs, первичные source links,
+минимальные upstream extension requirements и шесть Windows acceptance cases
+сохранены в OPCDA_P7B. Это ограниченный feasibility вывод, не доказательство
+отсутствия всех возможных SDK.
+
+Итог: без нового audited upstream safe API снять текущий P7 blocker нельзя.
+Такое API может быть принято без ослабления application/shared forbid(unsafe),
+но сегодня готовой capability не найдено. P7 PARTIAL и требования плана1.7
+сохранены; native fork, новые unsafe exceptions, dependencies/lockfile и
+production code не менялись. Проверка doc-only: `git diff --check` PASS;
+Windows compilation/runtime и CI остаются отдельными evidence.
+
+## Windows live Modbus startup fixture follow-up
+
+Class: asynchronous Windows `.NET Producer → MMF → Host → Modbus` fixture
+`apps/host/tests/live_modbus.rs`; source-factory/listener readiness не является
+data readiness и не входит в этот класс assertions.
+Inv: initial `0x1234` и subsequent `0xABCD` подтверждаются полным точным FC03/04
+wire response в отдельных bounded waits; FC06 echo, inactive LAN hold и exit0
+остаются обязательными. Requests не приобретают physical-source capability.
+N+1: общий fixture helper обслуживает оба producer states; malformed response
+shape/function/byte count отклоняются немедленно, deadline сохраняет exact bits
+в assertion diagnostics. Следующий state использует тот же helper.
+
+Run `40091548303`, Windows Rust job `120865341020`: workspace check/build и
+Host unit tests PASS; live Modbus initial assertion line65 получил
+`[1,3,2,0,0]` вместо `[1,3,2,18,52]`, subsequent refresh ещё не выполнялся.
+Проверен production call graph: `Acquisition::start` подтверждает factory до
+первого `acquire`; `main::refresh` читает только publication и передаёт
+`MirrorInput::Unavailable`, если snapshot отсутствует. `RegisterBank::new`
+создаёт нулевое зеркало, `Unavailable` сохраняет data words; периодический
+`main` refresh затем применяет доступный snapshot. Никакой пропущенной
+subscription/attachment здесь нет. План1.7 §4/§8 допускает initial absence;
+API_SPEC §2 явно задаёт mirror behavior без snapshot. Existing
+`initial_absence_and_cancellation_interrupt_wait_not_native_call` executable
+test проверяет отсутствие snapshot во время первого blocked capture.
+
+Listener message теперь служит только обнаружению endpoint. Первый FC03 ждёт
+реального `0x1234` тем же helper, что subsequent FC04 ждёт `0xABCD`.
+Прежний 2s update budget не увеличен; initial stage получает такой же budget.
+Fixture Host lifetime выведен как `2 × MIRROR_WAIT + 1s = 5s`, чтобы два
+ожидания и финальные write/hold assertions не пересекли planned exit3s.
+Production startup, acquisition200ms, mirror period и register semantics
+не менялись. Проверены остальные Windows fixtures с `Producer::start`:
+они напрямую вызывают synchronous `WindowsBusReader::snapshot`, без ошибочного
+переноса listener readiness на asynchronous first publication; правок не требуют.
+
+Local exact Rust1.99.1: Linux Host26/26 PASS; scoped Host all-target
+check/clippy `-D warnings`, build, fmt-check и `git diff --check` PASS,
+`--locked --offline`. Linux не запускает Windows-only live fixture.
+Попытки Host Windows x64 all-target Cargo check и clippy блокированы до
+application code: dependency `ring0.17.14` требует отсутствующий `lib.exe`
+(MSVC native toolchain; available GNU compiler unsupported). Эти gates
+не объявляются PASS. Отдельные `rustc --test --emit metadata` и
+`clippy-driver --test --emit metadata -D warnings` для изменённого
+`live_modbus.rs` вместе с его std-only Windows support на target
+`x86_64-pc-windows-msvc` PASS. Это проверка типов/lints fixture, без linking,
+запуска Host/.NET/MMF или замены полного Windows CI runtime gate.

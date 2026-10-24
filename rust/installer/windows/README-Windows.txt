@@ -42,3 +42,8 @@ integrity and source traceability, not Authenticode signing or functional parity
 Hardware, MMF/ACL, Explorer/GPU/DPI/IME, visual and production cutover acceptance
 remain separate gates.
 
+
+Optional OPC DA synchronous read profile: icem-opc-da-sidecar.exe is included.
+Host starts it only with --opc-da-config FILE. Installation does not register
+COM classes, OPC Foundation proxy/stubs, OPCEnum or DCOM permissions.
+Windows COM/client acceptance remains open; this is a development profile.

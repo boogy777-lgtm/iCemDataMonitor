@@ -123,7 +123,7 @@ impl Group {
                 result.push(ServerItemResult::failure(ErrorCode::TYPE_MISMATCH));
                 continue;
             }
-            if state.entries.len() >= MAX_ITEMS || state.next == u32::MAX {
+            if commit && (state.entries.len() >= MAX_ITEMS || state.next == u32::MAX) {
                 result.push(ServerItemResult::failure(ErrorCode::OUT_OF_MEMORY));
                 continue;
             }
@@ -249,7 +249,7 @@ impl DaGroupService for Group {
     }
     fn read(
         &self,
-        _: DataSource,
+        source: DataSource,
         handles: &[ServerItemHandle],
     ) -> Result<Vec<ServerItemResult<ServerSample>>> {
         if handles.len() > MAX_ITEMS {
@@ -265,7 +265,11 @@ impl DaGroupService for Group {
                     Some(sample) => ServerItemResult::success(ServerSample {
                         client_handle: item.client,
                         timestamp: Timestamp::from_ticks(sample.filetime),
-                        quality: if item.active { sample.quality } else { 0x1c },
+                        quality: if source == DataSource::Cache && !item.active {
+                            0x1c
+                        } else {
+                            sample.quality
+                        },
                         value: value(sample.value),
                     }),
                     None => ServerItemResult::failure(UNKNOWN_ITEM),
@@ -420,6 +424,8 @@ pub fn run() -> std::result::Result<(), String> {
         LocalClassRegistration::register(&apartment, &id, factory).map_err(|e| e.to_string())?;
     let mut input = std::io::stdin().lock();
     let mut output = std::io::stdout().lock();
+    // READY grants the first credit: Host must sample ages after receiving it.
+    let mut credit_issued = Instant::now();
     output
         .write_all(READY)
         .and_then(|()| output.flush())
@@ -448,7 +454,9 @@ pub fn run() -> std::result::Result<(), String> {
         }
         previous = Some(frame.sequence);
         let sequence = frame.sequence;
-        *lock(&model).map_err(|e| e.to_string())? = Some(Received::new(frame, Instant::now()));
+        *lock(&model).map_err(|e| e.to_string())? = Some(Received::new(frame, credit_issued));
+        // Anchor before granting the next credit, including a blocked ACK write.
+        credit_issued = Instant::now();
         output
             .write_all(&sequence.to_le_bytes())
             .and_then(|()| output.flush())
@@ -516,6 +524,47 @@ mod tests {
         }])?;
         assert!(written[0].is_err());
         group.close(false)?;
+        Ok(())
+    }
+    #[test]
+    fn validation_does_not_consume_capacity_and_device_ignores_item_activity()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let snapshot = Arc::new(icem_bus::Snapshot::decode(include_bytes!(
+            "../../../tests/fixtures/bus-v5-minimal.bin"
+        ))?);
+        let model = Arc::new(Mutex::new(Some(Received::new(
+            Frame {
+                sequence: 1,
+                generation: 1,
+                capture_age: Some(std::time::Duration::ZERO),
+                completion_age: Some(std::time::Duration::ZERO),
+                status: 1,
+                snapshot: Some(snapshot),
+            },
+            Instant::now(),
+        ))));
+        let limits = Arc::new(Limits::new());
+        let group = Group {
+            _lease: lease(&limits.groups, MAX_GROUPS)?,
+            model: model.clone(),
+            items: Mutex::new(Items {
+                entries: BTreeMap::new(),
+                next: 1,
+            }),
+        };
+        let items = vec![ItemSpec::new("var10", 1); MAX_ITEMS];
+        assert!(group.add_items(&items)?.iter().all(|r| r.result.is_ok()));
+        assert!(group.add_items(&items[..1])?[0].result.is_err());
+        assert!(group.validate_items(&items[..1], false)?[0].result.is_ok());
+        lock(&group.items)?.next = u32::MAX;
+        assert!(group.validate_items(&items[..1], false)?[0].result.is_ok());
+        assert_eq!(lock(&group.items)?.entries.len(), MAX_ITEMS);
+        let handles = [ServerItemHandle::from_raw(1)];
+        group.set_active(&handles, false)?;
+        let cache = group.read(DataSource::Cache, &handles)?;
+        let device = group.read(DataSource::Device, &handles)?;
+        assert_eq!(cache[0].result.as_ref().map(|s| s.quality), Ok(0x1c));
+        assert_eq!(device[0].result.as_ref().map(|s| s.quality), Ok(0xc0));
         Ok(())
     }
     #[test]
