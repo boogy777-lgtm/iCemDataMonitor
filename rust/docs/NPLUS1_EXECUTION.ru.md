@@ -7,7 +7,7 @@
 | Этап | Фактический статус |
 |---|---|
 | 1. Типизированный MMF / identity / geometry | Реализован; проверки ниже |
-| 2. Published snapshot и read-only handles | Не начат |
+| 2. Published snapshot и read-only handles | Реализован; allocator profile открыт, см. ниже |
 | 3. Единственный acquisition 200 мс | Не начат |
 | 4. Modbus/Web и измерения | Не начат |
 | 5. Consumer lifecycle / harness | Не начат |
@@ -85,3 +85,82 @@ Toolchain находится вне git repository. Для следующих э
 Windows runtime/MMF, SDK, hardware, визуальная и production acceptance этим
 этапом не доказываются. Полный workspace gate относится к интеграции следующих
 этапов; здесь проверен изменённый dependency-free crate на Linux.
+
+## Этап 2: shared publication (до реализации)
+
+Class: immutable latest publication в `crates/icem-core/src/publication.rs`, один
+non-Clone writer и read-only handles; MMF polling/worker и legacy D09 facade вне класса.
+Inv: один Arc<Snapshot> на успешный capture, coherent status/version/time, initial
+absence, удержание last success при failure/Retained; integration tests проверяют
+concurrency, pointer identity, slow readers, monotonic expiry и освобождение старых frames.
+N+1: adapter получает clone reader без source access; следующий acquisition owner
+меняет только composition, не cell/consumers. Exhaustive origin match охраняет
+Captured/Retained; пример измеряет payload bytes/constructions и Weak live frames,
+не выдавая их за allocator-wide counts или zero allocations.
+
+
+### Результат P2
+
+Добавлен `icem-core::publication`: один non-Clone `SnapshotPublisher`, cloneable
+`SnapshotReader` без source/writer capability и `Arc<Mutex<PublishedSnapshot>>`.
+Cell содержит ровно одно latest state; `latest()` под кратким lock копирует только
+state/Arc handle. Протоколы, source polling и 200 ms worker здесь не подключались.
+Physical `SnapshotRead` оставлен совместимым; новых dependencies/unsafe нет.
+
+До первой успешной физической копии `snapshot=None`, generation=0 и capture time
+отсутствует. `Captured` переносит owned Snapshot в Arc; даже одинаковые bytes
+увеличивают **локальную capture generation**, не producer update ID. `Retained`
+(включая legacy Fresh) и `Err` сохраняют именно последний успешный Arc/generation/
+capture time; retained input не заменяет эти данные. Latest attempt status/error и
+completion time публикуются согласованно. D09 Fresh/LastGood не становится общей
+health policy: legacy Freshness здесь не вычисляется и не экспортируется.
+
+Injected `Instant` отличает successful capture от completion последнего attempt;
+`capture_age` не обращается к wall clock/COM time и возвращает None для отсутствия
+или backwards observation. Invalid ordering отвергается до мутации. Zone metadata,
+COM int32 time и raw bits остаются внутри исходного Snapshot. Этот механизм не
+выводит source freshness/health из факта очередного capture.
+
+Пять integration tests покрывают absence/первую ошибку/первый retained, failure и
+Fresh-retained без освежения successful capture, повтор идентичных bytes, backwards
+clocks без частичной мутации, sharing pointer/body, неизменность старого кадра,
+освобождение replaced frames без backlog, coherent status/version/bytes при четырёх
+параллельных readers. Два compile-fail doctests охраняют non-Clone writer и отсутствие
+publish у reader. Сам cell не ограничивает число ссылок, которые внешние consumers
+решат хранить: их pending/history budgets — отдельный lifecycle этап, не скрытая
+глобальная гарантия P2. Пример и тест удерживают максимум один старый кадр.
+
+### Измерения P2 и проверки
+
+Команда: `cargo run -p icem-core --example publication_measure --release --locked --offline`.
+Linux x86_64, Intel Xeon Platinum 8573C, exact Rust 1.99.1, workspace Release
+(opt-level=s, thin LTO, один codegen unit), без дополнительных target flags.
+Fixture 650 registers, 10 000 decode/publications, 8 sequential reader handles,
+80 000 consumer reads, один reader держит первый Arc до конца. Это tight-loop
+ownership/accounting workload, без warm-up, MMF, worker cadence и сети; один run,
+не latency/throughput acceptance или Windows baseline.
+
+- Измеренный requested register payload: 13 000 000 bytes, 10 000 constructed bodies.
+- Weak accounting: peak 2 одновременно живых Snapshot / 2600 bytes register bodies.
+- Все 80 000 reader results имеют ту же Arc pointer identity, что latest publication.
+- Single run elapsed: 8580 microseconds; process-wide Linux VmHWM: 1072 kB
+  (включает code/runtime/harness, не только register bodies).
+- Allocator-wide allocation counts и allocated bytes: **NOT_MEASURED**. В среде нет
+  valgrind/heaptrack/ltrace/perf/bpftrace; unsafe allocator hooks и dependency ради
+  счётчика не добавлялись. Payload construction/bytes не выдаются за allocator
+  statistics: Arc control blocks, allocator metadata и harness сюда не включены.
+  Пример пригоден для внешнего heap profiler на целевой машине. Zero allocations
+  и полный allocation baseline не заявляются; allocator profile остаётся открыт.
+
+На exact 1.99.1 выполнены PASS:
+`cargo fmt --all --check`,
+`cargo check -p icem-core --all-targets --locked --offline`,
+`cargo build -p icem-core --locked --offline`,
+`cargo test -p icem-core --locked --offline` (5 integration + 2 compile-fail),
+`cargo clippy -p icem-core --all-targets --locked --offline -- -D warnings`,
+Release example и `git diff --check`.
+
+Изменения только в `rust/crates/icem-core` и этом журнале; legacy, proto, assets,
+lockfile и toolchain неизменны. P3 (единственный acquisition 200 ms), consumer wiring,
+Windows/MMF/hardware acceptance и полноценный allocator/latency profile остаются
+отдельными открытыми этапами. Push/PR не выполнялись.

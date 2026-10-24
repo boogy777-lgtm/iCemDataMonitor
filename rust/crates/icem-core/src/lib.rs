@@ -2,6 +2,8 @@
 //! Shared application ports; protocol parsing and Windows APIs live elsewhere.
 use icem_bus::Snapshot;
 
+pub mod publication;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Freshness {
     Fresh,
