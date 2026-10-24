@@ -1,8 +1,8 @@
 # iCemDataMonitor: N+1-потребители существующих MMF-данных
 
-Проектное предложение, версия 1.5, 24 октября 2026.
+Проектное предложение, версия 1.6, 24 октября 2026.
 Основание исследования: Rust main `4578ab57266b7d25aed82df41c6276597a270c1e`.
-Версия 1.4: основной вариант — использовать существующее поле Time & Date в body registers4–5 как общую метку источника для передаваемого кадра. Резерв header49–56 пользователь сохраняет для COM. Новое поле bus_time, сдвиг карты и layout bump не требуются для выбранного варианта. Уточнения по независимости зон приведены в разделе12.
+Версия 1.6 исправляет семантику времени: Time & Date в registers 4–5 приходит из COM-потока; это не внутренняя метка MMF, не время acquisition и не общий timestamp LAN/RAW. Прежнее решение версии 1.4 назначить его общей меткой outgoing frame отозвано. Разделы 2, 4 и 12 разделяют COM time, метки записи зон и локальное время чтения. Карта MMF, writer и резерв header 49–56 не меняются.
 Версия 1.5: в этапы 2–4 включены правила владения буферами, сокращения копирований/аллокаций и измерений; раздел 13 задаёт условия автоматической и ручной SIMD-оптимизации. Число этапов реализации остаётся восемь. Изменение документа не включает реализацию оптимизаций.
 Объём: архитектура и план рефакторинга Rust-конвейера, без реализации.
 
@@ -12,7 +12,7 @@
 
 Этот документ задаёт работу в `rust/`: общий MMF snapshot, N+1-потребители, Modbus/Web и последующие MQTT/OPC DA/OPC UA адаптеры. Исследование legacy .NET/AddIn используется как доказательство внешних контрактов и особенностей источника.
 
-Переработка legacy C#, изменение AddIn, смена формата MMF и перенос регистров в этот план не входят. Используется существующая метка времени MMF4–5; резерв49–56 остаётся для COM. Обнаруженные ошибки legacy регистрируются отдельно и не копируются автоматически в Rust; изменение принятого внешнего поведения требует явного решения.
+Переработка legacy C#, изменение AddIn, смена формата MMF и перенос регистров в этот план не входят. Сохраняется существующая COM Time & Date в MMF 4–5 без назначения её времени другим зонам; резерв 49–56 остаётся для COM. Обнаруженные ошибки legacy регистрируются отдельно и не копируются автоматически в Rust; изменение принятого внешнего поведения требует явного решения.
 
 Это план целевой Rust-архитектуры, а не параллельный рефакторинг двух реализаций. Legacy остаётся эталоном здоровых внешних сценариев; Rust может иметь собственные структуры и control flow. Закрытие legacy выполняется отдельной задачей после приёмки заменённой вертикали.
 
@@ -33,7 +33,8 @@ MMF остаётся источником типов и значений. Reader
 | Порядок | Стабильный порядок существующего MMF layout |
 | Имя | Каноническое var…; переиспользовать имеющееся правило именования |
 | Значение | Исходный тип MMF; не приводить всё к f64, String или JSON |
-| Метка времени MMF | Передаётся без подмены и изменения смысла |
+| COM Time & Date 4–5 | Передаётся как время из COM-потока; не назначается общей меткой кадра или LAN/RAW |
+| Метки записи зон | Передаются с именем зоны и смыслом writer last-write; не выдаются за время измерения |
 | Служебные признаки | Активность зон, счётчики записи и доступность сохраняются согласно source contract |
 | Доступ | Immutable snapshot; потребитель не меняет источник |
 
@@ -41,13 +42,15 @@ MMF остаётся источником типов и значений. Reader
 
 ```text
 Snapshot
-  source_version
-  source_timestamp              // существующие registers4–5: Time & Date, int32 Unix seconds
-  values[]                      // var… → уже типизированное значение
+  capture_generation            // локальная версия публикации, не ID измерения producer
+  com_source_time               // registers 4–5: Time & Date из COM, int32 Unix seconds
+  values[]                      // var… → исходное типизированное значение
+  zones[]                       // zone → last_write_utc_ticks, active, write_count
+  captured_at_monotonic         // локальное время успешной копии: только runtime/диагностика
   source_status                 // факты чтения и активности источника/зон
 ```
 
-MMF содержит метки отдельных зон, поэтому сохраняются эти метки; не выдумывается единое точное время измерения всех переменных. Существующая timestamp-переменная может оставаться элементом массива; служебная ссылка на неё не требует дублировать или преобразовывать значение.
+COM Time & Date остаётся исходной переменной массива с собственным типом и происхождением. Служебная проекция не создаёт новое время и не меняет её биты. Zone last-write из header — отдельные факты записи AddIn. Локальное captured_at_monotonic не является Unix/UTC data timestamp и не экспортируется под таким именем. Первое успешное чтение и пригодность COM field определяются явно; ноль может означать Unix epoch, а не отсутствие.
 
 Имена можно представлять implicit index→var-name либо разделяемой таблицей имён. Не нужно создавать String для каждого значения на каждом tick. Конкретные начальный индекс и формат номера фиксируются из текущего контракта, а не из примера документа.
 
@@ -65,7 +68,7 @@ var… → { display_name, unit, description }
 
 Если словарь потребуется, он загружается один раз и разделяется immutable-ссылкой. В первой реализации не нужны catalog revisions, hot reload, universal TagValue и отдельная система TagId поверх уже определённых var….
 
-## 4. MMF — единственный источник времени данных
+## 4. Время COM, метки записи зон и время acquisition
 
 Проверено по producer AddIn и Rust decoder на commit `4578ab57266b7d25aed82df41c6276597a270c1e`.
 
@@ -90,18 +93,17 @@ Producer evidence:
 
 Правила архитектуры:
 
-1. Все adapters берут время данных из соответствующего поля MMF, не создают `now()` взамен.
-2. По проектному решению Time & Date из registers4–5 используется как общая метка источника передаваемого кадра. При этом исходники не гарантируют, что это время измерения каждого LAN/RAW значения. Смысл поля документируется как frame source timestamp, не синхронный sampling time всех зон.
-3. При экспорте zone time переменная сохраняет явную связь со своей зоной. Это время обновления зоны, а не доказанное время изменения каждой переменной в ней.
-4. Адаптеры выполняют только необходимое преобразование формата и единиц времени. Они сохраняют один и тот же исходный момент и не выдумывают точность выше источника.
-5. Отсутствующая/непригодная source timestamp не заменяется локальным временем. Ноль является Unix epoch и сам по себе не доказывает отсутствие данных; initial availability определяется source state, не только числом.  Неизвестное/непригодное время передаётся с явным статусом по контракту адаптера.
-6. Повторный read, reconnect, MQTT republish и OPC callback не освежают data timestamp. Последнее сохранённое значение сохраняет MMF time.
-7. `received_at`, `sent_at` и server receipt time при необходимости существуют только как диагностика или отдельные обязательные protocol service fields. Они не подменяют время источника и не дают Good сами по себе.
-8. Локальные часы нужны для timeout, latency и вычисления возраста source timestamp. Они не являются вторым источником времени данных.
+1. Registers 4–5 сохраняют Time & Date из COM. Reader, acquisition и adapters не перезаписывают его локальным now и не используют как общий timestamp полного snapshot.
+2. COM Time & Date не присваивается LAN/RAW. Даже для COM это исходное поле потока, а не автоматически доказанное точное время измерения каждого сигнала.
+3. Zone last-write сохраняет связь с COM/LAN/RAW и происхождение writer. Это время записи/изменения зоны по текущей политике AddIn, не универсальный sampling time.
+4. Для LAN/RAW точное upstream measurement time, если оно не представлено контрактом, считается неизвестным. Не подставлять COM time или local now. Если новый протокол требует timestamp, его отдельная политика должна явно задавать смысл и происхождение обязательного поля; writer time допустимо экспортировать только под соответствующим описанием.
+5. Повторный read, reconnect, republish и callback не освежают COM time и zone last-write. Изменение captured_at при новой физической копии доказывает только чтение памяти, не получение нового измерения.
+6. Runtime использует собственные monotonic captured/completed timestamps для watchdog, deadlines и latency; это уже иной класс времени. Optional observed_at_utc/sent_at/server receipt time — явно отдельная диагностика/служебные protocol fields, не подмена исходных данных.
+7. Initial absence и пригодность COM field определяются source state; ноль не является универсальным missing marker. Отсутствие upstream time само по себе не доказывает отказ MMF или остановку другой зоны. Quality и stream freshness требуют собственных проверяемых фактов.
+8. LAN/RAW update проходит при неизменном, отсутствующем или историческом COM time. Liveness вычисляется из относящихся к зоне metadata и существующей политики; publication expiry — из локального времени acquisition.
+9. Source updates определяются по значениям, flags и zone metadata с учётом reset/reconnect/counter wrap. Capture generation — порядок runtime publications, не producer sequence. Counters COM/LAN отражают изменения пар, RAW — приход строки; из них нельзя вывести поступление каждого одинакового измерения.
 
-Единственный источник истины для frame source timestamp — существующее поле MMF4–5. Его использование для всего outgoing frame является явным решением проекта, а не доказательством синхронного обновления COM/LAN/RAW.
-
-Новые source updates определяются по фактическим zone metadata, с учётом изменения flags, reset/reconnect и counter wrap. Внутренний publication version нужен для доставки, но не превращает повторное чтение MMF в новое измерение. Сам timestamp не является уникальным ID: несколько записей могут иметь одинаковое время.
+Ни в MMF, ни в новом общем snapshot не вводится фиктивное единое время измерения всех зон. Если потребуется отдельная producer-side метка получения каждого пакета/общего кадра, это новое требование к writer и контракту; оно не входит в данный рефакторинг.
 
 ## 4.1 Что Rust уже читает и где пока есть расхождение
 
@@ -109,7 +111,7 @@ Producer evidence:
 
 При этом текущая Web history использует локальное время sampling: `rust/apps/host/src/main.rs:545` передаёт utc_now_ms в probe, а `rust/crates/icem-web/src/model.rs:203` сохраняет `(at, value)`. Это время наблюдения history sampler, не source timestamp из MMF. Его нельзя переименовать в source time без изменения реализации и согласования внешнего контракта.
 
-В плане: для новых adapters frame source timestamp исключительно из MMF4–5; zone timestamps остаются отдельными фактами. Для существующей Web history отдельно изменить/версионировать отображение времени данных; если sampling time нужен старому API, оставить его как явно отдельный sampling field, а не подменять значение MMF. Текущий `model.rs:194` также переводит int32 Unix timestamp в f32 для history — новое общее представление сохраняет int32, чтобы не терять секундную точность.
+В плане: новые adapters сохраняют COM Time & Date только в его исходной области; zone writer timestamps и локальное observation time остаются отдельными фактами. Существующее sampling time Web history не заменять COM time для всех сигналов. Изменения отображения/формата проходят отдельную compatibility или versioning политику. Исторический `model.rs:194` переводит int32 COM Unix timestamp в f32 для history — новое общее представление сохраняет исходный int32; существующие внешние projection contracts не переписываются молча.
 
 Source MMF гарантирует mutex atomicity отдельной COM/LAN пары вместе с её metadata, а RAW — всей строки. Это согласованное состояние памяти на момент чтения, но не обещание, что весь массив был измерен и записан одной атомарной транзакцией. N+1-delivery не должна усиливать обещания producer.
 
@@ -133,7 +135,7 @@ Latest-state cell хранит только последнее согласов�
 
 - factory принимает собственную typed configuration;
 - start создаёт worker/server и возвращает lifecycle handle;
-- worker берёт latest, определяет source update и использует сохранённые MMF timestamps;
+- worker берёт latest, определяет обновления с учётом зоны и сохраняет происхождение COM time/zone writer timestamps;
 - status показывает фактический lifecycle/connection state;
 - stop отменяет работу, прекращает новые запросы и завершает worker с явной политикой deadline.
 
@@ -155,13 +157,13 @@ Latest-state cell хранит только последнее согласов�
 
 Modbus зеркало остаётся отдельным mutable состоянием. Его клиентские записи не меняют MMF snapshot и не подменяют данные для других потребителей. Если нужен экспорт overrides, это отдельное явно выбранное представление.
 
-Web requests больше не вызывают source.snapshot. История имеет собственную частоту и лимит; её timestamp sampling не подменяет source_timestamp. Существующий внешний формат Web сохраняется совместимой сериализацией.
+Web requests больше не вызывают source.snapshot. История имеет собственную частоту и лимит; её observation/sampling time остаётся явно отличным от COM Time & Date и zone writer timestamps. Существующий внешний формат Web сохраняется совместимой сериализацией.
 
-MQTT на первом этапе публикует состояние без управляющих subscriptions. Полный state payload предпочтителен для согласованности массива; раздельные var topics требуют frame identifiers, если клиент собирает общий кадр. Retained payload и offline reconnect сохраняют реальные времена; свежая доставка не означает свежее измерение. Формат non-finite float задаётся явно, без потери типа под видом обычного JSON number.
+MQTT на первом этапе публикует состояние без управляющих subscriptions. Полный state payload предпочтителен для согласованности массива; раздельные var topics требуют frame identifiers, если клиент собирает общий кадр. Retained payload и offline reconnect сохраняют исходные COM/zone времена и их provenance; LAN/RAW payload не получает COM time как timestamp своих измерений. Свежая доставка не означает свежее измерение. Формат non-finite float задаётся явно, без потери типа под видом обычного JSON number.
 
-OPC UA/DA используют канонические var… как стабильную основу идентичности; словарь меняет display descriptions. Клиентская update/sampling period не инициирует MMF I/O. Source time берётся из MMF; необходимые protocol server-time поля отделены и не подменяют source time.
+OPC UA/DA используют канонические var… как стабильную основу идентичности; словарь меняет display descriptions. Клиентская update/sampling period не инициирует MMF I/O. COM source time и zone writer times берутся из соответствующих MMF fields с явным смыслом. Отсутствующее measurement time LAN/RAW не заполняется COM time; обязательные protocol timestamp/status fields требуют отдельной documented mapping policy. Server-time поля отделены от исходных данных.
 
-Для OPC DA рекомендован sidecar из-за COM lifecycle и изоляции native SDK. Host передаёт тот же массив, типы, source timestamps и статус через версионированный bounded IPC. Sidecar сохраняет MMF timestamps; время его приёма при необходимости учитывается только в диагностике. Bitness, версии DA, registration и DCOM acceptance — задачи самого адаптера.
+Для OPC DA рекомендован sidecar из-за COM lifecycle и изоляции native SDK. Host передаёт тот же массив, типы, COM time, zone writer metadata и статус через версионированный bounded IPC. Sidecar сохраняет scope/provenance каждого времени; время его приёма при необходимости учитывается отдельно в диагностике. Bitness, версии DA, registration и DCOM acceptance — задачи самого адаптера.
 
 ## 8. Размещение кода
 
@@ -182,11 +184,11 @@ OPC UA/DA используют канонические var… как стаби
 
 ## 9. План реализации
 
-1. Зафиксировать существующий типизированный массив MMF: layout, имена var…, timestamp и признаки новых записей. Не менять source format. Подтвердить, что variable index и register address не смешиваются.
+1. Зафиксировать существующий типизированный массив MMF: layout, имена var…, COM Time & Date, zone writer metadata и признаки обновления каждой зоны. Не менять source format. Подтвердить, что variable index и register address не смешиваются.
 2. Ввести один published snapshot и read-only handles. Проверить initial absence, coherent copy, retained data и bounded memory. По разделу 13 использовать Vec для действительно формируемых/рабочих буферов, сохранить подходящее непрерывное представление готовых данных и разделять готовый snapshot через Arc без deep copy на каждого потребителя. Измерить allocations/bytes на capture и число одновременно удерживаемых snapshots; заранее выделять ёмкость там, где размер известен.
 3. Выделить единственного acquisition owner; убрать source.snapshot из Web и consumer-specific ветвей main. Owned copy MMF выполняется под существующей native синхронизацией; decode и пакетная обработка — после её освобождения. Рабочие буферы не могут изменять опубликованные snapshots или переиспользовать их память при наличии читателей.
 4. Перевести Modbus/Web на общий snapshot. Сохранить mirror byte semantics; отдельно принять изменения cache age и timing относительно старого request-driven read. Снять Release baseline полного capture/decode/publication и задержек Modbus/Web; сначала уменьшить лишние чтения, копирования и аллокации. Автовекторизацию безопасных циклов проверить по generated code и benchmark. Ручной SIMD рассматривать только для измеренного горячего участка по критериям раздела 13; отсутствие доказанного выигрыша завершает этот этап без ручного SIMD.
-5. Ввести ConsumerId/lifecycle registry и общий небольшой adapter harness. Source timestamps адаптеров берутся из MMF; локальное время остаётся только для служебных задач.
+5. Ввести ConsumerId/lifecycle registry и общий небольшой adapter harness. COM time и zone writer timestamps сохраняют исходный scope; локальное acquisition time используется для runtime/служебных задач. Harness проверяет независимое обновление LAN/RAW при замершем COM time.
 6. Добавить MQTT как первую проверку N+1: новый module+config+registration без правок reader, Modbus, Web.
 7. Добавить OPC UA, затем OPC DA sidecar; проверить типы, identity, quality/timestamps и реальные Windows clients.
 8. Подключать словарь отдельно, когда появится практическая потребность. Проверить, что отсутствие словаря не нарушает базовую работу.
@@ -207,7 +209,7 @@ Acceptance cases: COM/LAN identical-pair rewrite не обновляет zone ti
 
 - Типы уже задаёт MMF: отдельного каталога для их восстановления нет.
 - Канонический массив var… работает без semantic naming.
-- MMF — единственный источник времени данных; adapter receipt time не входит в основной data contract.
+- COM time и zone writer metadata читаются из MMF без подмены; локальное acquisition/adapter receipt time имеет отдельный runtime/diagnostic смысл.
 - Необязательный словарь — обогащение, не обязательный runtime dependency.
 - Общий механизм — получение и публикация snapshot; протокольные детали остаются в adapters.
 - Архитектура создаёт ровно те границы, которые нужны Modbus/Web и запланированным MQTT/OPC.
@@ -215,40 +217,54 @@ Acceptance cases: COM/LAN identical-pair rewrite не обновляет zone ti
 Этот документ описывает план; реализация исходников и CI в рамках его подготовки не выполнялась.
 
 
-## 12. Выбранное размещение: существующие регистры4–5
+## 12. Области памяти и исправленная семантика registers 4–5
 
-Уточнение пользователя: header bytes49–56 сохраняются в резерве для COM. Предложение версии1.3 использовать их под новое bus_time отозвано. Ничего туда не записывать и не менять существующую карту в рамках N+1-потребителей.
+### 12.1. Физическая карта и логические представления
 
-Существующая карта сохраняется: status0–3, Time & Date4–5, Unit Num6–7, COM до199, LAN200–399, RAW400–599. Timestamp уже представляет int32 Unix seconds, CDAB raw bits; Rust Snapshot::unix_seconds читает именно его.
+Header MMF занимает отдельные 64 bytes перед body. Его offsets 49–56 сохраняются в резерве для COM; ничего туда не записывать. Body registers 0–7 можно представить одной логической служебной областью 0. Это не новый физический header и не новая зона живости.
 
-Путь подтверждён кодом:
+| Логическое представление | Body register addresses, включительно | Исходный смысл/owner |
+|---|---|---|
+| Service: status | 0–3 | COM port, case/LAN status, AddIn heartbeat |
+| Service: COM time | 4–5 | Time & Date из COM, int32 Unix seconds, CDAB raw bits |
+| Service: unit | 6–7 | Unit Num из COM, остаётся float32 |
+| COM measurements | 8–199 | COM values; не менять исходные адреса и пары |
+| LAN | 200–399 | LAN values и собственная zone metadata |
+| RAW | 400–599 | Values parsed из COM raw line и отдельная RAW metadata |
+| Reserve | 600–RegCount-1 | Сохранить адреса/биты; не придумывать назначение |
 
-1. DataMonitorAddressMap.cs:31 связывает vendor Time & Date с address4.
-2. DataMonitorModule.cs:471–483 берёт vendor numeric ticks из результата COM poll, вызывает UnixTimestamp.TicksToUnixSeconds и WriteInt32Pair.
-3. UnixTimestamp.cs:32–34 переводит .NET ticks в int32 Unix seconds.
-4. icem-bus/src/lib.rs:127–128 восстанавливает signed int32 из той же пары регистров.
+Существующая producer COM-зона остаётся 4–199, включая поля 4–7. Группировка 0–7 в ServiceView не меняет Zone::Com range, source ownership, правила Modbus mirror или liveness. Region geometry описывается в одном месте рядом с bus layout; ServiceView и общий RegionView дают read-only projections над одним owned snapshot без отдельного Vec/copy на каждый регион. Внутренние SIMD kernels выбираются для проверенных однородных диапазонов; timestamp/Unit Num не теряют свои типы. Пустые/зарезервированные места не сжимаются.
 
-Контракт outgoing frame: `source_timestamp = snapshot.unix_seconds()`; массив var… передаётся без повторной типизации; optional dictionary лишь добавляет подписи. Все adapters получают то же source timestamp. Повторная публикация не меняет его.
+### 12.2. Registers 4–5 — поле потока COM
 
-Эта метка обновляется только при наличии соответствующего успешно прочитанного source field. PollStreams имеет ранние выходы при no-project/no-active-case (DataMonitorModule.cs:419–437). Непрерывное продвижение4–5 без устройств/активного case исходниками не гарантировано. Это не мешает непрерывной работе конвейера: он передаёт последнее состояние и последнее время источника.
+На проверенном main `a0f1bd7f47fd8fd92a8dfe034dd25f04a8a0d081`:
+- `DataMonitorAddressMap.cs` связывает vendor Time & Date с address 4.
+- `PollPairPreparation.PrepareCom` преобразует переданное из COM poll значение через `UnixTimestamp.TicksToUnixSeconds`; Unit Num и прочие пары сохраняют отдельную float32 policy.
+- `icem-bus::Snapshot::unix_seconds` восстанавливает int32 из этой пары; reader не создаёт локальную метку в 4–5.
 
-Независимый LAN update при прежнем4–5 должен пройти через pipeline. Поэтому:
+Следовательно, `com_source_time = snapshot.unix_seconds()` — проекция поля COM. Прежнее назначение общей frame source timestamp в v1.4 отменено. Все adapters видят один и тот же исходный COM value, но не назначают его временем LAN/RAW. Отсутствие устройств/активного case или historical playback может остановить/изменить это время, не останавливая acquisition.
 
-- общий timestamp не является ID кадра и единственным change detector;
-- source metadata/values и flags используются для определения обновлений;
-- остановка Time & Date сама по себе не блокирует LAN/RAW и не доказывает их невалидность;
-- heartbeat и zone active/time сохраняются для фактической живости;
-- timestamp outgoing frame не объявляется точным временем изменения каждого var в каждой зоне.
+Если нужен timestamp наблюдения полного memory snapshot, это `captured_at_monotonic` внутри runtime или отдельно названный UTC observation field. Он не означает, что значения всех зон одновременно измерены, и не требует изменения MMF. COM last-write / LAN last-write / RAW last-write из header также остаются отдельными writer events.
 
-Если впоследствии понадобится непрерывно текущее время publisher, даже когда source Time & Date не обновляется, это другое требование. Тогда необходимо отдельно решить, меняется ли writer/семантика4–5. Нельзя молча подмешать DateTime.UtcNow в существующий vendor Time & Date или дать адаптерам генерировать разные значения.
+### 12.3. Проверенные границы завершённого legacy refactor
 
-Acceptance: source time замер, но LAN обновился — данные переданы с тем же source timestamp; два adapters получили один frame — source timestamp совпал; reconnect/republication не меняет время; отсутствие поля не заменяется now; исторический timestamp не приводится к f32; reserved49–56 и все текущие addresses неизменны.
+На том же main C6 `BusAcquisitionService` использует TimeProvider.GetTimestamp/GetElapsedTime для publication expiry; registers 4–5 в этот gate не входят. `ModbusTcpPublisher.TickOnce` сохраняет stale-hold и независимые zone active gates. C9 pair preparation сохраняет COM field, а не записывает now. Оснований откатывать C1–C10 из-за назначения COM time в этом плане не найдено в этих проверенных местах; это целевая проверка, не утверждение об отсутствии любых исторических time/projection defects.
 
-Реализация не выполнялась; публикуется только план.
+Существующие regression sources: `BusAcquisitionTests.IdenticalBytesAndSourceTime_NewReferenceIsNewSuccess_ExpiryHasNoSourceIO` и `ModbusContractTests.FC03AndFC04_RawBitsAndIndependentZones_PreserveFixedComTime`. При исправлении документа изучены исходники; новое исполнение tests/build не выполнялось.
+
+Acceptance для реализации Rust:
+- COM time стоит/отсутствует, LAN или RAW меняется: соответствующие значения и metadata доставлены; их измерениям COM time не приписан.
+- Два adapters читают одну публикацию: COM time и zone metadata совпадают побитно; их разные delivery times не меняют source fields.
+- Reconnect/read/republication не освежает исходные COM/zone timestamps; локальное captured_at не используется как producer update ID.
+- Старый успешный snapshot удерживается при capture failure, а acquisition expiry проверяется локальными monotonic часами.
+- COM/LAN identical-pair rewrite не выдумывает новый zone writer event; RAW identical line сохраняет отдельную политику.
+- COM timestamp остаётся int32, Unit Num — float32, адреса/byte order/header reserve 49–56 неизменны.
+
+Реализация нового общего Rust pipeline здесь не выполнялась; исправлен только план.
 
 ## 13. Непрерывные буферы, Vec и условная SIMD-оптимизация
 
-Это уточнение этапов 2–4, не девятый обязательный этап и не разрешение переписывать весь конвейер ради SIMD. Проверенное исходное представление на main `a0f1bd7f47fd8fd92a8dfe034dd25f04a8a0d081`: `icem-bus::Snapshot` уже хранит `Box<[u16]>`, выдаёт `&[u16]` и восстанавливает int32 source time отдельной проекцией. Замена Box на Vec сама по себе не доказывает ускорение. Vec задаёт непрерывный динамический массив; SIMD выполняет одну операцию над несколькими элементами.
+Это уточнение этапов 2–4, не девятый обязательный этап и не разрешение переписывать весь конвейер ради SIMD. Проверенное исходное представление на main `a0f1bd7f47fd8fd92a8dfe034dd25f04a8a0d081`: `icem-bus::Snapshot` уже хранит `Box<[u16]>`, выдаёт `&[u16]` и восстанавливает int32 COM time отдельной проекцией. Замена Box на Vec сама по себе не доказывает ускорение. Vec задаёт непрерывный динамический массив; SIMD выполняет одну операцию над несколькими элементами.
 
 Class: обработка непрерывных массивов исходных регистров/байтов в `icem-bus` и буферов acquisition owner; сеть, MMF lock/lifecycle и COM callbacks вне класса численных SIMD kernels.
 Inv: сохраняются исходные биты, адреса, типы, timestamps, metadata и ошибки; published snapshot неизменяем; эквивалентность проверяется scalar differential vectors, границами/хвостами и Windows Release measurements.
@@ -291,7 +307,7 @@ SIMD не устраняет время ожидания mutex, сетевую �
 
 | Проверка | Что требуется |
 |---|---|
-| Scalar equivalence | Те же decoded values/raw bits, metadata, error outcomes и полный Modbus register image; source timestamp и reserve 49–56 неизменны |
+| Scalar equivalence | Те же decoded values/raw bits, metadata, error outcomes и полный Modbus register image; COM timestamp и reserve 49–56 неизменны |
 | Float semantics | NaN payloads, infinities, +0/-0 и subnormals; change detection по raw bits, не float equality. Арифметика не получает неоговорённые reassociation/FMA/округление |
 | Bounds и tails | Пустые/минимальные допустимые и реальные большие массивы, нечётное число регистров и длины не кратные числу SIMD lanes; truncated/malformed input сохраняет прежнюю политику ошибок |
 | CPU fallback | Принудительно проверенные scalar и доступный accelerated paths; целевая Windows MSVC сборка, отсутствие illegal instructions на минимально поддерживаемом CPU |
