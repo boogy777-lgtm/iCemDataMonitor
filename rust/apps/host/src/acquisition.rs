@@ -381,14 +381,17 @@ mod tests {
                 error: None,
             })),
         };
+        // Instant arithmetic is quantized to the platform clock resolution (QPC on
+        // Windows), so 1 ns need not produce a distinct representable instant.
+        let before_expiry = at + SILENCE_LIMIT - Duration::from_millis(1);
+        let backwards = at - Duration::from_millis(1);
+        assert!(at < before_expiry && before_expiry < at + SILENCE_LIMIT);
+        assert!(backwards < at);
         for (now, expected) in [
             (at, Freshness::Fresh),
-            (
-                at + SILENCE_LIMIT - Duration::from_nanos(1),
-                Freshness::Fresh,
-            ),
+            (before_expiry, Freshness::Fresh),
             (at + SILENCE_LIMIT, Freshness::LastGood),
-            (at - Duration::from_nanos(1), Freshness::LastGood),
+            (backwards, Freshness::LastGood),
         ] {
             let (reply, _) = reader.reply_at(now).unwrap();
             let read = reply.read.unwrap();

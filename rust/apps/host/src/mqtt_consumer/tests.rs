@@ -197,6 +197,9 @@ fn accept(listener: &TcpListener) -> TcpStream {
             Err(e) => panic!("accept: {e}"),
         }
     };
+    // Windows accepted sockets inherit the listener's nonblocking mode; packet()
+    // uses blocking read_exact with bounded socket timeouts on every platform.
+    stream.set_nonblocking(false).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(3)))
         .unwrap();

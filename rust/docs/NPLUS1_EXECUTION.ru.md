@@ -460,3 +460,43 @@ check/clippy PASS; real COM unit/client tests только compile-checked. От
 opt-in cross-process CoCreateInstance gate подготовлен и требует installedmatching
 OPC Foundation proxy/stubs. Фактическая Windows/MMF/hardware/client/registration
 приёмка OPEN; P7 целиком не закрыт одним Linux/compile evidence.
+
+## Windows CI follow-up после P7b
+
+Run `40081559349`, Rust job `120836375639`: workspace build/check PASS,
+Host 20/23 PASS. Три failures относятся к portability test fixtures:
+
+- `acquisition::tests::silence_expiry_is_checked_monotonic_and_does_not_erase_last_success`
+  конструировал backward Instant через `at - 1ns`. Windows QPC не обязан
+  представлять такой шаг: округление оставляет `at`, и корректный facade Fresh
+  расходится с ожидаемым LastGood. Теперь шаг 1ms, обе стороны strict expiry
+  и backward ordering проверены assertions; exact 5s boundary сохранена.
+- Два MQTT wire tests читали `read_exact` после accept от nonblocking listener.
+  Windows accepted socket наследует nonblocking; ошибка 10035 WouldBlock
+  возникала в fixture packet reader. Общий helper явно задаёт blocking mode
+  до неизменённых 3s read/write timeouts. Другой nonblocking accept в Host
+  tests только удерживает молчащее соединение без read/write и исправления
+  не требует. Production acquisition/MQTT и silence limit не менялись.
+
+Отдельный legacy job `120836375621`: падение
+`TickLoop_ActiveZoneWrite_OverwrittenEveryCycle_NoDeltaDetection`, line920,
+expected `0x1111`, actual `0xBEEF` после исходного 2s polling budget.
+Call graph проверен: TestServer initial CaptureOnce, затем actual
+BusAcquisitionService с period200ms и publisher200ms; Current помечает snapshot
+stale после period+MutexTimeoutMs =700ms. TickOnce сохраняет внешнюю запись
+при stale, а при fresh+active копирует всю зону. Последнее observed значение
+не отличает отсутствие publisher ticks от stale capture publication или
+ошибки capture. ThreadPool scheduling delay — гипотеза, не установленная
+причина: failure output не содержит TickCount/TickExceptionCount,
+acquisition sequence/completion age/error. Ранее этот тест прошёл в run
+`40081000067`; это не опровергает текущий failure. .NET SDK/Windows execution
+в этой проверке отсутствуют. Legacy test exact-hash approved в
+`migration/legacy-divergences.json`; файл, production .NET и approval ledger
+не менялись. Открытая отдельная граница требует Windows reproduction с
+перечисленными diagnostics перед выбором исправления; timeout/assertions
+не ослаблены и passing legacy CI здесь не объявлен.
+
+После fixture fixes exact Rust1.99.1 Linux: Host26/26 PASS,
+fmt all/check, scoped Host all-target check, build, test и clippy `-D warnings`
+с `--locked --offline`, `git diff --check` PASS. Эти результаты не заменяют
+повторное actual Windows выполнение трёх исправленных tests и legacy suite.
