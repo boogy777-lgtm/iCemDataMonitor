@@ -8,7 +8,7 @@
 |---|---|
 | 1. Типизированный MMF / identity / geometry | Реализован; проверки ниже |
 | 2. Published snapshot и read-only handles | Реализован; allocator profile открыт, см. ниже |
-| 3. Единственный acquisition 200 мс | Не начат |
+| 3. Единственный acquisition 200 мс | Реализован; Windows/runtime acceptance отдельно |
 | 4. Modbus/Web и измерения | Не начат |
 | 5. Consumer lifecycle / harness | Не начат |
 | 6. MQTT | Не начат |
@@ -164,3 +164,54 @@ Release example и `git diff --check`.
 lockfile и toolchain неизменны. P3 (единственный acquisition 200 ms), consumer wiring,
 Windows/MMF/hardware acceptance и полноценный allocator/latency profile остаются
 отдельными открытыми этапами. Push/PR не выполнялись.
+
+## Этап 3: единственный acquisition (до реализации)
+
+Class: `apps/host/src/acquisition.rs` владеет физическим source на отдельном потоке;
+Web/health/mirror получают latest publication; protocol callbacks вне acquisition.
+Inv: один read на due tick 200 ms, без catch-up storm, consumer reads не трогают
+source; injected schedule/counting tests проверяют cancellation, slow reader и ошибки.
+N+1: новый consumer получает read-only latest handle; D09 metadata остаётся Host
+compatibility bridge. Shutdown имеет явный deadline; native read не прерывается
+небезопасно, deadline failure запрещает restart/создание второго owner.
+
+### Результат P3 и проверки
+
+Host создаёт ровно один dedicated worker `bus-acquisition`. Через поток передаётся
+Send factory с путями/именами; factory создаёт `Box<dyn SnapshotSource>` на самом
+worker, без требования Send к source и без пересылки native handles/guard.
+Единственная физическая `source.snapshot()` теперь в worker; mirror, health и
+Web requests читают latest state. Нет consumer callbacks или очереди кадров.
+`Schedule` начинает сразу, далее использует 200 ms; пропущенные слоты не догоняются.
+Если read занял 500 ms, 5 Hz физически недостижимы: max latency 200 ms не обещается.
+
+Core publication сохраняется без изменений. После snapshot() берётся monotonic
+completion как консервативная локальная capture observation; Retained/Err не
+обновляют время последней успешной копии. Host-only compatibility metadata
+(freshness/is_open/error) и publication читаются согласованно под кратким lock;
+I/O и обработка consumers проходят вне lock. D09 Fresh-retained сохранён только
+для прежнего BusReply facade; общий capture status/time этим не освежается.
+Временный bridge пока копирует payload в owned BusReply. Устранение этих копий,
+а также измерения CPU/allocations/latency относятся к P4, не заявлены как готовые.
+
+Condvar отменяет idle wait немедленно. `stop` ждёт явный deadline 2 s; ошибка
+запрещает нормальный restart Host. In-flight native read безопасно не прерывается;
+его source и handles остаются на worker до выхода. Drop даёт такой же bounded
+wait только если явный stop ещё не предпринимался, не умножая истёкший deadline.
+Factory failure передаётся при startup; источника до первой удачной копии нет.
+
+На exact 1.99.1 Linux выполнены PASS:
+`cargo fmt --all --check`,
+`cargo check -p icem-host-app --all-targets --locked --offline`,
+`cargo build -p icem-host-app --locked --offline`,
+`cargo test -p icem-host-app --locked --offline` (8 tests: 4 прежних и 4 acquisition),
+`cargo clippy -p icem-host-app --all-targets --locked --offline -- -D warnings`.
+Тесты проверяют injected schedule с пропуском slow-read слотов; !Send source,
+500 consumer reads без request-driven capture; удержание Arc медленным reader;
+первую ошибку/первый Retained/absence; сохранение capture time/generation при
+Retained и source error; cancel при idle/in-flight read и bounded deadline;
+startup factory error. Linux process smoke с fixture, ephemeral Modbus port и
+700 ms duration завершился exit 0. `git diff --check`: PASS. Windows-only integration tests на Linux
+имеют 0 cases; MMF/native guard и Windows runtime данным этапом не доказаны.
+Native reader остаётся прежним: owned copy под mutex, decode после release.
+Legacy/proto/assets/UI/dependencies/lockfile не менялись; push не выполнялся.

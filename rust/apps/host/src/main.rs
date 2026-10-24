@@ -24,6 +24,7 @@ macro_rules! diagnostic {
         let _ = std::io::Write::write_fmt(&mut std::io::stderr(), format_args!("{message}\n"));
     }};
 }
+mod acquisition;
 #[cfg(windows)]
 mod cli;
 mod layers;
@@ -261,13 +262,13 @@ fn live_source(
     Err("live station bus requires Windows named mappings/mutex".into())
 }
 fn refresh(
-    source: &mut dyn SnapshotSource,
+    reader: &acquisition::Reader,
     bank: &Mutex<RegisterBank>,
     previous: &mut Option<SourceError>,
     logs: &mut icem_logging::Logs,
 ) -> Result<BusReply, Box<dyn std::error::Error>> {
-    let read = source.snapshot();
-    let error = source.last_error().or_else(|| read.as_ref().err().copied());
+    let (reply, error) = reader.reply()?;
+    let read = &reply.read;
     if *previous != error {
         diagnostic!(
             "Bus state: {}",
@@ -281,14 +282,11 @@ fn refresh(
     }
     let mut bank = bank.lock().map_err(|_| "register mirror lock poisoned")?;
     bank.tick(match &read {
-        Ok(read) if read.freshness == Freshness::Fresh => MirrorInput::Fresh(&read.snapshot),
-        Ok(read) => MirrorInput::LastGood(&read.snapshot),
-        Err(_) => MirrorInput::Unavailable,
+        Some(read) if read.freshness == Freshness::Fresh => MirrorInput::Fresh(&read.snapshot),
+        Some(read) => MirrorInput::LastGood(&read.snapshot),
+        None => MirrorInput::Unavailable,
     });
-    Ok(BusReply {
-        read: read.ok(),
-        is_open: source.is_open(),
-    })
+    Ok(reply)
 }
 fn run<D: icem_platform_windows::console::Device>(
     mut options: Options,
@@ -310,12 +308,15 @@ fn run<D: icem_platform_windows::console::Device>(
         options.web.map_or(8090, |a| a.port())
     );
     boot.begin("composition", "композиция")?;
-    let mut source = source(options.input)?;
+    let input = options.input;
+    let mut acquisition =
+        acquisition::Acquisition::start(move || source(input).map_err(|e| e.to_string()))?;
+    let reader = acquisition.reader();
     let bank = Arc::new(Mutex::new(
         RegisterBank::new(options.total).map_err(|error| format!("{error:?}"))?,
     ));
     let mut last_error = None;
-    let first = refresh(&mut *source, &bank, &mut last_error, logs)?;
+    let first = refresh(&reader, &bank, &mut last_error, logs)?;
     boot.complete("composition", None)?;
     boot.begin("layers", "слои")?;
     let mut server = if options.modbus_on {
@@ -533,15 +534,12 @@ fn run<D: icem_platform_windows::console::Device>(
         }
         let now = Instant::now();
         if now >= mirror_due {
-            let reply = refresh(&mut *source, &bank, &mut last_error, logs)?;
+            let reply = refresh(&reader, &bank, &mut last_error, logs)?;
             web.observe(&reply);
             mirror_due = Instant::now() + options.tick;
         }
         if now >= health_due {
-            let reply = BusReply {
-                read: source.snapshot().ok(),
-                is_open: source.is_open(),
-            };
+            let (reply, _) = reader.reply()?;
             web.probe(&reply, icem_web::utc_now_ms())?;
             health_due = Instant::now() + Duration::from_secs(1);
         }
@@ -551,10 +549,7 @@ fn run<D: icem_platform_windows::console::Device>(
         wake = wake.min(health_due);
         match requests.recv_timeout(wake.saturating_duration_since(Instant::now())) {
             Ok(request) if !request.response.is_closed() => {
-                let reply = BusReply {
-                    read: source.snapshot().ok(),
-                    is_open: source.is_open(),
-                };
+                let (reply, _) = reader.reply()?;
                 web.observe(&reply);
                 let _ = request.response.send(reply);
             }
@@ -562,6 +557,7 @@ fn run<D: icem_platform_windows::console::Device>(
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
+    acquisition.stop(acquisition::STOP_DEADLINE)?;
     if let Some(capture) = &mut sniffer {
         capture.stop();
     }
