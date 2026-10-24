@@ -89,22 +89,42 @@ Latest, in-flight, transient service results и native VARIANT/parallel arrays �
 и String allocator capacity не равны UTF-8 logical payload: 512KiB не является
 обещанием общего RSS или точного размера всех allocations.
 
-**OPEN finding R6, MEDIUM — pre-enqueue concurrent SDK allocations.**
-В `server/callbacks.rs`, `IOPCAsyncIO2_Impl::Read` создаёт handles Vec, вызывает
-service.read и готовит CoTaskMem errors до `callbacks.enqueue`; `Refresh2` получает
-owned notification до того же admission. Одновременно вошедшие calls могут пройти
-эти allocations до первого заполнения retained request queue. Targeted early
-admission перед SDK-owned preparation — отдельный follow-up, не unsafe/lifetime
-blocker и не реализован этим reviewer. COM/RPC unmarshalling allocation происходит
-ещё до SDK entrypoint и требует отдельного анализа; early SDK admission его не
-ограничивает.
+**R6, MEDIUM — исправлено targeted early admission (2026-10-24).**
+Class: SDK-owned подготовка AsyncIO2 Read/Refresh2 в `server/callbacks.rs`;
+read-only Write и periodic worker не входят в этот confirmed heavy-method class.
+Inv: preparations + accepted retained/canceled requests <=32/group; единый members
+mutex резервирует group slot и credits всех выбранных sinks до decode/service/output.
+N+1: `Members::prepare`/`Preparation` в `server/callback_queue.rs`, обе точки входа,
+чистые конкурентные regressions и прежние actual safe COM fixtures.
 
-32-request cap относится к retained accepted requests. AsyncRead/Refresh service
-snapshot и output preparation происходят до enqueue admission. Число одновременно
-выполняющихся внешних RPC calls этим cap не ограничено; whole-process concurrency/RSS
-cap не доказан. Каждый profile batch ограничен; generic service обязан ограничить
-свои allocations до возврата owned snapshot. Никакой blanket process-memory guarantee
-из этой проверки не следует.
+RAII token освобождает credits при service/output/validation error, all-failed
+Read, пустом Refresh, panic/unwind и poison (cleanup восстанавливает poisoned guard;
+новый admission продолжает fail-closed). Successful commit передаёт те же credits,
+без второго reserve. Cancellation больше не снимает group charge до dequeue всех
+оставшихся sinks. Latest coalescing не занимает и не вытесняет completion credits.
+Набор sinks фиксируется при prepare: late Advise не получает прошлую completion;
+Unadvise/retire удаляет delivery только своего sink. Если все выбранные sinks ушли
+или RemoveGroup закрыл группу, commit fails и ничего не публикует. Подготовка до
+своего rollback остаётся charged даже при отключении всех её sinks. Service/model/
+foreign COM никогда не вызываются под members/queue locks.
+
+Это ограничивает **SDK-owned preparation после entrypoint**, включая handles Vec,
+owned service result и CoTaskMem errors. COM/RPC native unmarshalling до entrypoint
+этим не ограничен. Generic service обязан сам ограничивать размер/allocations
+возвращаемого frame; app profile сохраняет 4096 items. Прежние retained512MiB и
+baseline+candidate128MiB — отдельные payload subtotal; подготовка, native transient,
+latest и in-flight добавляются отдельно. Число одновременно admitted preparations
+теперь <=32/group (и разделяет этот бюджет с retained requests), но точный allocator
+RSS и whole-process/native-RPC memory cap из этого не следуют. Read DEVICE/inactive,
+early per-item errors, all-failed cancel0/no callback, Refresh inactive E_FAIL и
+Write early BADRIGHTS сохранены; acquisition200ms/source bits/FILETIME не менялись.
+
+Локальная проверка checkpoint: exact-source pure queue11/11 PASS, включая шесть
+новых deterministic cases без sleep: 32 blocked preparations +64 concurrent rejects
+до stand-in service/allocation, mixed preparation/retained/canceled budget, full
+sink atomic rollback, error/all-failed/panic/poison cleanup, fixed sink set и remove.
+Complete reversible patch против original42 SHA256 PASS. Windows compilation и
+actual safe COM runtime для нового head ещё не являются PASS на этом checkpoint.
 
 SDK не может заставить произвольный COM call вернуться. Safe application watchdog
 независим от IPC, проверяет каждые25ms и использует exit70 при >=2s busy/failure;

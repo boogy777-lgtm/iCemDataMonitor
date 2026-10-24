@@ -1,6 +1,6 @@
 //! iCem SDK extension: native DA callback boundary. See ADR0019.
 use super::callback_health::{CallbackMonitor, WorkerLease};
-use super::callback_queue::{DeliveryQueue, MAX_ITEMS, MAX_REQUESTS, MAX_SINKS};
+use super::callback_queue::{DeliveryQueue, MAX_ITEMS, MAX_SINKS, Preparation, QueueError};
 use super::*;
 use crate::{IOPCAsyncIO2_Impl, IOPCDataCallback};
 use std::{
@@ -84,24 +84,21 @@ impl PeriodicBaseline {
         self.pending = None;
     }
 }
-struct Sink {
-    queue: Mutex<DeliveryQueue<Arc<Frame>>>,
-    wake: Condvar,
-    closed: AtomicBool,
-}
-struct Members {
-    sinks: BTreeMap<u32, Arc<Sink>>,
-    requests: BTreeMap<u32, (Arc<Frame>, Vec<(u32, u32)>)>,
-    next_cookie: u32,
-    next_cancel: u32,
-    closed: bool,
-}
+type Sink = super::callback_queue::Sink<Arc<Frame>>;
+type Members = super::callback_queue::Members<Arc<Frame>>;
 pub(crate) struct Callbacks {
     members: Mutex<Members>,
     enabled: AtomicBool,
     revision: AtomicU64,
     epoch: AtomicU64,
     monitor: CallbackMonitor,
+}
+fn admission_error(reason: QueueError) -> AbiError {
+    error(match reason {
+        QueueError::Closed => NO_CONNECTION,
+        QueueError::Full => ADVISE_LIMIT,
+        QueueError::Unknown | QueueError::Poisoned => E_UNEXPECTED,
+    })
 }
 fn error(code: HRESULT) -> AbiError {
     AbiError::from_hresult(code)
@@ -286,66 +283,14 @@ impl Callbacks {
         }
         Ok(self.enabled.load(Ordering::Acquire))
     }
-    fn enqueue(&self, frame: Arc<Frame>) -> AbiResult<u32> {
-        validate_frame(&frame.samples)?;
-        let mut m = self.members.lock().map_err(|_| error(E_UNEXPECTED))?;
-        if m.closed || m.sinks.is_empty() {
-            return Err(error(NO_CONNECTION));
-        }
-        let live = m.sinks.clone();
-        // Request/frame survives until ALL still-advised sinks have removed their completion.
-        m.requests.retain(|_, (_, ids)| {
-            ids.iter().any(|(cookie, id)| {
-                live.get(cookie)
-                    .is_some_and(|sink| sink.queue.lock().map(|q| q.pending(*id)).unwrap_or(true))
-            })
-        });
-        if m.requests.len() >= MAX_REQUESTS || m.next_cancel == u32::MAX {
-            return Err(error(ADVISE_LIMIT));
-        }
-        let sinks = m
-            .sinks
-            .iter()
-            .map(|(c, s)| (*c, s.clone()))
-            .collect::<Vec<_>>();
-        let mut queues = Vec::with_capacity(sinks.len());
-        for (_, sink) in &sinks {
-            queues.push(sink.queue.lock().map_err(|_| error(E_UNEXPECTED))?);
-        }
-        let mut ids = Vec::with_capacity(sinks.len());
-        for i in 0..queues.len() {
-            match queues[i].reserve() {
-                Ok(id) => ids.push((sinks[i].0, id)),
-                Err(_) => {
-                    for (q, (_, id)) in queues.iter_mut().zip(&ids) {
-                        q.release(*id);
-                    }
-                    return Err(error(ADVISE_LIMIT));
-                }
-            }
-        }
-        if frame.kind == Kind::Refresh {
-            self.epoch.fetch_add(1, Ordering::AcqRel);
-            for q in &mut queues {
-                q.clear_latest();
-            }
-        }
-        for (q, (_, id)) in queues.iter_mut().zip(&ids) {
-            q.complete(*id, frame.clone())
-                .map_err(|_| error(E_UNEXPECTED))?;
-        }
-        let id = m.next_cancel;
-        m.next_cancel += 1;
-        m.requests.insert(id, (frame, ids));
-        drop(queues);
-        for (_, sink) in sinks {
-            sink.wake.notify_one();
-        }
-        Ok(id)
+    fn prepare(&self) -> AbiResult<Preparation<'_, Arc<Frame>>> {
+        Members::prepare(&self.members).map_err(admission_error)
     }
     fn cancel(&self, id: u32) -> AbiResult<()> {
         let mut m = self.members.lock().map_err(|_| error(E_UNEXPECTED))?;
-        let (frame, ids) = m.requests.get(&id).ok_or_else(|| error(FAIL))?;
+        let request = m.requests.get(&id).ok_or_else(|| error(FAIL))?;
+        let frame = request.value.as_ref().ok_or_else(|| error(FAIL))?;
+        let ids = &request.ids;
         let sinks = ids
             .iter()
             .filter_map(|(c, id)| m.sinks.get(c).map(|s| (s.clone(), *id)))
@@ -377,7 +322,8 @@ impl Callbacks {
                 .map_err(|_| error(E_UNEXPECTED))?;
         }
         drop(queues);
-        m.requests.remove(&id);
+        // Keep the cancel event charged until every selected live queue dequeues it.
+        m.requests.get_mut(&id).ok_or_else(|| error(FAIL))?.value = Some(frame);
         Ok(())
     }
 }
@@ -678,11 +624,14 @@ impl IOPCAsyncIO2_Impl for DaGroupAdapter_Impl {
             if count == 0 || count as usize > MAX_ITEMS {
                 return Err(code_error(E_INVALIDARG));
             }
+            // Bound owned preparation before handle decode, service results and
+            // native output allocation. The token rolls back every early return.
+            let preparation = self
+                .callbacks
+                .prepare()
+                .map_err(crate::abi::from_abi_error)?;
             // SAFETY: incoming array readable for bounded count.
             let handles = decode_handles(unsafe { borrow_input(handles, count)? });
-            self.callbacks
-                .enable(None)
-                .map_err(crate::abi::from_abi_error)?;
             let state = self
                 .state
                 .lock()
@@ -712,15 +661,20 @@ impl IOPCAsyncIO2_Impl for DaGroupAdapter_Impl {
             let id = if valid.is_empty() {
                 0
             } else {
-                self.callbacks
-                    .enqueue(Arc::new(Frame {
-                        kind: Kind::Read,
-                        transaction,
-                        group: state.client_handle,
-                        samples: valid,
-                        revision: 0,
-                        epoch: 0,
-                    }))
+                validate_frame(&valid).map_err(crate::abi::from_abi_error)?;
+                preparation
+                    .commit(
+                        Arc::new(Frame {
+                            kind: Kind::Read,
+                            transaction,
+                            group: state.client_handle,
+                            samples: valid,
+                            revision: 0,
+                            epoch: 0,
+                        }),
+                        None,
+                    )
+                    .map_err(admission_error)
                     .map_err(crate::abi::from_abi_error)?
             };
             // SAFETY: outputs initialized above, allocation transfers only after successful queue commit.
@@ -773,7 +727,7 @@ impl IOPCAsyncIO2_Impl for DaGroupAdapter_Impl {
             } else {
                 return Err(error(E_INVALIDARG));
             };
-            self.callbacks.enable(None)?;
+            let preparation = self.callbacks.prepare()?;
             let state = self.state.lock().map_err(|_| error(E_UNEXPECTED))?.clone();
             if !state.active {
                 return Err(error(FAIL));
@@ -792,14 +746,20 @@ impl IOPCAsyncIO2_Impl for DaGroupAdapter_Impl {
             if samples.is_empty() {
                 return Err(error(FAIL));
             }
-            self.callbacks.enqueue(Arc::new(Frame {
-                kind: Kind::Refresh,
-                transaction,
-                group: state.client_handle,
-                samples,
-                revision: 0,
-                epoch: 0,
-            }))
+            validate_frame(&samples)?;
+            preparation
+                .commit(
+                    Arc::new(Frame {
+                        kind: Kind::Refresh,
+                        transaction,
+                        group: state.client_handle,
+                        samples,
+                        revision: 0,
+                        epoch: 0,
+                    }),
+                    Some(&self.callbacks.epoch),
+                )
+                .map_err(admission_error)
         })
     }
     fn Cancel2(&self, id: u32) -> AbiResult<()> {

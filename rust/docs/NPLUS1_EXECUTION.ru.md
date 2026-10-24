@@ -655,3 +655,15 @@ lockfile и application unsafe/lint policy неизменны. Причина, f
 Linux: CI unittest discovery44/44, verifier default и autocrlf=true/eol=crlf,
 cache command contract, exact1.99.1 fmt-all/check и diff-check PASS. Новых
 dependencies/unsafe, изменений frozen .NET/AddIn/proto или SDK patch/hashes нет.
+
+
+### P7c2 R6 early SDK admission — 2026-10-24
+
+Class: heavy AsyncIO2 Read/Refresh2 SDK-owned preparation; periodic/readonly Write
+outside this fix. Inv: preparation+retained/canceled <=32/group, fixed all-sink
+credits before decode/service/output; RAII rollback and no service/COM under locks.
+N+1: callback_queue Members/Preparation, both entrypoints and deterministic pure
+regressions; reversible patch/42-original SHA256 remain mandatory completeness guard.
+Checkpoint: queue11/11 and full provenance PASS; Windows compile/runtime pending.
+This bounds SDK-owned preparation only, not pre-entrypoint COM/RPC unmarshalling
+or whole-process RSS. Existing P7 Windows/proxy/operator gates remain OPEN.

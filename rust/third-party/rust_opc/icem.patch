@@ -1,3 +1,5 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 072edc4..4fc285b 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
 @@ -1,27 +1,17 @@
@@ -13,12 +15,12 @@
 -  "opc_hda_bindings",
 -]
 +members = ["opc_classic_abi", "opc_classic_types", "opc_classic_utils", "opc_comn_bindings", "opc_da_bindings"]
-
+ 
  [workspace.package]
  edition = "2024"
 -rust-version = "1.97"
 +rust-version = "1.99.1"
-
+ 
  [workspace.dependencies]
 -opc_ae_bindings = { version = "0.4.0", path = "opc_ae_bindings" }
  opc_classic_abi = { path = "opc_classic_abi" }
@@ -30,9 +32,11 @@
  windows = { version = "0.62.2", features = [
    "Win32_Foundation",
    "Win32_Graphics_Gdi",
+diff --git a/opc_classic_utils/src/server.rs b/opc_classic_utils/src/server.rs
+index da096b4..34ef459 100644
 --- a/opc_classic_utils/src/server.rs
 +++ b/opc_classic_utils/src/server.rs
-@@ -101,12 +101,12 @@
+@@ -101,12 +101,12 @@ impl IClassFactory_Impl for ClassFactoryAdapter_Impl {
              || {
                  let update = if lock.as_bool() {
                      self.server_locks
@@ -47,6 +51,8 @@
                              count.checked_sub(1)
                          })
                  };
+diff --git a/opc_comn_bindings/build.rs b/opc_comn_bindings/build.rs
+index 47fff18..429f3dc 100644
 --- a/opc_comn_bindings/build.rs
 +++ b/opc_comn_bindings/build.rs
 @@ -1,4 +1,5 @@
@@ -55,8 +61,8 @@
 +    let output = format!("{}/bindings.rs", std::env::var("OUT_DIR")?);
      println!("cargo:rerun-if-changed=build.rs");
      println!("cargo:rerun-if-changed=.windows/winmd/OPCCOMN.winmd");
-
-@@ -7,7 +8,7 @@
+ 
+@@ -7,7 +8,7 @@ fn main() {
          ".windows/winmd/OPCCOMN.winmd",
          "default",
          "--out",
@@ -65,7 +71,7 @@
          "--reference",
          "windows,skip-root,Windows",
          "--filter",
-@@ -15,4 +16,9 @@
+@@ -15,4 +16,9 @@ fn main() {
          "--flat",
      ])
      .unwrap();
@@ -75,6 +81,8 @@
 +    )?;
 +    Ok(())
  }
+diff --git a/opc_comn_bindings/src/lib.rs b/opc_comn_bindings/src/lib.rs
+index 0a9394e..c287e8a 100644
 --- a/opc_comn_bindings/src/lib.rs
 +++ b/opc_comn_bindings/src/lib.rs
 @@ -1,5 +1,5 @@
@@ -83,7 +91,9 @@
 +include!(concat!(env!("OUT_DIR"), "/bindings-module.rs"));
  pub mod client;
  pub mod server;
-
+ 
+diff --git a/opc_da_bindings/build.rs b/opc_da_bindings/build.rs
+index df5dca9..fb48f60 100644
 --- a/opc_da_bindings/build.rs
 +++ b/opc_da_bindings/build.rs
 @@ -1,4 +1,5 @@
@@ -92,8 +102,8 @@
 +    let output = format!("{}/bindings.rs", std::env::var("OUT_DIR")?);
      println!("cargo:rerun-if-changed=build.rs");
      println!("cargo:rerun-if-changed=.windows/winmd/OPCDA.winmd");
-
-@@ -7,7 +8,7 @@
+ 
+@@ -7,7 +8,7 @@ fn main() {
          ".windows/winmd/OPCDA.winmd",
          "default",
          "--out",
@@ -102,10 +112,10 @@
          "--reference",
          "windows,skip-root,Windows",
          "--filter",
-@@ -16,19 +17,26 @@
+@@ -16,19 +17,26 @@ fn main() {
      ])
      .unwrap();
-
+ 
 -    remove_shallow_clones(&[
 -        "tagOPCITEMATTRIBUTES",
 -        "tagOPCITEMPROPERTY",
@@ -127,7 +137,7 @@
 +    )?;
 +    Ok(())
  }
-
+ 
  /// `windows-bindgen` currently emits `transmute_copy` Clone implementations for
  /// explicitly laid-out structs containing `VARIANT`. A bitwise clone aliases the
  /// BSTR/SAFEARRAY/interface owned by the variant and causes a double release.
@@ -135,8 +145,11 @@
 -    let path = "src/bindings.rs";
 +fn remove_shallow_clones(path: &str, type_names: &[&str]) {
      let mut source = std::fs::read_to_string(path).unwrap();
-
+ 
      for type_name in type_names {
+diff --git a/opc_da_bindings/src/client/callbacks.rs b/opc_da_bindings/src/client/callbacks.rs
+new file mode 100644
+index 0000000..97e4e66
 --- /dev/null
 +++ b/opc_da_bindings/src/client/callbacks.rs
 @@ -0,0 +1,673 @@
@@ -813,12 +826,14 @@
 +        Ok(())
 +    }
 +}
+diff --git a/opc_da_bindings/src/client/group.rs b/opc_da_bindings/src/client/group.rs
+index 7a04f39..8610df1 100644
 --- a/opc_da_bindings/src/client/group.rs
 +++ b/opc_da_bindings/src/client/group.rs
-@@ -63,6 +63,14 @@
+@@ -63,6 +63,14 @@ impl<'apartment> DaGroup<'apartment> {
          }
      }
-
+ 
 +    pub(super) fn callback_objects(&self) -> Result<(&IUnknown, &crate::IOPCServer, u32)> {
 +        Ok((
 +            &self.object,
@@ -830,25 +845,29 @@
      pub fn revised_update_rate(&self) -> u32 {
          self.revised_update_rate
      }
-@@ -361,7 +369,7 @@
+@@ -361,7 +369,7 @@ impl<'apartment> DaGroup<'apartment> {
          object_from_interface(&self.object)
      }
-
+ 
 -    fn interface<T: Interface>(&self) -> Result<T> {
 +    pub(super) fn interface<T: Interface>(&self) -> Result<T> {
          interface_from_object(&self.object())
      }
  }
+diff --git a/opc_da_bindings/src/client/mod.rs b/opc_da_bindings/src/client/mod.rs
+index 0d6cff9..46d19ea 100644
 --- a/opc_da_bindings/src/client/mod.rs
 +++ b/opc_da_bindings/src/client/mod.rs
 @@ -1,5 +1,7 @@
  //! Safe OPC Data Access client facade.
-
+ 
 +mod callbacks;
 +pub use callbacks::{CallbackGroup, DataEvent, DataEventItem, DataEventKind, DataSubscription};
  mod group;
  mod properties;
  mod types;
+diff --git a/opc_da_bindings/src/lib.rs b/opc_da_bindings/src/lib.rs
+index 4d073cf..5c5c28f 100644
 --- a/opc_da_bindings/src/lib.rs
 +++ b/opc_da_bindings/src/lib.rs
 @@ -1,5 +1,5 @@
@@ -857,7 +876,10 @@
 +include!(concat!(env!("OUT_DIR"), "/bindings-module.rs"));
  pub mod client;
  pub mod server;
-
+ 
+diff --git a/opc_da_bindings/src/server/callback_health.rs b/opc_da_bindings/src/server/callback_health.rs
+new file mode 100644
+index 0000000..5521e2c
 --- /dev/null
 +++ b/opc_da_bindings/src/server/callback_health.rs
 @@ -0,0 +1,138 @@
@@ -999,12 +1021,18 @@
 +        assert!(m.worker().is_none());
 +    }
 +}
+diff --git a/opc_da_bindings/src/server/callback_queue.rs b/opc_da_bindings/src/server/callback_queue.rs
+new file mode 100644
+index 0000000..9777267
 --- /dev/null
 +++ b/opc_da_bindings/src/server/callback_queue.rs
-@@ -0,0 +1,179 @@
+@@ -0,0 +1,536 @@
 +//! iCem SDK extension: finite owned queue, independent of COM.
 +#![forbid(unsafe_code)]
-+use std::collections::{BTreeSet, VecDeque};
++use std::{
++    collections::{BTreeMap, BTreeSet, VecDeque},
++    sync::{Arc, Condvar, Mutex, atomic::AtomicBool},
++};
 +pub(crate) const MAX_REQUESTS: usize = 32;
 +pub(crate) const MAX_SINKS: usize = 4;
 +pub(crate) const MAX_ITEMS: usize = 4096;
@@ -1013,6 +1041,7 @@
 +    Full,
 +    Closed,
 +    Unknown,
++    Poisoned,
 +}
 +pub(crate) struct DeliveryQueue<T> {
 +    latest: Option<T>,
@@ -1107,9 +1136,362 @@
 +        self.cancelled.clear();
 +    }
 +}
++// The same group membership mutex covers preparation and accepted requests.
++// These are DA callback queues only, not service/model/COM admission.
++pub(crate) struct Sink<T> {
++    pub(crate) queue: Mutex<DeliveryQueue<T>>,
++    pub(crate) wake: Condvar,
++    pub(crate) closed: AtomicBool,
++}
++pub(crate) struct Request<T> {
++    pub(crate) value: Option<T>, // None while the SDK prepares the owned result.
++    pub(crate) ids: Vec<(u32, u32)>,
++}
++pub(crate) struct Members<T> {
++    pub(crate) sinks: BTreeMap<u32, Arc<Sink<T>>>,
++    pub(crate) requests: BTreeMap<u32, Request<T>>,
++    pub(crate) next_cookie: u32,
++    pub(crate) next_cancel: u32,
++    pub(crate) closed: bool,
++}
++pub(crate) struct Preparation<'a, T> {
++    members: &'a Mutex<Members<T>>,
++    id: u32,
++    armed: bool,
++}
++impl<T> Members<T> {
++    pub(crate) fn prepare(members: &Mutex<Self>) -> Result<Preparation<'_, T>, QueueError> {
++        let mut m = members.lock().map_err(|_| QueueError::Poisoned)?;
++        if m.closed || m.sinks.is_empty() {
++            return Err(QueueError::Closed);
++        }
++        let live = m.sinks.clone();
++        // Canceled events still hold their credits until dequeue. Preparations
++        // remain charged even if every originally selected sink disconnects.
++        m.requests.retain(|_, request| {
++            request.value.is_none()
++                || request.ids.iter().any(|(cookie, id)| {
++                    live.get(cookie).is_some_and(|sink| {
++                        sink.queue.lock().map(|q| q.pending(*id)).unwrap_or(true)
++                    })
++                })
++        });
++        if m.requests.len() >= MAX_REQUESTS || m.next_cancel == u32::MAX {
++            return Err(QueueError::Full);
++        }
++        let sinks = m
++            .sinks
++            .iter()
++            .map(|(c, s)| (*c, s.clone()))
++            .collect::<Vec<_>>();
++        // Acquire every queue before reserving anything: poison cannot leave a
++        // partial reservation. Lock order remains members -> queues everywhere.
++        let mut queues = Vec::with_capacity(sinks.len());
++        for (_, sink) in &sinks {
++            queues.push(sink.queue.lock().map_err(|_| QueueError::Poisoned)?);
++        }
++        let mut ids = Vec::with_capacity(sinks.len());
++        for i in 0..queues.len() {
++            match queues[i].reserve() {
++                Ok(id) => ids.push((sinks[i].0, id)),
++                Err(error) => {
++                    for (q, (_, id)) in queues.iter_mut().zip(&ids) {
++                        q.release(*id);
++                    }
++                    return Err(error);
++                }
++            }
++        }
++        let id = m.next_cancel;
++        m.next_cancel += 1;
++        m.requests.insert(id, Request { value: None, ids });
++        Ok(Preparation {
++            members,
++            id,
++            armed: true,
++        })
++    }
++}
++impl<T: Clone> Preparation<'_, T> {
++    // refresh_epoch performs only the SDK's atomic refresh epoch update;
++    // never invoke a service/model/foreign callback with these locks held.
++    pub(crate) fn commit(
++        mut self,
++        value: T,
++        refresh_epoch: Option<&std::sync::atomic::AtomicU64>,
++    ) -> Result<u32, QueueError> {
++        let mut m = self.members.lock().map_err(|_| QueueError::Poisoned)?;
++        if m.closed {
++            return Err(QueueError::Closed);
++        }
++        let request = m.requests.get(&self.id).ok_or(QueueError::Unknown)?;
++        // Advise linearizes at prepare: new sinks cannot gain an unreserved
++        // completion. Unadvised/retired sinks simply cease delivery.
++        let sinks = request
++            .ids
++            .iter()
++            .filter_map(|(cookie, id)| m.sinks.get(cookie).map(|sink| (sink.clone(), *id)))
++            .collect::<Vec<_>>();
++        if sinks.is_empty() {
++            return Err(QueueError::Closed);
++        }
++        let mut queues = Vec::with_capacity(sinks.len());
++        for (sink, _) in &sinks {
++            queues.push(sink.queue.lock().map_err(|_| QueueError::Poisoned)?);
++        }
++        if queues
++            .iter()
++            .zip(&sinks)
++            .any(|(q, (_, id))| !q.pending(*id))
++        {
++            return Err(QueueError::Closed);
++        }
++        if let Some(epoch) = refresh_epoch {
++            epoch.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
++            for q in &mut queues {
++                q.clear_latest();
++            }
++        }
++        for (q, (_, id)) in queues.iter_mut().zip(&sinks) {
++            q.complete(*id, value.clone())?;
++        }
++        m.requests
++            .get_mut(&self.id)
++            .ok_or(QueueError::Unknown)?
++            .value = Some(value);
++        self.armed = false; // existing credits transfer; never reserve a second time.
++        drop(queues);
++        drop(m);
++        for (sink, _) in sinks {
++            sink.wake.notify_one();
++        }
++        Ok(self.id)
++    }
++}
++impl<T> Drop for Preparation<'_, T> {
++    fn drop(&mut self) {
++        if !self.armed {
++            return;
++        }
++        // Poison rejects future work, but must not prevent rollback. No foreign
++        // code executes here and every credit belongs exclusively to this token.
++        let mut m = self.members.lock().unwrap_or_else(|e| e.into_inner());
++        if let Some(request) = m.requests.remove(&self.id) {
++            for (cookie, id) in request.ids {
++                if let Some(sink) = m.sinks.get(&cookie) {
++                    sink.queue
++                        .lock()
++                        .unwrap_or_else(|e| e.into_inner())
++                        .release(id);
++                }
++            }
++        }
++    }
++}
 +#[cfg(test)]
 +mod tests {
 +    use super::*;
++    fn members(sinks: usize) -> Mutex<Members<&'static str>> {
++        Mutex::new(Members {
++            sinks: (1..=sinks as u32)
++                .map(|cookie| {
++                    (
++                        cookie,
++                        Arc::new(Sink {
++                            queue: Mutex::new(DeliveryQueue::new()),
++                            wake: Condvar::new(),
++                            closed: AtomicBool::new(false),
++                        }),
++                    )
++                })
++                .collect(),
++            requests: BTreeMap::new(),
++            next_cookie: sinks as u32 + 1,
++            next_cancel: 1,
++            closed: false,
++        })
++    }
++    #[test]
++    fn concurrent_preparation_rejects_before_owned_service_work() {
++        use std::sync::{
++            Barrier,
++            atomic::{AtomicUsize, Ordering},
++        };
++        let m = members(2);
++        let entered = AtomicUsize::new(0);
++        let allocated = AtomicUsize::new(0);
++        let ready = Barrier::new(MAX_REQUESTS + 1);
++        let release = Barrier::new(MAX_REQUESTS + 1);
++        std::thread::scope(|scope| {
++            for _ in 0..MAX_REQUESTS {
++                scope.spawn(|| {
++                    let _permit = Members::prepare(&m).unwrap();
++                    // Stand-in service/owned decode begins only after admission.
++                    entered.fetch_add(1, Ordering::SeqCst);
++                    let owned = vec![7_u8; MAX_ITEMS];
++                    allocated.fetch_add(owned.len(), Ordering::SeqCst);
++                    ready.wait();
++                    release.wait();
++                });
++            }
++            ready.wait();
++            let rejects = (0..64)
++                .map(|_| {
++                    scope.spawn(|| {
++                        assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
++                    })
++                })
++                .collect::<Vec<_>>();
++            for reject in rejects {
++                reject.join().unwrap();
++            }
++            assert_eq!(entered.load(Ordering::SeqCst), MAX_REQUESTS);
++            assert_eq!(allocated.load(Ordering::SeqCst), MAX_REQUESTS * MAX_ITEMS);
++            release.wait();
++        });
++        assert!(Members::prepare(&m).is_ok());
++    }
++    #[test]
++    fn retained_and_preparing_share_budget_until_all_sinks_dequeue() {
++        let m = members(2);
++        let accepted = Members::prepare(&m).unwrap().commit("read", None).unwrap();
++        let preparations = (1..MAX_REQUESTS)
++            .map(|_| Members::prepare(&m).unwrap())
++            .collect::<Vec<_>>();
++        assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
++        {
++            let state = m.lock().unwrap();
++            let request = &state.requests[&accepted];
++            for (cookie, id) in &request.ids {
++                state.sinks[cookie]
++                    .queue
++                    .lock()
++                    .unwrap()
++                    .cancel(*id, "cancel")
++                    .unwrap();
++            }
++            state.sinks[&1].queue.lock().unwrap().pop();
++        }
++        // Cancellation and a single dequeue cannot bypass the group cap.
++        assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
++        m.lock().unwrap().sinks[&2].queue.lock().unwrap().pop();
++        assert!(Members::prepare(&m).is_ok());
++        drop(preparations);
++        assert!(m.lock().unwrap().requests.is_empty());
++    }
++    #[test]
++    fn full_sink_rejects_atomically_before_preparation() {
++        let m = members(2);
++        {
++            let state = m.lock().unwrap();
++            let mut q = state.sinks[&2].queue.lock().unwrap();
++            for _ in 0..MAX_REQUESTS {
++                q.reserve().unwrap();
++            }
++        }
++        for _ in 0..64 {
++            assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
++        }
++        let state = m.lock().unwrap();
++        assert!(state.requests.is_empty());
++        assert!(state.sinks[&1].queue.lock().unwrap().reserved.is_empty());
++    }
++    #[test]
++    fn rollback_covers_error_all_failed_panic_and_poison() {
++        let m = members(2);
++        let fail = || -> Result<(), QueueError> {
++            let _permit = Members::prepare(&m)?;
++            Err(QueueError::Unknown) // service/output error; no completion
++        };
++        for _ in 0..64 {
++            assert_eq!(fail(), Err(QueueError::Unknown));
++        }
++        for _ in 0..64 {
++            drop(Members::prepare(&m).unwrap());
++        } // all-failed/no callback
++        assert!(
++            std::panic::catch_unwind(|| {
++                let _permit = Members::prepare(&m).unwrap();
++                panic!("service panic");
++            })
++            .is_err()
++        );
++        assert!(m.lock().unwrap().requests.is_empty());
++        let permit = Members::prepare(&m).unwrap();
++        assert!(
++            std::panic::catch_unwind(|| {
++                let state = m.lock().unwrap();
++                let _q = state.sinks[&1].queue.lock().unwrap();
++                panic!("poison membership and queue");
++            })
++            .is_err()
++        );
++        drop(permit);
++        let state = m.lock().err().unwrap().into_inner();
++        assert!(state.requests.is_empty());
++        assert!(
++            state.sinks[&1]
++                .queue
++                .lock()
++                .err()
++                .unwrap()
++                .into_inner()
++                .reserved
++                .is_empty()
++        );
++        drop(state);
++        assert!(matches!(Members::prepare(&m), Err(QueueError::Poisoned)));
++    }
++    #[test]
++    fn sink_set_is_fixed_before_service_and_disconnect_does_not_fabricate_delivery() {
++        let m = members(2);
++        let permit = Members::prepare(&m).unwrap();
++        let late = members(1).into_inner().unwrap().sinks.remove(&1).unwrap();
++        {
++            let mut state = m.lock().unwrap();
++            state
++                .sinks
++                .remove(&1)
++                .unwrap()
++                .queue
++                .lock()
++                .unwrap()
++                .close();
++            state.sinks.insert(3, late.clone());
++        }
++        permit.commit("read", None).unwrap();
++        assert_eq!(
++            m.lock().unwrap().sinks[&2].queue.lock().unwrap().pop(),
++            Some("read")
++        );
++        assert_eq!(late.queue.lock().unwrap().pop(), None);
++        let permit = Members::prepare(&m).unwrap();
++        {
++            let mut state = m.lock().unwrap();
++            for sink in state.sinks.values() {
++                sink.queue.lock().unwrap().close();
++            }
++            state.sinks.clear();
++        }
++        assert_eq!(permit.commit("lost", None), Err(QueueError::Closed));
++        assert!(m.lock().unwrap().requests.is_empty());
++    }
++    #[test]
++    fn remove_during_preparation_releases_without_completion() {
++        let m = members(1);
++        let permit = Members::prepare(&m).unwrap();
++        {
++            let mut state = m.lock().unwrap();
++            state.closed = true;
++            for sink in state.sinks.values() {
++                sink.queue.lock().unwrap().close();
++            }
++            state.sinks.clear();
++            state.requests.clear();
++        }
++        assert_eq!(permit.commit("removed", None), Err(QueueError::Closed));
++        assert!(m.lock().unwrap().requests.is_empty());
++    }
 +    #[test]
 +    fn coalescing_preserves_completion_credits() {
 +        let mut q = DeliveryQueue::new();
@@ -1181,12 +1563,15 @@
 +        }
 +    }
 +}
+diff --git a/opc_da_bindings/src/server/callbacks.rs b/opc_da_bindings/src/server/callbacks.rs
+new file mode 100644
+index 0000000..79a0e4d
 --- /dev/null
 +++ b/opc_da_bindings/src/server/callbacks.rs
-@@ -0,0 +1,909 @@
+@@ -0,0 +1,869 @@
 +//! iCem SDK extension: native DA callback boundary. See ADR0019.
 +use super::callback_health::{CallbackMonitor, WorkerLease};
-+use super::callback_queue::{DeliveryQueue, MAX_ITEMS, MAX_REQUESTS, MAX_SINKS};
++use super::callback_queue::{DeliveryQueue, MAX_ITEMS, MAX_SINKS, Preparation, QueueError};
 +use super::*;
 +use crate::{IOPCAsyncIO2_Impl, IOPCDataCallback};
 +use std::{
@@ -1270,24 +1655,21 @@
 +        self.pending = None;
 +    }
 +}
-+struct Sink {
-+    queue: Mutex<DeliveryQueue<Arc<Frame>>>,
-+    wake: Condvar,
-+    closed: AtomicBool,
-+}
-+struct Members {
-+    sinks: BTreeMap<u32, Arc<Sink>>,
-+    requests: BTreeMap<u32, (Arc<Frame>, Vec<(u32, u32)>)>,
-+    next_cookie: u32,
-+    next_cancel: u32,
-+    closed: bool,
-+}
++type Sink = super::callback_queue::Sink<Arc<Frame>>;
++type Members = super::callback_queue::Members<Arc<Frame>>;
 +pub(crate) struct Callbacks {
 +    members: Mutex<Members>,
 +    enabled: AtomicBool,
 +    revision: AtomicU64,
 +    epoch: AtomicU64,
 +    monitor: CallbackMonitor,
++}
++fn admission_error(reason: QueueError) -> AbiError {
++    error(match reason {
++        QueueError::Closed => NO_CONNECTION,
++        QueueError::Full => ADVISE_LIMIT,
++        QueueError::Unknown | QueueError::Poisoned => E_UNEXPECTED,
++    })
 +}
 +fn error(code: HRESULT) -> AbiError {
 +    AbiError::from_hresult(code)
@@ -1472,66 +1854,14 @@
 +        }
 +        Ok(self.enabled.load(Ordering::Acquire))
 +    }
-+    fn enqueue(&self, frame: Arc<Frame>) -> AbiResult<u32> {
-+        validate_frame(&frame.samples)?;
-+        let mut m = self.members.lock().map_err(|_| error(E_UNEXPECTED))?;
-+        if m.closed || m.sinks.is_empty() {
-+            return Err(error(NO_CONNECTION));
-+        }
-+        let live = m.sinks.clone();
-+        // Request/frame survives until ALL still-advised sinks have removed their completion.
-+        m.requests.retain(|_, (_, ids)| {
-+            ids.iter().any(|(cookie, id)| {
-+                live.get(cookie)
-+                    .is_some_and(|sink| sink.queue.lock().map(|q| q.pending(*id)).unwrap_or(true))
-+            })
-+        });
-+        if m.requests.len() >= MAX_REQUESTS || m.next_cancel == u32::MAX {
-+            return Err(error(ADVISE_LIMIT));
-+        }
-+        let sinks = m
-+            .sinks
-+            .iter()
-+            .map(|(c, s)| (*c, s.clone()))
-+            .collect::<Vec<_>>();
-+        let mut queues = Vec::with_capacity(sinks.len());
-+        for (_, sink) in &sinks {
-+            queues.push(sink.queue.lock().map_err(|_| error(E_UNEXPECTED))?);
-+        }
-+        let mut ids = Vec::with_capacity(sinks.len());
-+        for i in 0..queues.len() {
-+            match queues[i].reserve() {
-+                Ok(id) => ids.push((sinks[i].0, id)),
-+                Err(_) => {
-+                    for (q, (_, id)) in queues.iter_mut().zip(&ids) {
-+                        q.release(*id);
-+                    }
-+                    return Err(error(ADVISE_LIMIT));
-+                }
-+            }
-+        }
-+        if frame.kind == Kind::Refresh {
-+            self.epoch.fetch_add(1, Ordering::AcqRel);
-+            for q in &mut queues {
-+                q.clear_latest();
-+            }
-+        }
-+        for (q, (_, id)) in queues.iter_mut().zip(&ids) {
-+            q.complete(*id, frame.clone())
-+                .map_err(|_| error(E_UNEXPECTED))?;
-+        }
-+        let id = m.next_cancel;
-+        m.next_cancel += 1;
-+        m.requests.insert(id, (frame, ids));
-+        drop(queues);
-+        for (_, sink) in sinks {
-+            sink.wake.notify_one();
-+        }
-+        Ok(id)
++    fn prepare(&self) -> AbiResult<Preparation<'_, Arc<Frame>>> {
++        Members::prepare(&self.members).map_err(admission_error)
 +    }
 +    fn cancel(&self, id: u32) -> AbiResult<()> {
 +        let mut m = self.members.lock().map_err(|_| error(E_UNEXPECTED))?;
-+        let (frame, ids) = m.requests.get(&id).ok_or_else(|| error(FAIL))?;
++        let request = m.requests.get(&id).ok_or_else(|| error(FAIL))?;
++        let frame = request.value.as_ref().ok_or_else(|| error(FAIL))?;
++        let ids = &request.ids;
 +        let sinks = ids
 +            .iter()
 +            .filter_map(|(c, id)| m.sinks.get(c).map(|s| (s.clone(), *id)))
@@ -1563,7 +1893,8 @@
 +                .map_err(|_| error(E_UNEXPECTED))?;
 +        }
 +        drop(queues);
-+        m.requests.remove(&id);
++        // Keep the cancel event charged until every selected live queue dequeues it.
++        m.requests.get_mut(&id).ok_or_else(|| error(FAIL))?.value = Some(frame);
 +        Ok(())
 +    }
 +}
@@ -1864,11 +2195,14 @@
 +            if count == 0 || count as usize > MAX_ITEMS {
 +                return Err(code_error(E_INVALIDARG));
 +            }
++            // Bound owned preparation before handle decode, service results and
++            // native output allocation. The token rolls back every early return.
++            let preparation = self
++                .callbacks
++                .prepare()
++                .map_err(crate::abi::from_abi_error)?;
 +            // SAFETY: incoming array readable for bounded count.
 +            let handles = decode_handles(unsafe { borrow_input(handles, count)? });
-+            self.callbacks
-+                .enable(None)
-+                .map_err(crate::abi::from_abi_error)?;
 +            let state = self
 +                .state
 +                .lock()
@@ -1898,15 +2232,20 @@
 +            let id = if valid.is_empty() {
 +                0
 +            } else {
-+                self.callbacks
-+                    .enqueue(Arc::new(Frame {
-+                        kind: Kind::Read,
-+                        transaction,
-+                        group: state.client_handle,
-+                        samples: valid,
-+                        revision: 0,
-+                        epoch: 0,
-+                    }))
++                validate_frame(&valid).map_err(crate::abi::from_abi_error)?;
++                preparation
++                    .commit(
++                        Arc::new(Frame {
++                            kind: Kind::Read,
++                            transaction,
++                            group: state.client_handle,
++                            samples: valid,
++                            revision: 0,
++                            epoch: 0,
++                        }),
++                        None,
++                    )
++                    .map_err(admission_error)
 +                    .map_err(crate::abi::from_abi_error)?
 +            };
 +            // SAFETY: outputs initialized above, allocation transfers only after successful queue commit.
@@ -1959,7 +2298,7 @@
 +            } else {
 +                return Err(error(E_INVALIDARG));
 +            };
-+            self.callbacks.enable(None)?;
++            let preparation = self.callbacks.prepare()?;
 +            let state = self.state.lock().map_err(|_| error(E_UNEXPECTED))?.clone();
 +            if !state.active {
 +                return Err(error(FAIL));
@@ -1978,14 +2317,20 @@
 +            if samples.is_empty() {
 +                return Err(error(FAIL));
 +            }
-+            self.callbacks.enqueue(Arc::new(Frame {
-+                kind: Kind::Refresh,
-+                transaction,
-+                group: state.client_handle,
-+                samples,
-+                revision: 0,
-+                epoch: 0,
-+            }))
++            validate_frame(&samples)?;
++            preparation
++                .commit(
++                    Arc::new(Frame {
++                        kind: Kind::Refresh,
++                        transaction,
++                        group: state.client_handle,
++                        samples,
++                        revision: 0,
++                        epoch: 0,
++                    }),
++                    Some(&self.callbacks.epoch),
++                )
++                .map_err(admission_error)
 +        })
 +    }
 +    fn Cancel2(&self, id: u32) -> AbiResult<()> {
@@ -2093,11 +2438,13 @@
 +        Ok(())
 +    }
 +}
+diff --git a/opc_da_bindings/src/server/mod.rs b/opc_da_bindings/src/server/mod.rs
+index cf7d60e..8751dd1 100644
 --- a/opc_da_bindings/src/server/mod.rs
 +++ b/opc_da_bindings/src/server/mod.rs
 @@ -1,9 +1,15 @@
  //! Safe Rust service contracts and COM adapters for OPC Data Access.
-
+ 
 +mod callback_health;
 +mod callback_queue;
 +mod callbacks;
@@ -2108,13 +2455,13 @@
  use std::sync::atomic::{AtomicU32, Ordering};
  use std::sync::{Arc, Mutex};
 +use windows::Win32::System::Com::{IConnectionPoint, IConnectionPointContainer};
-
+ 
  use opc_classic_abi::{IOPCCommon as AbiCommon, IOPCCommon_Impl as AbiCommon_Impl};
  use opc_classic_types::{ComObject, Error, ErrorCode, Result, Timestamp, Value, ValueType};
-@@ -92,12 +98,22 @@
+@@ -92,12 +98,22 @@ pub trait DaGroupService: Send + Sync + 'static {
          handles: &[(ServerItemHandle, ValueType)],
      ) -> Result<Vec<ServerItemResult<()>>>;
-
+ 
 +    /// Reads with one committed group-state snapshot. The adapter releases its
 +    /// state lock before calling the service; concurrent SetState may commit
 +    /// afterwards, but can never split the fields observed by this read.
@@ -2124,7 +2471,7 @@
          source: DataSource,
          handles: &[ServerItemHandle],
      ) -> Result<Vec<ServerItemResult<ServerSample>>>;
-
+ 
 +    /// Owned active snapshot, no native source reads or foreign callbacks.
 +    fn notification(
 +        &self,
@@ -2133,16 +2480,16 @@
 +    ) -> Result<Vec<ServerItemResult<ServerSample>>>;
      fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>>;
  }
-
-@@ -150,6 +166,7 @@
+ 
+@@ -150,6 +166,7 @@ impl Drop for PendingGroup<'_> {
  struct GroupEntry {
      name: String,
      object: IUnknown,
 +    callbacks: Arc<callbacks::Callbacks>,
  }
-
+ 
  #[derive(Clone)]
-@@ -166,7 +183,17 @@
+@@ -166,7 +183,17 @@ impl DaServer {
      /// Creates a DA server whose COM identity delegates `IOPCCommon` to the
      /// supplied common service.
      pub fn new_with_common(service: Arc<dyn DaService>, common: Arc<dyn CommonService>) -> Self {
@@ -2160,14 +2507,14 @@
 +        let inner: IOPCServer = DaServerAdapter::new(service.clone(), common, monitor).into();
          Self { inner, service }
      }
-
-@@ -185,15 +212,21 @@
+ 
+@@ -185,15 +212,21 @@ struct DaServerAdapter {
      common: Arc<dyn CommonService>,
      groups: Mutex<HashMap<u32, GroupEntry>>,
      next_group_handle: AtomicU32,
 +    monitor: CallbackMonitor,
  }
-
+ 
  impl DaServerAdapter {
 -    fn new(service: Arc<dyn DaService>, common: Arc<dyn CommonService>) -> Self {
 +    fn new(
@@ -2184,7 +2531,7 @@
          }
      }
  }
-@@ -267,79 +300,86 @@
+@@ -267,79 +300,86 @@ impl IOPCServer_Impl for DaServerAdapter_Impl {
          iid: *const GUID,
          output: OutRef<IUnknown>,
      ) -> AbiResult<()> {
@@ -2342,9 +2689,9 @@
 +            requested_update_rate < 10,
 +        )
      }
-
+ 
      fn GetErrorString(&self, error: HRESULT, locale: u32) -> AbiResult<PWSTR> {
-@@ -400,10 +440,14 @@
+@@ -400,10 +440,14 @@ impl IOPCServer_Impl for DaServerAdapter_Impl {
      fn RemoveGroup(&self, server_handle: u32, force: windows_core::BOOL) -> AbiResult<()> {
          serve(|| {
              self.service.remove_group(server_handle, force.as_bool())?;
@@ -2360,10 +2707,10 @@
              Ok(())
          })
      }
-@@ -432,18 +476,55 @@
+@@ -432,19 +476,56 @@ unsafe impl Cleanup<crate::tagOPCSERVERSTATUS> for ServerStatusCleanup {
      }
  }
-
+ 
 -#[windows_core::implement(IOPCItemMgt, IOPCSyncIO, IOPCGroupStateMgt)]
 +#[windows_core::implement(
 +    IOPCItemMgt,
@@ -2379,7 +2726,7 @@
 +    state: Arc<Mutex<GroupState>>,
 +    callbacks: Arc<callbacks::Callbacks>,
  }
-
+ 
  impl DaGroupAdapter {
 +    #[cfg(test)]
      fn new(service: Arc<dyn DaGroupService>, state: GroupState) -> Self {
@@ -2397,11 +2744,10 @@
          Self {
              service,
 -            state: Mutex::new(state),
--        }
 +            state: Arc::new(Mutex::new(state)),
 +            callbacks,
-+        }
-+    }
+         }
+     }
 +
 +    #[forbid(unsafe_code)]
 +    fn read_current_state(
@@ -2417,10 +2763,11 @@
 +            .map_err(|_| code_error(E_UNEXPECTED))?
 +            .clone();
 +        self.service.read(state, source, handles)
-     }
++    }
  }
-
-@@ -463,6 +544,7 @@
+ 
+ #[allow(clippy::not_unsafe_ptr_arg_deref)]
+@@ -463,6 +544,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
              }
              let items = decode_item_specs(unsafe { borrow_input(items, count)? })?;
              let values = self.service.add_items(&items)?;
@@ -2428,7 +2775,7 @@
              write_item_results(values, count as usize, results, errors)
          })
      }
-@@ -496,6 +578,7 @@
+@@ -496,6 +578,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
              unsafe { initialize_output(errors)? };
              let handles = decode_handles(unsafe { borrow_input(handles, count)? });
              let values = self.service.remove_items(&handles)?;
@@ -2436,7 +2783,7 @@
              write_unit_results(values, count as usize, errors)
          })
      }
-@@ -511,6 +594,7 @@
+@@ -511,6 +594,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
              unsafe { initialize_output(errors)? };
              let handles = decode_handles(unsafe { borrow_input(handles, count)? });
              let values = self.service.set_active(&handles, active.as_bool())?;
@@ -2444,7 +2791,7 @@
              write_unit_results(values, count as usize, errors)
          })
      }
-@@ -532,6 +616,7 @@
+@@ -532,6 +616,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
                  .map(|(server, client)| (ServerItemHandle(*server), ClientItemHandle(*client)))
                  .collect();
              let values = self.service.set_client_handles(&pairs)?;
@@ -2452,7 +2799,7 @@
              write_unit_results(values, count as usize, errors)
          })
      }
-@@ -587,7 +672,7 @@
+@@ -587,7 +672,7 @@ impl IOPCSyncIO_Impl for DaGroupAdapter_Impl {
                  return Err(code_error(E_INVALIDARG));
              };
              let handles = decode_handles(unsafe { borrow_input(handles, count)? });
@@ -2461,7 +2808,7 @@
              ensure_batch_len(returned.len(), count as usize)?;
              let mut states = CoTaskMemArrayBuilder::new(count as usize, DropElements)?;
              let mut item_errors = CoTaskMemArrayBuilder::new(count as usize, NoCleanup)?;
-@@ -763,11 +848,18 @@
+@@ -763,11 +848,18 @@ impl IOPCGroupStateMgt_Impl for DaGroupAdapter_Impl {
          locale: *const u32,
          client_handle: *const u32,
      ) -> AbiResult<()> {
@@ -2482,7 +2829,7 @@
              }
              if let Some(value) = unsafe { active.as_ref() } {
                  state.active = value.as_bool();
-@@ -785,8 +877,10 @@
+@@ -785,8 +877,10 @@ impl IOPCGroupStateMgt_Impl for DaGroupAdapter_Impl {
                  state.client_handle = *value;
              }
              unsafe { revised_update_rate.write(state.update_rate) };
@@ -2492,10 +2839,10 @@
 +        });
 +        rate_result(result, unsupported)
      }
-
+ 
      fn SetName(&self, name: &PCWSTR) -> AbiResult<()> {
-@@ -985,7 +1079,7 @@
-
+@@ -985,7 +1079,7 @@ fn batch_status(has_error: bool) -> Result<()> {
+ 
  fn next_nonzero(counter: &AtomicU32) -> Result<u32> {
      counter
 -        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
@@ -2503,10 +2850,10 @@
              if value == 0 {
                  None
              } else {
-@@ -1021,12 +1115,149 @@
+@@ -1021,12 +1115,149 @@ mod tests {
      use crate::client::{DaClient, GroupOptions, ServerState};
      use windows::Win32::System::Variant::VT_DISPATCH;
-
+ 
 +    // P7c1 adds no native operation: SetState is the existing generated safe
 +    // implementation entrypoint; Read uses the existing safe COM client.
 +    #[forbid(unsafe_code)]
@@ -2652,13 +2999,11 @@
 +        read_states: Mutex<Vec<GroupState>>,
      }
      struct TestCommon;
-
-@@ -1046,6 +1277,38 @@
-         let returned: IUnknown = test_group_io().cast().unwrap();
-         output.write(Some(returned)).unwrap();
+ 
+@@ -1048,6 +1279,38 @@ mod tests {
          assert!(slot.is_some());
-+    }
-+
+     }
+ 
 +    #[test]
 +    fn connection_point_and_container_have_group_identity() -> Result<()> {
 +        let apartment = opc_classic_utils::ComApartment::mta()?;
@@ -2689,11 +3034,13 @@
 +            identity
 +        );
 +        Ok(())
-     }
-
++    }
++
      impl CommonService for TestCommon {
-@@ -1170,9 +1433,14 @@
-
+         fn set_locale(&self, _locale: u32) -> Result<()> {
+             Ok(())
+@@ -1170,9 +1433,14 @@ mod tests {
+ 
          fn read(
              &self,
 +            state: GroupState,
@@ -2707,10 +3054,10 @@
              Ok(handles
                  .iter()
                  .enumerate()
-@@ -1191,6 +1459,13 @@
+@@ -1191,6 +1459,13 @@ mod tests {
                  .collect())
          }
-
+ 
 +        fn notification(
 +            &self,
 +            _: GroupState,
@@ -2721,7 +3068,7 @@
          fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>> {
              assert!(
                  !values.is_empty(),
-@@ -1282,7 +1557,14 @@
+@@ -1282,7 +1557,14 @@ mod tests {
              client_handle: 0,
              server_handle: 1,
          };
@@ -2735,9 +3082,9 @@
 +        )
 +        .into()
      }
-
+ 
      fn test_group_io() -> IOPCSyncIO {
-@@ -1415,3 +1697,21 @@
+@@ -1415,3 +1697,21 @@ mod tests {
          }
      }
  }
