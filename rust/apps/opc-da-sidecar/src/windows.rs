@@ -11,7 +11,8 @@ use opc_da_bindings::{
         ServerState, ServerStatus,
     },
     server::{
-        DaGroupService, DaServer, DaService, ServerAddedItem, ServerItemResult, ServerSample,
+        CallbackMonitor, DaGroupService, DaServer, DaService, ServerAddedItem, ServerItemResult,
+        ServerSample,
     },
 };
 use std::{
@@ -279,6 +280,29 @@ impl DaGroupService for Group {
             })
             .collect())
     }
+    fn notification(
+        &self,
+        _: GroupState,
+        _: DataSource,
+    ) -> Result<Vec<ServerItemResult<ServerSample>>> {
+        let model = lock(&self.model)?;
+        let items = lock(&self.items)?;
+        let now = Instant::now();
+        Ok(items
+            .entries
+            .values()
+            .filter(|item| item.active)
+            .filter_map(|item| {
+                let sample = model.as_ref()?.sample(item.address, now)?;
+                Some(ServerItemResult::success(ServerSample {
+                    client_handle: item.client,
+                    timestamp: Timestamp::from_ticks(sample.filetime),
+                    quality: sample.quality,
+                    value: value(sample.value),
+                }))
+            })
+            .collect())
+    }
     fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>> {
         if values.len() > MAX_ITEMS {
             return Err(Error::out_of_memory("DA batch limit4096"));
@@ -323,7 +347,7 @@ impl DaService for Service {
             group_count: groups.len() as u32,
             bandwidth: 0,
             version: (0, 1, 0),
-            vendor_info: "iCem read-only synchronous DA; browse/callbacks/DA3 unsupported".into(),
+            vendor_info: "iCem read-only DA2 callback subset; browse/full DA3 unsupported".into(),
         })
     }
     fn add_group(&self, handle: u32, _: GroupOptions) -> Result<Arc<dyn DaGroupService>> {
@@ -394,6 +418,44 @@ fn registration(remove: bool) -> std::result::Result<(), String> {
     }
     Ok(())
 }
+// Independent application-owned process policy, including idle IPC.
+struct CallbackWatchdog {
+    stop: Arc<std::sync::atomic::AtomicBool>,
+    worker: Option<std::thread::JoinHandle<()>>,
+}
+impl CallbackWatchdog {
+    fn start(monitor: CallbackMonitor) -> std::result::Result<Self, String> {
+        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let worker_stop = stop.clone();
+        let worker = std::thread::Builder::new()
+            .name("opc-da-health".into())
+            .spawn(move || {
+                while !worker_stop.load(Ordering::Acquire) {
+                    if !monitor
+                        .health(Instant::now())
+                        .healthy(std::time::Duration::from_secs(2))
+                    {
+                        std::process::exit(70);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(25));
+                }
+            })
+            .map_err(|error| error.to_string())?;
+        Ok(Self {
+            stop,
+            worker: Some(worker),
+        })
+    }
+}
+impl Drop for CallbackWatchdog {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Release);
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+    }
+}
+
 pub fn run() -> std::result::Result<(), String> {
     if std::env::args().count() == 2 {
         match std::env::args().nth(1).as_deref() {
@@ -408,11 +470,14 @@ pub fn run() -> std::result::Result<(), String> {
     let apartment = ComApartment::mta().map_err(|e| e.to_string())?;
     let model = Arc::new(Mutex::new(None));
     let limits = Arc::new(Limits::new());
+    let callback_monitor = CallbackMonitor::new();
+    let _watchdog = CallbackWatchdog::start(callback_monitor.clone())?;
     let factory = ClassFactory::new({
+        let callback_monitor = callback_monitor.clone();
         let model = model.clone();
         move || {
             let service: Arc<dyn DaService> = Service::new(model.clone(), limits.clone())?;
-            Ok(DaServer::new(service).object())
+            Ok(DaServer::new_with_callbacks(service, callback_monitor.clone()).object())
         }
     });
     let id = Guid::new(

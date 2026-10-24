@@ -53,3 +53,11 @@ it would require a new native operation. Windows runtime must execute
 `cargo test -p opc_da_bindings -p icem-opc-da-sidecar --locked --offline` from
 the application workspace. Cross-process SetState and callbacks remain separate
 Windows acceptance gates. P7c2 callbacks are not implemented here.
+
+
+P7c2 draft checkpoint (ADR0019): explicitly ours server/callbacks.rs implements
+group CPC/CP/AsyncIO2 and GIT-owned bounded dispatch, with safe application25ms
+health watchdog. Pure callback_queue.rs/callback_health.rs are owned safe engines.
+New files are explicitly allowlisted and included in complete reversible patch.
+No application unsafe/policy/dependency changes. Native independent review, client
+acceptance implementation and Windows runtime are pending; full P7 remains PARTIAL.

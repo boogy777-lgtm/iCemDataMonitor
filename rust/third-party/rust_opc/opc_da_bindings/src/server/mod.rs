@@ -1,9 +1,15 @@
 //! Safe Rust service contracts and COM adapters for OPC Data Access.
 
+mod callback_health;
+mod callback_queue;
+mod callbacks;
+use crate::IOPCAsyncIO2;
+pub use callback_health::{CallbackHealth, CallbackMonitor};
 use std::collections::HashMap;
 use std::ptr;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
+use windows::Win32::System::Com::{IConnectionPoint, IConnectionPointContainer};
 
 use opc_classic_abi::{IOPCCommon as AbiCommon, IOPCCommon_Impl as AbiCommon_Impl};
 use opc_classic_types::{ComObject, Error, ErrorCode, Result, Timestamp, Value, ValueType};
@@ -102,6 +108,12 @@ pub trait DaGroupService: Send + Sync + 'static {
         handles: &[ServerItemHandle],
     ) -> Result<Vec<ServerItemResult<ServerSample>>>;
 
+    /// Owned active snapshot, no native source reads or foreign callbacks.
+    fn notification(
+        &self,
+        state: GroupState,
+        source: DataSource,
+    ) -> Result<Vec<ServerItemResult<ServerSample>>>;
     fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>>;
 }
 
@@ -154,6 +166,7 @@ impl Drop for PendingGroup<'_> {
 struct GroupEntry {
     name: String,
     object: IUnknown,
+    callbacks: Arc<callbacks::Callbacks>,
 }
 
 #[derive(Clone)]
@@ -170,7 +183,17 @@ impl DaServer {
     /// Creates a DA server whose COM identity delegates `IOPCCommon` to the
     /// supplied common service.
     pub fn new_with_common(service: Arc<dyn DaService>, common: Arc<dyn CommonService>) -> Self {
-        let inner: IOPCServer = DaServerAdapter::new(service.clone(), common).into();
+        Self::with_callbacks(service, common, CallbackMonitor::new())
+    }
+    pub fn new_with_callbacks(service: Arc<dyn DaService>, monitor: CallbackMonitor) -> Self {
+        Self::with_callbacks(service, Arc::new(UnsupportedCommonService), monitor)
+    }
+    fn with_callbacks(
+        service: Arc<dyn DaService>,
+        common: Arc<dyn CommonService>,
+        monitor: CallbackMonitor,
+    ) -> Self {
+        let inner: IOPCServer = DaServerAdapter::new(service.clone(), common, monitor).into();
         Self { inner, service }
     }
 
@@ -189,15 +212,21 @@ struct DaServerAdapter {
     common: Arc<dyn CommonService>,
     groups: Mutex<HashMap<u32, GroupEntry>>,
     next_group_handle: AtomicU32,
+    monitor: CallbackMonitor,
 }
 
 impl DaServerAdapter {
-    fn new(service: Arc<dyn DaService>, common: Arc<dyn CommonService>) -> Self {
+    fn new(
+        service: Arc<dyn DaService>,
+        common: Arc<dyn CommonService>,
+        monitor: CallbackMonitor,
+    ) -> Self {
         Self {
             service,
             common,
             groups: Mutex::new(HashMap::new()),
             next_group_handle: AtomicU32::new(1),
+            monitor,
         }
     }
 }
@@ -271,79 +300,86 @@ impl IOPCServer_Impl for DaServerAdapter_Impl {
         iid: *const GUID,
         output: OutRef<IUnknown>,
     ) -> AbiResult<()> {
-        serve(|| {
-            unsafe {
-                initialize_output(server_handle)?;
-                initialize_output(revised_update_rate)?;
-            }
-            if output.is_null() {
-                return Err(code_error(E_POINTER));
-            }
-            // SAFETY: windows-core defines `OutRef<IUnknown>` as
-            // `#[repr(transparent)]` over this ABI pointer. Its safe `write`
-            // method consumes the one-shot wrapper, so it cannot both perform
-            // the required null initialization and later transfer the
-            // successful interface. Keep the wrapper for that final transfer
-            // and use its documented transparent layout only for initialization.
-            // `transmute_copy(&output)` copies the contained caller-slot pointer,
-            // not the address of this local wrapper.
-            let output_ptr: *mut *mut core::ffi::c_void =
-                unsafe { std::mem::transmute_copy(&output) };
-            unsafe { initialize_output(output_ptr)? };
-            if iid.is_null() {
-                return Err(code_error(E_POINTER));
-            }
-            if name.is_null() {
-                return Err(Error::null_pointer("null group name"));
-            }
-            let name = unsafe { name.to_string() }
-                .map_err(|_| Error::invalid_argument("invalid UTF-16 group name"))?;
-            let options = GroupOptions {
-                name: name.clone(),
-                active: active.as_bool(),
-                requested_update_rate,
-                client_handle,
-                time_bias: unsafe { time_bias.as_ref().copied() },
-                percent_deadband: unsafe { percent_deadband.as_ref().copied() },
-                locale,
-            };
-            let handle = next_nonzero(&self.next_group_handle)?;
-            let service = self.service.add_group(handle, options.clone())?;
-            let mut pending = PendingGroup::new(self.service.as_ref(), handle);
-            let state = GroupState {
-                update_rate: options.requested_update_rate,
-                active: options.active,
-                name: name.clone(),
-                time_bias: options.time_bias.unwrap_or_default(),
-                percent_deadband: options.percent_deadband.unwrap_or_default(),
-                locale: options.locale,
-                client_handle: options.client_handle,
-                server_handle: handle,
-            };
-            let group: IUnknown = DaGroupAdapter::new(service, state).into();
-            let requested = query_interface(&group, unsafe { &*iid })?;
-            let mut groups = self.groups.lock().map_err(|_| code_error(E_UNEXPECTED))?;
-            groups
-                .try_reserve(1)
-                .map_err(|_| code_error(E_OUTOFMEMORY))?;
-            output
-                .write(Some(requested))
-                .map_err(crate::abi::from_abi_error)?;
-            unsafe {
-                server_handle.write(handle);
-                revised_update_rate.write(requested_update_rate);
-            }
-            let previous = groups.insert(
-                handle,
-                GroupEntry {
-                    name,
-                    object: group,
-                },
-            );
-            debug_assert!(previous.is_none(), "group handles never collide");
-            pending.commit();
-            Ok(())
-        })
+        rate_result(
+            serve(|| {
+                unsafe {
+                    initialize_output(server_handle)?;
+                    initialize_output(revised_update_rate)?;
+                }
+                if output.is_null() {
+                    return Err(code_error(E_POINTER));
+                }
+                // SAFETY: windows-core defines `OutRef<IUnknown>` as
+                // `#[repr(transparent)]` over this ABI pointer. Its safe `write`
+                // method consumes the one-shot wrapper, so it cannot both perform
+                // the required null initialization and later transfer the
+                // successful interface. Keep the wrapper for that final transfer
+                // and use its documented transparent layout only for initialization.
+                // `transmute_copy(&output)` copies the contained caller-slot pointer,
+                // not the address of this local wrapper.
+                let output_ptr: *mut *mut core::ffi::c_void =
+                    unsafe { std::mem::transmute_copy(&output) };
+                unsafe { initialize_output(output_ptr)? };
+                if iid.is_null() {
+                    return Err(code_error(E_POINTER));
+                }
+                if name.is_null() {
+                    return Err(Error::null_pointer("null group name"));
+                }
+                let name = unsafe { name.to_string() }
+                    .map_err(|_| Error::invalid_argument("invalid UTF-16 group name"))?;
+                let options = GroupOptions {
+                    name: name.clone(),
+                    active: active.as_bool(),
+                    requested_update_rate: requested_update_rate.max(10),
+                    client_handle,
+                    time_bias: unsafe { time_bias.as_ref().copied() },
+                    percent_deadband: unsafe { percent_deadband.as_ref().copied() },
+                    locale,
+                };
+                validate_profile(options.percent_deadband.unwrap_or_default(), options.locale)?;
+                let handle = next_nonzero(&self.next_group_handle)?;
+                let service = self.service.add_group(handle, options.clone())?;
+                let mut pending = PendingGroup::new(self.service.as_ref(), handle);
+                let state = GroupState {
+                    update_rate: options.requested_update_rate,
+                    active: options.active,
+                    name: name.clone(),
+                    time_bias: options.time_bias.unwrap_or_default(),
+                    percent_deadband: options.percent_deadband.unwrap_or_default(),
+                    locale: options.locale,
+                    client_handle: options.client_handle,
+                    server_handle: handle,
+                };
+                let callbacks = callbacks::Callbacks::new(self.monitor.clone());
+                let group: IUnknown =
+                    DaGroupAdapter::with_callbacks(service, state, callbacks.clone()).into();
+                let requested = query_interface(&group, unsafe { &*iid })?;
+                let mut groups = self.groups.lock().map_err(|_| code_error(E_UNEXPECTED))?;
+                groups
+                    .try_reserve(1)
+                    .map_err(|_| code_error(E_OUTOFMEMORY))?;
+                output
+                    .write(Some(requested))
+                    .map_err(crate::abi::from_abi_error)?;
+                unsafe {
+                    server_handle.write(handle);
+                    revised_update_rate.write(options.requested_update_rate);
+                }
+                let previous = groups.insert(
+                    handle,
+                    GroupEntry {
+                        name,
+                        object: group,
+                        callbacks,
+                    },
+                );
+                debug_assert!(previous.is_none(), "group handles never collide");
+                pending.commit();
+                Ok(())
+            }),
+            requested_update_rate < 10,
+        )
     }
 
     fn GetErrorString(&self, error: HRESULT, locale: u32) -> AbiResult<PWSTR> {
@@ -404,10 +440,14 @@ impl IOPCServer_Impl for DaServerAdapter_Impl {
     fn RemoveGroup(&self, server_handle: u32, force: windows_core::BOOL) -> AbiResult<()> {
         serve(|| {
             self.service.remove_group(server_handle, force.as_bool())?;
-            self.groups
+            let entry = self
+                .groups
                 .lock()
                 .map_err(|_| code_error(E_UNEXPECTED))?
                 .remove(&server_handle);
+            if let Some(entry) = entry {
+                entry.callbacks.close();
+            }
             Ok(())
         })
     }
@@ -436,17 +476,38 @@ unsafe impl Cleanup<crate::tagOPCSERVERSTATUS> for ServerStatusCleanup {
     }
 }
 
-#[windows_core::implement(IOPCItemMgt, IOPCSyncIO, IOPCGroupStateMgt)]
+#[windows_core::implement(
+    IOPCItemMgt,
+    IOPCSyncIO,
+    IOPCGroupStateMgt,
+    IConnectionPointContainer,
+    IConnectionPoint,
+    IOPCAsyncIO2
+)]
 struct DaGroupAdapter {
     service: Arc<dyn DaGroupService>,
-    state: Mutex<GroupState>,
+    state: Arc<Mutex<GroupState>>,
+    callbacks: Arc<callbacks::Callbacks>,
 }
 
 impl DaGroupAdapter {
+    #[cfg(test)]
     fn new(service: Arc<dyn DaGroupService>, state: GroupState) -> Self {
+        Self::with_callbacks(
+            service,
+            state,
+            callbacks::Callbacks::new(CallbackMonitor::new()),
+        )
+    }
+    fn with_callbacks(
+        service: Arc<dyn DaGroupService>,
+        state: GroupState,
+        callbacks: Arc<callbacks::Callbacks>,
+    ) -> Self {
         Self {
             service,
-            state: Mutex::new(state),
+            state: Arc::new(Mutex::new(state)),
+            callbacks,
         }
     }
 
@@ -483,6 +544,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
             }
             let items = decode_item_specs(unsafe { borrow_input(items, count)? })?;
             let values = self.service.add_items(&items)?;
+            self.callbacks.invalidate();
             write_item_results(values, count as usize, results, errors)
         })
     }
@@ -516,6 +578,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
             unsafe { initialize_output(errors)? };
             let handles = decode_handles(unsafe { borrow_input(handles, count)? });
             let values = self.service.remove_items(&handles)?;
+            self.callbacks.invalidate();
             write_unit_results(values, count as usize, errors)
         })
     }
@@ -531,6 +594,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
             unsafe { initialize_output(errors)? };
             let handles = decode_handles(unsafe { borrow_input(handles, count)? });
             let values = self.service.set_active(&handles, active.as_bool())?;
+            self.callbacks.invalidate();
             write_unit_results(values, count as usize, errors)
         })
     }
@@ -552,6 +616,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
                 .map(|(server, client)| (ServerItemHandle(*server), ClientItemHandle(*client)))
                 .collect();
             let values = self.service.set_client_handles(&pairs)?;
+            self.callbacks.invalidate();
             write_unit_results(values, count as usize, errors)
         })
     }
@@ -783,11 +848,18 @@ impl IOPCGroupStateMgt_Impl for DaGroupAdapter_Impl {
         locale: *const u32,
         client_handle: *const u32,
     ) -> AbiResult<()> {
-        serve(|| {
+        let mut unsupported = false;
+        let result = serve(|| {
             unsafe { initialize_output(revised_update_rate)? };
             let mut state = self.state.lock().map_err(|_| code_error(E_UNEXPECTED))?;
+            // SAFETY: optional scalar inputs read only when nonnull, before commit.
+            validate_profile(
+                unsafe { percent_deadband.as_ref().copied() }.unwrap_or(state.percent_deadband),
+                unsafe { locale.as_ref().copied() }.unwrap_or(state.locale),
+            )?;
             if let Some(value) = unsafe { requested_update_rate.as_ref() } {
-                state.update_rate = *value;
+                unsupported = *value < 10;
+                state.update_rate = (*value).max(10);
             }
             if let Some(value) = unsafe { active.as_ref() } {
                 state.active = value.as_bool();
@@ -805,8 +877,10 @@ impl IOPCGroupStateMgt_Impl for DaGroupAdapter_Impl {
                 state.client_handle = *value;
             }
             unsafe { revised_update_rate.write(state.update_rate) };
+            self.callbacks.invalidate();
             Ok(())
-        })
+        });
+        rate_result(result, unsupported)
     }
 
     fn SetName(&self, name: &PCWSTR) -> AbiResult<()> {
@@ -1353,6 +1427,13 @@ mod tests {
                 .collect())
         }
 
+        fn notification(
+            &self,
+            _: GroupState,
+            _: DataSource,
+        ) -> Result<Vec<ServerItemResult<ServerSample>>> {
+            Ok(Vec::new())
+        }
         fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>> {
             assert!(
                 !values.is_empty(),
@@ -1582,5 +1663,23 @@ mod tests {
             assert_eq!(error.code(), ErrorCode::OUT_OF_MEMORY);
             assert_eq!(counter.load(Ordering::Relaxed), u32::MAX);
         }
+    }
+}
+
+fn validate_profile(deadband: f32, locale: u32) -> Result<()> {
+    if !deadband.is_finite() || !(0.0..=100.0).contains(&deadband) || locale != 0 {
+        return Err(code_error(E_INVALIDARG));
+    }
+    if deadband != 0.0 {
+        return Err(code_error(HRESULT(0xc0040400_u32.cast_signed())));
+    }
+    Ok(())
+}
+// Preserve OPC positive rate status outside the service Error policy.
+fn rate_result(result: AbiResult<()>, unsupported: bool) -> AbiResult<()> {
+    if result.is_ok() && unsupported {
+        Err(AbiError::from_hresult(HRESULT(0x0004000d)))
+    } else {
+        result
     }
 }
