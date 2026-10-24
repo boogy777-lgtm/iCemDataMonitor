@@ -37,6 +37,53 @@ struct Frame {
     revision: u64,
     epoch: u64,
 }
+// The baseline describes delivered data, never merely sampled/queued data.
+// A candidate is bounded by validate_frame before entering this state.
+#[derive(Default)]
+struct PeriodicBaseline {
+    samples: Vec<ServerSample>,
+    group: Option<u32>,
+    pending: Option<Vec<ServerSample>>,
+}
+impl PeriodicBaseline {
+    fn changed(&mut self, samples: Vec<ServerSample>, group: u32) -> Vec<ServerSample> {
+        let changed = samples
+            .iter()
+            .enumerate()
+            .filter(|(i, s)| {
+                self.group != Some(group) || self.samples.get(*i).is_none_or(|p| !same_sample(p, s))
+            })
+            .map(|(_, s)| s.clone())
+            .collect::<Vec<_>>();
+        self.pending = if changed.is_empty() {
+            None
+        } else {
+            Some(samples)
+        };
+        changed
+    }
+    fn delivered(&mut self, frame: &Frame) {
+        match frame.kind {
+            Kind::Change => {
+                if let Some(samples) = self.pending.take() {
+                    self.samples = samples;
+                    self.group = Some(frame.group);
+                }
+            }
+            Kind::Refresh => {
+                self.samples = frame.samples.clone();
+                self.group = Some(frame.group);
+                self.pending = None;
+            }
+            Kind::Read | Kind::Cancel => {}
+        }
+    }
+    fn clear(&mut self) {
+        self.samples.clear();
+        self.group = None;
+        self.pending = None;
+    }
+}
 struct Sink {
     queue: Mutex<DeliveryQueue<Arc<Frame>>>,
     wake: Condvar,
@@ -392,9 +439,8 @@ fn worker(
         };
         lease.finish();
         let mut next = Instant::now();
-        let mut last: Vec<ServerSample> = Vec::new();
+        let mut baseline = PeriodicBaseline::default();
         let mut version = 0;
-        let mut last_group = None;
         while !sink.closed.load(Ordering::Acquire) {
             let frame = sink.queue.lock().map_err(|_| error(E_UNEXPECTED))?.pop();
             if let Some(frame) = frame {
@@ -404,11 +450,8 @@ fn worker(
                             || o.epoch.load(Ordering::Acquire) != frame.epoch
                     })
                 {
+                    baseline.pending = None;
                     continue;
-                }
-                if frame.kind == Kind::Refresh {
-                    last = frame.samples.clone();
-                    last_group = Some(frame.group);
                 }
                 lease.begin(Instant::now());
                 let called = invoke(
@@ -423,6 +466,7 @@ fn worker(
                     }
                     break;
                 }
+                baseline.delivered(&frame);
                 continue;
             }
             let Some(o) = owner.upgrade() else {
@@ -432,16 +476,14 @@ fn worker(
             let revision = o.revision.load(Ordering::Acquire);
             let group = state.lock().map_err(|_| error(E_UNEXPECTED))?.clone();
             if revision != version {
-                last.clear();
-                last_group = None;
+                baseline.clear();
                 next = Instant::now();
                 version = revision;
             }
             let now = Instant::now();
             if !group.active || !o.enabled.load(Ordering::Acquire) {
                 next = now + Duration::from_millis(10);
-                last.clear();
-                last_group = None;
+                baseline.clear();
             } else if now >= next {
                 let epoch = o.epoch.load(Ordering::Acquire);
                 lease.begin(Instant::now());
@@ -458,17 +500,7 @@ fn worker(
                     .filter_map(|s| s.result.ok())
                     .collect::<Vec<_>>();
                 validate_frame(&samples)?;
-                let changed = samples
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, s)| {
-                        last_group != Some(group.client_handle)
-                            || last.get(*i).is_none_or(|p| !same_sample(p, s))
-                    })
-                    .map(|(_, s)| s.clone())
-                    .collect::<Vec<_>>();
-                last = samples;
-                last_group = Some(group.client_handle);
+                let changed = baseline.changed(samples, group.client_handle);
                 next = now + Duration::from_millis(u64::from(group.update_rate.max(10)));
                 if !changed.is_empty() {
                     let mut q = sink.queue.lock().map_err(|_| error(E_UNEXPECTED))?;
@@ -793,6 +825,60 @@ mod tests {
         fn FindConnectionPoint(&self, _iid: *const GUID) -> AbiResult<IConnectionPoint> {
             Err(error(NO_CONNECTION))
         }
+    }
+    fn sample(value: u16, handle: u32) -> ServerSample {
+        ServerSample {
+            client_handle: ClientItemHandle(handle),
+            timestamp: Timestamp::from_ticks(7),
+            quality: 0xc0,
+            value: Value::U16(value),
+        }
+    }
+    fn frame(kind: Kind, samples: Vec<ServerSample>) -> Arc<Frame> {
+        Arc::new(Frame {
+            kind,
+            transaction: 7,
+            group: 1,
+            samples,
+            revision: 1,
+            epoch: 1,
+        })
+    }
+    #[test]
+    fn cancelled_refresh_cannot_commit_an_undelivered_periodic_baseline() {
+        let mut baseline = PeriodicBaseline::default();
+        let mut queue = DeliveryQueue::new();
+        let snapshot = vec![sample(7, 1), sample(8, 2)];
+        let changes = baseline.changed(snapshot.clone(), 1);
+        assert_eq!(changes.len(), 2);
+        queue.latest(frame(Kind::Change, changes)).unwrap();
+        // Deterministic interleaving: Refresh removes latest, then Cancel wins
+        // before its completion dequeue. Neither operation delivers data.
+        let id = queue.reserve().unwrap();
+        queue.clear_latest();
+        queue
+            .complete(id, frame(Kind::Refresh, snapshot.clone()))
+            .unwrap();
+        queue.cancel(id, frame(Kind::Cancel, Vec::new())).unwrap();
+        baseline.delivered(&queue.pop().unwrap());
+        assert!(queue.pop().is_none());
+        let changes = baseline.changed(snapshot.clone(), 1);
+        assert_eq!(
+            changes.len(),
+            2,
+            "unsent unchanged data must remain reportable"
+        );
+        let delivered = frame(Kind::Change, changes);
+        baseline.delivered(&delivered);
+        assert!(baseline.changed(snapshot, 1).is_empty());
+        // A changes-only frame must commit its complete candidate snapshot,
+        // preserving the unchanged item's baseline on the following poll.
+        let next = vec![sample(7, 1), sample(9, 2)];
+        let changes = baseline.changed(next.clone(), 1);
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].client_handle, ClientItemHandle(2));
+        baseline.delivered(&frame(Kind::Change, changes));
+        assert!(baseline.changed(next, 1).is_empty());
     }
     #[test]
     fn apartment_startup_failure_leaves_caller_rollback_owner() -> AbiResult<()> {

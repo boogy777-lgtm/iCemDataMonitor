@@ -529,8 +529,7 @@ impl<'apartment> DaGroup<'apartment> {
 }
 
 #[cfg(test)]
-#[forbid(unsafe_code)]
-mod tests {
+mod test_point {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use windows::Win32::System::Com::{IConnectionPoint_Impl, IEnumConnections};
@@ -568,14 +567,21 @@ mod tests {
             ))
         }
     }
+    pub(super) fn new(attempts: Arc<AtomicUsize>) -> IConnectionPoint {
+        RetryPoint { attempts }.into()
+    }
+}
+
+#[cfg(test)]
+#[forbid(unsafe_code)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     #[test]
     fn failed_unadvise_keeps_cookie_for_retry() -> Result<()> {
         let _apartment = ComApartment::mta()?;
         let attempts = Arc::new(AtomicUsize::new(0));
-        let point = RetryPoint {
-            attempts: attempts.clone(),
-        }
-        .into();
+        let point = super::test_point::new(attempts.clone());
         let mut subscription = DataSubscription {
             point,
             cookie: Some(17),

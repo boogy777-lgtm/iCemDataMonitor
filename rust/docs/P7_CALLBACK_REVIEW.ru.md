@@ -25,3 +25,15 @@ complete reversible `icem.patch` и неизменные original42 SHA256 сл�
 ## Результат и доказательства
 
 Проверки и окончательный вывод будут записаны после исправлений.
+
+## Дополнительный найденный ordering defect (до исправления)
+
+Class: baseline periodic delivery при Refresh2/Cancel2, не явный AsyncRead.
+Inv: baseline меняется только после успешной доставки; clear_latest + cancelled
+refresh не подавляют неизменившееся, но ещё не доставленное значение.
+N+1: local `PeriodicBaseline` в server/callbacks.rs; deterministic queue test
+проходит clear_latest/cancel и проверяет subsequent delivery без sleeps.
+
+5. HIGH: periodic sampling сдвигал baseline до dispatch. Refresh очищал latest и
+   увеличивал epoch, а Cancel заменял refresh на CancelComplete: ни один data frame
+   мог не дойти, но следующий unchanged sample уже считался доставленным.
