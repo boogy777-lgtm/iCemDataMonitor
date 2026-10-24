@@ -1,6 +1,7 @@
 # iCemDataMonitor: N+1-потребители существующих MMF-данных
 
-Проектное предложение, версия 1.6, 24 октября 2026.
+Проектное предложение, версия 1.7, 24 октября 2026.
+Версия 1.7 фиксирует решение пользователя: единый acquisition с периодом 200 мс (5 Гц) достаточен для всех N+1-потребителей. Частота больше не является открытым вопросом; число этапов остаётся восемь.
 Основание исследования: Rust main `4578ab57266b7d25aed82df41c6276597a270c1e`.
 Версия 1.6 исправляет семантику времени: Time & Date в registers 4–5 приходит из COM-потока; это не внутренняя метка MMF, не время acquisition и не общий timestamp LAN/RAW. Прежнее решение версии 1.4 назначить его общей меткой outgoing frame отозвано. Разделы 2, 4 и 12 разделяют COM time, метки записи зон и локальное время чтения. Карта MMF, writer и резерв header 49–56 не меняются.
 Версия 1.5: в этапы 2–4 включены правила владения буферами, сокращения копирований/аллокаций и измерений; раздел 13 задаёт условия автоматической и ручной SIMD-оптимизации. Число этапов реализации остаётся восемь. Изменение документа не включает реализацию оптимизаций.
@@ -117,7 +118,7 @@ Source MMF гарантирует mutex atomicity отдельной COM/LAN п�
 
 ## 5. Общий механизм публикации
 
-Acquisition владеет MMF reader, читает его по установленному расписанию и публикует `Arc<Snapshot>`. Под native mutex создаётся owned copy, decode выполняется после освобождения mutex. Последующие потребители разделяют данные через Arc вместо deep copy всего массива на каждого.
+Acquisition владеет MMF reader, читает его с единым установленным периодом 200 мс (5 Гц) и публикует `Arc<Snapshot>`. Этот период принят пользователем как достаточный для всех N+1-потребителей. Добавление адаптера, запрос клиента или изменение частоты выдачи не создаёт отдельного MMF polling и не меняет период acquisition. Потребители могут читать latest snapshot и выдавать данные со своей протокольной частотой; более частая выдача использует уже опубликованное состояние. Период acquisition не является гарантией end-to-end latency 200 мс: ожидание MMF mutex, обработка и доставка измеряются отдельно. Под native mutex создаётся owned copy, decode выполняется после освобождения mutex. Последующие потребители разделяют данные через Arc вместо deep copy всего массива на каждого.
 
 Latest-state cell хранит только последнее согласованное состояние. У неё один writer и read-only handles. Читатель забирает Arc под коротким lock, затем освобождает lock до преобразования, сети или COM. Уведомление об изменении может объединять промежуточные версии; чтение по timer тоже допустимо. Для первой версии достаточно существующих std sync primitives; новая lock-free библиотека без измерений не нужна.
 
@@ -186,8 +187,8 @@ OPC UA/DA используют канонические var… как стаби
 
 1. Зафиксировать существующий типизированный массив MMF: layout, имена var…, COM Time & Date, zone writer metadata и признаки обновления каждой зоны. Не менять source format. Подтвердить, что variable index и register address не смешиваются.
 2. Ввести один published snapshot и read-only handles. Проверить initial absence, coherent copy, retained data и bounded memory. По разделу 13 использовать Vec для действительно формируемых/рабочих буферов, сохранить подходящее непрерывное представление готовых данных и разделять готовый snapshot через Arc без deep copy на каждого потребителя. Измерить allocations/bytes на capture и число одновременно удерживаемых snapshots; заранее выделять ёмкость там, где размер известен.
-3. Выделить единственного acquisition owner; убрать source.snapshot из Web и consumer-specific ветвей main. Owned copy MMF выполняется под существующей native синхронизацией; decode и пакетная обработка — после её освобождения. Рабочие буферы не могут изменять опубликованные snapshots или переиспользовать их память при наличии читателей.
-4. Перевести Modbus/Web на общий snapshot. Сохранить mirror byte semantics; отдельно принять изменения cache age и timing относительно старого request-driven read. Снять Release baseline полного capture/decode/publication и задержек Modbus/Web; сначала уменьшить лишние чтения, копирования и аллокации. Автовекторизацию безопасных циклов проверить по generated code и benchmark. Ручной SIMD рассматривать только для измеренного горячего участка по критериям раздела 13; отсутствие доказанного выигрыша завершает этот этап без ручного SIMD.
+3. Выделить единственного acquisition owner с периодом 200 мс (5 Гц), общим для всех N+1-потребителей; убрать source.snapshot из Web и consumer-specific ветвей main. Owned copy MMF выполняется под существующей native синхронизацией; decode и пакетная обработка — после её освобождения. Рабочие буферы не могут изменять опубликованные snapshots или переиспользовать их память при наличии читателей.
+4. Перевести Modbus/Web на общий snapshot. Сохранить mirror byte semantics; сохранить принятый период acquisition 200 мс и проверить cache age и timing относительно старого request-driven read. Снять Release baseline полного capture/decode/publication и задержек Modbus/Web; сначала уменьшить лишние чтения, копирования и аллокации. Автовекторизацию безопасных циклов проверить по generated code и benchmark. Ручной SIMD рассматривать только для измеренного горячего участка по критериям раздела 13; отсутствие доказанного выигрыша завершает этот этап без ручного SIMD.
 5. Ввести ConsumerId/lifecycle registry и общий небольшой adapter harness. COM time и zone writer timestamps сохраняют исходный scope; локальное acquisition time используется для runtime/служебных задач. Harness проверяет независимое обновление LAN/RAW при замершем COM time.
 6. Добавить MQTT как первую проверку N+1: новый module+config+registration без правок reader, Modbus, Web.
 7. Добавить OPC UA, затем OPC DA sidecar; проверить типы, identity, quality/timestamps и реальные Windows clients.
@@ -199,11 +200,11 @@ OPC UA/DA используют канонические var… как стаби
 
 Class: независимые потребители текущего состояния одного типизированного MMF массива. Event log и управляющие записи в producer вне класса.
 
-Inv: один acquisition owner; исходные типы, var identity и MMF time сохраняются; optional dictionary не влияет на работоспособность; медленный consumer не удерживает reader; время данных не меняется от повторного чтения, reconnect или republish.
+Inv: один acquisition owner с периодом 200 мс, не зависящим от числа и частоты запросов потребителей; исходные типы, var identity и MMF time сохраняются; optional dictionary не влияет на работоспособность; медленный consumer не удерживает reader; время данных не меняется от повторного чтения, reconnect или republish.
 
 N+1: adapter module + typed configuration + composition registration. Нет новой protocol branch в source или существующих consumers. Общий harness проверяет start/fail/stop, source outage и slow client.
 
-Acceptance cases: COM/LAN identical-pair rewrite не обновляет zone time/counter; RAW identical line обновляет метаданные; повтор той же версии; reset counters/reconnect; нет первого snapshot; MMF read error; source stopped; различная частота adapters; broker offline; словарь отсутствует/меняет только подпись; FC06/16 не меняют source values; bounded queues при длительном disconnect.
+Acceptance cases: единое расписание acquisition 200 мс при разном числе и частоте потребителей; запросы adapters не вызывают дополнительные физические чтения MMF; медленный consumer не задерживает acquisition; COM/LAN identical-pair rewrite не обновляет zone time/counter; RAW identical line обновляет метаданные; повтор той же версии; reset counters/reconnect; нет первого snapshot; MMF read error; source stopped; различная частота adapters; broker offline; словарь отсутствует/меняет только подпись; FC06/16 не меняют source values; bounded queues при длительном disconnect.
 
 ## 11. Принятые упрощения
 
