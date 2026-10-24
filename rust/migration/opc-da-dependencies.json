@@ -12,15 +12,16 @@
     "DaServer",
     "ComApartment::mta",
     "ClassFactory",
-    "LocalClassRegistration"
+    "LocalClassRegistration",
+    "DaGroupService::read(owned GroupState, source, handles)"
   ],
-  "unsafe": "only unchanged upstream ABI/COM SDK and existing external windows family; application forbid unchanged",
+  "unsafe": "existing external ABI/COM unsafe retained; P7c1 delta adds no unsafe operation/ABI/allowance; new state helper/tests forbid unsafe; application forbid unchanged",
   "new_locked_external_packages": [
-    "opc_classic_abi 0.1.0 git",
-    "opc_classic_types 0.1.0 git",
-    "opc_classic_utils 0.4.0 git",
-    "opc_comn_bindings 0.4.0 git",
-    "opc_da_bindings 0.4.0 git",
+    "opc_classic_abi 0.1.0 local reviewed vendor",
+    "opc_classic_types 0.1.0 local reviewed vendor",
+    "opc_classic_utils 0.4.0 local reviewed vendor",
+    "opc_comn_bindings 0.4.0 local reviewed vendor",
+    "opc_da_bindings 0.4.0 local reviewed vendor",
     "windows-bindgen 0.66.0 registry"
   ],
   "windows_bindgen_license": "MIT OR Apache-2.0; build-only generator",
@@ -33,5 +34,7 @@
     "OPC Foundation metadata distribution terms acceptance",
     "DCOM and x86",
     "production packaging"
-  ]
+  ],
+  "source_mechanism": "reviewed minimal local external workspace: third-party/rust_opc; exact upstream SHA256 inputs + reversible icem.patch; verify.py",
+  "selected_sdk_msrv": "1.99.1 (patched selection; upstream declared 1.97 is not a compatibility claim)"
 }

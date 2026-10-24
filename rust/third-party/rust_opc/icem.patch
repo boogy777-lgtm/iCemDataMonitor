@@ -1,0 +1,385 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,27 +1,17 @@
+ [workspace]
+ resolver = "3"
+-members = [
+-  "opc_ae_bindings",
+-  "opc_classic_abi",
+-  "opc_classic_types",
+-  "opc_classic_utils",
+-  "opc_comn_bindings",
+-  "opc_da_bindings",
+-  "opc_hda_bindings",
+-]
++members = ["opc_classic_abi", "opc_classic_types", "opc_classic_utils", "opc_comn_bindings", "opc_da_bindings"]
+
+ [workspace.package]
+ edition = "2024"
+-rust-version = "1.97"
++rust-version = "1.99.1"
+
+ [workspace.dependencies]
+-opc_ae_bindings = { version = "0.4.0", path = "opc_ae_bindings" }
+ opc_classic_abi = { path = "opc_classic_abi" }
+ opc_classic_types = { version = "0.1.0", path = "opc_classic_types" }
+ opc_classic_utils = { version = "0.4.0", path = "opc_classic_utils" }
+ opc_comn_bindings = { version = "0.4.0", path = "opc_comn_bindings" }
+ opc_da_bindings = { version = "0.4.0", path = "opc_da_bindings" }
+-opc_hda_bindings = { version = "0.4.0", path = "opc_hda_bindings" }
+ windows = { version = "0.62.2", features = [
+   "Win32_Foundation",
+   "Win32_Graphics_Gdi",
+--- a/opc_classic_utils/src/server.rs
++++ b/opc_classic_utils/src/server.rs
+@@ -101,12 +101,12 @@
+             || {
+                 let update = if lock.as_bool() {
+                     self.server_locks
+-                        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
++                        .try_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+                             count.checked_add(1)
+                         })
+                 } else {
+                     self.server_locks
+-                        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
++                        .try_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+                             count.checked_sub(1)
+                         })
+                 };
+--- a/opc_comn_bindings/build.rs
++++ b/opc_comn_bindings/build.rs
+@@ -1,4 +1,5 @@
+-fn main() {
++fn main() -> Result<(), Box<dyn std::error::Error>> {
++    let output = format!("{}/bindings.rs", std::env::var("OUT_DIR")?);
+     println!("cargo:rerun-if-changed=build.rs");
+     println!("cargo:rerun-if-changed=.windows/winmd/OPCCOMN.winmd");
+
+@@ -7,7 +8,7 @@
+         ".windows/winmd/OPCCOMN.winmd",
+         "default",
+         "--out",
+-        "src/bindings.rs",
++        output.as_str(),
+         "--reference",
+         "windows,skip-root,Windows",
+         "--filter",
+@@ -15,4 +16,9 @@
+         "--flat",
+     ])
+     .unwrap();
++    std::fs::write(
++        format!("{}/bindings-module.rs", std::env::var("OUT_DIR")?),
++        format!("#[path = {output:?}] mod bindings;"),
++    )?;
++    Ok(())
+ }
+--- a/opc_comn_bindings/src/lib.rs
++++ b/opc_comn_bindings/src/lib.rs
+@@ -1,5 +1,5 @@
+ mod abi;
+-mod bindings;
++include!(concat!(env!("OUT_DIR"), "/bindings-module.rs"));
+ pub mod client;
+ pub mod server;
+
+--- a/opc_da_bindings/build.rs
++++ b/opc_da_bindings/build.rs
+@@ -1,4 +1,5 @@
+-fn main() {
++fn main() -> Result<(), Box<dyn std::error::Error>> {
++    let output = format!("{}/bindings.rs", std::env::var("OUT_DIR")?);
+     println!("cargo:rerun-if-changed=build.rs");
+     println!("cargo:rerun-if-changed=.windows/winmd/OPCDA.winmd");
+
+@@ -7,7 +8,7 @@
+         ".windows/winmd/OPCDA.winmd",
+         "default",
+         "--out",
+-        "src/bindings.rs",
++        output.as_str(),
+         "--reference",
+         "windows,skip-root,Windows",
+         "--filter",
+@@ -16,19 +17,26 @@
+     ])
+     .unwrap();
+
+-    remove_shallow_clones(&[
+-        "tagOPCITEMATTRIBUTES",
+-        "tagOPCITEMPROPERTY",
+-        "tagOPCITEMSTATE",
+-        "tagOPCITEMVQT",
+-    ]);
++    remove_shallow_clones(
++        &output,
++        &[
++            "tagOPCITEMATTRIBUTES",
++            "tagOPCITEMPROPERTY",
++            "tagOPCITEMSTATE",
++            "tagOPCITEMVQT",
++        ],
++    );
++    std::fs::write(
++        format!("{}/bindings-module.rs", std::env::var("OUT_DIR")?),
++        format!("#[path = {output:?}] mod bindings;"),
++    )?;
++    Ok(())
+ }
+
+ /// `windows-bindgen` currently emits `transmute_copy` Clone implementations for
+ /// explicitly laid-out structs containing `VARIANT`. A bitwise clone aliases the
+ /// BSTR/SAFEARRAY/interface owned by the variant and causes a double release.
+-fn remove_shallow_clones(type_names: &[&str]) {
+-    let path = "src/bindings.rs";
++fn remove_shallow_clones(path: &str, type_names: &[&str]) {
+     let mut source = std::fs::read_to_string(path).unwrap();
+
+     for type_name in type_names {
+--- a/opc_da_bindings/src/lib.rs
++++ b/opc_da_bindings/src/lib.rs
+@@ -1,5 +1,5 @@
+ mod abi;
+-mod bindings;
++include!(concat!(env!("OUT_DIR"), "/bindings-module.rs"));
+ pub mod client;
+ pub mod server;
+
+--- a/opc_da_bindings/src/server/mod.rs
++++ b/opc_da_bindings/src/server/mod.rs
+@@ -92,8 +92,12 @@
+         handles: &[(ServerItemHandle, ValueType)],
+     ) -> Result<Vec<ServerItemResult<()>>>;
+
++    /// Reads with one committed group-state snapshot. The adapter releases its
++    /// state lock before calling the service; concurrent SetState may commit
++    /// afterwards, but can never split the fields observed by this read.
+     fn read(
+         &self,
++        state: GroupState,
+         source: DataSource,
+         handles: &[ServerItemHandle],
+     ) -> Result<Vec<ServerItemResult<ServerSample>>>;
+@@ -445,6 +449,22 @@
+             state: Mutex::new(state),
+         }
+     }
++
++    #[forbid(unsafe_code)]
++    fn read_current_state(
++        &self,
++        source: DataSource,
++        handles: &[ServerItemHandle],
++    ) -> Result<Vec<ServerItemResult<ServerSample>>> {
++        // SetState holds the same mutex until all fields and revised-rate
++        // output have been committed. Release before invoking application code.
++        let state = self
++            .state
++            .lock()
++            .map_err(|_| code_error(E_UNEXPECTED))?
++            .clone();
++        self.service.read(state, source, handles)
++    }
+ }
+
+ #[allow(clippy::not_unsafe_ptr_arg_deref)]
+@@ -587,7 +607,7 @@
+                 return Err(code_error(E_INVALIDARG));
+             };
+             let handles = decode_handles(unsafe { borrow_input(handles, count)? });
+-            let returned = self.service.read(source, &handles)?;
++            let returned = self.read_current_state(source, &handles)?;
+             ensure_batch_len(returned.len(), count as usize)?;
+             let mut states = CoTaskMemArrayBuilder::new(count as usize, DropElements)?;
+             let mut item_errors = CoTaskMemArrayBuilder::new(count as usize, NoCleanup)?;
+@@ -985,7 +1005,7 @@
+
+ fn next_nonzero(counter: &AtomicU32) -> Result<u32> {
+     counter
+-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
++        .try_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+             if value == 0 {
+                 None
+             } else {
+@@ -1021,12 +1041,149 @@
+     use crate::client::{DaClient, GroupOptions, ServerState};
+     use windows::Win32::System::Variant::VT_DISPATCH;
+
++    // P7c1 adds no native operation: SetState is the existing generated safe
++    // implementation entrypoint; Read uses the existing safe COM client.
++    #[forbid(unsafe_code)]
++    mod coherent_state {
++        use super::*;
++
++        fn initial() -> GroupState {
++            GroupState {
++                update_rate: 100,
++                active: false,
++                name: "coherent".into(),
++                time_bias: 0,
++                percent_deadband: 0.0,
++                locale: 0,
++                client_handle: 100,
++                server_handle: 1,
++            }
++        }
++
++        fn set(adapter: &DaGroupAdapter_Impl, active: bool, rate: u32) -> AbiResult<u32> {
++            let mut revised = 0;
++            adapter.SetState(
++                &rate,
++                &mut revised,
++                &active.into(),
++                ptr::null(),
++                ptr::null(),
++                ptr::null(),
++                &rate,
++            )?;
++            Ok(revised)
++        }
++
++        #[test]
++        fn committed_state_reaches_com_read_and_failed_set_does_not_commit() -> Result<()> {
++            let _apartment = opc_classic_utils::ComApartment::mta()?;
++            let service = Arc::new(TestGroup::default());
++            let adapter =
++                windows_core::ComObject::new(DaGroupAdapter::new(service.clone(), initial()));
++            let server = DaServer::new(Arc::new(TestService {
++                group_handles: Arc::new(Mutex::new(Vec::new())),
++            }));
++            let client = crate::client::DaGroup::new(
++                server.inner.clone(),
++                adapter.to_interface(),
++                1,
++                false,
++                100,
++            );
++            client.read(DataSource::Cache, &[ServerItemHandle(10)])?;
++            assert_eq!(
++                set(&adapter, true, 250).map_err(crate::abi::from_abi_error)?,
++                250
++            );
++            client.read(DataSource::Cache, &[ServerItemHandle(10)])?;
++            let failed = adapter.SetState(
++                &900,
++                ptr::null_mut(),
++                &false.into(),
++                ptr::null(),
++                ptr::null(),
++                ptr::null(),
++                &900,
++            );
++            assert_eq!(failed.unwrap_err().code(), E_POINTER);
++            client.read(DataSource::Device, &[ServerItemHandle(10)])?;
++            assert_eq!(
++                set(&adapter, false, 500).map_err(crate::abi::from_abi_error)?,
++                500
++            );
++            client.read(DataSource::Cache, &[ServerItemHandle(10)])?;
++            let states = service.read_states.lock().unwrap();
++            let observed: Vec<_> = states
++                .iter()
++                .map(|s| (s.active, s.update_rate, s.client_handle))
++                .collect();
++            assert_eq!(
++                observed,
++                [
++                    (false, 100, 100),
++                    (true, 250, 250),
++                    (true, 250, 250),
++                    (false, 500, 500)
++                ]
++            );
++            assert!(
++                states
++                    .iter()
++                    .all(|s| s.server_handle == 1 && s.name == "coherent")
++            );
++            assert_eq!(client.state()?.update_rate, 500);
++            Ok(())
++        }
++
++        #[test]
++        fn concurrent_set_and_com_read_never_observe_torn_state() -> Result<()> {
++            let _apartment = opc_classic_utils::ComApartment::mta()?;
++            let service = Arc::new(TestGroup::default());
++            let adapter =
++                windows_core::ComObject::new(DaGroupAdapter::new(service.clone(), initial()));
++            let server = DaServer::new(Arc::new(TestService {
++                group_handles: Arc::new(Mutex::new(Vec::new())),
++            }));
++            let client = crate::client::DaGroup::new(
++                server.inner.clone(),
++                adapter.to_interface(),
++                1,
++                false,
++                100,
++            );
++            let barrier = Arc::new(std::sync::Barrier::new(2));
++            let writer_barrier = barrier.clone();
++            let writer = std::thread::spawn(move || {
++                writer_barrier.wait();
++                for i in 0..2000 {
++                    let active = i % 2 == 0;
++                    set(&adapter, active, if active { 250 } else { 100 }).unwrap();
++                    std::thread::yield_now();
++                }
++            });
++            barrier.wait();
++            for _ in 0..2000 {
++                client.read(DataSource::Cache, &[ServerItemHandle(10)])?;
++                std::thread::yield_now();
++            }
++            writer.join().unwrap();
++            let states = service.read_states.lock().unwrap();
++            assert_eq!(states.len(), 2000);
++            assert!(states.iter().all(|s| matches!(
++                (s.active, s.update_rate, s.client_handle),
++                (false, 100, 100) | (true, 250, 250)
++            )));
++            Ok(())
++        }
++    }
++
+     struct TestService {
+         group_handles: Arc<Mutex<Vec<(u32, bool)>>>,
+     }
+     #[derive(Default)]
+     struct TestGroup {
+         read_values: Vec<Value>,
++        read_states: Mutex<Vec<GroupState>>,
+     }
+     struct TestCommon;
+
+@@ -1170,9 +1327,14 @@
+
+         fn read(
+             &self,
++            state: GroupState,
+             _source: DataSource,
+             handles: &[ServerItemHandle],
+         ) -> Result<Vec<ServerItemResult<ServerSample>>> {
++            self.read_states
++                .lock()
++                .map_err(|_| Error::unexpected("test states poisoned"))?
++                .push(state);
+             Ok(handles
+                 .iter()
+                 .enumerate()
+@@ -1282,7 +1444,14 @@
+             client_handle: 0,
+             server_handle: 1,
+         };
+-        DaGroupAdapter::new(Arc::new(TestGroup { read_values }), state).into()
++        DaGroupAdapter::new(
++            Arc::new(TestGroup {
++                read_values,
++                ..Default::default()
++            }),
++            state,
++        )
++        .into()
+     }
+
+     fn test_group_io() -> IOPCSyncIO {

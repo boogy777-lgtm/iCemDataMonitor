@@ -21,6 +21,8 @@ COMMON_SCAFFOLD_INPUTS = (
     'rust/tools/Verify-DesktopMapping.ps1',
     'rust/tools/ci/cache_identity.py',
     'rust/tools/ci/cache_contract.py',
+    'rust/third-party/rust_opc/verify.py',
+    'rust/third-party/rust_opc/upstream-files.sha256.json',
 )
 DOWNLOAD_PATHS = ('registry/index', 'registry/cache', 'registry/src', 'git/db', 'git/checkouts')
 BUILD_PATH = 'rust/target/debug'

@@ -1,5 +1,9 @@
 # P7b — read-only OPC DA sidecar
 
+Текущий P7c1 снимает только coherent dynamic group-state blocker через локальное
+reviewed safe SDK extension (последний раздел). Исторические feasibility findings
+ниже описывают неизменённый upstream pin; callbacks остаются NEXT P7c2, P7 PARTIAL.
+
 Class: новый Windows COM local-server synchronous read profile; Host `opc_da_consumer`,
 shared `icem-opc-da-codec` и отдельный process `icem-opc-da-sidecar`. Legacy OPC toggle,
 MMF source и остальные adapters вне класса.
@@ -112,7 +116,7 @@ Sample quality: acquisition captured + capture/completion age<5s + produceractiv
 + validwriterclock →GOOD0xc0; inactive zone→BAD_OUT_OF_SERVICE0x1c;
 retained/failed/expired/unknownwriter→UNCERTAIN_LAST_USABLE0x44;
 service/reserve→UNCERTAIN0x40. CACHE item inactive→out-of-service; DEVICE ignores item-active, preserving
-source producer-active/age quality. Group-active limitations are listed below.
+source producer-active/age quality. P7c1 also gates CACHE by coherent current group-active; see below.
 Age = Host age + elapsed от sidecar Instant перед READY/предыдущим ACK.
 Этот credit выдан до Host sample; возраст консервативно включает idle, pipe
 write, decode и model-lock wait. После приёма возраст продолжает расти; Read
@@ -188,7 +192,7 @@ pre1601/overflow dates remain unknown/UNCERTAIN, with codec boundary tests.
 N+1: another timestamp field requires its own provenance/range conversion tests;
 canonical raw writer metadata is never repaired or normalized.
 
-### Findings and remaining safe SDK blockers
+### Findings and remaining safe SDK blockers (historical P7b, superseded by P7c1 below)
 
 P1 fixed: a blocked Host pipe write followed by receipt-after-decode could hide
 1..5s of transit and rejuvenate stale data. READY/the previous ACK now grants a
@@ -260,7 +264,7 @@ Routing/cache42/42 and `git diff --check` PASS. PowerShell is unavailable locall
 changed packaging contract must run in Windows CI. These checks do not close the
 remaining group-state/callback/COM client/MMF/hardware/release gates.
 
-## Повторная upstream feasibility-проверка (2026-10-24)
+## Повторная upstream feasibility-проверка (2026-10-24, до P7c1)
 
 Class: готовая safe DA server capability для coherent group state и owned COM
 callbacks; client callback receivers и ABI-only interface declarations вне класса.
@@ -362,3 +366,72 @@ application COM ABI или добавление unsafe в native crate не яв
 оно отсутствует. Нельзя объявить blocker снятым обновлением pin, polling private
 state, имитацией callback или уменьшением требований плана. Эта проверка doc-only;
 нового Windows runtime PASS или compile evidence она не добавляет.
+
+## P7c1 — coherent owned group state, 2026-10-24
+
+Class: синхронный group-state snapshot в SDK `DaGroupAdapter::read_current_state`
+и sidecar `Group::read`; callbacks и producer acquisition вне класса.
+Inv: один owned `GroupState` из существующего mutex на весь Read; CACHE требует
+active group+item, DEVICE сохраняет producer quality. SDK/client tests охраняют
+state tuples, failed SetState, CACHE/DEVICE и сохранение существующих limits.
+N+1: обязательный trait argument заставляет обновить каждый service implementation;
+P7c2 использует committed state, не протягивая OPC в core/reader/IPC.
+
+Dependency review до реализации: тот же exact upstream commit
+`da44a99265f9706618bbe506c98f714f2aa46f0b`, теперь deterministic external workspace
+`third-party/rust_opc`, явно excluded из application members. Выбраны только пять
+crates нужного DA closure: 42 upstream files, 415895 bytes, включая LICENSE,
+NOTICE и оба build-input winmd. MIT/отдельные OPC metadata terms, edition2024,
+features и registry dependency versions не меняются. Upstream MSRV1.97 сохранён
+в provenance; selected patch declares/tested exact1.99.1, без обещания older MSRV.
+Cargo.lock
+меняет только пять git source identities на reviewed local dependencies.
+`README.icem.md`, exact SHA256 manifest, reversible `icem.patch` и `verify.py`
+делают всю delta проверяемой без cache surgery, замены CARGO_HOME или upstream
+checkout. Build scripts пишут bindings/module wrapper только в OUT_DIR;
+tracked upstream bindings не изменяются build. Три deprecated atomic calls
+заменены на equivalent stable `try_update`, без подавления warnings.
+
+`DaGroupService::read` теперь обязательно получает owned `GroupState`. Новый
+helper `forbid(unsafe_code)` клонирует существующий mutex state и освобождает
+lock до application service. Это единственная linearization point group state
+для Read: concurrent SetState может завершиться до возврата Read, но не смешать
+old active с new rate/client handle. Existing SetState ABI/unsafe operations
+не изменены: revised output проверяется/обнуляется до lock, весь state меняется
+под одним lock, revised rate записывается до unlock; invalid output не commit.
+Read error не откатывает уже committed group state. В AddGroup используется
+тот же initial state. Item handles/client handles и resource leases не меняются.
+
+Sidecar CACHE теперь выдаёт BAD_OUT_OF_SERVICE при inactive group **или** item.
+DEVICE игнорирует оба subscription flags и сохраняет producer activity,
+retained/age/writer-clock quality. Update rate/client handle сохраняются SDK
+и видимы service в одном snapshot; rate не меняет acquisition200ms и не создаёт
+ещё не реализованные notifications. Codec, IPC clocks и MMF ownership неизменны.
+Новых unsafe operations, ABI definitions или native exception нет;
+application/shared `forbid` и ADR0001 не ослабляются.
+
+Windows tests: настоящий safe COM client AddGroup(false)/Read/GetState проверяет
+inactive CACHE, GOOD DEVICE и retained producer UNCERTAIN. Существующий item
+activity/capacity test остаётся. Новые SDK tests с `forbid(unsafe_code)` вызывают
+**existing generated SetState implementation entrypoint** с owned аргументами,
+затем настоящий safe COM client Read/GetState: false→true→false, revised rate,
+client handle, invalid revised-output без commit и 2000 concurrent SetState/Read
+с цельными допустимыми tuples. Это честно отличается от внешнего COM SetState:
+safe upstream client wrapper для него отсутствует. Новая unsafe COM операция
+ради теста не добавлена; actual external SetState runtime gate остаётся OPEN.
+
+Runtime Windows gate из application workspace:
+`cargo test -p opc_da_bindings -p icem-opc-da-sidecar --locked --offline`.
+Linux/cross-target compile не являются Windows runtime PASS. Callbacks,
+advise/unadvise, async completion/cancel, cross-apartment/process marshalled
+sinks и hung/reentrant callback handling остаются NEXT P7c2. Полный P7 не закрыт.
+
+Локальная проверка exact Rust1.99.1: `cargo fetch --locked`, затем locked/offline
+Linux Host26/26, codec5/5 и sidecar build PASS; Linux all-target clippy этих трёх
+packages с `-D warnings`, fmt-all/check и diff-check PASS. Windows x64 all-target
+check/clippy sidecar+codec+SDK с `-D warnings` PASS, включая новые SDK/client tests
+и прежний ignored process harness compilation. Runtime Windows здесь не запущен.
+Все 42 upstream SHA256 сверены непосредственно с exact git objects pin;
+reverse-patch verifier и metadata nonmember guard PASS. Принудительная повторная
+генерация обоих bindings через touched build scripts и actual Windows check
+сохранила SHA256 **каждого** vendor file, включая bindings и provenance.

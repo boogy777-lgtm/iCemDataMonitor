@@ -3684,7 +3684,6 @@ dependencies = [
 [[package]]
 name = "opc_classic_abi"
 version = "0.1.0"
-source = "git+https://github.com/Ronbb/rust_opc?rev=da44a99265f9706618bbe506c98f714f2aa46f0b#da44a99265f9706618bbe506c98f714f2aa46f0b"
 dependencies = [
  "windows-core 0.62.2",
 ]
@@ -3692,12 +3691,10 @@ dependencies = [
 [[package]]
 name = "opc_classic_types"
 version = "0.1.0"
-source = "git+https://github.com/Ronbb/rust_opc?rev=da44a99265f9706618bbe506c98f714f2aa46f0b#da44a99265f9706618bbe506c98f714f2aa46f0b"
 
 [[package]]
 name = "opc_classic_utils"
 version = "0.4.0"
-source = "git+https://github.com/Ronbb/rust_opc?rev=da44a99265f9706618bbe506c98f714f2aa46f0b#da44a99265f9706618bbe506c98f714f2aa46f0b"
 dependencies = [
  "opc_classic_types",
  "windows 0.62.2",
@@ -3707,7 +3704,6 @@ dependencies = [
 [[package]]
 name = "opc_comn_bindings"
 version = "0.4.0"
-source = "git+https://github.com/Ronbb/rust_opc?rev=da44a99265f9706618bbe506c98f714f2aa46f0b#da44a99265f9706618bbe506c98f714f2aa46f0b"
 dependencies = [
  "opc_classic_types",
  "opc_classic_utils",
@@ -3719,7 +3715,6 @@ dependencies = [
 [[package]]
 name = "opc_da_bindings"
 version = "0.4.0"
-source = "git+https://github.com/Ronbb/rust_opc?rev=da44a99265f9706618bbe506c98f714f2aa46f0b#da44a99265f9706618bbe506c98f714f2aa46f0b"
 dependencies = [
  "opc_classic_abi",
  "opc_classic_types",

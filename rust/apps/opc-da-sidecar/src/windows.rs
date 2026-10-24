@@ -7,8 +7,8 @@ use opc_classic_utils::{
 };
 use opc_da_bindings::{
     client::{
-        ClientItemHandle, DataSource, GroupOptions, ItemSpec, ServerItemHandle, ServerState,
-        ServerStatus,
+        ClientItemHandle, DataSource, GroupOptions, GroupState, ItemSpec, ServerItemHandle,
+        ServerState, ServerStatus,
     },
     server::{
         DaGroupService, DaServer, DaService, ServerAddedItem, ServerItemResult, ServerSample,
@@ -249,6 +249,7 @@ impl DaGroupService for Group {
     }
     fn read(
         &self,
+        state: GroupState,
         source: DataSource,
         handles: &[ServerItemHandle],
     ) -> Result<Vec<ServerItemResult<ServerSample>>> {
@@ -265,7 +266,7 @@ impl DaGroupService for Group {
                     Some(sample) => ServerItemResult::success(ServerSample {
                         client_handle: item.client,
                         timestamp: Timestamp::from_ticks(sample.filetime),
-                        quality: if source == DataSource::Cache && !item.active {
+                        quality: if source == DataSource::Cache && (!state.active || !item.active) {
                             0x1c
                         } else {
                             sample.quality
@@ -527,6 +528,59 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn inactive_com_group_gates_cache_but_preserves_device_producer_quality()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let snapshot = Arc::new(icem_bus::Snapshot::decode(include_bytes!(
+            "../../../tests/fixtures/bus-v5-minimal.bin"
+        ))?);
+        let model = Arc::new(Mutex::new(Some(Received::new(
+            Frame {
+                sequence: 1,
+                generation: 1,
+                capture_age: Some(std::time::Duration::ZERO),
+                completion_age: Some(std::time::Duration::ZERO),
+                status: 1,
+                snapshot: Some(snapshot.clone()),
+            },
+            Instant::now(),
+        ))));
+        let apartment = ComApartment::mta()?;
+        let server = DaServer::new(Service::new(model.clone(), Arc::new(Limits::new()))?);
+        let client = DaClient::from_object(&apartment, &server.object())?;
+        let mut options = GroupOptions::new("inactive");
+        options.active = false;
+        options.client_handle = 42;
+        options.requested_update_rate = 275;
+        let group = client.add_group(options)?;
+        let state = group.state()?;
+        assert!(!state.active);
+        assert_eq!((state.update_rate, state.client_handle), (275, 42));
+        let added = group.add_items(&[ItemSpec::new("var10", 7)])?;
+        let handle = added[0].as_ref().map_err(|e| e.to_string())?.server_handle;
+        let quality = |source| -> std::result::Result<u16, Box<dyn std::error::Error>> {
+            let values = group.read(source, &[handle])?;
+            Ok(values[0].as_ref().map_err(|e| e.to_string())?.quality)
+        };
+        assert_eq!(quality(DataSource::Cache)?, 0x1c);
+        assert_eq!(quality(DataSource::Device)?, 0xc0);
+        // DEVICE activity independence does not turn failed producer data GOOD.
+        *lock(&model)? = Some(Received::new(
+            Frame {
+                sequence: 2,
+                generation: 1,
+                capture_age: Some(std::time::Duration::ZERO),
+                completion_age: Some(std::time::Duration::ZERO),
+                status: 2,
+                snapshot: Some(snapshot),
+            },
+            Instant::now(),
+        ));
+        assert_eq!(quality(DataSource::Device)?, 0x44);
+        assert_eq!(quality(DataSource::Cache)?, 0x1c);
+        group.close(false)?;
+        Ok(())
+    }
+    #[test]
     fn validation_does_not_consume_capacity_and_device_ignores_item_activity()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let snapshot = Arc::new(icem_bus::Snapshot::decode(include_bytes!(
@@ -561,8 +615,29 @@ mod tests {
         assert_eq!(lock(&group.items)?.entries.len(), MAX_ITEMS);
         let handles = [ServerItemHandle::from_raw(1)];
         group.set_active(&handles, false)?;
-        let cache = group.read(DataSource::Cache, &handles)?;
-        let device = group.read(DataSource::Device, &handles)?;
+        let state = GroupState {
+            update_rate: 1000,
+            active: true,
+            name: "service-test".into(),
+            time_bias: 0,
+            percent_deadband: 0.0,
+            locale: 0,
+            client_handle: 0,
+            server_handle: 1,
+        };
+        let cache = group.read(state.clone(), DataSource::Cache, &handles)?;
+        let device = group.read(state.clone(), DataSource::Device, &handles)?;
+        assert_eq!(cache[0].result.as_ref().map(|s| s.quality), Ok(0x1c));
+        assert_eq!(device[0].result.as_ref().map(|s| s.quality), Ok(0xc0));
+        group.set_active(&handles, true)?;
+        let active = group.read(state.clone(), DataSource::Cache, &handles)?;
+        assert_eq!(active[0].result.as_ref().map(|s| s.quality), Ok(0xc0));
+        let inactive = GroupState {
+            active: false,
+            ..state
+        };
+        let cache = group.read(inactive.clone(), DataSource::Cache, &handles)?;
+        let device = group.read(inactive, DataSource::Device, &handles)?;
         assert_eq!(cache[0].result.as_ref().map(|s| s.quality), Ok(0x1c));
         assert_eq!(device[0].result.as_ref().map(|s| s.quality), Ok(0xc0));
         Ok(())

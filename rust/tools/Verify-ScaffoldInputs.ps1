@@ -9,6 +9,8 @@ try {
     & (Join-Path $PSScriptRoot 'Verify-Baseline.ps1') -RequireComplete:$RequireCompleteBaseline
     & (Join-Path $PSScriptRoot 'Test-DesktopMappingGuard.ps1')
     & (Join-Path $PSScriptRoot 'Verify-DesktopMapping.ps1')
+    & python (Join-Path $Root 'third-party/rust_opc/verify.py')
+    if ($LASTEXITCODE -ne 0) { throw 'OPC SDK provenance failed' }
     # Every workspace member must follow the pinned compiler/edition policy.
     # CI installs directly from rust-toolchain.toml, so no third version literal exists.
     $ToolchainText = Get-Content -Raw (Join-Path $Root 'rust-toolchain.toml')
