@@ -636,3 +636,22 @@ Provenance verifier, exact pin git-object SHA256 сверка и metadata nonmem
 guard PASS; SHA256 всех vendor files неизменны после forced bindings regeneration
 и actual Windows compile. Legacy/.NET/AddIn/proto/assets и другие adapters
 не изменены; cross-process/client/MMF/hardware/release gates остаются OPEN.
+
+## P7 SDK provenance: Windows newline follow-up
+
+Class: temporary upstream reconstruction (`third-party/rust_opc/verify.py`),
+не SDK runtime. Inv: exact upstream hashes/patch и mutation rejection сохраняются
+при Windows Git newline settings; `tools/ci/test_vendor.py` исполняет проверки.
+N+1: новые SDK deltas проходят тот же verifier и existing CI unittest discovery.
+
+Run `40098148886` падает до debug restore с SHA256 mismatch `Cargo.toml`.
+Исходный verifier на Linux воспроизвёл тот же отказ при `core.autocrlf=true`:
+внешняя temporary reconstruction теряет checkout `* -text`, reverse apply
+вставляет CRLF. Исправление задаёт command-scoped autocrlf=false/eol=lf и
+vendor attributes для обеих apply commands. Manifest/patch, SDK Rust sources,
+lockfile и application unsafe/lint policy неизменны. Причина, fixture и границы:
+[P7_SDK_CI](P7_SDK_CI.ru.md). Actual Windows CI/runtime остаются pending.
+
+Linux: CI unittest discovery44/44, verifier default и autocrlf=true/eol=crlf,
+cache command contract, exact1.99.1 fmt-all/check и diff-check PASS. Новых
+dependencies/unsafe, изменений frozen .NET/AddIn/proto или SDK patch/hashes нет.

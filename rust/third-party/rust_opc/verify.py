@@ -26,8 +26,14 @@ def main():
             shutil.copyfile(root / name, target)
         # Applying the exact reviewed delta in reverse must reconstruct every
         # original byte. No upstream checkout, network or Cargo cache edits.
-        subprocess.run(["git", "apply", "--reverse", "--check", str(root / "icem.patch")], cwd=temp, check=True)
-        subprocess.run(["git", "apply", "--reverse", str(root / "icem.patch")], cwd=temp, check=True)
+        # This scratch directory is outside the checkout's -text attributes.
+        # Pin conversion policy for these commands only, including global attrs;
+        # otherwise Windows autocrlf rewrites reconstructed LF inputs as CRLF.
+        apply = ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf",
+                 "-c", f"core.attributesFile={root / '.gitattributes'}",
+                 "apply", "--reverse"]
+        subprocess.run([*apply, "--check", str(root / "icem.patch")], cwd=temp, check=True)
+        subprocess.run([*apply, str(root / "icem.patch")], cwd=temp, check=True)
         reconstructed = {str(p.relative_to(temp)).replace("\\", "/") for p in temp.rglob("*") if p.is_file()}
         if reconstructed != set(originals):
             raise SystemExit("patch reconstructed undeclared or missing upstream inputs")
