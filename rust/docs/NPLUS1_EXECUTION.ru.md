@@ -12,7 +12,7 @@
 | 4. Modbus/Web и измерения | Реализован; Linux Release/perf отчёт ниже |
 | 5. Consumer lifecycle / harness | Реализован; scoped Linux checks ниже |
 | 6. MQTT | Реализован; Linux checks и real Mosquitto interop ниже; Windows OPEN |
-| 7. OPC UA / OPC DA sidecar | Не начат |
+| 7. OPC UA / OPC DA sidecar | P7a UA implemented, Linux SDK interop; P7b DA pending; Windows OPEN |
 | 8. Необязательный словарь | Не начат; подключается при практической потребности |
 
 ## Этап 1: контракт проекций
@@ -393,3 +393,39 @@ Dependency delta lock: только rumqttc0.25.1 (checksum зафиксиров
 Exact Rust1.99.1 Linux: Host19 tests PASS (12 прежних +7 новых), fmt/check/build/clippy all-targets с --locked --offline PASS. Wire tests покрывают QoS0/1/2, reconnect500 versions, failure без смены generation, fixed COM/zone clocks, absence/retained/expiry/raw bits/types, offline/slow ACK/unresponsive CONNACK/deadline,2000 pending replacements/max65535 layout и independent actual acquisition+Modbus.
 
 Отдельный real Mosquitto2.0.18 process smoke PASS: QoS2 subscribe, broker restart, generation1→3, retained generation20 после Host exit0/retain flag1, source clocks/bits не меняются. [Evidence](perf/nplus1-p6-mosquitto-linux.json), reusable `tools/acceptance/nplus1_mqtt_broker.py`. Linux fixture не заменяет Windows/MMF/hardware/security acceptance; эти gates OPEN.
+
+## Этап 7a: OPC UA — UA ready, DA pending
+
+Class: read-only OPC UA consumer в `apps/host/src/opcua_consumer/`; OPC DA,
+MMF acquisition, core publication и legacy protocols вне класса.
+Inv: stable typed NodeIds, atomic full-frame model, honest acquisition-only quality
+и неизвестное measurement time; actual SDK client/read/subscription tests + lifecycle checks.
+N+1: новый adapter получает только SnapshotReader и одну composition registration;
+strict optional config, existing publication/registry tests guard against source coupling.
+
+Dependency decision: FreeOpcUa async-opcua =0.19.0, MPL-2.0, `server` only
+(default features empty); `client` only for tests. Includes generated namespace;
+XML/JSON/discovery-registration disabled. Edition2021; upstream declares no MSRV,
+exact pinned Rust1.99.1 compile is the acceptance check. Published sources of
+server/types/crypto contain no unsafe blocks (comment mentioning unsafe excluded);
+transitive runtime/crypto libraries retain their own unsafe implementation boundary,
+application forbid(unsafe_code) remains unchanged. SDK sources are unmodified.
+Sources: https://github.com/FreeOpcUa/async-opcua/releases/tag/0.19.0 and
+https://docs.rs/crate/async-opcua/0.19.0; Cargo.lock to pin full resolved closure.
+
+Class (acceptance harness): independent asyncua client → real Host UA wire;
+synthetic source fixture не является Windows MMF/hardware стендом.
+Inv: external browse/types/bits/timestamps/read-only/subscription evidence; executable
+`tools/acceptance/nplus1_opcua_client.py`, owned subprocesses/temporary files only.
+N+1: новые server profiles/adapters требуют собственного client acceptance gate;
+existing gate не разрешает silent remote security assumptions.
+
+P7a implemented: optional strict `--opcua-config FILE`, real OPC UA SDK server,
+read-only typed stable identities, atomic complete Bus model, monotonic acquisition
+quality + explicit producer-active mapping, raw source time/metadata без придуманных
+SourceTimestamp. [Полный контракт/limits/audit](OPCUA_P7A.ru.md).
+Linux exact1.99.1: Host22/22, три новых UA tests (actual SDK TCP client) PASS;
+fmt/check/build/test/clippy all-targets `-D warnings`, locked/offline PASS.
+Independent Python asyncua2.1.0 client functional gate PASS (evidence linked above).
+Это P7 partial: UA ready в описанном loopback test profile; OPC DA sidecar7b pending,
+Windows clients/MMF/runtime/packaging/hardware и secure/remote profile OPEN.

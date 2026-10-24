@@ -13,6 +13,7 @@ name = "icem-host-dev"
 path = "src/main.rs"
 
 [dependencies]
+async-opcua = { version = "=0.19.0", default-features = false, features = ["server"] }
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 rumqttc = { version = "=0.25.1", default-features = false }
@@ -31,3 +32,6 @@ icem-web = { path = "../../crates/icem-web" }
 icem-windows-native = { path = "../../crates/icem-windows-native" }
 icem-desktop = { path = "../../crates/icem-desktop" }
 
+
+[dev-dependencies]
+async-opcua = { version = "=0.19.0", default-features = false, features = ["client", "server"] }

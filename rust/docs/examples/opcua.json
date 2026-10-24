@@ -1,0 +1,5 @@
+{
+  "bind": "127.0.0.1:4840",
+  "profile": "loopback-anonymous-none",
+  "update_interval_ms": 200
+}

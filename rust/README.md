@@ -230,3 +230,5 @@ Legacy structure и случайные ошибки не переносятся;
 проверяется отдельно от сравнения корректных входов с .NET. Windows acceptance открыт.
 
 MQTT N+1 state publisher (optional startup-only JSON config, real MQTT3.1.1 QoS0/1/2): [config, schema, lifecycle and acceptance](docs/MQTT_P6.ru.md). Linux real Mosquitto interop PASS; Windows/MMF acceptance remains OPEN.
+
+OPC UA optional read-only server (explicit loopback anonymous/None profile): [config/model/quality/lifecycle and checks](docs/OPCUA_P7A.ru.md). P7a Linux SDK client interop; P7b OPC DA and Windows acceptance OPEN.

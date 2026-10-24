@@ -1,0 +1,31 @@
+{
+  "result": "PASS",
+  "client": "asyncua 2.1.0",
+  "scope": "independent Python UA client -> real Rust UA server, Linux loopback fixture, no Windows/MMF/hardware claim",
+  "checks": {
+    "namespace": 2,
+    "browse_variables": 368,
+    "types": [
+      "UInt16",
+      "Int32",
+      "Float",
+      "Float",
+      "UInt16"
+    ],
+    "nan_bits": "7fc01234",
+    "negative_zero_bits": "80000000",
+    "source_timestamps": "absent",
+    "server_timestamps": "present",
+    "inactive_LAN": "BadOutOfService",
+    "active_RAW": "Good",
+    "read_only": true,
+    "subscription_initial_notification": true,
+    "COM_time": 1700000000,
+    "writer_ticks": {
+      "COM_writer_ticks": 638000000000000000,
+      "LAN_writer_ticks": 0,
+      "RAW_writer_ticks": 0
+    }
+  },
+  "host_exit": 0
+}
