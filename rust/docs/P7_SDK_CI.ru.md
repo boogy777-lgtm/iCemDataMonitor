@@ -48,6 +48,19 @@ plain reconstruction и проверяет успешную исправленн
 отказы при мутации source, patch и expected hash. Это Linux reproduction Git
 policy; actual Windows CI и SDK runtime должны быть выполнены отдельно.
 
+## Fixture после SDK additions
+
+Class: входы regression fixture `tools/ci/test_vendor.py`, не production verifier.
+Inv: старая CRLF-ошибка воспроизводится с полным текущим patch input set;
+source/patch/hash и добавленный SDK file mutation по-прежнему отвергаются.
+N+1: fixture копирует весь vendor без checkout attributes, поэтому следующий
+reviewed added file не требует отдельного списка или ослабления reverse patch.
+
+Run `40128249313` выявил omission: fixture копировал только42 upstream inputs,
+а новый reverse patch также удаляет4 reviewed SDK additions. Plain apply падал
+до проверки CRLF. Fixture теперь включает эти файлы и намеренно исключает только
+`.gitattributes`; actual verifier и original hashes не изменяются.
+
 Локально Linux: полный `unittest discover -s rust/tools/ci -p 'test_*.py'`
 44/44 PASS; standalone verifier с обычным config и с autocrlf=true/eol=crlf,
 `cache_contract.py`, exact Rust1.99.1 `cargo fmt --all --check` и

@@ -50,14 +50,12 @@ class VendorTests(unittest.TestCase):
         self.assertEqual(before, {p.relative_to(self.vendor): p.read_bytes()
                                   for p in self.vendor.rglob('*') if p.is_file()})
 
-        # Prove the original failure: attributes are lost on copying selected
-        # upstream inputs to a scratch directory and plain git apply emits CRLF.
+        # Prove the original failure with every current patch input, including
+        # reviewed SDK additions. Omit checkout attributes deliberately so plain
+        # git apply still demonstrates the original CRLF reconstruction defect.
         originals = json.loads((self.vendor / 'upstream-files.sha256.json').read_text())
         scratch = self.base / 'plain-reconstruction'
-        for name in originals:
-            target = scratch / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(self.vendor / name, target)
+        shutil.copytree(self.vendor, scratch, ignore=shutil.ignore_patterns('.gitattributes'))
         self.git('apply', '--reverse', str(self.vendor / 'icem.patch'), cwd=scratch)
         reconstructed = (scratch / 'Cargo.toml').read_bytes()
         self.assertIn(b'\r\n', reconstructed)
@@ -70,7 +68,8 @@ class VendorTests(unittest.TestCase):
                                   for p in self.vendor.rglob('*') if p.is_file()})
 
     def test_mutations_still_fail_closed(self):
-        for name in ('Cargo.toml', 'icem.patch', 'upstream-files.sha256.json'):
+        for name in ('Cargo.toml', 'icem.patch', 'upstream-files.sha256.json',
+                     'opc_da_bindings/src/server/callback_queue.rs'):
             with self.subTest(name=name):
                 path = self.vendor / name
                 original = path.read_bytes()
