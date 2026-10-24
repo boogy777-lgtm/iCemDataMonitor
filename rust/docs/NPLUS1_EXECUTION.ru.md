@@ -215,3 +215,77 @@ startup factory error. Linux process smoke с fixture, ephemeral Modbus port и
 имеют 0 cases; MMF/native guard и Windows runtime данным этапом не доказаны.
 Native reader остаётся прежним: owned copy под mutex, decode после release.
 Legacy/proto/assets/UI/dependencies/lockfile не менялись; push не выполнялся.
+
+## Этап 4: общие Modbus/Web handles (до реализации)
+
+Class: внутренний SnapshotRead и Host/Web read-only projections; writable Modbus
+mirror остаётся независимым массивом, wire/API и observation-time history вне изменений.
+Inv: один Arc payload на физический capture, никакого deep clone при replies/store/
+last-good; retained/error сохраняют last success, silence 5 s определяется checked
+monotonic age последнего attempt, не COM time. Pointer/isolation/expiry tests обязательны.
+N+1: новый consumer клонирует handle, а новый source обязан вернуть Arc-owned
+snapshot; тип поля и compile всех constructors охраняют полноту. Source acquisition,
+health 1 Hz и history не вызываются HTTP requests. SIMD/performance evidence отдельно.
+
+### Результат P4: ownership и policy
+
+`SnapshotRead.snapshot` теперь `Arc<Snapshot>`: Windows reader после decode создаёт
+один Arc и сохраняет clone handle в last_good; publication принимает этот же Arc.
+Retained, Host reply, Web Store::last и request projections клонируют handles, а
+не Box<[u16]>. Modbus по-прежнему копирует разрешённые диапазоны в отдельное
+writable зеркало; FC06/16 никогда не меняют publication или Windows cache.
+Fixture source хранит один immutable decoded Arc; это synthetic fixture, не
+измерение физического copy/decode. `publication_measure` продолжает decode + Arc
+на каждой итерации и подходит для отдельного allocator/capture kernel profile.
+
+Reader возвращает последний успешный shared payload также при очередном source
+Err, с LastGood; до первого success payload отсутствует. D09 Fresh-retained
+сохранён только в accepted Modbus/Web facade: core CaptureStatus остаётся Retained,
+generation/captured_at не обновляются. История по-прежнему берёт local observation
+UTC на независимом probe 1 Hz, а не COM int32 или time отдельного HTTP request.
+Source health/header cadence и bounded history 600 samples прежние. Requests
+вызывают observe (handle only), не probe и не physical source.
+
+Добавлена явная acquisition-silence policy: age последнего completed attempt
+через `Instant::checked_duration_since`, строго меньше 5 s — текущий attempt.
+На границе 5 s, при отсутствии completion или backwards clock facade LastGood;
+данные остаются доступны. Число 5 s выбрано равным существующему окну zone
+liveness (`icem-bus::ZoneMetadata::is_live`), но это отдельный локальный clock и
+оно не вычисляет producer liveness. Регулярный Retained/Err не обновляет время
+успешного capture; D09 нельзя использовать как универсальный freshness сигнал.
+Общий reader и дальше предоставляет capture_age/status для следующих adapters.
+
+Следствие принятого плана v1.7: frozen protobuf comment о read-at-call больше
+не описывает физический I/O Host; ответ берёт latest acquisition. При исправном
+5 Hz acquisition обычный age ограничен периодом ~200 ms плюс source/scheduling
+work; строгий максимум 200 ms не обещается. Wire shapes и observation timestamps
+сохранены; cache возраст имеет отдельную silence границу выше. Ни monotonic
+completion, ни local UTC не подменяют COM Time & Date или zone writer metadata.
+
+### Проверки P4
+
+На exact Rust 1.99.1 Linux PASS:
+
+- `cargo fmt --all --check`.
+- `cargo check --workspace --all-targets --locked --offline`.
+- `cargo build -p icem-host-app -p icem-core -p icem-web -p icem-protocols --locked --offline`.
+- `cargo test -p icem-core -p icem-host-app -p icem-web -p icem-protocols --locked --offline`:
+  core 6 integration + 2 compile-fail, Host 9, protocols 13, Web 34; 0 failures.
+- `cargo clippy -p icem-core -p icem-host-app -p icem-web -p icem-protocols -p icem-platform-windows --all-targets --locked --offline -- -D warnings`.
+- `git diff --check`.
+
+Meaningful regressions: 500 replies share pointer without driving source;
+error/retained retain last success, checked 5 s boundary/backwards age; independent
+LAN/RAW metadata/bits progress with fixed COM time; FC03/04 preserve NaN payload,
+infinity, negative zero and subnormal bits; FC06/16 mutate mirror only, stale hold
+and fresh overwrite intact. Existing exhaustive zone gate tests remain PASS.
+1000 Web observations preserve the exact Arc and do not advance health time,
+header stagnation counter or history. Slow held publication remains immutable.
+
+Initial test link encountered stale incremental `Arc<Snapshot>::deref` symbol;
+cleaning only affected packages fixed it, then all final gates above passed.
+Windows-only tests have 0 cases on Linux: actual MMF mutex/copy time, last-good
+runtime, hardware and Windows integration remain unproven. No dependencies,
+lockfile, unsafe policy, legacy, frozen proto, web assets or UI were changed.
+Release baseline/network/allocator/codegen measurements are recorded separately;
+this ownership change does not itself establish a numeric performance win.

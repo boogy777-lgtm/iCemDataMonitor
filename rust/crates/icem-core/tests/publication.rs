@@ -13,7 +13,7 @@ fn read(marker: u16, origin: SnapshotOrigin) -> SnapshotRead {
     let mut bytes = FIXTURE.to_vec();
     bytes[64..66].copy_from_slice(&marker.to_be_bytes());
     SnapshotRead {
-        snapshot: Snapshot::decode(&bytes).unwrap(),
+        snapshot: Arc::new(Snapshot::decode(&bytes).unwrap()),
         freshness: Freshness::Fresh,
         origin,
     }
@@ -236,4 +236,56 @@ fn concurrent_readers_observe_coherent_frames_with_one_writer() {
         thread.join().unwrap();
     }
     assert_eq!(reader.latest().unwrap().capture_generation, 1_000);
+}
+
+#[test]
+fn lan_and_raw_capture_progress_with_fixed_com_time() {
+    let (mut publisher, reader) = latest_snapshot();
+    let at = Instant::now();
+    let mut bytes = FIXTURE.to_vec();
+    let first = Arc::new(Snapshot::decode(&bytes).unwrap());
+    let fixed_com_time = first.unix_seconds().unwrap();
+    publisher
+        .publish(
+            Ok(SnapshotRead {
+                snapshot: Arc::clone(&first),
+                freshness: Freshness::Fresh,
+                origin: SnapshotOrigin::Captured,
+            }),
+            at,
+            at,
+            None,
+        )
+        .unwrap();
+    // Independent producer updates; Time & Date (4..5) and COM metadata stay fixed.
+    bytes[64 + 200 * 2..64 + 200 * 2 + 4].copy_from_slice(&[0x12, 0x34, 0x7f, 0xc0]);
+    bytes[64 + 400 * 2..64 + 400 * 2 + 4].copy_from_slice(&[0x56, 0x78, 0x80, 0x00]);
+    bytes[19..23].copy_from_slice(&100_u32.to_le_bytes());
+    bytes[28..32].copy_from_slice(&101_u32.to_le_bytes());
+    let next = Arc::new(Snapshot::decode(&bytes).unwrap());
+    let now = at + Duration::from_millis(200);
+    publisher
+        .publish(
+            Ok(SnapshotRead {
+                snapshot: Arc::clone(&next),
+                freshness: Freshness::Fresh,
+                origin: SnapshotOrigin::Captured,
+            }),
+            now,
+            now,
+            None,
+        )
+        .unwrap();
+    let a = reader.latest().unwrap();
+    let b = reader.clone().latest().unwrap();
+    let a = a.snapshot.unwrap();
+    let b = b.snapshot.unwrap();
+    assert!(Arc::ptr_eq(&next, &a));
+    assert!(Arc::ptr_eq(&a, &b));
+    assert_eq!(a.unix_seconds().unwrap(), fixed_com_time);
+    assert_eq!(a.zone(Zone::Com), first.zone(Zone::Com));
+    assert_ne!(a.pair_bits(200).unwrap(), first.pair_bits(200).unwrap());
+    assert_ne!(a.pair_bits(400).unwrap(), first.pair_bits(400).unwrap());
+    assert_ne!(a.zone(Zone::Lan), first.zone(Zone::Lan));
+    assert_ne!(a.zone(Zone::Raw), first.zone(Zone::Raw));
 }

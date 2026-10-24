@@ -10,6 +10,9 @@ use icem_core::{Freshness, SnapshotOrigin, SnapshotRead, SnapshotSource, SourceE
 use icem_web::BusReply;
 
 pub const PERIOD: Duration = Duration::from_millis(200);
+/// Local acquisition silence budget, matching the existing 5 s zone-liveness
+/// window numerically. It measures attempt completion, never producer UTC/COM.
+pub const SILENCE_LIMIT: Duration = Duration::from_secs(5);
 pub const STOP_DEADLINE: Duration = Duration::from_secs(2);
 
 /// Missed slots are skipped; a slow physical read cannot trigger catch-up reads.
@@ -55,18 +58,28 @@ impl Reader {
         Ok((state, *facts))
     }
 
-    // Temporary external-facade bridge. P4 replaces owned reply with Arc projection.
     pub fn reply(&self) -> Result<(BusReply, Option<SourceError>), String> {
+        self.reply_at(Instant::now())
+    }
+
+    fn reply_at(&self, now: Instant) -> Result<(BusReply, Option<SourceError>), String> {
         let (state, facts) = self.state()?;
-        let read = facts.freshness.and_then(|freshness| {
-            state.snapshot.map(|snapshot| SnapshotRead {
-                snapshot: (*snapshot).clone(),
-                freshness,
-                origin: match state.status {
-                    icem_core::publication::CaptureStatus::Captured => SnapshotOrigin::Captured,
-                    _ => SnapshotOrigin::Retained,
-                },
-            })
+        let current = state
+            .completed_at_monotonic
+            .and_then(|at| now.checked_duration_since(at))
+            .is_some_and(|age| age < SILENCE_LIMIT);
+        let freshness = if current {
+            facts.freshness.unwrap_or(Freshness::LastGood)
+        } else {
+            Freshness::LastGood
+        };
+        let read = state.snapshot.map(|snapshot| SnapshotRead {
+            snapshot,
+            freshness,
+            origin: match state.status {
+                icem_core::publication::CaptureStatus::Captured => SnapshotOrigin::Captured,
+                _ => SnapshotOrigin::Retained,
+            },
         });
         Ok((
             BusReply {
@@ -230,7 +243,7 @@ mod tests {
     const FIXTURE: &[u8] = include_bytes!("../../../tests/fixtures/bus-v5-minimal.bin");
     fn read(origin: SnapshotOrigin) -> SnapshotRead {
         SnapshotRead {
-            snapshot: icem_bus::Snapshot::decode(FIXTURE).unwrap(),
+            snapshot: Arc::new(icem_bus::Snapshot::decode(FIXTURE).unwrap()),
             freshness: Freshness::Fresh,
             origin,
         }
@@ -297,7 +310,8 @@ mod tests {
         let held = old.snapshot.clone().unwrap();
         let before = calls.load(Ordering::SeqCst);
         for _ in 0..500 {
-            let _ = reader.reply().unwrap();
+            let (reply, _) = reader.reply().unwrap();
+            assert!(Arc::ptr_eq(&held, &reply.read.unwrap().snapshot));
         }
         assert!(calls.load(Ordering::SeqCst) <= before + 1);
         until(|| {
@@ -308,6 +322,9 @@ mod tests {
         assert_eq!(failed.captured_at_monotonic, old.captured_at_monotonic);
         assert!(Arc::ptr_eq(&held, failed.snapshot.as_ref().unwrap()));
         assert!(failed.completed_at_monotonic > old.completed_at_monotonic);
+        let last_good = reader.reply().unwrap().0.read.unwrap();
+        assert_eq!(last_good.freshness, Freshness::LastGood);
+        assert!(Arc::ptr_eq(&held, &last_good.snapshot));
         owner.stop(Duration::from_secs(1)).unwrap();
         let stopped = calls.load(Ordering::SeqCst);
         thread::sleep(PERIOD);
@@ -341,6 +358,54 @@ mod tests {
         release.send(()).unwrap();
         owner.stop(Duration::from_secs(1)).unwrap();
         assert_eq!(owner.reader().state().unwrap().0.capture_generation, 1);
+    }
+    #[test]
+    fn silence_expiry_is_checked_monotonic_and_does_not_erase_last_success() {
+        let (mut publisher, publication) = latest_snapshot();
+        let at = Instant::now();
+        let captured = read(SnapshotOrigin::Captured);
+        let held = Arc::clone(&captured.snapshot);
+        publisher.publish(Ok(captured), at, at, None).unwrap();
+        let reader = Reader {
+            publication,
+            compatibility: Arc::new(Mutex::new(Compatibility {
+                freshness: Some(Freshness::Fresh),
+                is_open: true,
+                error: None,
+            })),
+        };
+        for (now, expected) in [
+            (at, Freshness::Fresh),
+            (
+                at + SILENCE_LIMIT - Duration::from_nanos(1),
+                Freshness::Fresh,
+            ),
+            (at + SILENCE_LIMIT, Freshness::LastGood),
+            (at - Duration::from_nanos(1), Freshness::LastGood),
+        ] {
+            let (reply, _) = reader.reply_at(now).unwrap();
+            let read = reply.read.unwrap();
+            assert_eq!(read.freshness, expected);
+            assert!(Arc::ptr_eq(&held, &read.snapshot));
+        }
+        // D09 Fresh retained is a facade fact, never a new core capture.
+        let later = at + SILENCE_LIMIT;
+        publisher
+            .publish(
+                Ok(read(SnapshotOrigin::Retained)),
+                later,
+                later,
+                Some(SourceError::InvalidLayout),
+            )
+            .unwrap();
+        let state = reader.state().unwrap().0;
+        assert_eq!(state.capture_generation, 1);
+        assert_eq!(state.capture_age(later), Some(SILENCE_LIMIT));
+        assert!(matches!(state.status, CaptureStatus::Retained { .. }));
+        assert!(Arc::ptr_eq(
+            &held,
+            &reader.reply_at(later).unwrap().0.read.unwrap().snapshot
+        ));
     }
     #[test]
     fn factory_failure_is_reported_at_startup() {

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Shared application ports; protocol parsing and Windows APIs live elsewhere.
 use icem_bus::Snapshot;
+use std::sync::Arc;
 
 pub mod publication;
 
@@ -18,7 +19,7 @@ pub enum SnapshotOrigin {
 
 #[derive(Debug, Clone)]
 pub struct SnapshotRead {
-    pub snapshot: Snapshot,
+    pub snapshot: Arc<Snapshot>,
     /// Compatibility with legacy Stale flag; D09 may retain data with Stale=false.
     pub freshness: Freshness,
     pub origin: SnapshotOrigin,

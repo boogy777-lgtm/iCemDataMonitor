@@ -218,7 +218,7 @@ fn options() -> Result<Options, String> {
         sniffer_adapter,
     })
 }
-struct Fixture(Snapshot);
+struct Fixture(Arc<Snapshot>);
 impl SnapshotSource for Fixture {
     fn snapshot(&mut self) -> Result<SnapshotRead, SourceError> {
         Ok(SnapshotRead {
@@ -238,7 +238,7 @@ fn source(input: Input) -> Result<Box<dyn SnapshotSource>, Box<dyn std::error::E
             }
             let mut bytes = Vec::new();
             file.take(maximum + 1).read_to_end(&mut bytes)?;
-            Ok(Box::new(Fixture(Snapshot::decode(&bytes)?)))
+            Ok(Box::new(Fixture(Arc::new(Snapshot::decode(&bytes)?))))
         }
         Input::Live { path, map, mutex } => live_source(path, map, mutex),
     }

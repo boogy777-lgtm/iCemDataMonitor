@@ -123,7 +123,7 @@ impl SnapshotPublisher {
                         .capture_generation
                         .checked_add(1)
                         .ok_or(PublicationError::GenerationExhausted)?;
-                    state.snapshot = Some(Arc::new(read.snapshot));
+                    state.snapshot = Some(read.snapshot);
                     state.capture_generation = generation;
                     state.captured_at_monotonic = Some(captured_at);
                     state.status = CaptureStatus::Captured;

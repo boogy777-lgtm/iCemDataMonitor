@@ -183,3 +183,44 @@ fn each_zone_mirrors_exact_words_and_preserves_other_zones()
     }
     Ok(())
 }
+
+#[test]
+fn shared_raw_float_bits_and_writes_keep_source_isolated() -> Result<(), Box<dyn std::error::Error>>
+{
+    use std::sync::Arc;
+    let mut bytes = include_bytes!("../../../../tests/fixtures/bus-v5-minimal.bin").to_vec();
+    for offset in [18, 27, 36] {
+        bytes[offset] = 1;
+    }
+    let raw = [0x7fc1_2345_u32, 0xff80_0000, 0x8000_0000, 0x0000_0001];
+    for (address, bits) in [8_usize, 200, 400, 402].into_iter().zip(raw) {
+        bytes[64 + address * 2..66 + address * 2].copy_from_slice(&(bits as u16).to_be_bytes());
+        bytes[66 + address * 2..68 + address * 2]
+            .copy_from_slice(&((bits >> 16) as u16).to_be_bytes());
+    }
+    let source = Arc::new(Snapshot::decode(&bytes)?);
+    let held = Arc::clone(&source);
+    let mut bank = RegisterBank::new(650).map_err(|e| format!("{e:?}"))?;
+    bank.tick(MirrorInput::Fresh(&source));
+    for (address, bits) in [8_u16, 200, 400, 402].into_iter().zip(raw) {
+        let [hi, lo] = address.to_be_bytes();
+        for function in [3, 4] {
+            let mut expected = vec![1, function, 4];
+            expected.extend_from_slice(&(bits as u16).to_be_bytes());
+            expected.extend_from_slice(&((bits >> 16) as u16).to_be_bytes());
+            assert_eq!(bank.process(&[1, function, hi, lo, 0, 2]), expected);
+        }
+    }
+    bank.process(&[1, 6, 0, 8, 0xab, 0xcd]);
+    bank.process(&[1, 16, 0, 200, 0, 2, 4, 0xbe, 0xef, 0xca, 0xfe]);
+    assert_eq!(source.pair_bits(8)?, raw[0]);
+    assert_eq!(held.pair_bits(200)?, raw[1]);
+    assert!(Arc::ptr_eq(&source, &held));
+    bank.tick(MirrorInput::LastGood(&source));
+    assert_eq!(bank.words()[8], 0xabcd);
+    assert_eq!(bank.words()[200], 0xbeef);
+    bank.tick(MirrorInput::Fresh(&source));
+    assert_eq!(bank.words()[8], raw[0] as u16);
+    assert_eq!(bank.words()[200], raw[1] as u16);
+    Ok(())
+}

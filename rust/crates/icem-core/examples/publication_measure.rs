@@ -28,7 +28,7 @@ fn main() -> Result<(), String> {
         publisher
             .publish(
                 Ok(SnapshotRead {
-                    snapshot,
+                    snapshot: Arc::new(snapshot),
                     freshness: Freshness::Fresh,
                     origin: SnapshotOrigin::Captured,
                 }),
