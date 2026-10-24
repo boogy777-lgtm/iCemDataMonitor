@@ -435,3 +435,59 @@ check/clippy sidecar+codec+SDK с `-D warnings` PASS, включая новые 
 reverse-patch verifier и metadata nonmember guard PASS. Принудительная повторная
 генерация обоих bindings через touched build scripts и actual Windows check
 сохранила SHA256 **каждого** vendor file, включая bindings и provenance.
+
+## P7c2 current draft — real callbacks implemented, review/runtime gates OPEN
+
+Class: read-only DA2 callback/async SDK boundary on existing group identity; source
+MMF/core/acquisition and full DA3/browse outside scope. Inv: owned bounded snapshots,
+GIT ownership, callbacks outside locks, pure queue/health and actual Windows COM
+client tests. N+1: mandatory service notification, exhaustive event kind, explicit
+four-file SDK provenance allowlist. ADR0019 records accepted implementation design;
+native independent review is still required before adoption. P7c1 limitations above
+are historical; P7 remains PARTIAL.
+
+Group now implements CPC/CP/AsyncIO2 on the same COM identity. Real native
+OnDataChange/OnReadComplete/OnCancelComplete use current owned sidecar model, no MMF
+read on callback. F32/F64 comparison uses bits; timestamp-only change is not an
+exception, delivered writer FILETIME and monotonic source age are preserved. Activity,
+client handles and revised rate are committed snapshots; revision read before state
+snapshot plus dispatch generation gate prevents stale periodic delivery. Acquisition
+stays200ms. Rate minimum10ms returns OPC_S_UNSUPPORTEDRATE for smaller requests,
+bypassing generic Error's deliberate rejection of arbitrary positive status codes.
+
+Advise registers in caller GIT, worker initializes MTA and retrieves its own proxy;
+only cookies/owned state cross threads. CP/container identity is tested. Unadvise/
+RemoveGroup close delivery without waiting for in-flight; refs and global worker
+charge survive until actual exit. Foreign invoke/Release/revoke outside all locks,
+health includes retired hung workers. Safe client subscription has explicit close;
+reentrant borrowed commands cannot export native group/object references.
+
+Bounds:32groups/process,4096items/batch,4sinks/group,128workers including retired,
+32async/group,1latest slot+32reserved completions/sink,1in-flight. Arc frames<=512KiB
+fan out without per-sink deep copy. Requests retain frames until ALL live sinks dequeue
+completion; pending worst case512MiB across32groups, with bounded additional baseline/
+in-flight/native buffers and256KiB stacks. Atomic fanout reservation rolls back before
+failure. Close ends connection delivery; in-flight may finish. Failed COM sink retires.
+
+Read DEVICE ignores activity; early failed items excluded, all-failed no completion.
+Refresh2 inactive group/all inactive=>E_FAIL, refresh invalidates stale periodic frames
+without moving timer. Set/GetEnable without sink=>CONNECT_E_NOCONNECTION; enable only
+affects transaction0. Late/repeated cancel=>E_FAIL, successful queued cancel produces
+real native OnCancelComplete. Async Write early BADRIGHTS, no fake completion.
+Locale0/deadband0 only; unsupported settings reject before commit. Enumerators
+E_NOTIMPL, arrays/byte arrays, browse/full DA3 outside profile. Primary spec sections
+and native operations are listed in ADR0019.
+
+Independent safe application watchdog checks every25ms; busy callback/foreign teardown
+>=2s or failed SDK health terminates own sidecar with exit70 even at Host interval60000
+or idle IPC. Generic SDK never exits process or joins foreign callback. Existing parent
+own-child kill/reap boundary isolates the rest of Host.
+
+Prepared runtime checks: two sinks native U16/I32/F32 NaN/exact FILETIME/retained10s
+quality, inactive/reactivation, item/client handles, rate/profile rollback/reconnect,
+AsyncRead/Write/Refresh/cancel,32-request two-blocked-sink capacity, fifth-sink cap and
+4096-item real callback, reentrant COM Unadvise+RemoveGroup, real hung callback child
+then Unadvise+60s idle requiring exit70<=6s. Pure queue race/health execute on Linux.
+Opt-in process harness now includes actual callbacks/refresh, remains ignored until
+matching proxy/stub gate. Neither compiled tests nor in-process tests prove external
+cross-apartment/process acceptance. Root separately owns proxy/stub CI investigation.

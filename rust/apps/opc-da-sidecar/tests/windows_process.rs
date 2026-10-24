@@ -22,8 +22,8 @@ impl Drop for OwnedChild {
 }
 #[test]
 #[ignore = "requires real Windows COM and matching installed OPC Foundation proxy/stubs"]
-fn actual_cross_process_class_factory_group_and_sync_read() -> Result<(), Box<dyn std::error::Error>>
-{
+fn actual_cross_process_class_factory_group_read_and_callbacks()
+-> Result<(), Box<dyn std::error::Error>> {
     let mut process = Command::new(env!("CARGO_BIN_EXE_icem-opc-da-sidecar"))
         .arg("--ipc-v1")
         .stdin(Stdio::piped())
@@ -113,6 +113,25 @@ fn actual_cross_process_class_factory_group_and_sync_read() -> Result<(), Box<dy
             value: Value::U16(999),
         }])?;
         assert!(write[0].is_err());
+        let (send, receive) = std::sync::mpsc::sync_channel(8);
+        let mut subscription = group.subscribe(Arc::new(move |event| {
+            let _ = send.try_send(event);
+        }))?;
+        let event = receive.recv_timeout(Duration::from_secs(2))?;
+        assert_eq!(
+            event.kind,
+            opc_da_bindings::client::DataEventKind::DataChange
+        );
+        assert_eq!(event.items.len(), 5);
+        assert!(matches!(event.items[2].value,Value::F32(v)if v.to_bits()==0x7fc01234));
+        group.set_enable(false)?;
+        group.refresh(DataSource::Device, 500)?;
+        assert_eq!(
+            receive.recv_timeout(Duration::from_secs(2))?.transaction,
+            500
+        );
+        subscription.close()?;
+        drop(subscription);
         group.close(false)?;
         Ok(())
     })();

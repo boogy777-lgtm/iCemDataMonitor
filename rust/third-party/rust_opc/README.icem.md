@@ -59,5 +59,24 @@ P7c2 draft checkpoint (ADR0019): explicitly ours server/callbacks.rs implements
 group CPC/CP/AsyncIO2 and GIT-owned bounded dispatch, with safe application25ms
 health watchdog. Pure callback_queue.rs/callback_health.rs are owned safe engines.
 New files are explicitly allowlisted and included in complete reversible patch.
-No application unsafe/policy/dependency changes. Native independent review, client
-acceptance implementation and Windows runtime are pending; full P7 remains PARTIAL.
+No application unsafe/policy/dependency changes. Safe client owned events/reentrant commands and actual COM acceptance tests are now
+implemented in client/callbacks.rs and sidecar windows/callback_tests.rs. Native
+independent review and Windows runtime are pending; full P7 remains PARTIAL.
+
+
+P7c2 final draft profile: mandatory owned notification, same-identity CPC/CP/AsyncIO2,
+GIT registrations in Advise caller apartment and MTA worker proxy retrieval. Only
+cookies/owned frames cross threads. All4 additions (server queue/health/callbacks,
+client callbacks) are explicit in verify.py. Arc frames persist through all live-sink
+completion dequeue; retired workers remain in128-process budget/health until exit.
+Callbacks and foreign Release/revoke happen outside locks and are health-monitored.
+The safe reentrant facade has no native object/group accessor and cannot export
+callback-apartment proxies. Safe application watchdog checks25ms/2s, including idle
+IPC, and owns exit70; generic SDK never exits the process. No app unsafe added.
+Limits:32groups,4096items,4sinks,32async/group,512KiB/frame,256KiB stacks, periodic
+latest1 separate from32reserved completions. Arrays/byte arrays, browse/full DA3 and
+enumerators outside profile. Rate minimum10ms, locale0/deadband0, validated before
+commit. Source acquisition200ms, exact native bits/FILETIME/age remain unchanged.
+Pure Linux queue/health tests and prepared actual safe COM client/process tests are
+not a claim of Windows runtime or cross-process proxy/stub acceptance. MIT/NOTICE,
+original42 hashes and exact compiler1.99.1 unchanged; no dependency/lockfile changes.

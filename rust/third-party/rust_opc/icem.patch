@@ -2297,7 +2297,46 @@
      }
      struct TestCommon;
 
-@@ -1170,9 +1401,14 @@
+@@ -1046,6 +1277,38 @@
+         let returned: IUnknown = test_group_io().cast().unwrap();
+         output.write(Some(returned)).unwrap();
+         assert!(slot.is_some());
++    }
++
++    #[test]
++    fn connection_point_and_container_have_group_identity() -> Result<()> {
++        let apartment = opc_classic_utils::ComApartment::mta()?;
++        let server = DaServer::new(Arc::new(TestService {
++            group_handles: Arc::new(Mutex::new(Vec::new())),
++        }));
++        let client = DaClient::from_object(&apartment, &server.object())?;
++        let group = client.add_group(GroupOptions::new("identity"))?;
++        let identity: IUnknown = crate::abi::interface_from_object(&group.object())?;
++        let container: IConnectionPointContainer =
++            identity.cast().map_err(crate::abi::from_abi_error)?;
++        // SAFETY: apartment-local typed container and exact outgoing callback IID.
++        let point = unsafe { container.FindConnectionPoint(&crate::IOPCDataCallback::IID) }
++            .map_err(crate::abi::from_abi_error)?;
++        // SAFETY: generated owned output on live apartment-local point.
++        let returned =
++            unsafe { point.GetConnectionPointContainer() }.map_err(crate::abi::from_abi_error)?;
++        assert_eq!(
++            returned
++                .cast::<IUnknown>()
++                .map_err(crate::abi::from_abi_error)?,
++            identity
++        );
++        assert_eq!(
++            point
++                .cast::<IUnknown>()
++                .map_err(crate::abi::from_abi_error)?,
++            identity
++        );
++        Ok(())
+     }
+
+     impl CommonService for TestCommon {
+@@ -1170,9 +1433,14 @@
 
          fn read(
              &self,
@@ -2312,7 +2351,7 @@
              Ok(handles
                  .iter()
                  .enumerate()
-@@ -1191,6 +1427,13 @@
+@@ -1191,6 +1459,13 @@
                  .collect())
          }
 
@@ -2326,7 +2365,7 @@
          fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>> {
              assert!(
                  !values.is_empty(),
-@@ -1282,7 +1525,14 @@
+@@ -1282,7 +1557,14 @@
              client_handle: 0,
              server_handle: 1,
          };
@@ -2342,7 +2381,7 @@
      }
 
      fn test_group_io() -> IOPCSyncIO {
-@@ -1415,3 +1665,21 @@
+@@ -1415,3 +1697,21 @@
          }
      }
  }

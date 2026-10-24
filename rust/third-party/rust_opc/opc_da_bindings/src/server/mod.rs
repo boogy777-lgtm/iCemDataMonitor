@@ -1279,6 +1279,38 @@ mod tests {
         assert!(slot.is_some());
     }
 
+    #[test]
+    fn connection_point_and_container_have_group_identity() -> Result<()> {
+        let apartment = opc_classic_utils::ComApartment::mta()?;
+        let server = DaServer::new(Arc::new(TestService {
+            group_handles: Arc::new(Mutex::new(Vec::new())),
+        }));
+        let client = DaClient::from_object(&apartment, &server.object())?;
+        let group = client.add_group(GroupOptions::new("identity"))?;
+        let identity: IUnknown = crate::abi::interface_from_object(&group.object())?;
+        let container: IConnectionPointContainer =
+            identity.cast().map_err(crate::abi::from_abi_error)?;
+        // SAFETY: apartment-local typed container and exact outgoing callback IID.
+        let point = unsafe { container.FindConnectionPoint(&crate::IOPCDataCallback::IID) }
+            .map_err(crate::abi::from_abi_error)?;
+        // SAFETY: generated owned output on live apartment-local point.
+        let returned =
+            unsafe { point.GetConnectionPointContainer() }.map_err(crate::abi::from_abi_error)?;
+        assert_eq!(
+            returned
+                .cast::<IUnknown>()
+                .map_err(crate::abi::from_abi_error)?,
+            identity
+        );
+        assert_eq!(
+            point
+                .cast::<IUnknown>()
+                .map_err(crate::abi::from_abi_error)?,
+            identity
+        );
+        Ok(())
+    }
+
     impl CommonService for TestCommon {
         fn set_locale(&self, _locale: u32) -> Result<()> {
             Ok(())

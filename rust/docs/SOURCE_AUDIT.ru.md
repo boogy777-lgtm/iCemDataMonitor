@@ -818,3 +818,16 @@ passed. Selected UI 49 passed / 6 failed with observed Linux HTTP 501 Com0Com re
 no verified-baseline claim is made. Independent review and exact-head Windows CI
 remain pending at this checkpoint. See docs/LEGACY_REFACTORING_C10.ru.md for scope
 and bounded evidence; actual CI verdict is recorded in PR39.
+
+### P7c2 external SDK callback delta, 2026-10-24
+
+Class: read-only DA2 callback/async native SDK adapter, not application COM ABI or
+MMF/acquisition. Inv: ADR0019 ownership/bounds/health and executable reverse patch;
+N+1: mandatory notification and four explicit SDK additions. Pin da44a992 unchanged,
+42 original SHA256 inputs preserved, MIT/NOTICE and exact MSRV1.99.1 unchanged.
+No dependency or lockfile change. New native calls visibly ours with SAFETY comments,
+no handwritten vtable/transmute/unsafe Send/Sync. App/shared forbid and ADR0001 remain.
+Callbacks use GIT cookie ownership and owned current model, independent safe app
+watchdog owns process policy. Safe reentrant facade exports owned results only.
+Independent native safety review and exact-head Windows runtime/proxy evidence remain
+open; cross-target compile is not runtime PASS. See ADR0019 and OPCDA_P7B P7c2.
