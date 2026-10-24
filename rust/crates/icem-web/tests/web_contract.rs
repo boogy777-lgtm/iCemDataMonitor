@@ -23,7 +23,7 @@ fn image() -> Vec<u8> {
 fn reply(bytes: &[u8], freshness: Freshness) -> Result<BusReply, Box<dyn std::error::Error>> {
     Ok(BusReply {
         read: Some(SnapshotRead {
-            snapshot: Snapshot::decode(bytes)?,
+            snapshot: Arc::new(Snapshot::decode(bytes)?),
             freshness,
             origin: SnapshotOrigin::Captured,
         }),

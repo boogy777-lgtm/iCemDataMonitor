@@ -1,0 +1,15 @@
+[package]
+name = "icem-opc-da-sidecar"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+[lints]
+workspace = true
+[dependencies]
+icem-opc-da-codec = { path = "../../crates/icem-opc-da-codec" }
+icem-bus = { path = "../../crates/icem-bus" }
+[target.'cfg(windows)'.dependencies]
+opc_da_bindings = { git = "https://github.com/Ronbb/rust_opc", rev = "da44a99265f9706618bbe506c98f714f2aa46f0b" }
+opc_classic_utils = { git = "https://github.com/Ronbb/rust_opc", rev = "da44a99265f9706618bbe506c98f714f2aa46f0b" }
+opc_classic_types = { git = "https://github.com/Ronbb/rust_opc", rev = "da44a99265f9706618bbe506c98f714f2aa46f0b" }

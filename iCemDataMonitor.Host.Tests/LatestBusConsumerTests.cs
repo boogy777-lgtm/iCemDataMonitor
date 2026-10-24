@@ -125,7 +125,8 @@ public sealed class LatestBusConsumerTests
             await owner.StartAsync(CancellationToken.None);
             Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
             using var disposing = new ManualResetEventSlim();
-            disposal = Task.Run(() => { disposing.Set(); provider.Dispose(); });
+            disposal = Task.Factory.StartNew(() => { disposing.Set(); provider.Dispose(); },
+                CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             Assert.True(disposing.Wait(TimeSpan.FromSeconds(5)));
             Assert.False(disposal.IsCompleted);
             Assert.False(source.Disposed);

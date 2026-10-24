@@ -15,7 +15,7 @@ pub struct WindowsBusReader {
     mapping: Option<Mapping>,
     mutex: Option<NamedMutex>,
     length: usize,
-    last_good: Option<Snapshot>,
+    last_good: Option<std::sync::Arc<Snapshot>>,
     last_error: Option<SourceError>,
     fatal: Option<SourceError>,
 }
@@ -142,7 +142,8 @@ impl SnapshotSource for WindowsBusReader {
             Ok(bytes) => match Snapshot::decode(&bytes) {
                 Ok(snapshot) => {
                     self.last_error = None;
-                    self.last_good = Some(snapshot.clone());
+                    let snapshot = std::sync::Arc::new(snapshot);
+                    self.last_good = Some(std::sync::Arc::clone(&snapshot));
                     Ok(SnapshotRead {
                         snapshot,
                         freshness: Freshness::Fresh,

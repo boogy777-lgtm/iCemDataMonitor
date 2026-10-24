@@ -5,8 +5,8 @@ use icem_config::IniOptions;
 use icem_core::{Freshness, SnapshotOrigin, SnapshotRead, SnapshotSource, SourceError};
 use icem_platform_windows::sniffer::{Capture, SystemCapture};
 use icem_protocols::modbus::{MirrorInput, RegisterBank};
-use icem_transport::modbus_tcp::{ModbusServer, ServerOptions};
-use icem_web::{BusReply, HostLayers, WebServer, WebState};
+use icem_transport::modbus_tcp::ServerOptions;
+use icem_web::{BusReply, HostLayers, WebState};
 use std::io::Read;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -24,9 +24,16 @@ macro_rules! diagnostic {
         let _ = std::io::Write::write_fmt(&mut std::io::stderr(), format_args!("{message}\n"));
     }};
 }
+mod acquisition;
 #[cfg(windows)]
 mod cli;
+mod consumers;
 mod layers;
+mod modbus_consumer;
+mod mqtt_consumer;
+mod opc_da_consumer;
+mod opcua_consumer;
+mod web_consumer;
 #[cfg(windows)]
 mod windows;
 
@@ -55,6 +62,9 @@ struct Options {
     tray_icon: Option<PathBuf>,
     station: Option<(PathBuf, IniOptions)>,
     sniffer_adapter: Option<String>,
+    mqtt: Option<mqtt_consumer::Config>,
+    opcua: Option<opcua_consumer::Config>,
+    opc_da_config: Option<opc_da_consumer::Config>,
 }
 fn options() -> Result<Options, String> {
     let mut args = std::env::args().skip(1);
@@ -74,6 +84,9 @@ fn options() -> Result<Options, String> {
     let mut rpc_pipe = None;
     let mut tray_icon = None;
     let mut sniffer_adapter = None;
+    let mut mqtt = None;
+    let mut opcua = None;
+    let mut opc_da_config = None;
     while let Some(key) = args.next() {
         if key == "--autostart" {
             autostart = true;
@@ -113,6 +126,24 @@ fn options() -> Result<Options, String> {
             "--rpc-pipe" => rpc_pipe = Some(value),
             "--registry" => registry = Some(PathBuf::from(value)),
             "--sniffer-adapter" => sniffer_adapter = Some(value),
+            "--opc-da-config" => {
+                if opc_da_config.is_some() {
+                    return Err("duplicate --opc-da-config".into());
+                }
+                opc_da_config = Some(opc_da_consumer::Config::load(std::path::Path::new(&value))?);
+            }
+            "--opcua-config" => {
+                if opcua.is_some() {
+                    return Err("duplicate --opcua-config".into());
+                }
+                opcua = Some(opcua_consumer::Config::load(std::path::Path::new(&value))?);
+            }
+            "--mqtt-config" => {
+                if mqtt.is_some() {
+                    return Err("duplicate --mqtt-config".into());
+                }
+                mqtt = Some(mqtt_consumer::Config::load(std::path::Path::new(&value))?);
+            }
             "--duration-ms" => {
                 duration = value.parse().map_err(|_| "invalid duration")?;
                 duration_explicit = true;
@@ -215,9 +246,12 @@ fn options() -> Result<Options, String> {
         tray_icon,
         station: config.map(|path| (path, settings)),
         sniffer_adapter,
+        mqtt,
+        opcua,
+        opc_da_config,
     })
 }
-struct Fixture(Snapshot);
+struct Fixture(Arc<Snapshot>);
 impl SnapshotSource for Fixture {
     fn snapshot(&mut self) -> Result<SnapshotRead, SourceError> {
         Ok(SnapshotRead {
@@ -237,7 +271,7 @@ fn source(input: Input) -> Result<Box<dyn SnapshotSource>, Box<dyn std::error::E
             }
             let mut bytes = Vec::new();
             file.take(maximum + 1).read_to_end(&mut bytes)?;
-            Ok(Box::new(Fixture(Snapshot::decode(&bytes)?)))
+            Ok(Box::new(Fixture(Arc::new(Snapshot::decode(&bytes)?))))
         }
         Input::Live { path, map, mutex } => live_source(path, map, mutex),
     }
@@ -261,13 +295,13 @@ fn live_source(
     Err("live station bus requires Windows named mappings/mutex".into())
 }
 fn refresh(
-    source: &mut dyn SnapshotSource,
+    reader: &acquisition::Reader,
     bank: &Mutex<RegisterBank>,
     previous: &mut Option<SourceError>,
     logs: &mut icem_logging::Logs,
 ) -> Result<BusReply, Box<dyn std::error::Error>> {
-    let read = source.snapshot();
-    let error = source.last_error().or_else(|| read.as_ref().err().copied());
+    let (reply, error) = reader.reply()?;
+    let read = &reply.read;
     if *previous != error {
         diagnostic!(
             "Bus state: {}",
@@ -281,14 +315,11 @@ fn refresh(
     }
     let mut bank = bank.lock().map_err(|_| "register mirror lock poisoned")?;
     bank.tick(match &read {
-        Ok(read) if read.freshness == Freshness::Fresh => MirrorInput::Fresh(&read.snapshot),
-        Ok(read) => MirrorInput::LastGood(&read.snapshot),
-        Err(_) => MirrorInput::Unavailable,
+        Some(read) if read.freshness == Freshness::Fresh => MirrorInput::Fresh(&read.snapshot),
+        Some(read) => MirrorInput::LastGood(&read.snapshot),
+        None => MirrorInput::Unavailable,
     });
-    Ok(BusReply {
-        read: read.ok(),
-        is_open: source.is_open(),
-    })
+    Ok(reply)
 }
 fn run<D: icem_platform_windows::console::Device>(
     mut options: Options,
@@ -310,23 +341,49 @@ fn run<D: icem_platform_windows::console::Device>(
         options.web.map_or(8090, |a| a.port())
     );
     boot.begin("composition", "композиция")?;
-    let mut source = source(options.input)?;
+    let input = options.input;
+    let mut acquisition =
+        acquisition::Acquisition::start(move || source(input).map_err(|e| e.to_string()))?;
+    let reader = acquisition.reader();
+    let _publication = acquisition.snapshot_reader();
     let bank = Arc::new(Mutex::new(
         RegisterBank::new(options.total).map_err(|error| format!("{error:?}"))?,
     ));
     let mut last_error = None;
-    let first = refresh(&mut *source, &bank, &mut last_error, logs)?;
+    let first = refresh(&reader, &bank, &mut last_error, logs)?;
     boot.complete("composition", None)?;
     boot.begin("layers", "слои")?;
-    let mut server = if options.modbus_on {
-        Some(ModbusServer::bind(
-            options.bind,
-            Arc::clone(&bank),
-            ServerOptions::default(),
-        )?)
-    } else {
-        None
-    };
+    let mut consumers = consumers::Registry::new();
+    if let Some(config) = options.opc_da_config {
+        let server = opc_da_consumer::start(config, acquisition.snapshot_reader())?;
+        consumers
+            .register(consumers::ConsumerId("opc-da"), Box::new(server))
+            .map_err(|_| "duplicate or full consumer registration")?;
+    }
+    if let Some(config) = options.opcua {
+        let server = opcua_consumer::start(config, acquisition.snapshot_reader())?;
+        consumers
+            .register(consumers::ConsumerId("opcua"), Box::new(server))
+            .map_err(|_| "duplicate or full consumer registration")?;
+    }
+    if let Some(config) = options.mqtt {
+        let publisher = mqtt_consumer::start(config, acquisition.snapshot_reader())?;
+        consumers
+            .register(consumers::ConsumerId("mqtt"), Box::new(publisher))
+            .map_err(|_| "duplicate or full consumer registration")?;
+    }
+    let (server_slot, modbus_handle) = modbus_consumer::start(
+        modbus_consumer::Config {
+            address: options.bind,
+            enabled: options.modbus_on,
+            options: ServerOptions::default(),
+        },
+        Arc::clone(&bank),
+    )?;
+    consumers
+        .register(consumers::ConsumerId("modbus"), Box::new(modbus_handle))
+        .map_err(|_| "duplicate or full consumer registration")?;
+    let server = server_slot.lock().map_err(|_| "Modbus slot poisoned")?;
     diagnostic!(
         "DEVELOPMENT HOST; full Host/UI acceptance pending. Modbus {}",
         server
@@ -409,12 +466,22 @@ fn run<D: icem_platform_windows::console::Device>(
     web.observe(&first);
     boot.complete("layers", None)?;
     boot.begin("web", "веб-сервер")?;
-    let web_server = options
-        .web
-        .map(|address| WebServer::bind(address, web.clone()))
-        .transpose()?;
-    if let Some(server) = &web_server {
-        diagnostic!("Web http://{}", server.local_addr());
+    let (web_slot, web_handle) = web_consumer::start(
+        web_consumer::Config {
+            address: options.web,
+        },
+        web.clone(),
+    )?;
+    consumers
+        .register(consumers::ConsumerId("web"), Box::new(web_handle))
+        .map_err(|_| "duplicate or full consumer registration")?;
+    let web_address = web_slot
+        .lock()
+        .map_err(|_| "Web slot poisoned")?
+        .as_ref()
+        .map(|server| server.local_addr());
+    if let Some(address) = web_address {
+        diagnostic!("Web http://{}", address);
     }
     boot.complete("web", None)?;
     boot.begin("ipc", "локальный канал и lifecycle")?;
@@ -445,11 +512,18 @@ fn run<D: icem_platform_windows::console::Device>(
         } else {
             "off"
         },
-        web_server
-            .as_ref()
-            .map_or(0, |server| server.local_addr().port()),
+        web_address.map_or(0, |address| address.port()),
         if first.is_open { "open" } else { "closed" }
     ));
+    drop(server);
+    diagnostic!(
+        "Consumers: modbus={:?} web={:?} mqtt={:?} opcua={:?} opc-da={:?}",
+        consumers.status(consumers::ConsumerId("modbus")),
+        consumers.status(consumers::ConsumerId("web")),
+        consumers.status(consumers::ConsumerId("mqtt")),
+        consumers.status(consumers::ConsumerId("opcua")),
+        consumers.status(consumers::ConsumerId("opc-da"))
+    );
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
     let mut health_due = started;
@@ -521,7 +595,7 @@ fn run<D: icem_platform_windows::console::Device>(
             }
             let result = layers::toggle(
                 request.layer,
-                &mut server,
+                &mut *server_slot.lock().map_err(|_| "Modbus slot poisoned")?,
                 options.bind,
                 &bank,
                 &web,
@@ -533,15 +607,12 @@ fn run<D: icem_platform_windows::console::Device>(
         }
         let now = Instant::now();
         if now >= mirror_due {
-            let reply = refresh(&mut *source, &bank, &mut last_error, logs)?;
+            let reply = refresh(&reader, &bank, &mut last_error, logs)?;
             web.observe(&reply);
             mirror_due = Instant::now() + options.tick;
         }
         if now >= health_due {
-            let reply = BusReply {
-                read: source.snapshot().ok(),
-                is_open: source.is_open(),
-            };
+            let (reply, _) = reader.reply()?;
             web.probe(&reply, icem_web::utc_now_ms())?;
             health_due = Instant::now() + Duration::from_secs(1);
         }
@@ -551,10 +622,7 @@ fn run<D: icem_platform_windows::console::Device>(
         wake = wake.min(health_due);
         match requests.recv_timeout(wake.saturating_duration_since(Instant::now())) {
             Ok(request) if !request.response.is_closed() => {
-                let reply = BusReply {
-                    read: source.snapshot().ok(),
-                    is_open: source.is_open(),
-                };
+                let (reply, _) = reader.reply()?;
                 web.observe(&reply);
                 let _ = request.response.send(reply);
             }
@@ -562,6 +630,10 @@ fn run<D: icem_platform_windows::console::Device>(
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
+    let drain = consumers.stop_all(Duration::from_secs(2));
+    let acquisition_stop = acquisition.stop(acquisition::STOP_DEADLINE);
+    drain?;
+    acquisition_stop?;
     if let Some(capture) = &mut sniffer {
         capture.stop();
     }
@@ -574,12 +646,6 @@ fn run<D: icem_platform_windows::console::Device>(
     #[cfg(windows)]
     if let Some(server) = pipe_server {
         server.stop()?;
-    }
-    if let Some(web) = web_server {
-        web.stop()?;
-    }
-    if let Some(server) = server {
-        diagnostic!("Stopped: {:?}", server.stop()?);
     }
     Ok(restart)
 }
@@ -594,7 +660,7 @@ fn main() -> ExitCode {
         .any(|a| matches!(a.as_str(), "--help" | "-h"))
     {
         diagnostic!(
-            "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH"
+            "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH\nOptional MQTT publisher: --mqtt-config FILE\nOptional OPC UA server: --opcua-config FILE\nOptional OPC DA sidecar: --opc-da-config FILE"
         );
         return ExitCode::SUCCESS;
     }
@@ -648,7 +714,7 @@ fn main() -> ExitCode {
         Err(error) => {
             logs.record(&format!("Configuration failed: {error}"));
             diagnostic!(
-                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH]"
+                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH] [--mqtt-config FILE] [--opcua-config FILE] [--opc-da-config FILE]"
             );
             return ExitCode::from(2);
         }

@@ -149,6 +149,7 @@ impl WebState {
         self.layer_requests = Some(sender);
         receiver
     }
+    /// Store a shared handle only. Request observation never samples health/history.
     pub fn observe(&self, reply: &BusReply) {
         if let Some(read) = &reply.read
             && let Ok(mut store) = self.store.lock()
@@ -416,5 +417,50 @@ mod console_tests {
         assert_eq!(error.code(), tonic::Code::Unavailable);
         assert!(error.message().contains("outcome unknown"));
         Ok(())
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod shared_tests {
+    use super::*;
+    use icem_core::SnapshotOrigin;
+
+    #[test]
+    fn request_observation_shares_payload_and_leaves_health_history_clock_alone() {
+        let (state, _) = WebState::new(
+            HostLayers {
+                web: true,
+                ..Default::default()
+            },
+            PathBuf::new(),
+            BTreeMap::new(),
+        );
+        let snapshot = Arc::new(
+            icem_bus::Snapshot::decode(include_bytes!(
+                "../../../tests/fixtures/bus-v5-minimal.bin"
+            ))
+            .unwrap(),
+        );
+        let reply = BusReply {
+            is_open: true,
+            read: Some(SnapshotRead {
+                snapshot: Arc::clone(&snapshot),
+                freshness: Freshness::Fresh,
+                origin: SnapshotOrigin::Captured,
+            }),
+        };
+        state.probe(&reply, 1_700_000_000_000).unwrap();
+        for _ in 0..1000 {
+            state.observe(&reply);
+        }
+        let store = state.store.lock().unwrap();
+        assert!(Arc::ptr_eq(
+            &snapshot,
+            &store.last.as_ref().unwrap().snapshot
+        ));
+        assert_eq!(store.health.at, 1_700_000_000_000);
+        assert_eq!(store.health.stagnant, 0);
+        assert!(store.history.values().all(|ring| ring.len() == 1));
     }
 }

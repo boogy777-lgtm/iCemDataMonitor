@@ -1,0 +1,9 @@
+{
+  "broker": "127.0.0.1:1883",
+  "client_id": "icem-host-station-1",
+  "topic": "icem/station-1/state",
+  "qos": 1,
+  "retain": true,
+  "publish_interval_ms": 200,
+  "reconnect_delay_ms": 1000
+}

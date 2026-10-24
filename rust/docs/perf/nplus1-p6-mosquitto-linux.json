@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "broker_version": "mosquitto version 2.0.18",
+  "qos": 2,
+  "retain_flag_after_host_exit": 1,
+  "first_generation": 1,
+  "reconnect_generation": 3,
+  "retained_generation": 20,
+  "source_clocks_and_bits_preserved": true,
+  "host_exit": 0,
+  "scope": "Linux loopback real Mosquitto; fixture source, not Windows MMF/hardware"
+}

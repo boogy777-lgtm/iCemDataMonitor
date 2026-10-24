@@ -1,0 +1,11 @@
+[package]
+name = "icem-opc-da-codec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+[lints]
+workspace = true
+[dependencies]
+icem-bus = { path = "../icem-bus" }
+icem-core = { path = "../icem-core" }

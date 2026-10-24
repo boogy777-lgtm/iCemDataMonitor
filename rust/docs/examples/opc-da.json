@@ -1,0 +1,5 @@
+{
+  "sidecar": "../../target/debug/icem-opc-da-sidecar.exe",
+  "update_interval_ms": 200,
+  "watchdog_ms": 1000
+}
