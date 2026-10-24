@@ -13,7 +13,7 @@ def main():
     root = Path(__file__).resolve().parent
     originals = json.loads((root / "upstream-files.sha256.json").read_text())
     own = {".gitattributes", "README.icem.md", "verify.py", "upstream-files.sha256.json", "icem.patch"}
-    extensions = {"opc_da_bindings/src/server/callback_queue.rs", "opc_da_bindings/src/server/callback_health.rs", "opc_da_bindings/src/server/callbacks.rs"}
+    extensions = {"opc_da_bindings/src/server/callback_queue.rs", "opc_da_bindings/src/server/callback_health.rs", "opc_da_bindings/src/server/callbacks.rs", "opc_da_bindings/src/client/callbacks.rs"}
     actual = {str(p.relative_to(root)).replace("\\", "/") for p in root.rglob("*") if p.is_file()}
     if actual != set(originals) | own | extensions:
         raise SystemExit(f"unexpected/missing vendor files: {sorted(actual ^ (set(originals) | own | extensions))}")

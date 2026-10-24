@@ -1,5 +1,7 @@
 //! Safe OPC Data Access client facade.
 
+mod callbacks;
+pub use callbacks::{CallbackGroup, DataEvent, DataEventItem, DataEventKind, DataSubscription};
 mod group;
 mod properties;
 mod types;

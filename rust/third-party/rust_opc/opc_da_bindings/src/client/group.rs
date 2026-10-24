@@ -63,6 +63,14 @@ impl<'apartment> DaGroup<'apartment> {
         }
     }
 
+    pub(super) fn callback_objects(&self) -> Result<(&IUnknown, &crate::IOPCServer, u32)> {
+        Ok((
+            &self.object,
+            &self.server,
+            self.server_handle
+                .ok_or_else(|| Error::invalid_argument("group closed"))?,
+        ))
+    }
     pub fn revised_update_rate(&self) -> u32 {
         self.revised_update_rate
     }
@@ -361,7 +369,7 @@ impl<'apartment> DaGroup<'apartment> {
         object_from_interface(&self.object)
     }
 
-    fn interface<T: Interface>(&self) -> Result<T> {
+    pub(super) fn interface<T: Interface>(&self) -> Result<T> {
         interface_from_object(&self.object())
     }
 }
