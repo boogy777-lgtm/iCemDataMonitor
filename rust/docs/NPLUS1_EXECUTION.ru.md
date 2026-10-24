@@ -543,3 +543,50 @@ marshalling/bounded lifecycle не позволяют принять их как
 сохранены; native fork, новые unsafe exceptions, dependencies/lockfile и
 production code не менялись. Проверка doc-only: `git diff --check` PASS;
 Windows compilation/runtime и CI остаются отдельными evidence.
+
+## Windows live Modbus startup fixture follow-up
+
+Class: asynchronous Windows `.NET Producer → MMF → Host → Modbus` fixture
+`apps/host/tests/live_modbus.rs`; source-factory/listener readiness не является
+data readiness и не входит в этот класс assertions.
+Inv: initial `0x1234` и subsequent `0xABCD` подтверждаются полным точным FC03/04
+wire response в отдельных bounded waits; FC06 echo, inactive LAN hold и exit0
+остаются обязательными. Requests не приобретают physical-source capability.
+N+1: общий fixture helper обслуживает оба producer states; malformed response
+shape/function/byte count отклоняются немедленно, deadline сохраняет exact bits
+в assertion diagnostics. Следующий state использует тот же helper.
+
+Run `40091548303`, Windows Rust job `120865341020`: workspace check/build и
+Host unit tests PASS; live Modbus initial assertion line65 получил
+`[1,3,2,0,0]` вместо `[1,3,2,18,52]`, subsequent refresh ещё не выполнялся.
+Проверен production call graph: `Acquisition::start` подтверждает factory до
+первого `acquire`; `main::refresh` читает только publication и передаёт
+`MirrorInput::Unavailable`, если snapshot отсутствует. `RegisterBank::new`
+создаёт нулевое зеркало, `Unavailable` сохраняет data words; периодический
+`main` refresh затем применяет доступный snapshot. Никакой пропущенной
+subscription/attachment здесь нет. План1.7 §4/§8 допускает initial absence;
+API_SPEC §2 явно задаёт mirror behavior без snapshot. Existing
+`initial_absence_and_cancellation_interrupt_wait_not_native_call` executable
+test проверяет отсутствие snapshot во время первого blocked capture.
+
+Listener message теперь служит только обнаружению endpoint. Первый FC03 ждёт
+реального `0x1234` тем же helper, что subsequent FC04 ждёт `0xABCD`.
+Прежний 2s update budget не увеличен; initial stage получает такой же budget.
+Fixture Host lifetime выведен как `2 × MIRROR_WAIT + 1s = 5s`, чтобы два
+ожидания и финальные write/hold assertions не пересекли planned exit3s.
+Production startup, acquisition200ms, mirror period и register semantics
+не менялись. Проверены остальные Windows fixtures с `Producer::start`:
+они напрямую вызывают synchronous `WindowsBusReader::snapshot`, без ошибочного
+переноса listener readiness на asynchronous first publication; правок не требуют.
+
+Local exact Rust1.99.1: Linux Host26/26 PASS; scoped Host all-target
+check/clippy `-D warnings`, build, fmt-check и `git diff --check` PASS,
+`--locked --offline`. Linux не запускает Windows-only live fixture.
+Попытки Host Windows x64 all-target Cargo check и clippy блокированы до
+application code: dependency `ring0.17.14` требует отсутствующий `lib.exe`
+(MSVC native toolchain; available GNU compiler unsupported). Эти gates
+не объявляются PASS. Отдельные `rustc --test --emit metadata` и
+`clippy-driver --test --emit metadata -D warnings` для изменённого
+`live_modbus.rs` вместе с его std-only Windows support на target
+`x86_64-pc-windows-msvc` PASS. Это проверка типов/lints fixture, без linking,
+запуска Host/.NET/MMF или замены полного Windows CI runtime gate.

@@ -6,6 +6,11 @@ use std::net::TcpStream;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 use windows::{Producer, Station};
+const MIRROR_WAIT: Duration = Duration::from_secs(2);
+// Two independent mirror waits plus time for writes, final assertions and shutdown.
+const HOST_DURATION: Duration = MIRROR_WAIT
+    .saturating_mul(2)
+    .saturating_add(Duration::from_secs(1));
 struct Host(Option<Child>);
 impl Drop for Host {
     fn drop(&mut self) {
@@ -29,6 +34,31 @@ fn request(stream: &mut TcpStream, body: &[u8]) -> std::io::Result<Vec<u8>> {
     stream.read_exact(&mut result)?;
     Ok(result)
 }
+fn wait_for_word(
+    stream: &mut TcpStream,
+    function: u8,
+    value: u16,
+    phase: &str,
+) -> std::io::Result<()> {
+    let [high, low] = value.to_be_bytes();
+    let expected = [1, function, 2, high, low];
+    let deadline = Instant::now() + MIRROR_WAIT;
+    loop {
+        let response = request(stream, &[1, function, 0, 6, 0, 1])?;
+        assert_eq!(response.len(), expected.len(), "{phase}");
+        assert_eq!(response[..3], expected[..3], "{phase}");
+        if response == expected {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            assert_eq!(
+                response, expected,
+                "{phase}: value not mirrored before deadline"
+            );
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
 #[test]
 fn dotnet_mapping_to_rust_host_to_modbus_with_live_refresh()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -43,7 +73,8 @@ fn dotnet_mapping_to_rust_host_to_modbus_with_live_refresh()
         .arg(&station.map)
         .arg("--bus-mutex")
         .arg(&station.mutex)
-        .args(["--bind", "127.0.0.1:0", "--duration-ms", "3000"])
+        .args(["--bind", "127.0.0.1:0", "--duration-ms"])
+        .arg(HOST_DURATION.as_millis().to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
@@ -62,25 +93,15 @@ fn dotnet_mapping_to_rust_host_to_modbus_with_live_refresh()
     let mut stream = TcpStream::connect(address)?;
     stream.set_read_timeout(Some(Duration::from_secs(2)))?;
     stream.set_write_timeout(Some(Duration::from_secs(2)))?;
-    assert_eq!(
-        request(&mut stream, &[1, 3, 0, 6, 0, 1])?,
-        [1, 3, 2, 0x12, 0x34]
-    );
+    // Listener readiness does not imply that acquisition and the first mirror tick
+    // have completed. Confirm source data through the same public wire as refresh.
+    wait_for_word(&mut stream, 3, 0x1234, "initial MMF snapshot")?;
     assert_eq!(
         request(&mut stream, &[1, 6, 0, 200, 0xbe, 0xef])?,
         [1, 6, 0, 200, 0xbe, 0xef]
     );
     producer.command("write 6 43981", "WRITTEN")?;
-    let deadline = Instant::now() + Duration::from_secs(2);
-    loop {
-        if request(&mut stream, &[1, 4, 0, 6, 0, 1])? == [1, 4, 2, 0xab, 0xcd] {
-            break;
-        }
-        if Instant::now() >= deadline {
-            return Err("live MMF update not mirrored".into());
-        }
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    wait_for_word(&mut stream, 4, 0xabcd, "live MMF update")?;
     // A new producer tick happened; an inactive-zone external write must survive it.
     assert_eq!(
         request(&mut stream, &[1, 3, 0, 200, 0, 1])?,
