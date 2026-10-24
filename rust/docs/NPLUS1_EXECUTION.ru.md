@@ -590,3 +590,49 @@ application code: dependency `ring0.17.14` требует отсутствующ
 `live_modbus.rs` вместе с его std-only Windows support на target
 `x86_64-pc-windows-msvc` PASS. Это проверка типов/lints fixture, без linking,
 запуска Host/.NET/MMF или замены полного Windows CI runtime gate.
+
+## P7c1 — dynamic coherent DA group state, 2026-10-24
+
+Class: SDK committed owned group-state → sidecar synchronous Read; callbacks,
+core/acquisition и IPC clocks вне класса. Inv: один coherent tuple на Read,
+CACHE учитывает group+item active, DEVICE сохраняет producer quality; Windows
+SDK/client tests плюс compile-time mandatory trait argument. N+1: P7c2 callbacks
+используют тот же committed state; безопасные service implementations не могут
+молча пропустить новое состояние. Полный P7 остаётся PARTIAL.
+
+Вместо повторного doc-only поиска реализован минимальный local reviewed SDK
+extension на прежнем pin `da44a99265f9706618bbe506c98f714f2aa46f0b`:
+`third-party/rust_opc`, пять dependency crates вне application workspace,
+42 exact upstream inputs/415895 bytes, LICENSE/NOTICE/winmd сохранены.
+MSRV upstream1.97 отделён от selected patch exact1.99.1; features/registry
+versions unchanged. Cargo.lock меняет только пять git source identities на
+local reviewed inputs. Exact SHA256 manifest и reversible patch verifier
+проверяют полный closure без cache edits/CARGO_HOME substitution. Build
+генерирует bindings/module wrappers в OUT_DIR; tracked files immutable.
+
+Обязательный owned GroupState передаётся в `DaGroupService::read` через новый
+`forbid(unsafe_code)` helper с clone-under-lock/release-before-service.
+Read linearizes при clone; existing SetState commit/error/output ordering
+и ABI/unsafe operations не меняются. Service CACHE теперь учитывает active
+group+item, DEVICE сохраняет source quality; rate/client handle coherent и
+не управляют producer200ms. Новых unsafe операций/ABI/exception нет;
+application forbid/native ADR0001 unchanged. Подробности: [P7c1](OPCDA_P7B.ru.md).
+
+Новые safe SDK tests вызывают existing SetState implementation entrypoint,
+затем настоящий safe COM client Read/GetState: active false→true→false,
+revised rate/client handle, failure-before-commit и 2000 concurrent read/state
+tuples. Это **не** внешние COM SetState calls; safe upstream wrapper отсутствует,
+и новая unsafe операция ради теста не добавлялась. Sidecar COM test покрывает
+AddGroup(false), CACHE bad, DEVICE good/retained producer quality; существующие
+item capacity/activity/lease checks сохранены. NEXT P7c2: callbacks/owned sinks,
+async/advise/unadvise/cancel/marshalling и Windows cross-process acceptance.
+
+Exact Rust1.99.1: fetch locked; затем Linux Host26/26+codec5/5, sidecar build,
+scoped Linux all-target clippy `-D warnings`, Windows x64 sidecar+codec+SDK
+all-target check/clippy, fmt-all/check и diff-check PASS, locked/offline.
+Windows runtime здесь не запускался; root CI должен явно запускать dependency
+SDK tests вместе с sidecar tests (они не application workspace members).
+Provenance verifier, exact pin git-object SHA256 сверка и metadata nonmember
+guard PASS; SHA256 всех vendor files неизменны после forced bindings regeneration
+и actual Windows compile. Legacy/.NET/AddIn/proto/assets и другие adapters
+не изменены; cross-process/client/MMF/hardware/release gates остаются OPEN.

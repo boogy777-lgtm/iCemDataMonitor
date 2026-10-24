@@ -72,6 +72,17 @@ jobs:
         run: |
           cargo test --locked --offline -p icem-logging
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify reviewed OPC SDK and sidecar on Windows
+        shell: pwsh
+        run: |
+          cargo test --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clippy --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python third-party/rust_opc/verify.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code -- third-party/rust_opc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows emulator integration before desktop build
         shell: pwsh
         run: |

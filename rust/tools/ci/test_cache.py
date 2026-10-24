@@ -168,7 +168,7 @@ class ContractTests(unittest.TestCase):
 
     def test_negative_every_workflow_command_and_flag(self):
         for line in self.workflow.splitlines():
-            if line.strip().startswith(('cargo ', 'rustup ', 'rustc ', 'python ', 'npm ', 'node ', 'run: ./tools/')):
+            if line.strip().startswith(('cargo ', 'rustup ', 'rustc ', 'python ', 'npm ', 'node ', 'git ', 'run: ./tools/')):
                 with self.subTest(command=line), self.assertRaises(ValueError):
                     self.verify(workflow=self.workflow.replace(line, line.replace(line.strip(), '# removed command'), 1))
         for flag in ('--locked', '--offline', '-- -D warnings'):
@@ -178,7 +178,7 @@ class ContractTests(unittest.TestCase):
     def test_negative_scaffold_commands_and_common_guards(self):
         for text, keyword in ((self.scaffold, 'scaffold'), (self.inputs, 'inputs')):
             for line in text.splitlines():
-                if any(command in line for command in ('& cargo ', '& (Join-Path', 'cargo metadata', '$Package.edition')):
+                if any(command in line for command in ('& cargo ', '& python ', '& (Join-Path', 'cargo metadata', '$Package.edition')):
                     with self.subTest(owner=keyword, command=line), self.assertRaises(ValueError):
                         self.verify(**{keyword: text.replace(line, '# removed common check', 1)})
 
