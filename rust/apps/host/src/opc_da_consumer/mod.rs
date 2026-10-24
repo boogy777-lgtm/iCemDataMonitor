@@ -141,6 +141,7 @@ fn spawn(
                         .map_err(|e| format!("OPC DA publication: {e:?}"))?;
                     // Only one encoded frame exists; a stalled child cannot queue snapshots.
                     *heartbeat.lock().map_err(|_| "OPC DA heartbeat poisoned")? = Instant::now();
+                    // READY/previous ACK grants receiver credit before this age sample.
                     let frame = Frame::from_publication(state, sequence, Instant::now());
                     write_frame(&mut input, &frame).map_err(|e| format!("OPC DA write: {e}"))?;
                     output

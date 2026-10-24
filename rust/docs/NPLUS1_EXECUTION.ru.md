@@ -452,7 +452,7 @@ proxy/stubs installation, DCOM и production packaging не объявлены �
 Canonical storage — raw Box<[u16]>+Arc. Stable var{address}, U16/I32/F32 raw bits,
 COM int32, acquisition status/ages и producer active сохранены. Sample FILETIME —
 только writer metadata соответствующей зоны с .NET→1601 offset, неизвестный0;
-COMvalue/now не подставляются. Capture age продолжает монотонно расти послеreceipt.
+COMvalue/now не подставляются. Capture age продолжает монотонно расти; final review ниже уточняет IPC transit.
 
 ExactRust1.99.1 Linux: Host26/26 и codec3/3 PASS, scoped check/build/test/clippy
 locked/offline, fmt и diff-check PASS. Windows x64 target codec+sidecar all-target
@@ -500,3 +500,19 @@ acquisition sequence/completion age/error. Ранее этот тест прош
 fmt all/check, scoped Host all-target check, build, test и clippy `-D warnings`
 с `--locked --offline`, `git diff --check` PASS. Эти результаты не заменяют
 повторное actual Windows выполнение трёх исправленных tests и legacy suite.
+
+## P7b final review follow-up
+
+[OPCDA_P7B final review](OPCDA_P7B.ru.md) фиксирует исправление P1 stale→GOOD
+при blocked IPC: receiver credit Instant до READY/предыдущегоACK даёт
+консервативную верхнюю границу возраста с idle/transit/decode, без UTC clock.
+Исправлены noncommitting ValidateItems при полном quota, DEVICE/item-active
+и invalid writerDateTime; sidecar добавлен в Windows payload inventory.
+Group-active/SetState и плановые callbacks остаются точными P2 safe SDK blockers;
+P7 PARTIAL. Профиль sync-read не заменяет обязательные COM groups/callbacks
+из плана§7. Никакого speculative native fork/unsafe exception не добавлено.
+
+Local final-review evidence: exact1.99.1 codec5/5, Host26/26, routing/cache42/42
+PASS; fmt/check, Linux codec clippy and Windows sidecar+codec all-target
+check/clippy locked/offline PASS. Windows runtime/service/packaging tests remain
+pending; no actual COM/MMF/hardware result is inferred from cross compilation.

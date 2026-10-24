@@ -33,6 +33,9 @@ try {
     [IO.Compression.ZipFile]::ExtractToDirectory($Result.archive, $Unpack)
     $Verified = Test-WindowsPayload $Unpack
     if ($Verified.files.Count -ne $ExpectedCount) { throw 'Template directory was not packaged completely' }
+    $DaBinary = @($Verified.binaries | Where-Object role -CEQ 'opc-da-sidecar')
+    if ($DaBinary.Count -ne 1 -or $DaBinary[0].destination -cne 'icem-opc-da-sidecar.exe' -or
+        -not (Test-Path -LiteralPath (Join-Path $Unpack $DaBinary[0].destination) -PathType Leaf)) { throw 'DA sidecar omitted from payload' }
     $HostRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'host').templates_directory) + '/variable_registry.json')
     $EmulatorRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'emulator').templates_directory) + '/variable_registry.json')
     if ((Get-FileHash $HostRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'templates/variable_registry.json')).Hash -or

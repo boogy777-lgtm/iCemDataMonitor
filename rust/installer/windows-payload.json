@@ -22,6 +22,12 @@
       "bin": "icem-emulator-engine-dev",
       "destination": "icem-emulator-engine-dev.exe",
       "templates_directory": "emulator/templates"
+    },
+    {
+      "role": "opc-da-sidecar",
+      "package": "icem-opc-da-sidecar",
+      "bin": "icem-opc-da-sidecar",
+      "destination": "icem-opc-da-sidecar.exe"
     }
   ],
   "files": [

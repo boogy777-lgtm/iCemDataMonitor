@@ -27,7 +27,7 @@ function Assert-PeX64([string] $Path) {
 function Read-WindowsPayloadPlan([string] $RepositoryRoot) {
     $Plan = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'rust/installer/windows-payload.json') | ConvertFrom-Json
     if ($Plan.schema_version -ne 2 -or $Plan.target -ne 'x86_64-pc-windows-msvc' -or $Plan.addin_directory -cne 'addin' -or
-        (@($Plan.binaries.role | Sort-Object) -join ',') -cne 'emulator,host,shell') {
+        (@($Plan.binaries.role | Sort-Object) -join ',') -cne 'emulator,host,opc-da-sidecar,shell') {
         throw 'Invalid Windows payload schema/target/binaries'
     }
     return $Plan

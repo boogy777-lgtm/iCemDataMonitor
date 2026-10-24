@@ -105,13 +105,17 @@ ValidateItems не добавляет items, writes всегда OPC_E_BADRIGHTS
 
 DA sample FILETIME обязателен. Для COM4..199/LAN200..399/RAW400..599 он равен
 `zone.last_write_utc_ticks − 504911232000000000` (100ns с1601), при invalid/pre1601
-—0. Это AddIn writer time, не measurement time. Никогда COM value или now.
+—0. Ticks выше DateTime.MaxValue также invalid/unknown0. Это AddIn writer time,
+не measurement time. Никогда COM value или now.
 Service words0..3 и reserve≥600 имеют unknown FILETIME0 и uncertain quality.
 Sample quality: acquisition captured + capture/completion age<5s + produceractive
 + validwriterclock →GOOD0xc0; inactive zone→BAD_OUT_OF_SERVICE0x1c;
 retained/failed/expired/unknownwriter→UNCERTAIN_LAST_USABLE0x44;
-service/reserve→UNCERTAIN0x40. Item inactive→out-of-service.
-Age увеличивается от Host age на sidecar monotonic elapsed после receipt; Read
+service/reserve→UNCERTAIN0x40. CACHE item inactive→out-of-service; DEVICE ignores item-active, preserving
+source producer-active/age quality. Group-active limitations are listed below.
+Age = Host age + elapsed от sidecar Instant перед READY/предыдущим ACK.
+Этот credit выдан до Host sample; возраст консервативно включает idle, pipe
+write, decode и model-lock wait. После приёма возраст продолжает расти; Read
 не освежает capture age, writer clock или COM rawtime. Повторные failed attempts
 могут обновить completion age, но не capture time/generation. ServerStatus local
 start/currentTime — исключительно server diagnostics; lastUpdateTime unknown0.
@@ -149,3 +153,109 @@ safeSDK COM unit tests и ignored realprocess client harness compile. Linux runt
 sidecar возвращает exit1 сrequiresWindows. Windows runtime tests здесь НЕ запускались.
 Полный Windows CI предыдущего head имел независимые failures в acquisition/MQTT
 Windows harness и legacy Modbus; этот scope их не изменяет и не объявляет исправленными.
+
+## Final review: monotonic IPC age and item validation
+
+Class: two-endpoint, one-credit-at-a-time IPC freshness (`Received`, sidecar run loop);
+measurement clocks and general COM transport are near nonmembers.
+Inv: receiver anchor precedes Host age sampling; Host age plus receiver elapsed is
+an upper bound including blocked write/decode/model publication. Synthetic delayed
+receipt/expiry tests guard against stale GOOD without comparing process clocks.
+N+1: another IPC endpoint must preserve READY/ACK credit ordering and the same
+constructor contract; codec tests cover delayed delivery and backward/overflow ages.
+
+Class: DA validation of canonical item identities/types; committing item handles is
+its near nonmember. Inv: ValidateItems is independent of held-item/handle capacity,
+allocates no item handles, and keeps batch bound4096; Windows service regression test.
+N+1: add item conversions at the same validation point with both committing and
+noncommitting tests, without modifying acquisition or canonical identities.
+
+Class: synchronous CACHE activity gating versus DEVICE snapshot reads; source
+producer-active is independent. Inv: inactive item forces CACHE out-of-service; DEVICE ignores this subscription
+flag, not source quality. Group activation remains a pinned SDK blocker.
+Windows service tests compare both reads. N+1: dynamic group state/callback support
+requires the missing safe SDK state notification hook (see blockers below).
+
+Class: optional-runtime DA sidecar in Windows payload inventory; COM registration,
+proxy/stubs and DCOM are near nonmembers. Inv: fourth binary is built, hash/PE checked,
+archived and harvested into MSI using existing inventory; packaging contract requires
+its presence. N+1: another binary edits inventory and role allowlist, existing
+roundtrip/fixture enumeration guards build/staging/MSI completeness.
+
+Class: source writer DateTime ticks to DA FILETIME; raw COM Unix value is a near
+nonmember. Inv: only ticks in1601..DateTime.MaxValue become nonzero FILETIME;
+pre1601/overflow dates remain unknown/UNCERTAIN, with codec boundary tests.
+N+1: another timestamp field requires its own provenance/range conversion tests;
+canonical raw writer metadata is never repaired or normalized.
+
+### Findings and remaining safe SDK blockers
+
+P1 fixed: a blocked Host pipe write followed by receipt-after-decode could hide
+1..5s of transit and rejuvenate stale data. READY/the previous ACK now grants a
+single frame credit; its receiver Instant predates Host age sampling. For capture
+time C, Host sampling H, sidecar credit R and read N, R≤H gives
+(H−C)+(N−R)≥N−C. This is a conservative bound, not a measured one-way latency.
+Idle before Host sampling is double counted; interval-spaced frames after the
+first at update interval≥5s therefore yield UNCERTAIN even with a healthy source. The watchdog is cooperative kill/reap,
+checks approximately every10ms, and has no scheduling SLA: its200..5000ms bound
+is not used as proof of freshness. No UTC/measurement time or shared process
+clock representation is invented. Credit ordering is part of private v1 protocol.
+
+P2 fixed: ValidateItems previously returned OUT_OF_MEMORY at the committed item
+quota or exhausted handle counter despite adding nothing. Validation now ignores
+these committing quotas and retains the4096 batch bound. DEVICE now ignores
+item-active as required for synchronous reads; CACHE still gates inactive items.
+Writer ticks outside the .NET DateTime range now remain unknown/UNCERTAIN.
+
+P2 OPEN: group-active semantics are incomplete. At pinned rust_opc revision
+`da44a99265f9706618bbe506c98f714f2aa46f0b`,
+`opc_da_bindings/src/server/mod.rs` stores `GroupOptions.active` in private
+`DaGroupAdapter.state`. Its `IOPCGroupStateMgt::SetState` changes only this
+private state; `IOPCSyncIO::Read` forwards only `(DataSource, handles)` to
+`DaGroupService::read`. `DaGroupService` has no group-state notification/query
+hook. The application receives initial options but cannot observe subsequent
+changes through its service capability; storing initial active alone would
+produce incorrect CACHE results after SetState. The current development profile
+does not implement group-active CACHE quality; client group activation changes
+are unsupported. Full DA/P7 acceptance is blocked. Required safe SDK change:
+pass current coherent group state to read, or add a reliable state-update hook
+with rollback/error semantics and client tests for AddGroup(false)/SetState.
+
+P2 OPEN: plan§7 explicitly requires COM groups/callbacks. The same pinned
+`DaGroupAdapter` implements only `IOPCItemMgt`, `IOPCSyncIO`,
+`IOPCGroupStateMgt`; no `IConnectionPointContainer`/connection point or
+`IOPCAsyncIO2` server is implemented, and `DaGroupService` exposes no owned
+callback sink/advise/unadvise/change notification API. ABI interface definitions
+are not a safe usable server facade. Implementing callbacks requires an audited
+SDK extension covering COM sink lifetimes/thread marshalling, bounded/coalesced
+notifications, group/item activity and rates, cancellation/unadvise, backpressure
+and shutdown; then real Windows cross-process subscription/client tests. This
+review does not add a speculative native fork or relax unsafe policy. P7 remains
+PARTIAL; limiting this development profile does not change the plan requirement.
+
+RPC resource boundary: upstream `AddItems`/`ValidateItems` call
+`decode_item_specs(borrow_input(...))` before the application service, allocating
+owned strings/blob/item vectors; `Read` decodes handles before service limits.
+Result arrays/VARIANTs are allocated and marshalled by upstream SDK using its
+CoTaskMem builders/cleanup. Application batch/object limits bound retained
+application state, not pre-service RPC decoding or arbitrary DCOM traffic.
+No transport security/memory-quota claim is made.
+
+Packaging inventory now includes the optional-runtime sidecar binary, built and
+staged through the existing generic builder and MSI harvester. It performs no
+COM/proxy registration. Actual Windows package/COM/proxy/client/MMF/hardware
+acceptance remains OPEN. No legacy source, AddIn, frozen proto or core changes.
+
+Protocol evidence: OPC Foundation, *OPC Data Access Custom Interface Specification
+3.0*, §4.4.5.1 (p77), [published specification mirror](https://advosol.com/opcspecs/opcda3.00.pdf):
+CACHE requires active group and item; DEVICE is independent of those activity
+flags. The snapshot adapter still does not initiate MMF I/O from client reads;
+its explicit source is the latest shared publication, with acquisition quality.
+
+Final local validation (exact Rust1.99.1): Linux codec5/5 and Host26/26 PASS;
+fmt all/check, Linux codec all-target clippy and Windows x64 sidecar+codec
+all-target check/clippy `-D warnings`, locked/offline PASS. Windows-only service
+regression and process client harness are compile checked, not executed here.
+Routing/cache42/42 and `git diff --check` PASS. PowerShell is unavailable locally;
+changed packaging contract must run in Windows CI. These checks do not close the
+remaining group-state/callback/COM client/MMF/hardware/release gates.
