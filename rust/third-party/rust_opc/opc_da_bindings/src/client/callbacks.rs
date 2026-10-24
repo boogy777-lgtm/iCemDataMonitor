@@ -52,9 +52,10 @@ impl DataSubscription<'_, '_> {
         self.cookie
     }
     pub fn close(&mut self) -> Result<()> {
-        if let Some(cookie) = self.cookie.take() {
+        if let Some(cookie) = self.cookie {
             // SAFETY: apartment-local point and owned subscription cookie.
             unsafe { self.point.Unadvise(cookie) }.map_err(from_abi_error)?;
+            self.cookie = None;
         }
         self.registrations.clear();
         Ok(())
@@ -69,6 +70,15 @@ impl<'apartment> DaGroup<'apartment> {
     pub fn subscribe<'group>(
         &'group self,
         handler: Arc<dyn Fn(DataEvent) + Send + Sync>,
+    ) -> Result<DataSubscription<'group, 'apartment>> {
+        self.subscribe_result(Arc::new(move |event| {
+            handler(event);
+            Ok(())
+        }))
+    }
+    fn subscribe_result<'group>(
+        &'group self,
+        handler: Arc<dyn Fn(DataEvent) -> Result<()> + Send + Sync>,
     ) -> Result<DataSubscription<'group, 'apartment>> {
         let container: IConnectionPointContainer = self.interface()?;
         // SAFETY: exact outgoing IID, apartment-local container.
@@ -241,9 +251,33 @@ fn decode_errors(errors: &[HRESULT]) -> Vec<std::result::Result<(), ItemError>> 
         })
         .collect()
 }
+const MAX_EVENT_BYTES: usize = 512 * 1024;
+fn validate_callback_value(value: &VARIANT, bytes: &mut usize) -> Result<()> {
+    // SAFETY: callback supplies a valid borrowed VARIANT; inspect the BSTR arm only
+    // for its exact tag. Its UTF-16 storage is borrowed, never cloned or transferred.
+    let inner = unsafe { &value.Anonymous.Anonymous };
+    if inner.vt == windows::Win32::System::Variant::VT_BSTR {
+        let text = unsafe { &inner.Anonymous.bstrVal };
+        // No valid UTF-8 conversion can be shorter than its UTF-16 unit count.
+        if text.len() > MAX_EVENT_BYTES.saturating_sub(*bytes) {
+            return Err(Error::invalid_argument("callback exceeds512KiB"));
+        }
+        for character in char::decode_utf16(text.iter().copied()) {
+            let character =
+                character.map_err(|_| Error::invalid_argument("invalid UTF-16 callback"))?;
+            *bytes = bytes.saturating_add(character.len_utf8());
+            if *bytes > MAX_EVENT_BYTES {
+                return Err(Error::invalid_argument("callback exceeds512KiB"));
+            }
+        }
+    } else if *bytes > MAX_EVENT_BYTES {
+        return Err(Error::invalid_argument("callback exceeds512KiB"));
+    }
+    Ok(())
+}
 #[windows_core::implement(IOPCDataCallback)]
 struct Callback {
-    handler: Arc<dyn Fn(DataEvent) + Send + Sync>,
+    handler: Arc<dyn Fn(DataEvent) -> Result<()> + Send + Sync>,
 }
 impl Callback_Impl {
     #[allow(clippy::too_many_arguments)]
@@ -275,6 +309,14 @@ impl Callback_Impl {
                     borrow_input(es, n)?,
                 )
             };
+            let mut bytes = std::mem::size_of::<DataEvent>()
+                .saturating_add((n as usize).saturating_mul(std::mem::size_of::<DataEventItem>()));
+            // Validate the complete payload before allocating any owned strings.
+            for i in 0..n as usize {
+                if es[i].is_ok() {
+                    validate_callback_value(&v[i], &mut bytes)?;
+                }
+            }
             let mut items = Vec::with_capacity(n as usize);
             for i in 0..n as usize {
                 items.push(DataEventItem {
@@ -296,8 +338,7 @@ impl Callback_Impl {
                 master_quality: ErrorCode::from_raw(q.0),
                 master_error: ErrorCode::from_raw(e.0),
                 items,
-            });
-            Ok(())
+            })
         })
         .map_err(to_abi_error)
     }
@@ -366,8 +407,7 @@ impl IOPCDataCallback_Impl for Callback_Impl {
                 master_quality: ErrorCode::OK,
                 master_error: ErrorCode::from_raw(e.0),
                 items,
-            });
-            Ok(())
+            })
         })
         .map_err(to_abi_error)
     }
@@ -380,8 +420,7 @@ impl IOPCDataCallback_Impl for Callback_Impl {
                 master_quality: ErrorCode::OK,
                 master_error: ErrorCode::OK,
                 items: Vec::new(),
-            });
-            Ok(())
+            })
         })
         .map_err(to_abi_error)
     }
@@ -444,6 +483,19 @@ impl CallbackGroup<'_> {
         unsafe { server.RemoveGroup(handle, force) }.map_err(from_abi_error)
     }
 }
+fn reentrant_event(
+    event: DataEvent,
+    group_cookie: u32,
+    server_cookie: u32,
+    handle: u32,
+    handler: &(dyn Fn(DataEvent, &CallbackGroup<'_>) + Send + Sync),
+) -> Result<()> {
+    let object = retrieve::<windows_core::IUnknown>(group_cookie).map_err(from_abi_error)?;
+    let server = retrieve::<crate::IOPCServer>(server_cookie).map_err(from_abi_error)?;
+    let inner = DaGroup::new(server, object, handle, false, 0);
+    handler(event, &CallbackGroup { inner });
+    Ok(())
+}
 impl<'apartment> DaGroup<'apartment> {
     pub fn subscribe_reentrant<'group>(
         &'group self,
@@ -467,17 +519,149 @@ impl<'apartment> DaGroup<'apartment> {
             table,
             cookie: server_cookie,
         };
-        let mut subscription = self.subscribe(Arc::new(move |event| {
-            if let (Ok(object), Ok(server)) = (
-                retrieve::<windows_core::IUnknown>(group_cookie),
-                retrieve::<crate::IOPCServer>(server_cookie),
-            ) {
-                let inner = DaGroup::new(server, object, handle, false, 0);
-                handler(event, &CallbackGroup { inner });
-            }
+        let mut subscription = self.subscribe_result(Arc::new(move |event| {
+            reentrant_event(event, group_cookie, server_cookie, handle, &*handler)
         }))?;
         subscription.registrations.push(group_registration);
         subscription.registrations.push(server_registration);
         Ok(subscription)
+    }
+}
+
+#[cfg(test)]
+#[forbid(unsafe_code)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use windows::Win32::System::Com::{IConnectionPoint_Impl, IEnumConnections};
+    use windows_core::{GUID, IUnknown, Ref};
+
+    #[windows_core::implement(IConnectionPoint)]
+    struct RetryPoint {
+        attempts: Arc<AtomicUsize>,
+    }
+    impl IConnectionPoint_Impl for RetryPoint_Impl {
+        fn GetConnectionInterface(&self) -> AbiResult<GUID> {
+            Ok(IOPCDataCallback::IID)
+        }
+        fn GetConnectionPointContainer(&self) -> AbiResult<IConnectionPointContainer> {
+            Err(windows_core::Error::from_hresult(
+                windows::Win32::Foundation::E_NOTIMPL,
+            ))
+        }
+        fn Advise(&self, _sink: Ref<IUnknown>) -> AbiResult<u32> {
+            Ok(17)
+        }
+        fn Unadvise(&self, cookie: u32) -> AbiResult<()> {
+            assert_eq!(cookie, 17);
+            if self.attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                Err(windows_core::Error::from_hresult(
+                    windows::Win32::Foundation::E_FAIL,
+                ))
+            } else {
+                Ok(())
+            }
+        }
+        fn EnumConnections(&self) -> AbiResult<IEnumConnections> {
+            Err(windows_core::Error::from_hresult(
+                windows::Win32::Foundation::E_NOTIMPL,
+            ))
+        }
+    }
+    #[test]
+    fn failed_unadvise_keeps_cookie_for_retry() -> Result<()> {
+        let _apartment = ComApartment::mta()?;
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let point = RetryPoint {
+            attempts: attempts.clone(),
+        }
+        .into();
+        let mut subscription = DataSubscription {
+            point,
+            cookie: Some(17),
+            registrations: Vec::new(),
+            _group: PhantomData,
+            _apartment: PhantomData,
+        };
+        assert!(subscription.close().is_err());
+        assert_eq!(subscription.cookie(), Some(17));
+        subscription.close()?;
+        assert_eq!(subscription.cookie(), None);
+        subscription.close()?;
+        assert_eq!(attempts.load(Ordering::SeqCst), 2);
+        Ok(())
+    }
+    #[test]
+    fn reentrant_git_failure_returns_error_instead_of_success_ack() -> Result<()> {
+        let _apartment = ComApartment::mta()?;
+        let calls = Arc::new(AtomicUsize::new(0));
+        let handler_calls = calls.clone();
+        let callback = windows_core::ComObject::new(Callback {
+            handler: Arc::new(move |event| {
+                reentrant_event(event, u32::MAX, u32::MAX, 1, &|_, _| {
+                    handler_calls.fetch_add(1, Ordering::SeqCst);
+                })
+            }),
+        });
+        assert!(callback.OnCancelComplete(7, 1).is_err());
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        Ok(())
+    }
+    #[test]
+    fn callback_bounds_aggregate_strings_before_handler() -> Result<()> {
+        let _apartment = ComApartment::mta()?;
+        let calls = Arc::new(AtomicUsize::new(0));
+        let handler_calls = calls.clone();
+        let callback = windows_core::ComObject::new(Callback {
+            handler: Arc::new(move |_| {
+                handler_calls.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            }),
+        });
+        let handles = [1, 2];
+        let values = [
+            VARIANT::from("a".repeat(270_000).as_str()),
+            VARIANT::from("b".repeat(270_000).as_str()),
+        ];
+        let qualities = [0xc0, 0xc0];
+        let times = [FILETIME::default(), FILETIME::default()];
+        let errors = [HRESULT(0), HRESULT(0)];
+        assert!(
+            callback
+                .OnDataChange(
+                    0,
+                    1,
+                    HRESULT(0),
+                    HRESULT(0),
+                    2,
+                    handles.as_ptr(),
+                    values.as_ptr(),
+                    qualities.as_ptr(),
+                    times.as_ptr(),
+                    errors.as_ptr()
+                )
+                .is_err()
+        );
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        let values = [VARIANT::from("hello"), VARIANT::from(7_u16)];
+        callback
+            .OnReadComplete(
+                7,
+                1,
+                HRESULT(0),
+                HRESULT(0),
+                2,
+                handles.as_ptr(),
+                values.as_ptr(),
+                qualities.as_ptr(),
+                times.as_ptr(),
+                errors.as_ptr(),
+            )
+            .map_err(from_abi_error)?;
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        // Multi-byte UTF-8 expansion must also consume the budget.
+        let text = VARIANT::from("界".repeat(180_000).as_str());
+        assert!(validate_callback_value(&text, &mut 0).is_err());
+        Ok(())
     }
 }

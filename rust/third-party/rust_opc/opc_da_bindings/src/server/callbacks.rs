@@ -68,17 +68,19 @@ fn git() -> AbiResult<IGlobalInterfaceTable> {
 }
 struct Registration<'a> {
     table: IGlobalInterfaceTable,
-    cookie: u32,
+    cookie: Option<u32>,
     lease: &'a WorkerLease,
 }
 impl Drop for Registration<'_> {
     fn drop(&mut self) {
-        self.lease.begin(Instant::now());
-        // SAFETY: registration exclusively owned here; revocation runs in initialized apartment.
-        if unsafe { self.table.RevokeInterfaceFromGlobal(self.cookie) }.is_err() {
-            self.lease.fail();
+        if let Some(cookie) = self.cookie.take() {
+            self.lease.begin(Instant::now());
+            // SAFETY: registration exclusively owned here; initialized current apartment.
+            if unsafe { self.table.RevokeInterfaceFromGlobal(cookie) }.is_err() {
+                self.lease.fail();
+            }
+            self.lease.finish();
         }
-        self.lease.finish();
     }
 }
 struct Proxy<'a> {
@@ -133,17 +135,23 @@ impl Callbacks {
         let table = git()?;
         // SAFETY: exact QI callback reference and IID in calling Advise apartment.
         let cookie = unsafe { table.RegisterInterfaceInGlobal(&callback, &IOPCDataCallback::IID) }?;
-        // Release caller QI reference before worker startup: its Release is covered by busy lease.
+        // Own rollback before any further operation (including Release) can unwind.
+        let mut registration = Registration {
+            table,
+            cookie: Some(cookie),
+            lease: &lease,
+        };
+        // Release caller QI reference before worker startup: covered by busy lease.
         drop(callback);
         let result = self.spawn(cookie, lease.clone(), service, state);
-        if result.is_err() {
-            // SAFETY: spawn failure started no worker; caller still owns registration and busy lease.
-            if unsafe { table.RevokeInterfaceFromGlobal(cookie) }.is_err() {
-                lease.fail();
-            }
+        if result.is_ok() {
+            // Successful channel send transferred the scalar cookie to an initialized
+            // worker that already owns its apartment-local GIT table. No COM proxy crosses.
+            registration.cookie = None;
         }
         result
     }
+
     fn spawn(
         self: &Arc<Self>,
         git_cookie: u32,
@@ -164,12 +172,22 @@ impl Callbacks {
         });
         let worker_sink = sink.clone();
         let owner = Arc::downgrade(self);
+        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(0);
+        let (start_tx, start_rx) = std::sync::mpsc::sync_channel(0);
         std::thread::Builder::new()
             .name("opc-da-callback".into())
             .stack_size(256 * 1024)
             .spawn(move || {
                 if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    worker(git_cookie, &lease, &worker_sink, owner, service, state)
+                    worker(
+                        start_rx,
+                        ready_tx,
+                        &lease,
+                        &worker_sink,
+                        owner,
+                        service,
+                        state,
+                    )
                 }))
                 .is_err()
                 {
@@ -178,6 +196,13 @@ impl Callbacks {
             })
             .map_err(|_| error(E_OUTOFMEMORY))?;
         m.sinks.insert(cookie, sink);
+        drop(m);
+        // Never wait for COM initialization while holding membership/queue/state locks.
+        // Caller still owns registration rollback until the worker accepts the cookie.
+        if ready_rx.recv().is_err() || start_tx.send(git_cookie).is_err() {
+            let _ = self.unadvise(cookie);
+            return Err(error(E_UNEXPECTED));
+        }
         Ok(cookie)
     }
     fn retire(&self, sink: &Sink) {
@@ -321,8 +346,26 @@ fn close_sink(s: &Sink) {
     }
     s.wake.notify_all();
 }
+fn worker_start(
+    start: std::sync::mpsc::Receiver<u32>,
+    ready: std::sync::mpsc::SyncSender<()>,
+    lease: &WorkerLease,
+) -> AbiResult<(opc_classic_utils::ComApartment, Registration<'_>)> {
+    let apartment = opc_classic_utils::ComApartment::mta().map_err(to_abi_error)?;
+    let table = git()?;
+    ready.send(()).map_err(|_| error(E_UNEXPECTED))?;
+    let cookie = start.recv().map_err(|_| error(E_UNEXPECTED))?;
+    // No fallible operation between receiving ownership and constructing RAII.
+    let registration = Registration {
+        table,
+        cookie: Some(cookie),
+        lease,
+    };
+    Ok((apartment, registration))
+}
 fn worker(
-    cookie: u32,
+    start: std::sync::mpsc::Receiver<u32>,
+    ready: std::sync::mpsc::SyncSender<()>,
     lease: &WorkerLease,
     sink: &Sink,
     owner: std::sync::Weak<Callbacks>,
@@ -330,12 +373,8 @@ fn worker(
     state: Arc<Mutex<GroupState>>,
 ) {
     let result = (|| -> AbiResult<()> {
-        let _apartment = opc_classic_utils::ComApartment::mta().map_err(to_abi_error)?;
-        let registration = Registration {
-            table: git()?,
-            cookie,
-            lease,
-        };
+        let (_apartment, registration) = worker_start(start, ready, lease)?;
+        let cookie = registration.cookie.ok_or_else(|| error(E_UNEXPECTED))?;
         let mut raw = ptr::null_mut();
         // SAFETY: registered exact callback IID, valid output slot, current MTA.
         unsafe {
@@ -739,5 +778,46 @@ impl IOPCAsyncIO2_Impl for DaGroupAdapter_Impl {
     }
     fn GetEnable(&self) -> AbiResult<windows_core::BOOL> {
         boundary(|| self.callbacks.enable(None).map(Into::into))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[windows_core::implement(IConnectionPointContainer)]
+    struct Identity;
+    impl IConnectionPointContainer_Impl for Identity_Impl {
+        fn EnumConnectionPoints(&self) -> AbiResult<IEnumConnectionPoints> {
+            Err(error(E_NOTIMPL))
+        }
+        fn FindConnectionPoint(&self, _iid: *const GUID) -> AbiResult<IConnectionPoint> {
+            Err(error(NO_CONNECTION))
+        }
+    }
+    #[test]
+    fn apartment_startup_failure_leaves_caller_rollback_owner() -> AbiResult<()> {
+        // Force the real CoInitializeEx failure path: this thread already owns STA.
+        let _apartment = opc_classic_utils::ComApartment::sta().map_err(to_abi_error)?;
+        let monitor = CallbackMonitor::new();
+        let lease = monitor.worker().ok_or_else(|| error(FAIL))?;
+        let object: IUnknown = Identity.into();
+        let table = git()?;
+        // SAFETY: live typed object/exact IID in the current initialized apartment.
+        let cookie = unsafe { table.RegisterInterfaceInGlobal(&object, &IUnknown::IID) }?;
+        let registration = Registration {
+            table: table.clone(),
+            cookie: Some(cookie),
+            lease: &lease,
+        };
+        let (_start, receive) = std::sync::mpsc::sync_channel(0);
+        let (ready, ready_receive) = std::sync::mpsc::sync_channel(0);
+        assert!(worker_start(receive, ready, &lease).is_err());
+        assert!(ready_receive.recv().is_err());
+        drop(registration);
+        let mut raw = ptr::null_mut();
+        // SAFETY: initialized output and exact IID; revoked cookie must fail.
+        assert!(unsafe { table.GetInterfaceFromGlobal(cookie, &IUnknown::IID, &mut raw) }.is_err());
+        assert!(raw.is_null());
+        Ok(())
     }
 }
