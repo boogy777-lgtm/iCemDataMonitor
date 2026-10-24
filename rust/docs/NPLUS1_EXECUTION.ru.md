@@ -516,3 +516,30 @@ Local final-review evidence: exact1.99.1 codec5/5, Host26/26, routing/cache42/42
 PASS; fmt/check, Linux codec clippy and Windows sidecar+codec all-target
 check/clippy locked/offline PASS. Windows runtime/service/packaging tests remain
 pending; no actual COM/MMF/hardware result is inferred from cross compilation.
+
+## P7b upstream safe SDK feasibility, 2026-10-24
+
+Read-first проверка [OPCDA_P7B](OPCDA_P7B.ru.md) повторно сверила live upstream
+HEAD/master, все девять branch heads, tags/releases/open PR и реальные safe API.
+Default ref по-прежнему `da44a99265f9706618bbe506c98f714f2aa46f0b` (наш pin),
+tags нет, releases/open PR пусты. `refactor/safe-opc-bindings` и
+`ci/opc-classic-integration` не добавляют ни coherent state hook, ни DA callbacks.
+Safe `client::DaGroup::state()` существует, но service не получает эту capability,
+public safe lookup client-created group отсутствует; polling не даёт atomic
+ordering с SetState/Read и не реализует callbacks.
+
+Старые server/connection-point branches проверены отдельно: ABI-shaped traits,
+safe raw-pointer→arbitrary-lifetime helpers и отсутствие проверенного owned sink
+marshalling/bounded lifecycle не позволяют принять их как safe SDK. Другие
+найденные Rust проекты являются DA clients/gateways; experimental .NET SDK не
+предоставляет готовой Rust границы. Таблица exact refs, первичные source links,
+минимальные upstream extension requirements и шесть Windows acceptance cases
+сохранены в OPCDA_P7B. Это ограниченный feasibility вывод, не доказательство
+отсутствия всех возможных SDK.
+
+Итог: без нового audited upstream safe API снять текущий P7 blocker нельзя.
+Такое API может быть принято без ослабления application/shared forbid(unsafe),
+но сегодня готовой capability не найдено. P7 PARTIAL и требования плана1.7
+сохранены; native fork, новые unsafe exceptions, dependencies/lockfile и
+production code не менялись. Проверка doc-only: `git diff --check` PASS;
+Windows compilation/runtime и CI остаются отдельными evidence.

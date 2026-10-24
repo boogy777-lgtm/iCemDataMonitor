@@ -259,3 +259,106 @@ regression and process client harness are compile checked, not executed here.
 Routing/cache42/42 and `git diff --check` PASS. PowerShell is unavailable locally;
 changed packaging contract must run in Windows CI. These checks do not close the
 remaining group-state/callback/COM client/MMF/hardware/release gates.
+
+## Повторная upstream feasibility-проверка (2026-10-24)
+
+Class: готовая safe DA server capability для coherent group state и owned COM
+callbacks; client callback receivers и ABI-only interface declarations вне класса.
+Inv: capability принимается только при доступном service API, ownership/marshalling
+контракте и Windows client evidence; ниже exact refs и acceptance cases.
+N+1: обновление SDK повторяет эту проверку, dependency audit/lock и те же Windows
+cases; отсутствие одного из обязательных пунктов сохраняет P7 PARTIAL.
+
+Проверены live `git ls-remote --symref origin`, fetch всех heads/tags и исходники
+[Ronbb/rust_opc](https://github.com/Ronbb/rust_opc). На дату проверки remote HEAD
+указывает на master, `da44a99265f9706618bbe506c98f714f2aa46f0b`
+(commit 2026-08-06); это уже используемый pin, более нового default ref нет.
+`refs/tags/*` отсутствуют; GitHub REST
+[`releases?per_page=100`](https://api.github.com/repos/Ronbb/rust_opc/releases?per_page=100)
+и [`pulls?state=open&per_page=100`](https://api.github.com/repos/Ronbb/rust_opc/pulls?state=open&per_page=100)
+вернули пустые массивы. Published `opc_da`/`opc_da_bindings` latest в docs.rs —
+0.3.1; это отдельная старая API-линия, а не готовая 0.4 server extension.
+
+| Проверенный remote head | Exact commit | Результат осмотра |
+|---|---|---|
+| master | `da44a99265f9706618bbe506c98f714f2aa46f0b` | Текущая safe facade, оба blockers сохранены |
+| refactor/safe-opc-bindings | `753ffa0e90b4371031cc6db2bd6af814f65775ce` | Те же service signatures и три group interfaces |
+| ci/opc-classic-integration | `99a0b58bfc4085e0473b42cf251026416a435749` | Те же service signatures и три group interfaces |
+| feat/client | `e0bdc0c3a573f50b6e2f470f4789a172a45ddff4` | Старые ABI-shaped server traits/connection point scaffold |
+| feat/remote-client | `0dd435b0f913e2d59f1d90b7956ed86f2871bc7e` | Старая API-линия, не 0.4 safe extension |
+| feat/bindings | `fb45e85f66939dae6fec8f9704d69f03d99d2a0a` | Старая API-линия, не 0.4 safe extension |
+| chore/update-dpes | `27ac0a31edceb77bcd231f15169eef23f43f12f6` | Старая API-линия, не 0.4 safe extension |
+| chore/update-idl | `7a92495bd5651c864bb30274965b6067d3ed8f84` | Старая API-линия, не 0.4 safe extension |
+| feat/opc_da | `cd3d8a76c2503e43f77186d57d09a441a9414920` | Раздельные ABI adapters, нет готового owned server callback lifecycle |
+
+На master перепроверены не только trait declarations, но и возможный safe обход:
+
+- [`server/mod.rs`](https://github.com/Ronbb/rust_opc/blob/da44a99265f9706618bbe506c98f714f2aa46f0b/opc_da_bindings/src/server/mod.rs):
+  `DaService::add_group` получает initial `GroupOptions`, возвращает service Arc;
+  private `DaGroupAdapter` создаётся SDK после этого. `SetState` меняет его private
+  mutex state, `Read` вызывает только `service.read(source, handles)`. Ни state
+  capability, ни notification hook в service не передаётся.
+- [`client/group.rs`](https://github.com/Ronbb/rust_opc/blob/da44a99265f9706618bbe506c98f714f2aa46f0b/opc_da_bindings/src/client/group.rs)
+  действительно имеет safe `DaGroup::state()`, но `DaGroup::new` — `pub(crate)`.
+  [`client/mod.rs`](https://github.com/Ronbb/rust_opc/blob/da44a99265f9706618bbe506c98f714f2aa46f0b/opc_da_bindings/src/client/mod.rs)
+  предоставляет `DaClient::from_object` и `add_group`, не safe lookup существующей
+  client-created group. Создать другую group не значит получить её состояние.
+  `DaServer::service()` возвращает исходный service, `object()` — server identity,
+  а `ComObject::query_interface` не создаёт typed state reader. Даже отдельный
+  poll GetState не задаёт atomic ordering с concurrent SetState/Read и не решает
+  callbacks. Начальный active snapshot не является исправлением.
+- Group COM identity реализует только `IOPCItemMgt`, `IOPCSyncIO`,
+  `IOPCGroupStateMgt`. Safe client/common/AE subscription APIs и сгенерированный
+  `IOPCDataCallback` не добавляют DA server connection point/publisher.
+
+Старые branches не пропущены из-за их названий: там действительно есть
+`opc_da/src/server/com/group.rs` с async/connection-point interfaces и
+`connection_point.rs` с Advise/Unadvise. Однако public `GroupTrait` принимает
+`tagOPCITEMDEF`, `PWSTR`, `VARIANT` и COM interfaces, а
+[`memory.rs` на feat/bindings](https://github.com/Ronbb/rust_opc/blob/fb45e85f66939dae6fec8f9704d69f03d99d2a0a/opc_da/src/server/com/memory.rs)
+имеет safe public `IntoRef`/`IntoComArrayRef` для raw pointers с произвольным
+возвращаемым lifetime: проверка null не доказывает валидность памяти.
+`ConnectionPoint` хранит `IUnknown` в map; это не доказательство marshalled owned
+sink, bounded dispatch/cancel/shutdown. Такие wrappers не проходят требование
+проверенной safe границы. Feature name `unstable_server` сам по себе не означает
+требование nightly; причиной отказа является API/ownership, а не имя feature.
+
+Дополнительно проверены первичные README/API альтернатив:
+[`opcda-bridge`](https://github.com/bytehound-labs/opcda-bridge) и его
+`bytehound-opc-da-client`, [`opc-da-client`](https://docs.rs/opc-da-client/latest/opc_da_client/)
+предоставляют доступ к существующим DA servers, не публикацию нашего COM server.
+[`marcschier/opc-classic`](https://github.com/marcschier/opc-classic) описывает
+DA publisher, но это experimental alpha .NET 10 SDK, не safe Rust extension к
+текущему adapter; готового Rust ownership/marshalling контракта для него нет.
+Это bounded поиск доступного поддерживаемого пути, не утверждение об отсутствии
+любого SDK в мире. Квалифицирующего готового safe Rust server пути не найдено.
+Новых dependencies/lockfile changes нет. Действующий MIT + отдельные OPC IDL terms,
+MSRV1.97≤1.99.1 и существующий safe synchronous profile остаются прежними.
+
+### Минимальное safe upstream extension и приёмка
+
+Требуются обе capabilities на одной group identity. Первая — owned coherent
+group-state snapshot в read/dispatch или transactional state hook с явно заданным
+commit/error/rollback ordering. Вторая — safe owned DA sink/advise lease и
+publisher: SDK владеет COM refs и apartment marshalling; приложение передаёт
+только owned values/quality/timestamps/handles. Ограничения групп/items/sinks,
+очередей и in-flight операций должны быть явными; latest-value coalescing не
+должен терять completion/cancellation events. Нужны reentrant-safe dispatch вне
+model locks, корректный unadvise/remove/disconnect и bounded shutdown с
+изоляцией hung sink существующим process watchdog. Raw sink pointer, handwritten
+application COM ABI или добавление unsafe в native crate не являются extension.
+
+| Acceptance case | Необходимое наблюдение настоящим Windows client |
+|---|---|
+| AddGroup(false), SetState true→false→true, concurrent CACHE Read | Group/item activity учитываются по согласованному состоянию; DEVICE сохраняет source quality и игнорирует subscription activity |
+| Изменение update rate/client handle/item active при публикации | Revised rate и callback handles соответствуют committed group/item state; producer acquisition остаётся 200ms |
+| Advise двух sinks, Unadvise, повторный/неизвестный cookie, disconnect | Независимые leases; определённая граница in-flight доставки и освобождение COM refs |
+| OnDataChange и поддерживаемые async read/refresh/cancel, read-only write denial | Coherent native type/bits/quality/writer FILETIME, правильные transaction/client handles и per-item HRESULT; нет фиктивного completion |
+| Slow/hung/reentrant sink, burst публикаций, RemoveGroup(force), stop | Bounded storage/dispatch, нет deadlock core/model locks; остальные consumers работают; own-child kill/reap при deadline |
+| Cross-apartment и cross-process client с matching proxy/stubs | Реальные callback marshalling/lifetime, повторные connect/disconnect и отсутствие leaked group/sink после stop |
+
+До этих evidence P7 остаётся PARTIAL. Policy менять для снятия blocker не нужно:
+достаточно реального audited upstream safe extension с этими гарантиями; сейчас
+оно отсутствует. Нельзя объявить blocker снятым обновлением pin, polling private
+state, имитацией callback или уменьшением требований плана. Эта проверка doc-only;
+нового Windows runtime PASS или compile evidence она не добавляет.
