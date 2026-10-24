@@ -429,3 +429,34 @@ fmt/check/build/test/clippy all-targets `-D warnings`, locked/offline PASS.
 Independent Python asyncua2.1.0 client functional gate PASS (evidence linked above).
 Это P7 partial: UA ready в описанном loopback test profile; OPC DA sidecar7b pending,
 Windows clients/MMF/runtime/packaging/hardware и secure/remote profile OPEN.
+
+## Этап 7b: OPC DA synchronous read sidecar
+
+Class: Windows local COM read-only snapshot consumer, отдельный owned child process;
+legacy LayerKind::OpcDa no-op, MMF acquisition, core и остальные adapters вне класса.
+Inv: deterministic versioned IPC≤256KiB, one in-flight frame, own-child kill/reap
+watchdog и deadline lifecycle; native raw types/IDs и writer FILETIME проверяются
+codec/process/safeSDK-client tests. Никаких MMF handles и handwritten unsafe.
+N+1: новый protocol добавляет только module/config/composition registration;
+codec общий ровно для двух концов IPC, reader/publication остаются прежними.
+
+Реализованы optional `--opc-da-config FILE`, lifecycle entry `opc-da`, отдельный
+`icem-opc-da-sidecar` и `icem-opc-da-codec`. SafeSDK pinned git revision, полные
+role/features/licenses/MSRV/unsafe/lock audit и scope: [OPCDA_P7B](OPCDA_P7B.ru.md),
+[machine-readable audit](../migration/opc-da-dependencies.json).
+Старый OPC toggle остаётся no-op. Runtime COM class factory реальная; explicit
+register/unregister трогают только собственные per-user CLSID/ProgID mappings.
+Read-only synchronous profile имеет groups/items/read; browse/callbacks/DA3,
+proxy/stubs installation, DCOM и production packaging не объявлены реализованными.
+
+Canonical storage — raw Box<[u16]>+Arc. Stable var{address}, U16/I32/F32 raw bits,
+COM int32, acquisition status/ages и producer active сохранены. Sample FILETIME —
+только writer metadata соответствующей зоны с .NET→1601 offset, неизвестный0;
+COMvalue/now не подставляются. Capture age продолжает монотонно расти послеreceipt.
+
+ExactRust1.99.1 Linux: Host26/26 и codec3/3 PASS, scoped check/build/test/clippy
+locked/offline, fmt и diff-check PASS. Windows x64 target codec+sidecar all-target
+check/clippy PASS; real COM unit/client tests только compile-checked. Отдельный
+opt-in cross-process CoCreateInstance gate подготовлен и требует installedmatching
+OPC Foundation proxy/stubs. Фактическая Windows/MMF/hardware/client/registration
+приёмка OPEN; P7 целиком не закрыт одним Linux/compile evidence.

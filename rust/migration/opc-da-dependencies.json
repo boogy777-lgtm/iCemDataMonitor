@@ -1,0 +1,37 @@
+{
+  "source": "https://github.com/Ronbb/rust_opc",
+  "revision": "da44a99265f9706618bbe506c98f714f2aa46f0b",
+  "target": "cfg(windows)",
+  "features": "no optional features",
+  "sdk_license": "MIT; upstream NOTICE reserves OPC Foundation metadata terms",
+  "sdk_msrv": "1.97",
+  "workspace_toolchain": "1.99.1",
+  "safe_boundary": [
+    "DaService",
+    "DaGroupService",
+    "DaServer",
+    "ComApartment::mta",
+    "ClassFactory",
+    "LocalClassRegistration"
+  ],
+  "unsafe": "only unchanged upstream ABI/COM SDK and existing external windows family; application forbid unchanged",
+  "new_locked_external_packages": [
+    "opc_classic_abi 0.1.0 git",
+    "opc_classic_types 0.1.0 git",
+    "opc_classic_utils 0.4.0 git",
+    "opc_comn_bindings 0.4.0 git",
+    "opc_da_bindings 0.4.0 git",
+    "windows-bindgen 0.66.0 registry"
+  ],
+  "windows_bindgen_license": "MIT OR Apache-2.0; build-only generator",
+  "known_gaps": [
+    "browse",
+    "async callbacks",
+    "DA3",
+    "Windows cross-process runtime acceptance",
+    "OPC Foundation proxy/stubs installation",
+    "OPC Foundation metadata distribution terms acceptance",
+    "DCOM and x86",
+    "production packaging"
+  ]
+}

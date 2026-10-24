@@ -31,6 +31,7 @@ mod consumers;
 mod layers;
 mod modbus_consumer;
 mod mqtt_consumer;
+mod opc_da_consumer;
 mod opcua_consumer;
 mod web_consumer;
 #[cfg(windows)]
@@ -63,6 +64,7 @@ struct Options {
     sniffer_adapter: Option<String>,
     mqtt: Option<mqtt_consumer::Config>,
     opcua: Option<opcua_consumer::Config>,
+    opc_da_config: Option<opc_da_consumer::Config>,
 }
 fn options() -> Result<Options, String> {
     let mut args = std::env::args().skip(1);
@@ -84,6 +86,7 @@ fn options() -> Result<Options, String> {
     let mut sniffer_adapter = None;
     let mut mqtt = None;
     let mut opcua = None;
+    let mut opc_da_config = None;
     while let Some(key) = args.next() {
         if key == "--autostart" {
             autostart = true;
@@ -123,6 +126,12 @@ fn options() -> Result<Options, String> {
             "--rpc-pipe" => rpc_pipe = Some(value),
             "--registry" => registry = Some(PathBuf::from(value)),
             "--sniffer-adapter" => sniffer_adapter = Some(value),
+            "--opc-da-config" => {
+                if opc_da_config.is_some() {
+                    return Err("duplicate --opc-da-config".into());
+                }
+                opc_da_config = Some(opc_da_consumer::Config::load(std::path::Path::new(&value))?);
+            }
             "--opcua-config" => {
                 if opcua.is_some() {
                     return Err("duplicate --opcua-config".into());
@@ -239,6 +248,7 @@ fn options() -> Result<Options, String> {
         sniffer_adapter,
         mqtt,
         opcua,
+        opc_da_config,
     })
 }
 struct Fixture(Arc<Snapshot>);
@@ -344,6 +354,12 @@ fn run<D: icem_platform_windows::console::Device>(
     boot.complete("composition", None)?;
     boot.begin("layers", "слои")?;
     let mut consumers = consumers::Registry::new();
+    if let Some(config) = options.opc_da_config {
+        let server = opc_da_consumer::start(config, acquisition.snapshot_reader())?;
+        consumers
+            .register(consumers::ConsumerId("opc-da"), Box::new(server))
+            .map_err(|_| "duplicate or full consumer registration")?;
+    }
     if let Some(config) = options.opcua {
         let server = opcua_consumer::start(config, acquisition.snapshot_reader())?;
         consumers
@@ -501,11 +517,12 @@ fn run<D: icem_platform_windows::console::Device>(
     ));
     drop(server);
     diagnostic!(
-        "Consumers: modbus={:?} web={:?} mqtt={:?} opcua={:?}",
+        "Consumers: modbus={:?} web={:?} mqtt={:?} opcua={:?} opc-da={:?}",
         consumers.status(consumers::ConsumerId("modbus")),
         consumers.status(consumers::ConsumerId("web")),
         consumers.status(consumers::ConsumerId("mqtt")),
-        consumers.status(consumers::ConsumerId("opcua"))
+        consumers.status(consumers::ConsumerId("opcua")),
+        consumers.status(consumers::ConsumerId("opc-da"))
     );
     let started = Instant::now();
     let mut mirror_due = started + options.tick;
@@ -643,7 +660,7 @@ fn main() -> ExitCode {
         .any(|a| matches!(a.as_str(), "--help" | "-h"))
     {
         diagnostic!(
-            "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH\nOptional MQTT publisher: --mqtt-config FILE\nOptional OPC UA server: --opcua-config FILE"
+            "icem-host-dev [--autostart] [--ini PATH] [--port N]\nicem-host-dev [--start] snapshot|get main|lan|raw|header\nicem-host-dev stop|restart\nDevelopment: --modbus-fixture PATH | --bus-live PATH | --station-config PATH\nOptional MQTT publisher: --mqtt-config FILE\nOptional OPC UA server: --opcua-config FILE\nOptional OPC DA sidecar: --opc-da-config FILE"
         );
         return ExitCode::SUCCESS;
     }
@@ -697,7 +714,7 @@ fn main() -> ExitCode {
         Err(error) => {
             logs.record(&format!("Configuration failed: {error}"));
             diagnostic!(
-                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH] [--mqtt-config FILE] [--opcua-config FILE]"
+                "{error}\nUsage: icem-host-dev (--modbus-fixture PATH | --bus-live PATH | --station-config PATH) [--bus-map NAME] [--bus-mutex NAME] [--bind 127.0.0.1:1502] [--duration-ms 10000] [--web-bind 127.0.0.1:8090] [--theme-file PATH] [--registry PATH] [--rpc-pipe iCemDataMonitor.Host] [--tray-icon PATH] [--mqtt-config FILE] [--opcua-config FILE] [--opc-da-config FILE]"
             );
             return ExitCode::from(2);
         }

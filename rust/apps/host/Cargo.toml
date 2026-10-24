@@ -13,6 +13,7 @@ name = "icem-host-dev"
 path = "src/main.rs"
 
 [dependencies]
+icem-opc-da-codec = { path = "../../crates/icem-opc-da-codec" }
 async-opcua = { version = "=0.19.0", default-features = false, features = ["server"] }
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }

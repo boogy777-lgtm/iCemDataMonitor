@@ -35,6 +35,16 @@ External Valgrind3.22.0 Memcheck on the P4 executable measured20020 total-proces
 
 The canonical representation stays one contiguous `Box<[u16]>` inside shared `Arc<Snapshot>`, with borrowed typed Service/Region projections and lazy typed variable iteration. There are no generated var1..varN fields, persistent `Vec<Value>`, per-tick var-name strings or conversion of COM int32 time to float32.
 
+Дополнительная проверка layout на Linux x86_64, exact Rust1.99.1: `size_of::<Value>()=8`, `size_of::<Variable>()=24`. Непосредственно скомпилирован текущий `icem-bus`; fixture расширен до10001 registers, `Snapshot::variable_count()` возвращает9703. Это измерение текущего compiler layout, не обещание стабильного Rust ABI.
+
+| Представление для этого snapshot | Размер элементов, bytes | Назначение |
+|---|---:|---|
+| Канонический `Box<[u16]>`,10001 words | 20002 | Единственное исходное тело, общие Arc handles |
+| Материализованный `Vec<Value>`,9703 values | 77624 | Дополнительный массив не требуется для ленивой проекции |
+| Материализованный `Vec<Variable>`,9703 entries | 232872 | Дублирует value/index/identity, поэтому постоянно не хранится |
+
+Таблица исключает container/Arc headers, allocator overhead, capacity slack и metadata. Значения не доказывают ускорение; они показывают стоимость лишней материализации. Slice исходных `u16` нельзя непосредственно считать slice `f32`: live values собираются из двух CDAB words, COM time имеет типi32, service/reserve —u16. Если реальная численная операция потребует SIMD, допустим отдельный ограниченный homogeneous `f32` work buffer только выбранного диапазона; это явная дополнительная работа и память, проверяемая полным benchmark, а не замена canonical storage.
+
 Inspected generated assembly from `cargo rustc -p icem-bus --release --locked --offline -- --emit=asm` contains scalar u16 byte swapping (`rolw $8`) in the decoded-body loop. XMM copies elsewhere are not proof of vectorized byte conversion. A separate `-C opt-level=3` assembly experiment also retained scalar byte swapping in the inspected loop. This inspection is Linux library code, not Windows MSVC final-LTO proof. Source contiguity enables optimization but does not guarantee it.
 
 No substantial numerical hot spot or end-to-end win from manual SIMD was established. The project retains the safe scalar/compiler path, generic CPU compatibility, current Release profile and unsafe policy. No SIMD dependency/intrinsics, extra array or CPU dispatcher is added. Safe loop reformulation can be evaluated later against a measured bottleneck with scalar/raw-bit/NaN/tail equivalence.
