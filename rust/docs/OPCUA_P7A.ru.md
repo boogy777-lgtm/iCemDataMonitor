@@ -159,3 +159,9 @@ python rust/tools/acceptance/nplus1_opcua_client.py --host rust/target/debug/ice
 NaN payload/negative zero, raw COMtime, writer metadata, honest inactive LAN quality,
 активный RAW Good, timestamps, write rejection, initial subscription notification,
 Host exit0. Это functional interoperability smoke, не performance benchmark.
+
+
+R3 Windows independent gate подготовлен: [pins, licenses, isolated build и scope](../tools/acceptance/COUNTERPARTS.md).
+CI после полного Scaffold запускает real Mosquitto 2.0.22 broker/CLI и asyncua2.1.0
+с hash-locked Windows wheels; JSON и bounded logs сохраняются always.
+Actual Windows результат этого gate ещё не получен; R3 остаётся OPEN.

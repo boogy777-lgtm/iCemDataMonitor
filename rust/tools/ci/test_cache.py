@@ -175,6 +175,18 @@ class ContractTests(unittest.TestCase):
             with self.subTest(flag=flag), self.assertRaises(ValueError):
                 self.verify(workflow=self.workflow.replace(flag, '', 1))
 
+    def test_independent_counterparts_cannot_be_skipped_or_reordered(self):
+        name = 'Verify independent MQTT and OPC UA counterparts on Windows'
+        for replacement in ('# removed counterpart gate', name + "\n        if: success() && false"):
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                self.verify(workflow=self.workflow.replace('name: ' + name, 'name: ' + replacement))
+        before = 'Verify source and skeleton'
+        with self.assertRaises(ValueError):
+            self.verify(workflow=self.workflow.replace(before, 'TEMP').replace(name, before).replace('TEMP', name))
+        with self.assertRaises(ValueError):
+            self.verify(workflow=self.workflow.replace('name: Upload independent counterpart evidence\n        if: always()',
+                                                       'name: Upload independent counterpart evidence\n        if: success()'))
+
     def test_negative_scaffold_commands_and_common_guards(self):
         for text, keyword in ((self.scaffold, 'scaffold'), (self.inputs, 'inputs')):
             for line in text.splitlines():

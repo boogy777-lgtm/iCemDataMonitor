@@ -697,3 +697,15 @@ keeps capture fresh without changing writer FILETIME or the acquisition contract
 Full job was still running later checks; no full-head CI claim. R2 closed for this
 profile; remaining R3/R4/R5 plus distinct operator/hardware/distribution gates.
 See P7_SDK_CI for exact source/local checks and evidence limits.
+
+
+## R3: Windows independent counterparts — подготовка (25 октября 2026)
+
+Добавлен mandatory post-Scaffold gate без повторной сборки Host/GPUI: pinned
+Mosquitto2.0.22 official source + MSVC/CMake и isolated CPython3.12 asyncua2.1.0
+с complete13-wheel SHA256 closure. Dev-only roles/licenses/build hook описаны
+в tools/acceptance/COUNTERPARTS.md. Cache contract требует точную команду/order
+и always evidence; negative tests запрещают skip/reorder. Source/quality/raw-bit
+assertions сохранены; probe durations выведены из startup/test budgets.
+Windows execution ожидается: Linux verification не закрывает R3, MMF/hardware
+и full final CI не заявляются. R1/R2 mandatory gates сохранены.

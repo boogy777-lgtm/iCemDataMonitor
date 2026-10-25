@@ -4,7 +4,7 @@
 Run from repository root; --host and --fixture must identify existing files.
 Only child processes and temporary fixture/config files are changed.
 """
-import argparse,asyncio,json,pathlib,socket,struct,subprocess,tempfile,time
+import argparse,asyncio,json,pathlib,platform,shutil,socket,struct,subprocess,tempfile,time
 import asyncua
 from asyncua import Client, ua
 
@@ -43,6 +43,9 @@ async def verify(endpoint):
   return {'namespace':ns,'browse_variables':len(children),'types':['UInt16','Int32','Float','Float','UInt16'],'nan_bits':'7fc01234','negative_zero_bits':'80000000','source_timestamps':'absent','server_timestamps':'present','inactive_LAN':'BadOutOfService','active_RAW':'Good','read_only':True,'subscription_initial_notification':True,'COM_time':before,'writer_ticks':{names[i]:data[i].Value.Value for i in [5,6,7]}}
 
 def main(a):
+ startup_seconds,test_seconds=15,15
+ host_duration_ms=(startup_seconds+test_seconds+5)*1000
+ pathlib.Path(a.output).parent.mkdir(parents=True,exist_ok=True)
  a.host=str(pathlib.Path(a.host).resolve())
  a.fixture=str(pathlib.Path(a.fixture).resolve())
  with tempfile.TemporaryDirectory(prefix='icem-ua-independent-') as t:
@@ -55,21 +58,25 @@ def main(a):
    b[64+addr*2:68+addr*2]=struct.pack('>HH',bits&65535,bits>>16)
   fixture=t/'bus.bin';fixture.write_bytes(b)
   with (t/'host.log').open('w+') as log:
-   p=subprocess.Popen([a.host,'--modbus-fixture',str(fixture),'--bind',f'127.0.0.1:{mb}','--duration-ms','3000','--opcua-config',str(cfg)],stdout=log,stderr=log,cwd=t)
+   p=subprocess.Popen([a.host,'--modbus-fixture',str(fixture),'--bind',f'127.0.0.1:{mb}','--duration-ms',str(host_duration_ms),'--opcua-config',str(cfg)],stdout=log,stderr=log,cwd=t)
    try:
-    deadline=time.monotonic()+12
+    deadline=time.monotonic()+startup_seconds
     while True:
      try:
       with socket.create_connection(('127.0.0.1',port),timeout=.1):break
      except OSError:
       if p.poll() is not None or time.monotonic()>deadline:log.seek(0);raise RuntimeError(log.read())
       time.sleep(.02)
-    first=asyncio.run(verify(f'opc.tcp://127.0.0.1:{port}/'))
-    assert p.wait(timeout=8)==0
-    result={'result':'PASS','client':'asyncua '+asyncua.__version__,'scope':'independent Python UA client -> real Rust UA server, Linux loopback fixture, no Windows/MMF/hardware claim','checks':first,'host_exit':0}
+    first=asyncio.run(asyncio.wait_for(verify(f'opc.tcp://127.0.0.1:{port}/'),test_seconds))
+    assert p.wait(timeout=host_duration_ms/1000+5)==0
+    result={'result':'PASS','client':'asyncua '+asyncua.__version__,'platform':platform.platform(),'python_version':platform.python_version(),'scope':f'independent Python UA client -> real Rust UA server, {platform.system()} loopback fixture, no live MMF/hardware claim','checks':first,'host_exit':0}
     pathlib.Path(a.output).write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
+   except Exception as error:
+    pathlib.Path(a.output).write_text(json.dumps({'result':'FAIL','platform':platform.platform(),'error':str(error),'host_exit':p.poll()},indent=2)+'\n')
+    log.flush();log.seek(0);print(log.read());raise
    finally:
     if p.poll() is None:p.terminate();p.wait(timeout=3)
+    log.flush();shutil.copyfile(t/'host.log',pathlib.Path(a.output).with_suffix('.host.log'))
 if __name__ == '__main__':
  p=argparse.ArgumentParser()
  p.add_argument('--host',required=True)

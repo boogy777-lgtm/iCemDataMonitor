@@ -1,4 +1,4 @@
-"""Optional real Mosquitto interoperability gate; no Python MQTT dependency.
+"""Independent real Mosquitto interoperability gate; no Python MQTT dependency.
 
 Use external mosquitto and mosquitto_sub executables. Isolated temporary config,
 loopback ephemeral port, nonpersistent broker; never uses a user's broker.
@@ -6,6 +6,8 @@ loopback ephemeral port, nonpersistent broker; never uses a user's broker.
 import argparse
 import json
 import os
+import platform
+import shutil
 from pathlib import Path
 import socket
 import subprocess
@@ -23,6 +25,9 @@ def main():
     args = parser.parse_args()
     for name in ["host", "mosquitto", "subscriber", "fixture"]:
         setattr(args, name, getattr(args, name).resolve())
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    startup_seconds, test_seconds = 15, 15
+    host_duration_ms = (2 * startup_seconds + test_seconds + 5) * 1000
     broker = host = None
     with tempfile.TemporaryDirectory(prefix="icem-mqtt-") as folder:
         folder = Path(folder)
@@ -38,7 +43,7 @@ def main():
 
         def boot():
             process = subprocess.Popen([str(args.mosquitto), "-c", str(broker_config)], stdout=broker_log, stderr=subprocess.STDOUT)
-            deadline = time.monotonic() + 3
+            deadline = time.monotonic() + startup_seconds
             while True:
                 try:
                     with socket.create_connection(("127.0.0.1", port), timeout=.2):
@@ -51,13 +56,13 @@ def main():
                     time.sleep(.02)
 
         def receive():
-            result = subprocess.run([str(args.subscriber), "-h", "127.0.0.1", "-p", str(port), "-t", "icem/acceptance/state", "-q", "2", "-C", "1", "-W", "4", "-F", "%r|%p"], capture_output=True, text=True, timeout=6, check=True)
+            result = subprocess.run([str(args.subscriber), "-h", "127.0.0.1", "-p", str(port), "-t", "icem/acceptance/state", "-q", "2", "-C", "1", "-W", str(test_seconds), "-F", "%r|%p"], capture_output=True, text=True, timeout=test_seconds + 2, check=True)
             retain, payload = result.stdout.strip().split("|", 1)
             return int(retain), json.loads(payload)
 
         try:
             broker = boot()
-            host = subprocess.Popen([str(args.host), "--modbus-fixture", str(args.fixture), "--bind", "127.0.0.1:0", "--duration-ms", "4000", "--mqtt-config", str(config)], stdout=host_log, stderr=subprocess.STDOUT)
+            host = subprocess.Popen([str(args.host), "--modbus-fixture", str(args.fixture), "--bind", "127.0.0.1:0", "--duration-ms", str(host_duration_ms), "--mqtt-config", str(config)], stdout=host_log, stderr=subprocess.STDOUT)
             _, first = receive()
             broker.terminate(); broker.wait(timeout=3); broker = None
             time.sleep(.45)
@@ -67,15 +72,16 @@ def main():
             assert reconnected["com_source_time"] == first["com_source_time"]
             assert reconnected["zones"] == first["zones"]
             assert reconnected["variables"] == first["variables"]
-            assert host.wait(timeout=6) == 0
+            assert host.wait(timeout=host_duration_ms / 1000 + 5) == 0
             retained_flag, retained = receive()
             assert retained_flag == 1
             assert retained["capture"]["generation"] >= reconnected["capture"]["generation"]
             assert retained["com_source_time"] == first["com_source_time"]
-            result = dict(result="PASS", broker_version=subprocess.run([str(args.mosquitto), "-h"], capture_output=True, text=True).stdout.splitlines()[0], qos=2, retain_flag_after_host_exit=retained_flag, first_generation=first["capture"]["generation"], reconnect_generation=reconnected["capture"]["generation"], retained_generation=retained["capture"]["generation"], source_clocks_and_bits_preserved=True, host_exit=0, scope="Linux loopback real Mosquitto; fixture source, not Windows MMF/hardware")
+            result = dict(result="PASS", broker_version=subprocess.run([str(args.mosquitto), "-h"], capture_output=True, text=True).stdout.splitlines()[0], qos=2, retain_flag_after_host_exit=retained_flag, first_generation=first["capture"]["generation"], reconnect_generation=reconnected["capture"]["generation"], retained_generation=retained["capture"]["generation"], source_clocks_and_bits_preserved=True, host_exit=0, platform=platform.platform(), python_version=platform.python_version(), scope=f"{platform.system()} loopback real Mosquitto; fixture source, no live MMF/hardware claim")
             args.output.write_text(json.dumps(result, indent=2) + "\n")
             print(json.dumps(result))
-        except Exception:
+        except Exception as error:
+            args.output.write_text(json.dumps(dict(result="FAIL", platform=platform.platform(), error=str(error), host_exit=host.poll() if host else None), indent=2) + "\n")
             host_log.flush(); broker_log.flush()
             print((folder / "host.log").read_text(errors="replace"))
             print((folder / "broker.log").read_text(errors="replace"))
@@ -85,6 +91,8 @@ def main():
                 if process is not None and process.poll() is None:
                     process.terminate(); process.wait(timeout=3)
             host_log.close(); broker_log.close()
+            shutil.copyfile(folder / "host.log", args.output.with_suffix(".host.log"))
+            shutil.copyfile(folder / "broker.log", args.output.with_suffix(".broker.log"))
 
 
 if __name__ == "__main__":

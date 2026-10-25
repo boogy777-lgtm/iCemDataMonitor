@@ -26,7 +26,9 @@ def verify(workflow, scaffold, inputs):
              'Verify Windows file logger boundary before desktop build',
              'Verify reviewed OPC SDK and sidecar on Windows',
              'Verify Windows emulator integration before desktop build',
-             'Verify source and skeleton', 'Check preserved dashboard in Chrome')
+             'Verify source and skeleton',
+             'Verify independent MQTT and OPC UA counterparts on Windows',
+             'Check preserved dashboard in Chrome')
     positions = [names.index(name) if name in names else -1 for name in order]
     require(-1 not in positions and positions == sorted(positions), 'Cache/check ordering drift')
     python_step = step('Set up Python for cache contracts')
@@ -48,7 +50,8 @@ def verify(workflow, scaffold, inputs):
         order[9]: ('cargo test --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows',
                    'cargo clippy --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings'),
         order[10]: ('./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline',),
-        order[11]: ('npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund',
+        order[11]: ('python tools/acceptance/windows_counterparts.py --host target/debug/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"',),
+        order[12]: ('npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund',
                     'node tools/browser/theme-contract.cjs', 'node tools/browser/dashboard.cjs'),
     }
     for name, expected in commands.items():
@@ -118,7 +121,7 @@ def verify(workflow, scaffold, inputs):
             'SDK provenance must run and propagate immediate failure')
     for text in (scaffold, inputs):
         require(not re.search(r'(?im)^\s*if\s*\([^\n]*(cache|hit)', text), 'No conditional checks')
-    for name in ('Upload dashboard evidence', 'Upload emulator differential evidence', 'Record bounded cache evidence', 'Upload Cargo cache evidence'):
+    for name in ('Upload independent counterpart evidence', 'Upload dashboard evidence', 'Upload emulator differential evidence', 'Record bounded cache evidence', 'Upload Cargo cache evidence'):
         require('        if: always()\n' in step(name), 'Evidence must survive failure')
     for owner in re.findall(r"Join-Path \$PSScriptRoot '([^']+)'", scaffold + inputs):
         require('rust/tools/' + owner in COMMON_SCAFFOLD_INPUTS,

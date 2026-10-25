@@ -95,6 +95,21 @@ jobs:
       - name: Verify source and skeleton
         shell: pwsh
         run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
+      - name: Verify independent MQTT and OPC UA counterparts on Windows
+        shell: pwsh
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python tools/acceptance/windows_counterparts.py --host target/debug/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload independent counterpart evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-independent-counterparts
+          path: ${{ runner.temp }}/icem-counterparts/evidence
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Check preserved dashboard in Chrome
         shell: pwsh
         env:
