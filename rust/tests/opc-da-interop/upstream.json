@@ -1,0 +1,15 @@
+{
+  "commit": "da44a99265f9706618bbe506c98f714f2aa46f0b",
+  "files": {
+    "opcda.idl": {
+      "upstream_path": "opc_da_bindings/.metadata/opcda.idl",
+      "sha256": "48cd9e211498354c2b075a87a3bb655aebf85ba12e3e65505f2171a1e966d662",
+      "bytes": 39086
+    },
+    "opccomn.idl": {
+      "upstream_path": "opc_comn_bindings/.metadata/opccomn.idl",
+      "sha256": "37c945c8897fbcc6d90572d967d5294a24a94ff3b83d69c20a7fd8ce23ad3673",
+      "bytes": 6749
+    }
+  }
+}

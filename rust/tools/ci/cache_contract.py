@@ -42,6 +42,7 @@ def verify(workflow, scaffold, inputs):
         order[7]: ('cargo test --locked --offline -p icem-logging',),
         order[8]: ('cargo test --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar',
                    'cargo clippy --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings',
+                   './tools/Test-OpcDaInterop.ps1',
                    'python third-party/rust_opc/verify.py',
                    'git diff --exit-code -- third-party/rust_opc'),
         order[9]: ('cargo test --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows',

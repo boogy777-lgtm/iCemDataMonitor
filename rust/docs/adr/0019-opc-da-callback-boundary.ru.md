@@ -83,3 +83,38 @@ pinned Core Components or reviewed upstream IDL+MIDL/cl on ephemeral Windows run
 with license/registry-restore audit; no unverified installer is claimed installed.
 MIT/NOTICE, original42 hashes and exact MSRV1.99.1 remain. Full reversible icem.patch
 includes explicit additions and removes them on reverse.
+
+## R2: CI-only external RPC acceptance boundary (before implementation)
+
+Class: independent Windows x64 test clients and generated matching proxy/stub;
+production SDK/application/native reader and installer payload are outside this class.
+Inv: exact pinned IDL bytes/notices, generated ABI only, own proxy CLSID, refusal
+of existing HKCU/HKLM 32/64 mappings and owned finally cleanup; mandatory CI gate
+runs after warm-cache restore as well. No handwritten Rust/C++ COM ABI or vtables.
+N+1: `tests/opc-da-interop/upstream.json`, `tools/Test-OpcDaInterop.ps1` and CI
+command/cache guards are the edit points; hash mismatch and missing gate fail.
+
+The external C++ STA acceptance executable may implement IOPCDataCallback using
+MIDL-generated `opcda.h`, without FTM/agility, and pump COM calls on its owner STA.
+This is a new, explicitly test-only native boundary. It does not extend ADR0001,
+permit application unsafe, or add production COM calls outside the external SDK.
+Windows SDK MIDL /env x64 /robust /Oicf generates headers/proxy/IID/dlldata from
+unmodified upstream DA/Common IDL. MSVC builds these under RUNNER_TEMP, with own
+PROXY_CLSID_IS `{A09B1F4C-8B64-44D1-B89F-0AA9A85F7981}`. No installer download.
+
+Registration is ephemeral GitHub Actions runner only. The script checks all
+prospective Interface roots and the private CLSID against both registry views
+of both HKCU/HKLM, refuses any existing key, and writes only HKCU Software/Classes
+x64. Each created root gets an unpredictable ownership marker before its children
+are populated. Finally removes only roots still carrying that exact marker,
+including partially installed mappings; it fails rather than delete an unowned
+root. No DCOM/security/DACL changes. DLLs and client binaries are CI fixtures,
+not production payload or distribution acceptance. IDL retains every original
+notice and exact upstream hash; OPC metadata terms are separate from Rust MIT.
+The specification License Grant is evidence, not a legal certification or full
+DA3 compliance claim. Full P7/operator/hardware/distribution gates remain OPEN.
+
+Primary references checked 2026-10-25:
+- https://learn.microsoft.com/en-us/windows/win32/com/building-and-registering-a-proxy-dll
+- https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regoverridepredefkey
+- https://advosol.com/opcspecs/opcda3.00.pdf (License Grant, p2)

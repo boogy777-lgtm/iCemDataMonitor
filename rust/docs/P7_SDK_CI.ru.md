@@ -65,3 +65,20 @@ Run `40128249313` выявил omission: fixture копировал только
 44/44 PASS; standalone verifier с обычным config и с autocrlf=true/eol=crlf,
 `cache_contract.py`, exact Rust1.99.1 `cargo fmt --all --check` и
 `git diff --check` PASS. Rust implementation/SDK build inputs не менялись.
+
+## R2 matching RPC proxy checkpoint (runtime pending)
+
+`tools/Test-OpcDaInterop.ps1` is mandatory within the existing pre-GPUI SDK step,
+including warm-cache runs. It verifies byte-exact pinned DA/Common IDL fixtures,
+builds Windows SDK MIDL x64 /robust /Oicf sources with MSVC, and gives this test
+proxy an independent CLSID. No Core Components installer is fetched or trusted.
+Generated IID discovery drives refusal of preexisting mappings in HKCU/HKLM,
+32/64 views; only owned ephemeral HKCU64 mappings are installed and removed.
+The script invokes the existing ignored real-process Rust test explicitly with
+`--ignored --nocapture --locked --offline`, propagating any failure. App/shared
+unsafe policy, runtime vendor42 provenance and production payload are unchanged.
+
+Source/Python contracts44/44 and diff-check PASS on Linux. There is no local
+Windows MIDL/runtime; the first Actions run must validate build/registration/RPC.
+STA external client and expanded RPC geometry/lifecycle coverage remain pending;
+R2 stays OPEN. Cross compilation or a script source review is not runtime PASS.

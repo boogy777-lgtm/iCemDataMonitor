@@ -79,6 +79,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo clippy --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/Test-OpcDaInterop.ps1
           python third-party/rust_opc/verify.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --exit-code -- third-party/rust_opc
