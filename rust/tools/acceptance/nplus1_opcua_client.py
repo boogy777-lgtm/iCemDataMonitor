@@ -8,7 +8,17 @@ import argparse,asyncio,json,pathlib,platform,shutil,socket,struct,subprocess,te
 import asyncua
 from asyncua import Client, ua
 
-async def verify(endpoint):
+def stop(process):
+    if process is not None and process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=3)
+
+
+async def verify(endpoint, writer_ticks):
  async with Client(endpoint,timeout=4) as c:
   ns=await c.get_namespace_index('urn:icem:bus:v1')
   names=['var0','var4','var200','var400','var600','COM_writer_ticks','LAN_writer_ticks','RAW_writer_ticks','capture_generation','quality_scope']
@@ -23,10 +33,15 @@ async def verify(endpoint):
   assert all(d.SourceTimestamp is None and d.ServerTimestamp is not None for d in data)
   assert data[2].StatusCode == ua.StatusCode(ua.StatusCodes.BadOutOfService)
   assert data[3].StatusCode == ua.StatusCode(ua.StatusCodes.Good)
+  assert [data[i].Value.VariantType for i in [5,6,7]] == [ua.VariantType.Int64]*3
+  assert [data[i].Value.Value for i in [5,6,7]] == writer_ticks
   assert data[8].Value.Value>0
   assert 'not_measurement_freshness' in data[9].Value.Value
   folder=c.get_node(ua.NodeId('Bus',ns)); children=await folder.get_children()
   assert len(children)==368,len(children)
+  expected_ids={f'var{i}' for i in [*range(4),*range(4,600,2),*range(600,650)]}
+  actual_ids={node.nodeid.Identifier for node in children}
+  assert {name for name in actual_ids if isinstance(name,str) and name.startswith('var')}==expected_ids
   before=data[1].Value.Value
   await asyncio.sleep(.25)
   assert await nodes[1].read_value()==before
@@ -40,7 +55,7 @@ async def verify(endpoint):
   await sub.subscribe_data_change(nodes[1],queuesize=1)
   await asyncio.wait_for(h.event.wait(),3)
   await sub.delete()
-  return {'namespace':ns,'browse_variables':len(children),'types':['UInt16','Int32','Float','Float','UInt16'],'nan_bits':'7fc01234','negative_zero_bits':'80000000','source_timestamps':'absent','server_timestamps':'present','inactive_LAN':'BadOutOfService','active_RAW':'Good','read_only':True,'subscription_initial_notification':True,'COM_time':before,'writer_ticks':{names[i]:data[i].Value.Value for i in [5,6,7]}}
+  return {'capture_generation':data[8].Value.Value,'namespace':ns,'browse_variables':len(children),'types':['UInt16','Int32','Float','Float','UInt16'],'nan_bits':'7fc01234','negative_zero_bits':'80000000','source_timestamps':'absent','server_timestamps':'present','inactive_LAN':'BadOutOfService','active_RAW':'Good','read_only':True,'subscription_initial_notification':True,'COM_time':before,'writer_ticks':{names[i]:data[i].Value.Value for i in [5,6,7]}}
 
 def main(a):
  startup_seconds,test_seconds=15,15
@@ -67,7 +82,15 @@ def main(a):
      except OSError:
       if p.poll() is not None or time.monotonic()>deadline:log.seek(0);raise RuntimeError(log.read())
       time.sleep(.02)
-    first=asyncio.run(asyncio.wait_for(verify(f'opc.tcp://127.0.0.1:{port}/'),test_seconds))
+    async def sessions():
+     writer_ticks=[struct.unpack_from('<q',b,offset)[0] for offset in [10,19,28]]
+     first=await verify(f'opc.tcp://127.0.0.1:{port}/',writer_ticks)
+     reconnected=await verify(f'opc.tcp://127.0.0.1:{port}/',writer_ticks)
+     assert reconnected['COM_time']==first['COM_time']
+     assert reconnected['writer_ticks']==first['writer_ticks']
+     assert reconnected['capture_generation']>=first['capture_generation']
+     return dict(first,reconnected_session=True,reconnect_generation=reconnected['capture_generation'])
+    first=asyncio.run(asyncio.wait_for(sessions(),test_seconds))
     assert p.wait(timeout=host_duration_ms/1000+5)==0
     result={'result':'PASS','client':'asyncua '+asyncua.__version__,'platform':platform.platform(),'python_version':platform.python_version(),'scope':f'independent Python UA client -> real Rust UA server, {platform.system()} loopback fixture, no live MMF/hardware claim','checks':first,'host_exit':0}
     pathlib.Path(a.output).write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
@@ -75,7 +98,7 @@ def main(a):
     pathlib.Path(a.output).write_text(json.dumps({'result':'FAIL','platform':platform.platform(),'error':str(error),'host_exit':p.poll()},indent=2)+'\n')
     log.flush();log.seek(0);print(log.read());raise
    finally:
-    if p.poll() is None:p.terminate();p.wait(timeout=3)
+    stop(p)
     log.flush();shutil.copyfile(t/'host.log',pathlib.Path(a.output).with_suffix('.host.log'))
 if __name__ == '__main__':
  p=argparse.ArgumentParser()

@@ -22,15 +22,36 @@ HERE = Path(__file__).resolve().parent
 
 def fetch(url, digest, path):
     with urllib.request.urlopen(url, timeout=60) as source, path.open('wb') as target:
-        shutil.copyfileobj(source, target, length=1024 * 1024)
+        deadline = time.monotonic() + 90
+        total = 0
+        while chunk := source.read(1024 * 1024):
+            total += len(chunk)
+            if total > 32 * 1024 * 1024 or time.monotonic() >= deadline:
+                raise RuntimeError(f'Download exceeded bounded budget: {path.name}')
+            target.write(chunk)
     if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
         raise ValueError(f'SHA256 mismatch: {path.name}')
 
 
 def run(command, log, timeout=300, env=None):
     with log.open('w', encoding='utf-8') as output:
-        subprocess.run([str(x) for x in command], stdout=output,
-                       stderr=subprocess.STDOUT, timeout=timeout, check=True, env=env)
+        process = subprocess.Popen([str(x) for x in command], stdout=output,
+                                   stderr=subprocess.STDOUT, env=env)
+        try:
+            code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Only this owned command's process tree; MSBuild can own compiler children.
+            try:
+                if sys.platform == 'win32':
+                    subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                                   stdout=output, stderr=subprocess.STDOUT, timeout=10, check=False)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=5)
+            raise
+        if code:
+            raise subprocess.CalledProcessError(code, command)
 
 
 def main():

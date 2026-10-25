@@ -10,9 +10,20 @@ import platform
 import shutil
 from pathlib import Path
 import socket
+import struct
 import subprocess
 import tempfile
 import time
+
+
+def stop(process):
+    if process is not None and process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=3)
 
 
 def main():
@@ -28,6 +39,27 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     startup_seconds, test_seconds = 15, 15
     host_duration_ms = (2 * startup_seconds + test_seconds + 5) * 1000
+    fixture = args.fixture.read_bytes()
+    count = struct.unpack_from('<H', fixture, 8)[0]
+
+    def verify_source(document):
+        assert document['schema'] == 'icem.mqtt.state.v1'
+        assert document['com_source_time']['unix_seconds'] == 1700000000
+        addresses = [*range(4), *range(4, 600, 2), *range(600, count)]
+        variables = document['variables']
+        assert [value['id'] for value in variables] == [f'var{address}' for address in addresses]
+        for address, value in zip(addresses, variables):
+            word = struct.unpack_from('>H', fixture, 64 + address * 2)[0]
+            bits = word
+            if 4 <= address < 600:
+                bits |= struct.unpack_from('>H', fixture, 66 + address * 2)[0] << 16
+            assert value['register_address'] == address
+            assert value['raw_bits'] == bits
+            assert value['type'] == ('i32_com_unix_seconds' if address == 4 else 'ieee754_binary32' if 4 < address < 600 else 'u16')
+        for zone, offset in zip(document['zones'], [10, 19, 28]):
+            assert zone['last_write_utc_ticks'] == struct.unpack_from('<q', fixture, offset)[0]
+            assert zone['upstream_measurement_time'] is None
+
     broker = host = None
     with tempfile.TemporaryDirectory(prefix="icem-mqtt-") as folder:
         folder = Path(folder)
@@ -51,7 +83,7 @@ def main():
                 except OSError:
                     if process.poll() is not None or time.monotonic() >= deadline:
                         if process.poll() is None:
-                            process.terminate(); process.wait(timeout=3)
+                            stop(process)
                         raise RuntimeError("Mosquitto failed to listen")
                     time.sleep(.02)
 
@@ -64,16 +96,19 @@ def main():
             broker = boot()
             host = subprocess.Popen([str(args.host), "--modbus-fixture", str(args.fixture), "--bind", "127.0.0.1:0", "--duration-ms", str(host_duration_ms), "--mqtt-config", str(config)], stdout=host_log, stderr=subprocess.STDOUT)
             _, first = receive()
+            verify_source(first)
             broker.terminate(); broker.wait(timeout=3); broker = None
             time.sleep(.45)
             broker = boot()
             _, reconnected = receive()
+            verify_source(reconnected)
             assert reconnected["capture"]["generation"] > first["capture"]["generation"]
             assert reconnected["com_source_time"] == first["com_source_time"]
             assert reconnected["zones"] == first["zones"]
             assert reconnected["variables"] == first["variables"]
             assert host.wait(timeout=host_duration_ms / 1000 + 5) == 0
             retained_flag, retained = receive()
+            verify_source(retained)
             assert retained_flag == 1
             assert retained["capture"]["generation"] >= reconnected["capture"]["generation"]
             assert retained["com_source_time"] == first["com_source_time"]
@@ -88,8 +123,7 @@ def main():
             raise
         finally:
             for process in [host, broker]:
-                if process is not None and process.poll() is None:
-                    process.terminate(); process.wait(timeout=3)
+                stop(process)
             host_log.close(); broker_log.close()
             shutil.copyfile(folder / "host.log", args.output.with_suffix(".host.log"))
             shutil.copyfile(folder / "broker.log", args.output.with_suffix(".broker.log"))
