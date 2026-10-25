@@ -15,6 +15,15 @@ import subprocess
 import uuid
 
 
+def existing_profile_loggers(text):
+    """Read complete logger names; LowPriv is not a WPR session substring."""
+    names = re.findall(r'(?im)^Logger Name[ \t]*:[ \t]*([^\r\n]+)', text)
+    if not names:
+        raise RuntimeError('unknown/empty xperf logger inventory; inspect raw inventory')
+    return [name.strip() for name in names
+            if name.strip().lower().startswith(('wpr', 'heapsession'))]
+
+
 def loss_counters(text):
     """Fail closed: require actual event and buffer loss fields from trace stats."""
     counters = {}
@@ -115,7 +124,7 @@ def main():
             raise RuntimeError('cannot establish idle WPR; refusing existing/unknown recording')
         loggers = run(xperf, '-loggers')
         (output / 'loggers-before.txt').write_text(loggers)
-        if re.search(r'Logger Name\s*:\s*[^\r\n]*(WPR|HeapSession)', loggers, re.I):
+        if existing_profile_loggers(loggers):
             raise RuntimeError('existing WPR/heap ETW session; refusing to modify it')
         exe = output / f'icem_heap_{uuid.uuid4().hex}.exe'
         shutil.copy2('target/release/examples/windows_release_measure.exe', exe)

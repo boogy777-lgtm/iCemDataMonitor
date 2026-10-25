@@ -135,7 +135,7 @@ def main():
                 # Start only our uniquely named heap logger; never start/stop a global kernel session.
                 # Set ownership before call: a partially successful start still needs bounded cleanup.
                 active = session
-                run(xperf, '-start', session, '-heap', '-Pid', process.pid,
+                run(xperf, '-start', session, '-heap', '-pids', process.pid,
                     '-BufferSize', 1024, '-MinBuffers', 32, '-MaxBuffers', 32, '-f', etl)
                 process.stdin.write('START\n')
                 process.stdin.flush()

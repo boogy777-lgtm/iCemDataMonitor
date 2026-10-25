@@ -80,7 +80,7 @@ cost. Sampling продолжается немного после12s request win
 
 Example делает100 warmup операций и предварительный WARM/WARMUP exchange для
 инициализации stdin/stdout buffers. Driver дожидается READY, начинает только
-свой уникальный heap session через `xperf -start NAME -heap -Pid PID ... -f ETL`,
+свой уникальный heap session через `xperf -start NAME -heap -pids PID ... -f ETL`,
 передаёт START, ждёт DONE, останавливает только NAME, затем передаёт RELEASE.
 Startup/fixture setup/warmup и teardown находятся вне окна. Нет модификации IFEO
 или глобального kernel logger. Положительный и нулевой controls для capture и
@@ -116,3 +116,43 @@ compilation/runtime, toolkit compatibility и numerical outputs нужны пр�
 `git diff --check` PASS. Rust/cargo/rustfmt, PowerShell и Windows runtime отсутствуют
 в этой среде; их исполнения/успеха эта запись не утверждает. R4/R5 остаются OPEN
 до actual evidence окончательного дерева.
+
+## Actual Windows checkpoint: run40191811070
+
+Source `df116528459356123b84a1ef9627b64651c274c1`, CI merge
+`b6d22770684e14d01006dfd7d595640223f8437c`, tree
+`2054e988c5033606cb04470badc1283ad6474cc3`; job121164251356.
+Windows Server2025, AMD EPYC9V74,4vCPU, Rust1.99.1 MSVC, workspace Release.
+Build, unprofiled latency и live-load PASS. Artifact12598631775
+`windows-release-measurements`, ZIP SHA256
+`fb602a0634bbed918268f0bdcb2f732cdc68aeac9ea7fe2b97326a340ccd3f59`;
+downloaded ZIP проверен по этому digest. Native installer и legacy jobs PASS;
+debug job121164251302 FAIL на rustfmt двух examples до debug restore.
+Его семь whitespace-only hunks применены буквально; новый Windows fmt verdict нужен.
+
+| Измерение | Actual результат |
+|---|---|
+| Tight-loop physical reader+publication,1000 samples | p95=22.4µs,p99=53.5µs; correctness вне timed region |
+| Uncontended mutex hold upper bound | p95=3.9µs,p99=5.7µs |
+| Отдельный5Hz probe,12s |60captures; peak4 unique live Snapshot payloads; capture+publication p95=199.4µs,p99=207.1µs |
+| Modbus2Hz,24samples,три FC03 |p95=7.7333ms,p99=7.7631ms |
+| Modbus50Hz,600samples,три FC03 |p95=7.7207ms,p99=7.7908ms |
+| Web1Hz,12samples,один GetRegisters |p95=p99=2.8743ms |
+| Web20Hz,240samples,один GetRegisters |p95=1.2709ms,p99=1.8193ms |
+| Slow/disconnected client |17cycles с700ms incomplete requests; остальные consumers завершили12s |
+| Host process sampling |32samples; CPU cumulative delta0.5s; lifetime peak working set14385152bytes; max observed private3768320bytes |
+
+Fixed COM, изменяющиеся LAN/RAW, coherent Web frame, RAW−0/subnormal и pinned old
+Snapshot checks прошли. Эти результаты не являются hardware/AddIn acceptance,
+outbound backpressure proof, Host-wide Arc peak или точными heap live bytes.
+Низкочастотные24/12samples — маленькие распределения этой fixture, не production SLA.
+
+Оба heap steps FAILED до получения ETL: attach отверг singular `-Pid` как unexpected;
+process-lifetime guard ошибочно нашёл substring `WPR` в `DefenderApiLoggerLowPriv`.
+Actual heap allocation counts/bytes и loss statistics этого run отсутствуют, OPEN.
+Исправлены только command `-pids` по [xperf start](https://learn.microsoft.com/en-us/windows-hardware/test/wpt/start)
+и anchored complete logger-name parsing. Имена с префиксами WPR/HeapSession
+по-прежнему блокируют запись, неизвестный inventory отклоняется; foreign session
+не останавливается. Regression проверяет actual Defender name, profile names и
+unknown inventory.18Python tests PASS локально; новый Windows toolkit/runtime
+и окончательный полный CI всё ещё требуются. R4/R5 не закрываются этим checkpoint.

@@ -40,14 +40,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         while started.elapsed() < duration {
             generation += 1;
             let bits = 0x3f00_0000 | generation;
-            let ticks = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos() / 100)?
-                + 621_355_968_000_000_000;
+            let ticks =
+                i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos() / 100)?
+                    + 621_355_968_000_000_000;
             for index in 0..3 {
                 // COM source words/time/count remain fixed; only its active bit is enabled.
                 bytes[18 + index * 9] = 1;
                 if index != 0 {
                     bytes[10 + index * 9..18 + index * 9].copy_from_slice(&ticks.to_le_bytes());
-                    bytes[37 + index * 4..41 + index * 4].copy_from_slice(&generation.to_le_bytes());
+                    bytes[37 + index * 4..41 + index * 4]
+                        .copy_from_slice(&generation.to_le_bytes());
                 }
             }
             for address in [200, 400] {
@@ -59,7 +61,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             for (address, value) in [(402, 0x8000_0000_u32), (404, 0x0000_0001)] {
                 let offset = 64 + address * 2;
                 bytes[offset..offset + 2].copy_from_slice(&(value as u16).to_be_bytes());
-                bytes[offset + 2..offset + 4].copy_from_slice(&((value >> 16) as u16).to_be_bytes());
+                bytes[offset + 2..offset + 4]
+                    .copy_from_slice(&((value >> 16) as u16).to_be_bytes());
             }
             let guard = mutex
                 .lock(Duration::from_millis(500))?
@@ -93,7 +96,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut pinned_words = Vec::new();
     let mut tracked: Vec<Weak<Snapshot>> = Vec::with_capacity(8);
     let mut output = std::io::BufWriter::new(std::fs::File::create(&args[5])?);
-    writeln!(output, "elapsed_ns,capture_publication_ns,live_snapshot_peak,lan_bits,raw_bits,lan_count,raw_count")?;
+    writeln!(
+        output,
+        "elapsed_ns,capture_publication_ns,live_snapshot_peak,lan_bits,raw_bits,lan_count,raw_count"
+    )?;
     let mut next_capture = started;
     let mut captures = 0_u64;
     let mut peak = 0;

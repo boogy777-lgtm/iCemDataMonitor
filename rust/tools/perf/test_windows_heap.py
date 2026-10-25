@@ -1,7 +1,25 @@
 """Fail-closed checks for external ETW evidence validation; no Windows dependency."""
 import unittest
 from unittest.mock import Mock
-from windows_heap import heap_totals, loss_counters, remove_owned_executable
+from windows_heap import existing_profile_loggers, heap_totals, loss_counters, remove_owned_executable
+
+
+class LoggerInventoryEvidence(unittest.TestCase):
+    def test_actual_defender_lowpriv_name_is_not_wpr(self):
+        self.assertEqual(existing_profile_loggers(
+            'Logger Name           : DefenderApiLoggerLowPriv\n'
+            'Events Lost           : 2\nLogger Name : RTEvents\n'), [])
+
+    def test_existing_profile_sessions_still_rejected(self):
+        self.assertEqual(existing_profile_loggers(
+            'Logger Name : WPR_initiated_Heap\nLogger Name : HeapSession\n'),
+            ['WPR_initiated_Heap', 'HeapSession'])
+
+    def test_unknown_inventory_fails_closed(self):
+        for text in ('', 'No known logger fields', 'Logger Name :\n',
+                     'Logger Name :\nEvents Lost : 0\n'):
+            with self.assertRaises(RuntimeError):
+                existing_profile_loggers(text)
 
 
 class CleanupEvidence(unittest.TestCase):

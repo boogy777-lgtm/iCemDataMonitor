@@ -36,8 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let missing_map = format!(r"Local\icem-release-missing-{}", std::process::id());
         let mapping = Mapping::unnamed_read_only(&path)?;
         let mutex = NamedMutex::open_or_create(&mutex_name)?;
-        let mut source = WindowsBusReader::new(
-            path.clone(), missing_map, mutex_name);
+        let mut source = WindowsBusReader::new(path.clone(), missing_map, mutex_name);
         let (mut publisher, reader) = latest_snapshot();
         let expected = Snapshot::decode(fixture)?;
         let mut rows = Vec::with_capacity(SAMPLES);
@@ -87,7 +86,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .publish(Ok(read), captured, captured, None)
                 .map_err(|e| format!("reader publication: {e:?}"))?;
             let finished = Instant::now();
-            let state = reader.latest().map_err(|e| format!("reader check: {e:?}"))?;
+            let state = reader
+                .latest()
+                .map_err(|e| format!("reader check: {e:?}"))?;
             if state.status != icem_core::publication::CaptureStatus::Captured
                 || state.snapshot.ok_or("missing reader snapshot")?.words() != expected.words()
             {
@@ -160,8 +161,11 @@ fn heap_workload() -> Result<(), Box<dyn std::error::Error>> {
         );
         let (mut publisher, reader) = latest_snapshot();
         for _ in 0..iterations {
-            let read = source.snapshot().map_err(|e| format!("heap capture: {e:?}"))?;
-            if read.origin != SnapshotOrigin::Captured || read.snapshot.words() != expected.words() {
+            let read = source
+                .snapshot()
+                .map_err(|e| format!("heap capture: {e:?}"))?;
+            if read.origin != SnapshotOrigin::Captured || read.snapshot.words() != expected.words()
+            {
                 return Err("heap capture bits/origin mismatch".into());
             }
             let captured = Instant::now();
