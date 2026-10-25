@@ -184,3 +184,5 @@ jobs:
           path: ${{ runner.temp }}/icem-cache-evidence.json
           if-no-files-found: ignore
           retention-days: 7
+  release-measurements:
+    uses: ./.github/workflows/rust-nplus1-measurements.yml

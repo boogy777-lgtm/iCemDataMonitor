@@ -50,3 +50,46 @@ Inspected generated assembly from `cargo rustc -p icem-bus --release --locked --
 No substantial numerical hot spot or end-to-end win from manual SIMD was established. The project retains the safe scalar/compiler path, generic CPU compatibility, current Release profile and unsafe policy. No SIMD dependency/intrinsics, extra array or CPU dispatcher is added. Safe loop reformulation can be evaluated later against a measured bottleneck with scalar/raw-bit/NaN/tail equivalence.
 
 Windows Release MMF copy/lock-hold, allocations and latency distributions on supported hardware remain OPEN. Linux measurements do not close those acceptance items. Reproducible local P4 measurements are complete; production performance is not declared proven.
+
+## R4 Windows Release: воспроизводимый CI fixture
+
+Class: benchmark-only Windows MMF copy/decode/publication и synthetic Host latency;
+живой AddIn, producer contention и hardware workload не входят в этот fixture.
+Inv: safe native boundary и unmodified WindowsBusReader, immutable shared payload,
+полные raw CSV/network samples, pinned Release profile; проверяются bytes и Arc identity.
+N+1: новый размер/нагрузка меняет только example `windows_release_measure` и
+`tools/perf/windows_release.py`; production reader/consumer не получает timers/branches.
+
+`rust-nplus1-measurements.yml` — отдельный обязательный Windows job, вызываемый из
+основного Rust workflow. Он собирает настоящий Host и example в workspace Release,
+не заменяя существующие debug/SDK/STA/counterpart/scaffold gates. Повтор локально из `rust/`:
+
+```powershell
+cargo fetch --locked
+cargo build --release --locked --offline -p icem-host-app --bin icem-host-dev
+cargo build --release --locked --offline -p icem-platform-windows --example windows_release_measure
+python tools/perf/windows_release.py --output target/windows-release-evidence
+```
+
+MMF workload: static650-register fixture, уникальный Local mutex, неназванная file-backed
+mapping через существующий native API; WindowsBusReader использует свой настоящий
+unnamed fallback.100 warm-up +1000 recorded tight-loop iterations. CSV отдельно
+хранит wait, upper-bound hold (включая release syscall/Instant), decode+Arc,
+publication, boundary total, unmodified reader capture и reader+publication total.
+Correctness и CSV formatting вынесены за timed region. Исходные bytes и все decoded
+words сравниваются; shared handle проверяется через Arc::ptr_eq, старый frame удерживается.
+Это uncontended kernel/boundary microbenchmark, не200ms production acquisition schedule.
+
+Network: три запуска;100 warm-up +1000 measured requests на каждый из двух одновременных
+persistent clients (Modbus FC03/100words, gRPC-Web GetRegisters/all). Все latency samples
+хранятся в JSON; p95/p99 — sorted nearest-rank index floor(n*p), capped at n-1.
+Host synthetic fixture и MMF microbenchmark — отдельные нагрузки; их нельзя складывать
+в producer-to-client latency. Summary сохраняет git source/tree, CPU, OS, compiler,
+profile и SHA256 raw files. Таймеры — Instant/perf_counter_ns; CI VM не изолирована.
+
+Allocator call/byte counts остаются `NOT_MEASURED`: ownership bytes не заменяют heap
+profile. Ни unsafe GlobalAlloc hook, ни новая production dependency не добавлены.
+Для закрытия этой части R4 нужен внешний Windows heap profiler с raw trace и разделением
+harness/startup/request/capture allocations. Live AddIn, mutex contention,5Hz acquisition
+с LAN updates при frozen COM, slow/disconnected adapters и supported hardware остаются
+отдельной production performance acceptance. До actual CI evidence R4 не закрыт.

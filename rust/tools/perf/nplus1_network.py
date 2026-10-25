@@ -15,7 +15,7 @@ def exact(s,n):
     return b
 def stats(a):
     a=sorted(a)
-    return {'samples':len(a),'p50_us':round(a[len(a)//2],2),'p95_us':round(a[min(len(a)-1,int(len(a)*.95))],2),'p99_us':round(a[min(len(a)-1,int(len(a)*.99))],2),'mean_us':round(statistics.mean(a),2)}
+    return {'samples':len(a),'p50_us':round(a[len(a)//2],2),'p95_us':round(a[min(len(a)-1,int(len(a)*.95))],2),'p99_us':round(a[min(len(a)-1,int(len(a)*.99))],2),'mean_us':round(statistics.mean(a),2),'raw_us':a}
 def modbus(port,n,warm):
     out=[]
     with socket.create_connection(('127.0.0.1',port),timeout=5) as s:
@@ -41,7 +41,7 @@ def run(a):
         p1,p2=freeport(),freeport()
         with tempfile.TemporaryDirectory() as t:
             log=open(pathlib.Path(t)/'host.log','w+')
-            p=subprocess.Popen([a.binary,'--modbus-fixture',a.fixture,'--bind',f'127.0.0.1:{p1}','--web-bind',f'127.0.0.1:{p2}','--duration-ms','12000','--theme-file',str(pathlib.Path(t)/'theme')],stdout=log,stderr=log)
+            p=subprocess.Popen([a.binary,'--modbus-fixture',a.fixture,'--bind',f'127.0.0.1:{p1}','--web-bind',f'127.0.0.1:{p2}','--duration-ms','120000','--theme-file',str(pathlib.Path(t)/'theme')],stdout=log,stderr=log)
             try:
                 deadline=time.monotonic()+8
                 while True:
@@ -62,4 +62,4 @@ def run(a):
                 except subprocess.TimeoutExpired:p.kill();p.wait()
                 log.close()
     return {'binary':a.binary,'fixture':a.fixture,'rounds':rounds,'warmup_per_client':a.warmup,'concurrency':'one persistent Modbus + one persistent grpc-Web HTTP1 client; host synthetic fixture, no MMF','clock':'perf_counter_ns roundtrip','platform':platform.system()+' '+platform.machine()}
-p=argparse.ArgumentParser();p.add_argument('--binary',required=True);p.add_argument('--fixture',required=True);p.add_argument('--requests',type=int,default=1000);p.add_argument('--warmup',type=int,default=100);p.add_argument('--rounds',type=int,default=3);p.add_argument('--output',required=True);a=p.parse_args();result=run(a);pathlib.Path(a.output).write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
+p=argparse.ArgumentParser();p.add_argument('--binary',required=True);p.add_argument('--fixture',required=True);p.add_argument('--requests',type=int,default=1000);p.add_argument('--warmup',type=int,default=100);p.add_argument('--rounds',type=int,default=3);p.add_argument('--output',required=True);a=p.parse_args();result=run(a);pathlib.Path(a.output).write_text(json.dumps(result,indent=2)+'\n');print('Network measurements saved:', a.output)

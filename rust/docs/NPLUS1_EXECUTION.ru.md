@@ -709,3 +709,15 @@ Mosquitto2.0.22 official source + MSVC/CMake и isolated CPython3.12 asyncua2.1.
 assertions сохранены; probe durations выведены из startup/test budgets.
 Windows execution ожидается: Linux verification не закрывает R3, MMF/hardware
 и full final CI не заявляются. R1/R2 mandatory gates сохранены.
+
+
+## R3 actual Windows evidence / R4 measurement preparation
+
+R3 is now closed for the loopback fixtures: run40172775150/job121107195362 SUCCESS,
+counterparts PASS2026-10-25T07:46:55Z. Mosquitto2.0.22 and asyncua2.1.0 actual
+Windows client evidence, source/tree and artifact digest are recorded in
+NPLUS1_TRACKER.ru.md. Earlier R3 awaiting-execution text is historical.
+R4 adds a separate mandatory Windows Release job and benchmark-only safe MMF
+example, with raw distributions, actual WindowsBusReader path and checked bits/Arc.
+Allocation calls remain NOT_MEASURED pending an external Windows heap profile;
+no production instrumentation, dependency or unsafe exception was introduced.

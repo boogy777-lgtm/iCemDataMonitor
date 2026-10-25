@@ -187,6 +187,12 @@ class ContractTests(unittest.TestCase):
             self.verify(workflow=self.workflow.replace('name: Upload independent counterpart evidence\n        if: always()',
                                                        'name: Upload independent counterpart evidence\n        if: success()'))
 
+    def test_release_measurements_are_mandatory(self):
+        for before, after in (('uses: ./.github/workflows/rust-nplus1-measurements.yml', '# removed measurement job'),
+                              ('  release-measurements:\n', '  release-measurements:\n    if: false\n')):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                self.verify(workflow=self.workflow.replace(before, after))
+
     def test_negative_scaffold_commands_and_common_guards(self):
         for text, keyword in ((self.scaffold, 'scaffold'), (self.inputs, 'inputs')):
             for line in text.splitlines():

@@ -12,6 +12,8 @@ def require(condition, message):
 
 def verify(workflow, scaffold, inputs):
     require('continue-on-error:' not in workflow, 'Failures must propagate')
+    require(workflow.endswith('  release-measurements:\n    uses: ./.github/workflows/rust-nplus1-measurements.yml\n'),
+            'Release measurements must remain mandatory and unconditional')
     steps = re.split(r'(?m)^      - ', workflow)[1:]
     names = [step.splitlines()[0].removeprefix('name: ') for step in steps]
     require(workflow.count('runs-on: windows-latest') == 1 and workflow.count('\n  verify:') == 1,

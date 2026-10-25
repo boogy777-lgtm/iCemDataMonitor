@@ -23,7 +23,7 @@ N+1-плана, а не всей миграции .NET → Rust.
 |---|---|---|
 | R1 | Ранний допуск DA AsyncRead/Refresh | Закрыт: финальные три COM-regressions и все SDK37/37 + sidecar11/11 прошли Windows run40170843310. Весь run cancelled при следующем checkpoint, это не full green |
 | R2 | DA STA/MTA и callbacks между процессами | Закрыт: mandatory Windows SDK step SUCCESS на remote75a1934, run40171770730/job121104122819. Matching MIDL proxy, Rust MTA + independent C++ STA4096,40 reconnects и owned cleanup; full CI этого head ещё не заявлен |
-| R3 | Windows MQTT/OPC UA interoperability | Запустить реальные клиенты/broker в целевой ОС; подтвердить типы, identity, quality/time, disconnect/reconnect |
+| R3 | Windows MQTT/OPC UA interoperability | Закрыт для loopback fixture: run40172775150/job121107195362 SUCCESS; Mosquitto2.0.22 QoS2/restart/retained, asyncua2.1.0 read/subscription/types/quality/clocks. Live MMF/hardware отдельно |
 | R4 | Windows Release measurements | Capture/decode/publication, MMF lock hold, allocations и Modbus/Web p95/p99 с описанной методикой; не выдавать CI fixture за production hardware |
 | R5 | Итоговая интеграция | Независимая сверка плана, полный CI окончательного head, актуальный отчёт и завершение PR |
 
@@ -62,3 +62,16 @@ COM/RPC unmarshalling до SDK entrypoint и не обещание whole-process
 Аппаратная приёмка реального стенда/AddIn, production cutover и разрешение
 distribution terms являются отдельными release gates. Их нельзя закрыть
 синтетическим CI или объявить выполненными по факту компиляции.
+
+R3 actual evidence: WindowsServer2025 10.0.26100, Python3.12.10; counterparts PASS
+2026-10-25T07:46:55Z. Source442ae6b276d870306d3c94e26bcaba54533b807f,
+CI merge51f0244c0a41cdc58e665cd25dd197193db09ad1 (identical tree confirmed).
+Artifact12591616200 `windows-independent-counterparts`,
+SHA256 e610af28e8592ab4cd9917ed18a2ec8a950a3f7735d42ba802d832111737157b.
+UA browse368, UInt16/Int32/Float, NaN7fc01234/negative-zero80000000,
+read-only and COM/writer times; both Host processes exit0. Same Rust job retained
+SDK37/37 + sidecar11/11 and independent STA4096/40reconnects/RustMTA PASS.
+Legacy .NET Modbus test failed separately; no full-workflow green claim.
+
+R4 fixture/method/raw-artifact harness: see NPLUS1_PERFORMANCE.ru.md.
+Allocator counts and production hardware acceptance remain OPEN.
