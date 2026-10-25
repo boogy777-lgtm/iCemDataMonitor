@@ -119,12 +119,26 @@ RSS и whole-process/native-RPC memory cap из этого не следуют. 
 early per-item errors, all-failed cancel0/no callback, Refresh inactive E_FAIL и
 Write early BADRIGHTS сохранены; acquisition200ms/source bits/FILETIME не менялись.
 
-Локальная проверка checkpoint: exact-source pure queue11/11 PASS, включая шесть
-новых deterministic cases без sleep: 32 blocked preparations +64 concurrent rejects
-до stand-in service/allocation, mixed preparation/retained/canceled budget, full
-sink atomic rollback, error/all-failed/panic/poison cleanup, fixed sink set и remove.
-Complete reversible patch против original42 SHA256 PASS. Windows compilation и
-actual safe COM runtime для нового head ещё не являются PASS на этом checkpoint.
+Локальная проверка R6: exact-source pure queue12/12 PASS, включая семь новых
+cases без sleep: 32 blocked preparations +64 concurrent rejects до stand-in service/
+allocation, mixed preparation/retained/canceled budget, full sink atomic rollback,
+error/all-failed/panic/poison cleanup, fixed sink set, remove и disconnect-all с late
+Advise без reset бюджета. Windows x64 SDK+sidecar all-target clippy `-D warnings`
+PASS exact Rust1.99.1, включая три новых safe COM fixtures в `server/mod.rs`:
+32 barrier-blocked Refresh preparations + Read/Refresh service counters; full retained
+queue + queued Cancel без service call; 64 каждого error/all-failed/panic с recovery.
+Fixtures проверяют actual safe client rejection и subsequent native callback; для
+управляемого concurrency первый fixture вызывает existing generated Refresh2 Rust
+entrypoint в workers, не переносит apartment-local proxy между threads. Sidecar
+existing two-blocked-sink fixture также проверяет rejection после queued Cancel.
+Runtime этих трёх новых R6 fixtures ещё OPEN; cross-target compilation не является
+runtime PASS. Production checkpoint `ea91101` (published remote `62cea77db6d219c630fac156b43678363b55259f`)
+имеет actual FULL CI SUCCESS ([run40129798356](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40129798356)),
+проверенный root после checkpoint. Он не включает новые три COM fixtures/последние
+WIP assertions, поэтому full green не переносится на заключительный checkpoint.
+Pure health3/3 и codec5/5 также PASS. Complete reversible patch против original42
+SHA256 и Python CI guards44/44 PASS;
+manifest, explicit four-file extension allowlist и dependency/lockfile неизменны.
 
 SDK не может заставить произвольный COM call вернуться. Safe application watchdog
 независим от IPC, проверяет каждые25ms и использует exit70 при >=2s busy/failure;
@@ -148,8 +162,11 @@ own-child kill/reap остаётся последней границей. Это
 
 ## Открытые acceptance gates
 
-1. Exact-head Windows runtime пяти новых regressions и прежних native/sidecar tests.
-   Известный runtime PASS предыдущего head не распространяется на новые изменения.
+1. Exact-head Windows runtime R6 regressions и прежних native/sidecar tests.
+   Root проверил pre-R6 `4710c676`: SDK27/27 + sidecar11/11 PASS, включая все пять
+   review regressions ([run40129326752/job120977836281](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40129326752/job/120977836281),
+   2026-10-24 20:25:16UTC). Весь run cancelled после R6 checkpoint, full green не
+   заявляется; этот prior-head runtime не распространяется на R6 изменения.
 2. Matching pinned IDL/proxy/stub: реальные STA/MTA и cross-process callbacks,
    reentrancy, 4096-item geometry, process cleanup и deployment/license audit.
    In-process MTA tests не доказывают RPC marshalling и не закрывают этот пункт.

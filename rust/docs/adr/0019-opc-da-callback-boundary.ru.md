@@ -37,7 +37,12 @@ Release and revoke occur outside membership/state/model locks. Foreign teardown 
 health-monitored as well. One object implements CP/CPC with same identity, no cycle.
 
 Limits:32groups/process,4096items/batch,4sinks/group,128workers including retired,
-32async requests/group,1latest periodic slot+32reserved completions/sink,1in-flight.
+32async preparations+retained/canceled requests/group,1latest periodic slot+
+32reserved completions/sink,1in-flight. Read/Refresh reserve the group slot and all
+current-sink credits under the existing membership mutex before SDK-owned preparation;
+RAII rollback releases errors/unwind, commit transfers credits, late Advise does not
+join an already preparing request. Pre-entrypoint COM/RPC unmarshalling is outside
+this bound; no whole-process RSS guarantee follows.
 Arc<Frame> fanout, frame<=512KiB, stacks256KiB (<=32MiB reserved). Pending frames
 <=512MiB for32groups; additional baseline/in-flight/periodic/native buffers finite.
 Service must bound its allocation before returning ownership; array/byte-array values

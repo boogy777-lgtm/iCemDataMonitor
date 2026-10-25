@@ -307,18 +307,19 @@ mod tests {
             }
             ready.wait();
             let rejects = (0..64)
-                .map(|_| {
-                    scope.spawn(|| {
-                        assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
-                    })
-                })
+                .map(|_| scope.spawn(|| matches!(Members::prepare(&m), Err(QueueError::Full))))
                 .collect::<Vec<_>>();
-            for reject in rejects {
-                reject.join().unwrap();
-            }
-            assert_eq!(entered.load(Ordering::SeqCst), MAX_REQUESTS);
-            assert_eq!(allocated.load(Ordering::SeqCst), MAX_REQUESTS * MAX_ITEMS);
-            release.wait();
+            let rejected = rejects
+                .into_iter()
+                .map(|r| r.join().unwrap())
+                .collect::<Vec<_>>();
+            let observed = (
+                entered.load(Ordering::SeqCst),
+                allocated.load(Ordering::SeqCst),
+            );
+            release.wait(); // release admitted service calls before assertions can unwind
+            assert!(rejected.into_iter().all(|full| full));
+            assert_eq!(observed, (MAX_REQUESTS, MAX_REQUESTS * MAX_ITEMS));
         });
         assert!(Members::prepare(&m).is_ok());
     }
@@ -445,6 +446,34 @@ mod tests {
             state.sinks.clear();
         }
         assert_eq!(permit.commit("lost", None), Err(QueueError::Closed));
+        assert!(m.lock().unwrap().requests.is_empty());
+    }
+    #[test]
+    fn replacing_all_sinks_cannot_reset_active_preparation_budget() {
+        let m = members(1);
+        let mut permits = (0..MAX_REQUESTS)
+            .map(|_| Members::prepare(&m).unwrap())
+            .collect::<Vec<_>>();
+        let late = members(1).into_inner().unwrap().sinks.remove(&1).unwrap();
+        {
+            let mut state = m.lock().unwrap();
+            state
+                .sinks
+                .remove(&1)
+                .unwrap()
+                .queue
+                .lock()
+                .unwrap()
+                .close();
+            state.sinks.insert(2, late.clone());
+        }
+        assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
+        drop(permits.pop());
+        assert!(Members::prepare(&m).is_ok());
+        for permit in permits {
+            assert_eq!(permit.commit("old", None), Err(QueueError::Closed));
+        }
+        assert!(late.queue.lock().unwrap().pop().is_none());
         assert!(m.lock().unwrap().requests.is_empty());
     }
     #[test]

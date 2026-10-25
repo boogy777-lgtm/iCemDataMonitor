@@ -664,6 +664,15 @@ outside this fix. Inv: preparation+retained/canceled <=32/group, fixed all-sink
 credits before decode/service/output; RAII rollback and no service/COM under locks.
 N+1: callback_queue Members/Preparation, both entrypoints and deterministic pure
 regressions; reversible patch/42-original SHA256 remain mandatory completeness guard.
-Checkpoint: queue11/11 and full provenance PASS; Windows compile/runtime pending.
+Production checkpoint `ea91101`; final local evidence: pure queue12/12, health3/3,
+codec5/5, Python CI44/44, exact Rust1.99.1 Windows x64 SDK+sidecar all-target clippy `-D warnings`, fmt
+and full reversible original42 provenance PASS. Three new safe COM service-counter/
+rollback fixtures compiled; sidecar cancellation-capacity assertion compiled.
+Root verified production checkpoint `ea91101` / remote `62cea77db6d219c630fac156b43678363b55259f`
+FULL CI SUCCESS (run40129798356). Runtime of the three new final-checkpoint COM
+fixtures remains pending; that full green does not cover this final WIP. Root also
+verified prior pre-R6 `4710c676` SDK27/27 +
+sidecar11/11 runtime PASS (including five review regressions); cancelled run is not
+full CI green and does not prove R6. See P7_CALLBACK_REVIEW for exact run/job.
 This bounds SDK-owned preparation only, not pre-entrypoint COM/RPC unmarshalling
 or whole-process RSS. Existing P7 Windows/proxy/operator gates remain OPEN.

@@ -1251,13 +1251,269 @@ mod tests {
         }
     }
 
+    #[forbid(unsafe_code)]
+    mod async_preparation {
+        use super::*;
+        use crate::{IOPCAsyncIO2_Impl, client::DataEvent};
+        use std::sync::{Barrier, atomic::AtomicUsize, mpsc};
+        use std::time::Duration;
+
+        fn state() -> GroupState {
+            GroupState {
+                update_rate: 100,
+                active: false,
+                name: "admission".into(),
+                time_bias: 0,
+                percent_deadband: 0.0,
+                locale: 0,
+                client_handle: 7,
+                server_handle: 1,
+            }
+        }
+        fn server() -> DaServer {
+            DaServer::new(Arc::new(TestService {
+                group_handles: Arc::new(Mutex::new(Vec::new())),
+            }))
+        }
+        #[test]
+        fn full_preparation_budget_rejects_real_com_read_refresh_before_service() -> Result<()> {
+            let _apartment = opc_classic_utils::ComApartment::mta()?;
+            let ready = Arc::new(Barrier::new(33));
+            let release = Arc::new(Barrier::new(33));
+            let notifications = Arc::new(AtomicUsize::new(0));
+            let reads = Arc::new(AtomicUsize::new(0));
+            let service = Arc::new(TestGroup {
+                before_owned_result: Some(Arc::new({
+                    let (ready, release, notifications, reads) = (
+                        ready.clone(),
+                        release.clone(),
+                        notifications.clone(),
+                        reads.clone(),
+                    );
+                    move |notification| {
+                        if notification {
+                            // A regression must report excess calls, not deadlock
+                            // the test by entering a second barrier generation.
+                            if notifications.fetch_add(1, Ordering::SeqCst) < 32 {
+                                ready.wait();
+                                release.wait();
+                            }
+                        } else {
+                            reads.fetch_add(1, Ordering::SeqCst);
+                        }
+                        Ok(false)
+                    }
+                })),
+                ..Default::default()
+            });
+            let adapter = Arc::new(windows_core::ComObject::new(DaGroupAdapter::new(
+                service,
+                state(),
+            )));
+            let server = server();
+            let client = crate::client::DaGroup::new(
+                server.inner.clone(),
+                adapter.to_interface(),
+                1,
+                false,
+                100,
+            );
+            let (send, receive) = mpsc::sync_channel::<DataEvent>(4);
+            let mut subscription = client.subscribe(Arc::new(move |event| {
+                send.try_send(event).unwrap();
+            }))?;
+            client.set_enable(false)?;
+            let mut active = state();
+            active.active = true;
+            client.set_state(&active)?;
+            // Existing generated Rust entrypoints permit controlled overlap without
+            // passing apartment-local clients/proxies between threads. Rejections
+            // and recovered delivery below use the actual safe COM client.
+            std::thread::scope(|scope| {
+                let workers = (0..32)
+                    .map(|transaction| {
+                        let adapter = adapter.clone();
+                        scope.spawn(move || {
+                            adapter.Refresh2(crate::OPC_DS_DEVICE, transaction).is_err()
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                ready.wait();
+                let rejected_read = client.async_read(&[ServerItemHandle(10)], 100).is_err();
+                let rejected_refresh = client.refresh(DataSource::Device, 101).is_err();
+                let observed = (
+                    notifications.load(Ordering::SeqCst),
+                    reads.load(Ordering::SeqCst),
+                );
+                release.wait();
+                for worker in workers {
+                    assert!(worker.join().unwrap());
+                }
+                assert!(rejected_read && rejected_refresh);
+                assert_eq!(observed, (32, 0));
+            });
+            // Every admitted empty Refresh failed and returned its permit.
+            let (id, errors) = client.async_read(&[ServerItemHandle(10)], 102)?;
+            assert_ne!(id, 0);
+            assert!(errors[0].is_ok());
+            assert_eq!(
+                receive
+                    .recv_timeout(Duration::from_secs(2))
+                    .unwrap()
+                    .transaction,
+                102
+            );
+            assert_eq!(reads.load(Ordering::SeqCst), 1);
+            subscription.close()?;
+            Ok(())
+        }
+        #[test]
+        fn full_retained_budget_and_queued_cancel_reject_before_read_service() -> Result<()> {
+            let _apartment = opc_classic_utils::ComApartment::mta()?;
+            let calls = Arc::new(AtomicUsize::new(0));
+            let service = Arc::new(TestGroup {
+                before_owned_result: Some(Arc::new({
+                    let calls = calls.clone();
+                    move |notification| {
+                        assert!(!notification);
+                        calls.fetch_add(1, Ordering::SeqCst);
+                        Ok(false)
+                    }
+                })),
+                ..Default::default()
+            });
+            let adapter = windows_core::ComObject::new(DaGroupAdapter::new(service, state()));
+            let server = server();
+            let client = crate::client::DaGroup::new(
+                server.inner.clone(),
+                adapter.to_interface(),
+                1,
+                false,
+                100,
+            );
+            let (entered, entry) = mpsc::sync_channel(1);
+            let (release, gate) = mpsc::sync_channel(1);
+            let gate = Mutex::new(gate);
+            let first = std::sync::atomic::AtomicBool::new(true);
+            let (send, receive) = mpsc::sync_channel::<DataEvent>(64);
+            let mut subscription = client.subscribe(Arc::new(move |event| {
+                if first.swap(false, Ordering::AcqRel) {
+                    entered.send(()).unwrap();
+                    gate.lock()
+                        .unwrap()
+                        .recv_timeout(Duration::from_secs(5))
+                        .unwrap();
+                }
+                send.try_send(event).unwrap();
+            }))?;
+            client.async_read(&[ServerItemHandle(10)], 300)?;
+            entry.recv_timeout(Duration::from_secs(2)).unwrap();
+            let ids = (301..=332)
+                .map(|transaction| {
+                    client
+                        .async_read(&[ServerItemHandle(10)], transaction)
+                        .map(|(id, _)| id)
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let rejected_full = client.async_read(&[ServerItemHandle(10)], 333).is_err();
+            client.cancel(ids[0])?;
+            let rejected_cancel = client.async_read(&[ServerItemHandle(10)], 334).is_err();
+            let observed = calls.load(Ordering::SeqCst);
+            release.send(()).unwrap();
+            assert!(rejected_full && rejected_cancel);
+            assert_eq!(observed, 33);
+            for _ in 0..33 {
+                receive.recv_timeout(Duration::from_secs(2)).unwrap();
+            }
+            let (id, errors) = client.async_read(&[ServerItemHandle(10)], 335)?;
+            assert_ne!(id, 0);
+            assert!(errors[0].is_ok());
+            assert_eq!(
+                receive
+                    .recv_timeout(Duration::from_secs(2))
+                    .unwrap()
+                    .transaction,
+                335
+            );
+            assert_eq!(calls.load(Ordering::SeqCst), 34);
+            subscription.close()?;
+            Ok(())
+        }
+        #[test]
+        fn real_com_read_error_all_failed_and_panic_release_preparation() -> Result<()> {
+            let _apartment = opc_classic_utils::ComApartment::mta()?;
+            let mode = Arc::new(AtomicUsize::new(0));
+            let calls = Arc::new(AtomicUsize::new(0));
+            let service = Arc::new(TestGroup {
+                before_owned_result: Some(Arc::new({
+                    let (mode, calls) = (mode.clone(), calls.clone());
+                    move |notification| {
+                        assert!(!notification); // group stays inactive
+                        calls.fetch_add(1, Ordering::SeqCst);
+                        match mode.load(Ordering::SeqCst) {
+                            0 => Err(Error::unexpected("injected service error")),
+                            1 => Ok(true),
+                            2 => panic!("injected service panic"),
+                            _ => Ok(false),
+                        }
+                    }
+                })),
+                ..Default::default()
+            });
+            let adapter = windows_core::ComObject::new(DaGroupAdapter::new(service, state()));
+            let server = server();
+            let client = crate::client::DaGroup::new(
+                server.inner.clone(),
+                adapter.to_interface(),
+                1,
+                false,
+                100,
+            );
+            let (send, receive) = mpsc::sync_channel::<DataEvent>(4);
+            let mut subscription = client.subscribe(Arc::new(move |event| {
+                send.try_send(event).unwrap();
+            }))?;
+            for behavior in 0..3 {
+                mode.store(behavior, Ordering::SeqCst);
+                for _ in 0..64 {
+                    let result = client.async_read(&[ServerItemHandle(10)], 200);
+                    if behavior == 1 {
+                        let (id, errors) = result?;
+                        assert_eq!(id, 0);
+                        assert!(errors[0].is_err());
+                    } else {
+                        assert!(result.is_err());
+                    }
+                }
+            }
+            assert_eq!(calls.load(Ordering::SeqCst), 192);
+            assert!(receive.try_recv().is_err());
+            mode.store(3, Ordering::SeqCst);
+            let (id, errors) = client.async_read(&[ServerItemHandle(10)], 201)?;
+            assert_ne!(id, 0);
+            assert!(errors[0].is_ok());
+            assert_eq!(
+                receive
+                    .recv_timeout(Duration::from_secs(2))
+                    .unwrap()
+                    .transaction,
+                201
+            );
+            subscription.close()?;
+            Ok(())
+        }
+    }
+
     struct TestService {
         group_handles: Arc<Mutex<Vec<(u32, bool)>>>,
     }
+    type TestReadHook = Arc<dyn Fn(bool) -> Result<bool> + Send + Sync>;
     #[derive(Default)]
     struct TestGroup {
         read_values: Vec<Value>,
         read_states: Mutex<Vec<GroupState>>,
+        // true argument = notification; true result = all per-item read failures.
+        before_owned_result: Option<TestReadHook>,
     }
     struct TestCommon;
 
@@ -1437,6 +1693,20 @@ mod tests {
             _source: DataSource,
             handles: &[ServerItemHandle],
         ) -> Result<Vec<ServerItemResult<ServerSample>>> {
+            if self
+                .before_owned_result
+                .as_ref()
+                .map(|hook| hook(false))
+                .transpose()?
+                .unwrap_or(false)
+            {
+                return Ok(handles
+                    .iter()
+                    .map(|_| {
+                        ServerItemResult::failure(ErrorCode::from_raw(0xc0040007_u32.cast_signed()))
+                    })
+                    .collect());
+            }
             self.read_states
                 .lock()
                 .map_err(|_| Error::unexpected("test states poisoned"))?
@@ -1464,6 +1734,9 @@ mod tests {
             _: GroupState,
             _: DataSource,
         ) -> Result<Vec<ServerItemResult<ServerSample>>> {
+            if let Some(hook) = &self.before_owned_result {
+                hook(true)?;
+            }
             Ok(Vec::new())
         }
         fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>> {

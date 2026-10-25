@@ -200,6 +200,8 @@ fn two_blocked_sinks_cancel_and_capacity_are_atomic()
     assert!(group.async_read(&[handle], 33).is_err());
     group.cancel(ids[0])?;
     assert!(group.cancel(ids[0]).is_err());
+    // Canceled completion credits remain occupied until the blocked sinks dequeue.
+    assert!(group.async_read(&[handle], 34).is_err());
     for release in releases {
         release.send(())?;
     }

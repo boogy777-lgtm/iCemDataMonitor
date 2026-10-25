@@ -15,12 +15,12 @@ index 072edc4..4fc285b 100644
 -  "opc_hda_bindings",
 -]
 +members = ["opc_classic_abi", "opc_classic_types", "opc_classic_utils", "opc_comn_bindings", "opc_da_bindings"]
- 
+
  [workspace.package]
  edition = "2024"
 -rust-version = "1.97"
 +rust-version = "1.99.1"
- 
+
  [workspace.dependencies]
 -opc_ae_bindings = { version = "0.4.0", path = "opc_ae_bindings" }
  opc_classic_abi = { path = "opc_classic_abi" }
@@ -61,7 +61,7 @@ index 47fff18..429f3dc 100644
 +    let output = format!("{}/bindings.rs", std::env::var("OUT_DIR")?);
      println!("cargo:rerun-if-changed=build.rs");
      println!("cargo:rerun-if-changed=.windows/winmd/OPCCOMN.winmd");
- 
+
 @@ -7,7 +8,7 @@ fn main() {
          ".windows/winmd/OPCCOMN.winmd",
          "default",
@@ -91,7 +91,7 @@ index 0a9394e..c287e8a 100644
 +include!(concat!(env!("OUT_DIR"), "/bindings-module.rs"));
  pub mod client;
  pub mod server;
- 
+
 diff --git a/opc_da_bindings/build.rs b/opc_da_bindings/build.rs
 index df5dca9..fb48f60 100644
 --- a/opc_da_bindings/build.rs
@@ -102,7 +102,7 @@ index df5dca9..fb48f60 100644
 +    let output = format!("{}/bindings.rs", std::env::var("OUT_DIR")?);
      println!("cargo:rerun-if-changed=build.rs");
      println!("cargo:rerun-if-changed=.windows/winmd/OPCDA.winmd");
- 
+
 @@ -7,7 +8,7 @@ fn main() {
          ".windows/winmd/OPCDA.winmd",
          "default",
@@ -115,7 +115,7 @@ index df5dca9..fb48f60 100644
 @@ -16,19 +17,26 @@ fn main() {
      ])
      .unwrap();
- 
+
 -    remove_shallow_clones(&[
 -        "tagOPCITEMATTRIBUTES",
 -        "tagOPCITEMPROPERTY",
@@ -137,7 +137,7 @@ index df5dca9..fb48f60 100644
 +    )?;
 +    Ok(())
  }
- 
+
  /// `windows-bindgen` currently emits `transmute_copy` Clone implementations for
  /// explicitly laid-out structs containing `VARIANT`. A bitwise clone aliases the
  /// BSTR/SAFEARRAY/interface owned by the variant and causes a double release.
@@ -145,7 +145,7 @@ index df5dca9..fb48f60 100644
 -    let path = "src/bindings.rs";
 +fn remove_shallow_clones(path: &str, type_names: &[&str]) {
      let mut source = std::fs::read_to_string(path).unwrap();
- 
+
      for type_name in type_names {
 diff --git a/opc_da_bindings/src/client/callbacks.rs b/opc_da_bindings/src/client/callbacks.rs
 new file mode 100644
@@ -833,7 +833,7 @@ index 7a04f39..8610df1 100644
 @@ -63,6 +63,14 @@ impl<'apartment> DaGroup<'apartment> {
          }
      }
- 
+
 +    pub(super) fn callback_objects(&self) -> Result<(&IUnknown, &crate::IOPCServer, u32)> {
 +        Ok((
 +            &self.object,
@@ -848,7 +848,7 @@ index 7a04f39..8610df1 100644
 @@ -361,7 +369,7 @@ impl<'apartment> DaGroup<'apartment> {
          object_from_interface(&self.object)
      }
- 
+
 -    fn interface<T: Interface>(&self) -> Result<T> {
 +    pub(super) fn interface<T: Interface>(&self) -> Result<T> {
          interface_from_object(&self.object())
@@ -860,7 +860,7 @@ index 0d6cff9..46d19ea 100644
 +++ b/opc_da_bindings/src/client/mod.rs
 @@ -1,5 +1,7 @@
  //! Safe OPC Data Access client facade.
- 
+
 +mod callbacks;
 +pub use callbacks::{CallbackGroup, DataEvent, DataEventItem, DataEventKind, DataSubscription};
  mod group;
@@ -876,7 +876,7 @@ index 4d073cf..5c5c28f 100644
 +include!(concat!(env!("OUT_DIR"), "/bindings-module.rs"));
  pub mod client;
  pub mod server;
- 
+
 diff --git a/opc_da_bindings/src/server/callback_health.rs b/opc_da_bindings/src/server/callback_health.rs
 new file mode 100644
 index 0000000..5521e2c
@@ -1023,10 +1023,10 @@ index 0000000..5521e2c
 +}
 diff --git a/opc_da_bindings/src/server/callback_queue.rs b/opc_da_bindings/src/server/callback_queue.rs
 new file mode 100644
-index 0000000..9777267
+index 0000000..a7dc003
 --- /dev/null
 +++ b/opc_da_bindings/src/server/callback_queue.rs
-@@ -0,0 +1,536 @@
+@@ -0,0 +1,565 @@
 +//! iCem SDK extension: finite owned queue, independent of COM.
 +#![forbid(unsafe_code)]
 +use std::{
@@ -1336,18 +1336,19 @@ index 0000000..9777267
 +            }
 +            ready.wait();
 +            let rejects = (0..64)
-+                .map(|_| {
-+                    scope.spawn(|| {
-+                        assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
-+                    })
-+                })
++                .map(|_| scope.spawn(|| matches!(Members::prepare(&m), Err(QueueError::Full))))
 +                .collect::<Vec<_>>();
-+            for reject in rejects {
-+                reject.join().unwrap();
-+            }
-+            assert_eq!(entered.load(Ordering::SeqCst), MAX_REQUESTS);
-+            assert_eq!(allocated.load(Ordering::SeqCst), MAX_REQUESTS * MAX_ITEMS);
-+            release.wait();
++            let rejected = rejects
++                .into_iter()
++                .map(|r| r.join().unwrap())
++                .collect::<Vec<_>>();
++            let observed = (
++                entered.load(Ordering::SeqCst),
++                allocated.load(Ordering::SeqCst),
++            );
++            release.wait(); // release admitted service calls before assertions can unwind
++            assert!(rejected.into_iter().all(|full| full));
++            assert_eq!(observed, (MAX_REQUESTS, MAX_REQUESTS * MAX_ITEMS));
 +        });
 +        assert!(Members::prepare(&m).is_ok());
 +    }
@@ -1474,6 +1475,34 @@ index 0000000..9777267
 +            state.sinks.clear();
 +        }
 +        assert_eq!(permit.commit("lost", None), Err(QueueError::Closed));
++        assert!(m.lock().unwrap().requests.is_empty());
++    }
++    #[test]
++    fn replacing_all_sinks_cannot_reset_active_preparation_budget() {
++        let m = members(1);
++        let mut permits = (0..MAX_REQUESTS)
++            .map(|_| Members::prepare(&m).unwrap())
++            .collect::<Vec<_>>();
++        let late = members(1).into_inner().unwrap().sinks.remove(&1).unwrap();
++        {
++            let mut state = m.lock().unwrap();
++            state
++                .sinks
++                .remove(&1)
++                .unwrap()
++                .queue
++                .lock()
++                .unwrap()
++                .close();
++            state.sinks.insert(2, late.clone());
++        }
++        assert!(matches!(Members::prepare(&m), Err(QueueError::Full)));
++        drop(permits.pop());
++        assert!(Members::prepare(&m).is_ok());
++        for permit in permits {
++            assert_eq!(permit.commit("old", None), Err(QueueError::Closed));
++        }
++        assert!(late.queue.lock().unwrap().pop().is_none());
 +        assert!(m.lock().unwrap().requests.is_empty());
 +    }
 +    #[test]
@@ -2439,12 +2468,12 @@ index 0000000..79a0e4d
 +    }
 +}
 diff --git a/opc_da_bindings/src/server/mod.rs b/opc_da_bindings/src/server/mod.rs
-index cf7d60e..8751dd1 100644
+index cf7d60e..3758a43 100644
 --- a/opc_da_bindings/src/server/mod.rs
 +++ b/opc_da_bindings/src/server/mod.rs
 @@ -1,9 +1,15 @@
  //! Safe Rust service contracts and COM adapters for OPC Data Access.
- 
+
 +mod callback_health;
 +mod callback_queue;
 +mod callbacks;
@@ -2455,13 +2484,13 @@ index cf7d60e..8751dd1 100644
  use std::sync::atomic::{AtomicU32, Ordering};
  use std::sync::{Arc, Mutex};
 +use windows::Win32::System::Com::{IConnectionPoint, IConnectionPointContainer};
- 
+
  use opc_classic_abi::{IOPCCommon as AbiCommon, IOPCCommon_Impl as AbiCommon_Impl};
  use opc_classic_types::{ComObject, Error, ErrorCode, Result, Timestamp, Value, ValueType};
 @@ -92,12 +98,22 @@ pub trait DaGroupService: Send + Sync + 'static {
          handles: &[(ServerItemHandle, ValueType)],
      ) -> Result<Vec<ServerItemResult<()>>>;
- 
+
 +    /// Reads with one committed group-state snapshot. The adapter releases its
 +    /// state lock before calling the service; concurrent SetState may commit
 +    /// afterwards, but can never split the fields observed by this read.
@@ -2471,7 +2500,7 @@ index cf7d60e..8751dd1 100644
          source: DataSource,
          handles: &[ServerItemHandle],
      ) -> Result<Vec<ServerItemResult<ServerSample>>>;
- 
+
 +    /// Owned active snapshot, no native source reads or foreign callbacks.
 +    fn notification(
 +        &self,
@@ -2480,14 +2509,14 @@ index cf7d60e..8751dd1 100644
 +    ) -> Result<Vec<ServerItemResult<ServerSample>>>;
      fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>>;
  }
- 
+
 @@ -150,6 +166,7 @@ impl Drop for PendingGroup<'_> {
  struct GroupEntry {
      name: String,
      object: IUnknown,
 +    callbacks: Arc<callbacks::Callbacks>,
  }
- 
+
  #[derive(Clone)]
 @@ -166,7 +183,17 @@ impl DaServer {
      /// Creates a DA server whose COM identity delegates `IOPCCommon` to the
@@ -2507,14 +2536,14 @@ index cf7d60e..8751dd1 100644
 +        let inner: IOPCServer = DaServerAdapter::new(service.clone(), common, monitor).into();
          Self { inner, service }
      }
- 
+
 @@ -185,15 +212,21 @@ struct DaServerAdapter {
      common: Arc<dyn CommonService>,
      groups: Mutex<HashMap<u32, GroupEntry>>,
      next_group_handle: AtomicU32,
 +    monitor: CallbackMonitor,
  }
- 
+
  impl DaServerAdapter {
 -    fn new(service: Arc<dyn DaService>, common: Arc<dyn CommonService>) -> Self {
 +    fn new(
@@ -2689,7 +2718,7 @@ index cf7d60e..8751dd1 100644
 +            requested_update_rate < 10,
 +        )
      }
- 
+
      fn GetErrorString(&self, error: HRESULT, locale: u32) -> AbiResult<PWSTR> {
 @@ -400,10 +440,14 @@ impl IOPCServer_Impl for DaServerAdapter_Impl {
      fn RemoveGroup(&self, server_handle: u32, force: windows_core::BOOL) -> AbiResult<()> {
@@ -2710,7 +2739,7 @@ index cf7d60e..8751dd1 100644
 @@ -432,19 +476,56 @@ unsafe impl Cleanup<crate::tagOPCSERVERSTATUS> for ServerStatusCleanup {
      }
  }
- 
+
 -#[windows_core::implement(IOPCItemMgt, IOPCSyncIO, IOPCGroupStateMgt)]
 +#[windows_core::implement(
 +    IOPCItemMgt,
@@ -2726,7 +2755,7 @@ index cf7d60e..8751dd1 100644
 +    state: Arc<Mutex<GroupState>>,
 +    callbacks: Arc<callbacks::Callbacks>,
  }
- 
+
  impl DaGroupAdapter {
 +    #[cfg(test)]
      fn new(service: Arc<dyn DaGroupService>, state: GroupState) -> Self {
@@ -2765,7 +2794,7 @@ index cf7d60e..8751dd1 100644
 +        self.service.read(state, source, handles)
 +    }
  }
- 
+
  #[allow(clippy::not_unsafe_ptr_arg_deref)]
 @@ -463,6 +544,7 @@ impl IOPCItemMgt_Impl for DaGroupAdapter_Impl {
              }
@@ -2839,10 +2868,10 @@ index cf7d60e..8751dd1 100644
 +        });
 +        rate_result(result, unsupported)
      }
- 
+
      fn SetName(&self, name: &PCWSTR) -> AbiResult<()> {
 @@ -985,7 +1079,7 @@ fn batch_status(has_error: bool) -> Result<()> {
- 
+
  fn next_nonzero(counter: &AtomicU32) -> Result<u32> {
      counter
 -        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
@@ -2850,10 +2879,10 @@ index cf7d60e..8751dd1 100644
              if value == 0 {
                  None
              } else {
-@@ -1021,12 +1115,149 @@ mod tests {
+@@ -1021,12 +1115,405 @@ mod tests {
      use crate::client::{DaClient, GroupOptions, ServerState};
      use windows::Win32::System::Variant::VT_DISPATCH;
- 
+
 +    // P7c1 adds no native operation: SetState is the existing generated safe
 +    // implementation entrypoint; Read uses the existing safe COM client.
 +    #[forbid(unsafe_code)]
@@ -2990,20 +3019,276 @@ index cf7d60e..8751dd1 100644
 +        }
 +    }
 +
++    #[forbid(unsafe_code)]
++    mod async_preparation {
++        use super::*;
++        use crate::{IOPCAsyncIO2_Impl, client::DataEvent};
++        use std::sync::{Barrier, atomic::AtomicUsize, mpsc};
++        use std::time::Duration;
++
++        fn state() -> GroupState {
++            GroupState {
++                update_rate: 100,
++                active: false,
++                name: "admission".into(),
++                time_bias: 0,
++                percent_deadband: 0.0,
++                locale: 0,
++                client_handle: 7,
++                server_handle: 1,
++            }
++        }
++        fn server() -> DaServer {
++            DaServer::new(Arc::new(TestService {
++                group_handles: Arc::new(Mutex::new(Vec::new())),
++            }))
++        }
++        #[test]
++        fn full_preparation_budget_rejects_real_com_read_refresh_before_service() -> Result<()> {
++            let _apartment = opc_classic_utils::ComApartment::mta()?;
++            let ready = Arc::new(Barrier::new(33));
++            let release = Arc::new(Barrier::new(33));
++            let notifications = Arc::new(AtomicUsize::new(0));
++            let reads = Arc::new(AtomicUsize::new(0));
++            let service = Arc::new(TestGroup {
++                before_owned_result: Some(Arc::new({
++                    let (ready, release, notifications, reads) = (
++                        ready.clone(),
++                        release.clone(),
++                        notifications.clone(),
++                        reads.clone(),
++                    );
++                    move |notification| {
++                        if notification {
++                            // A regression must report excess calls, not deadlock
++                            // the test by entering a second barrier generation.
++                            if notifications.fetch_add(1, Ordering::SeqCst) < 32 {
++                                ready.wait();
++                                release.wait();
++                            }
++                        } else {
++                            reads.fetch_add(1, Ordering::SeqCst);
++                        }
++                        Ok(false)
++                    }
++                })),
++                ..Default::default()
++            });
++            let adapter = Arc::new(windows_core::ComObject::new(DaGroupAdapter::new(
++                service,
++                state(),
++            )));
++            let server = server();
++            let client = crate::client::DaGroup::new(
++                server.inner.clone(),
++                adapter.to_interface(),
++                1,
++                false,
++                100,
++            );
++            let (send, receive) = mpsc::sync_channel::<DataEvent>(4);
++            let mut subscription = client.subscribe(Arc::new(move |event| {
++                send.try_send(event).unwrap();
++            }))?;
++            client.set_enable(false)?;
++            let mut active = state();
++            active.active = true;
++            client.set_state(&active)?;
++            // Existing generated Rust entrypoints permit controlled overlap without
++            // passing apartment-local clients/proxies between threads. Rejections
++            // and recovered delivery below use the actual safe COM client.
++            std::thread::scope(|scope| {
++                let workers = (0..32)
++                    .map(|transaction| {
++                        let adapter = adapter.clone();
++                        scope.spawn(move || {
++                            adapter.Refresh2(crate::OPC_DS_DEVICE, transaction).is_err()
++                        })
++                    })
++                    .collect::<Vec<_>>();
++                ready.wait();
++                let rejected_read = client.async_read(&[ServerItemHandle(10)], 100).is_err();
++                let rejected_refresh = client.refresh(DataSource::Device, 101).is_err();
++                let observed = (
++                    notifications.load(Ordering::SeqCst),
++                    reads.load(Ordering::SeqCst),
++                );
++                release.wait();
++                for worker in workers {
++                    assert!(worker.join().unwrap());
++                }
++                assert!(rejected_read && rejected_refresh);
++                assert_eq!(observed, (32, 0));
++            });
++            // Every admitted empty Refresh failed and returned its permit.
++            let (id, errors) = client.async_read(&[ServerItemHandle(10)], 102)?;
++            assert_ne!(id, 0);
++            assert!(errors[0].is_ok());
++            assert_eq!(
++                receive
++                    .recv_timeout(Duration::from_secs(2))
++                    .unwrap()
++                    .transaction,
++                102
++            );
++            assert_eq!(reads.load(Ordering::SeqCst), 1);
++            subscription.close()?;
++            Ok(())
++        }
++        #[test]
++        fn full_retained_budget_and_queued_cancel_reject_before_read_service() -> Result<()> {
++            let _apartment = opc_classic_utils::ComApartment::mta()?;
++            let calls = Arc::new(AtomicUsize::new(0));
++            let service = Arc::new(TestGroup {
++                before_owned_result: Some(Arc::new({
++                    let calls = calls.clone();
++                    move |notification| {
++                        assert!(!notification);
++                        calls.fetch_add(1, Ordering::SeqCst);
++                        Ok(false)
++                    }
++                })),
++                ..Default::default()
++            });
++            let adapter = windows_core::ComObject::new(DaGroupAdapter::new(service, state()));
++            let server = server();
++            let client = crate::client::DaGroup::new(
++                server.inner.clone(),
++                adapter.to_interface(),
++                1,
++                false,
++                100,
++            );
++            let (entered, entry) = mpsc::sync_channel(1);
++            let (release, gate) = mpsc::sync_channel(1);
++            let gate = Mutex::new(gate);
++            let first = std::sync::atomic::AtomicBool::new(true);
++            let (send, receive) = mpsc::sync_channel::<DataEvent>(64);
++            let mut subscription = client.subscribe(Arc::new(move |event| {
++                if first.swap(false, Ordering::AcqRel) {
++                    entered.send(()).unwrap();
++                    gate.lock()
++                        .unwrap()
++                        .recv_timeout(Duration::from_secs(5))
++                        .unwrap();
++                }
++                send.try_send(event).unwrap();
++            }))?;
++            client.async_read(&[ServerItemHandle(10)], 300)?;
++            entry.recv_timeout(Duration::from_secs(2)).unwrap();
++            let ids = (301..=332)
++                .map(|transaction| {
++                    client
++                        .async_read(&[ServerItemHandle(10)], transaction)
++                        .map(|(id, _)| id)
++                })
++                .collect::<Result<Vec<_>>>()?;
++            let rejected_full = client.async_read(&[ServerItemHandle(10)], 333).is_err();
++            client.cancel(ids[0])?;
++            let rejected_cancel = client.async_read(&[ServerItemHandle(10)], 334).is_err();
++            let observed = calls.load(Ordering::SeqCst);
++            release.send(()).unwrap();
++            assert!(rejected_full && rejected_cancel);
++            assert_eq!(observed, 33);
++            for _ in 0..33 {
++                receive.recv_timeout(Duration::from_secs(2)).unwrap();
++            }
++            let (id, errors) = client.async_read(&[ServerItemHandle(10)], 335)?;
++            assert_ne!(id, 0);
++            assert!(errors[0].is_ok());
++            assert_eq!(
++                receive
++                    .recv_timeout(Duration::from_secs(2))
++                    .unwrap()
++                    .transaction,
++                335
++            );
++            assert_eq!(calls.load(Ordering::SeqCst), 34);
++            subscription.close()?;
++            Ok(())
++        }
++        #[test]
++        fn real_com_read_error_all_failed_and_panic_release_preparation() -> Result<()> {
++            let _apartment = opc_classic_utils::ComApartment::mta()?;
++            let mode = Arc::new(AtomicUsize::new(0));
++            let calls = Arc::new(AtomicUsize::new(0));
++            let service = Arc::new(TestGroup {
++                before_owned_result: Some(Arc::new({
++                    let (mode, calls) = (mode.clone(), calls.clone());
++                    move |notification| {
++                        assert!(!notification); // group stays inactive
++                        calls.fetch_add(1, Ordering::SeqCst);
++                        match mode.load(Ordering::SeqCst) {
++                            0 => Err(Error::unexpected("injected service error")),
++                            1 => Ok(true),
++                            2 => panic!("injected service panic"),
++                            _ => Ok(false),
++                        }
++                    }
++                })),
++                ..Default::default()
++            });
++            let adapter = windows_core::ComObject::new(DaGroupAdapter::new(service, state()));
++            let server = server();
++            let client = crate::client::DaGroup::new(
++                server.inner.clone(),
++                adapter.to_interface(),
++                1,
++                false,
++                100,
++            );
++            let (send, receive) = mpsc::sync_channel::<DataEvent>(4);
++            let mut subscription = client.subscribe(Arc::new(move |event| {
++                send.try_send(event).unwrap();
++            }))?;
++            for behavior in 0..3 {
++                mode.store(behavior, Ordering::SeqCst);
++                for _ in 0..64 {
++                    let result = client.async_read(&[ServerItemHandle(10)], 200);
++                    if behavior == 1 {
++                        let (id, errors) = result?;
++                        assert_eq!(id, 0);
++                        assert!(errors[0].is_err());
++                    } else {
++                        assert!(result.is_err());
++                    }
++                }
++            }
++            assert_eq!(calls.load(Ordering::SeqCst), 192);
++            assert!(receive.try_recv().is_err());
++            mode.store(3, Ordering::SeqCst);
++            let (id, errors) = client.async_read(&[ServerItemHandle(10)], 201)?;
++            assert_ne!(id, 0);
++            assert!(errors[0].is_ok());
++            assert_eq!(
++                receive
++                    .recv_timeout(Duration::from_secs(2))
++                    .unwrap()
++                    .transaction,
++                201
++            );
++            subscription.close()?;
++            Ok(())
++        }
++    }
++
      struct TestService {
          group_handles: Arc<Mutex<Vec<(u32, bool)>>>,
      }
++    type TestReadHook = Arc<dyn Fn(bool) -> Result<bool> + Send + Sync>;
      #[derive(Default)]
      struct TestGroup {
          read_values: Vec<Value>,
 +        read_states: Mutex<Vec<GroupState>>,
++        // true argument = notification; true result = all per-item read failures.
++        before_owned_result: Option<TestReadHook>,
      }
      struct TestCommon;
- 
-@@ -1048,6 +1279,38 @@ mod tests {
+
+@@ -1048,6 +1535,38 @@ mod tests {
          assert!(slot.is_some());
      }
- 
+
 +    #[test]
 +    fn connection_point_and_container_have_group_identity() -> Result<()> {
 +        let apartment = opc_classic_utils::ComApartment::mta()?;
@@ -3039,14 +3324,28 @@ index cf7d60e..8751dd1 100644
      impl CommonService for TestCommon {
          fn set_locale(&self, _locale: u32) -> Result<()> {
              Ok(())
-@@ -1170,9 +1433,14 @@ mod tests {
- 
+@@ -1170,9 +1689,28 @@ mod tests {
+
          fn read(
              &self,
 +            state: GroupState,
              _source: DataSource,
              handles: &[ServerItemHandle],
          ) -> Result<Vec<ServerItemResult<ServerSample>>> {
++            if self
++                .before_owned_result
++                .as_ref()
++                .map(|hook| hook(false))
++                .transpose()?
++                .unwrap_or(false)
++            {
++                return Ok(handles
++                    .iter()
++                    .map(|_| {
++                        ServerItemResult::failure(ErrorCode::from_raw(0xc0040007_u32.cast_signed()))
++                    })
++                    .collect());
++            }
 +            self.read_states
 +                .lock()
 +                .map_err(|_| Error::unexpected("test states poisoned"))?
@@ -3054,21 +3353,24 @@ index cf7d60e..8751dd1 100644
              Ok(handles
                  .iter()
                  .enumerate()
-@@ -1191,6 +1459,13 @@ mod tests {
+@@ -1191,6 +1729,16 @@ mod tests {
                  .collect())
          }
- 
+
 +        fn notification(
 +            &self,
 +            _: GroupState,
 +            _: DataSource,
 +        ) -> Result<Vec<ServerItemResult<ServerSample>>> {
++            if let Some(hook) = &self.before_owned_result {
++                hook(true)?;
++            }
 +            Ok(Vec::new())
 +        }
          fn write(&self, values: &[(ServerItemHandle, Value)]) -> Result<Vec<ServerItemResult<()>>> {
              assert!(
                  !values.is_empty(),
-@@ -1282,7 +1557,14 @@ mod tests {
+@@ -1282,7 +1830,14 @@ mod tests {
              client_handle: 0,
              server_handle: 1,
          };
@@ -3082,9 +3384,9 @@ index cf7d60e..8751dd1 100644
 +        )
 +        .into()
      }
- 
+
      fn test_group_io() -> IOPCSyncIO {
-@@ -1415,3 +1697,21 @@ mod tests {
+@@ -1415,3 +1970,21 @@ mod tests {
          }
      }
  }
