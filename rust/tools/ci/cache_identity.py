@@ -21,6 +21,7 @@ COMMON_SCAFFOLD_INPUTS = (
     'rust/tools/Verify-DesktopMapping.ps1',
     'rust/tools/Test-OpcDaInterop.ps1',
     'rust/tests/opc-da-interop/upstream.json',
+    'rust/tests/opc-da-interop/sta_client.cpp',
     'rust/tests/opc-da-interop/opcda.idl',
     'rust/tests/opc-da-interop/opccomn.idl',
     'rust/tools/ci/cache_identity.py',

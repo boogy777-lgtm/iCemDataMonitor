@@ -82,3 +82,26 @@ Source/Python contracts44/44 and diff-check PASS on Linux. There is no local
 Windows MIDL/runtime; the first Actions run must validate build/registration/RPC.
 STA external client and expanded RPC geometry/lifecycle coverage remain pending;
 R2 stays OPEN. Cross compilation or a script source review is not runtime PASS.
+
+
+R2 second checkpoint adds the independent generated-header C++ STA executable.
+Its IOPCDataCallback rejects IMarshal and every event asserts the owner STA thread;
+CoWaitForMultipleHandles dispatches COM calls with finite waits. Two sinks verify
+4096-item native U16/I32/F32 NaN payload, writer FILETIME, current GOOD quality,
+client/group handles and rate, CACHE activity, Sync/AsyncRead, Refresh, early
+read-only Sync/AsyncWrite, queued cancellation/repeated/late rejection, Unadvise,
+reentrant RemoveGroup and40 complete external server/group reconnect loops.
+A reentrant Read/Cancel is queued behind its sole currently executing sink worker,
+so successful cancellation does not depend on timing a racing completed Read.
+
+The Rust harness owns both processes (sidecar60s deadline, STA child45s), kills/
+reaps on failure and runs a bounded synthetic200ms IPC producer with one frame/ACK
+at a time. New capture generations retain fixture raw values and writer FILETIME;
+this avoids silently weakening GOOD-quality checks when acceptance exceeds5s.
+No acquisition/MMF/source semantics change. Cleanup now attempts every owned key,
+records creation before fallible marker writes, permits only its still-empty newly
+created root after marker failure, refuses foreign content, and guarantees env/temp
+cleanup even if one mapping cleanup fails.
+
+Linux source checks: exact Rust1.99.1 Windows x64 all-target Clippy -D warnings
+PASS; C++/MIDL/PowerShell runtime require actual Windows CI. R2 remains OPEN.

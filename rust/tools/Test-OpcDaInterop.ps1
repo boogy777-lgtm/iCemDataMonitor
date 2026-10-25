@@ -14,6 +14,7 @@ $Proxy = '{A09B1F4C-8B64-44D1-B89F-0AA9A85F7981}'
 $Owned = [System.Collections.Generic.List[string]]::new()
 $Saved = @{}
 $Classes = $null
+$SavedClient = $env:ICEM_OPC_STA_CLIENT
 function Native([string]$Program, [string[]]$Arguments) {
     & $Program @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Program failed with exit $LASTEXITCODE" }
@@ -57,6 +58,7 @@ EXPORTS
  DllUnregisterServer PRIVATE
 '@ | Set-Content -Encoding ascii proxy.def
         Native 'cl.exe' @('/nologo', '/c', '/O2', '/DWIN32', '/D_WIN32_WINNT=0x0601', '/DREGISTER_PROXY_DLL', '/DPROXY_CLSID_IS={0xa09b1f4c,0x8b64,0x44d1,{0xb8,0x9f,0x0a,0xa9,0xa8,0x5f,0x79,0x81}}', 'dlldata.c', 'opcda_p.c', 'opcda_i.c', 'opccomn_p.c', 'opccomn_i.c')
+        Native 'cl.exe' @('/nologo', '/EHsc', '/std:c++17', '/W4', '/I.', (Join-Path $Fixture 'sta_client.cpp'), 'opcda_i.obj', '/Fe:sta_client.exe', '/link', 'ole32.lib', 'oleaut32.lib', 'uuid.lib')
         Native 'link.exe' @('/nologo', '/dll', '/out:icem_opc_proxy.dll', '/def:proxy.def', 'dlldata.obj', 'opcda_p.obj', 'opcda_i.obj', 'opccomn_p.obj', 'opccomn_i.obj', 'kernel32.lib', 'rpcrt4.lib', 'rpcns4.lib', 'oleaut32.lib', 'uuid.lib')
     } finally { Pop-Location }
     # Use generated IID definitions, never a handwritten ABI/interface IID list.
@@ -86,7 +88,7 @@ EXPORTS
     try { $Classes = $Base.CreateSubKey('Software\Classes', $true) } finally { $Base.Dispose() }
     foreach ($Key in $Keys) {
         $Node = $Classes.CreateSubKey($Key, $true)
-        try { $Node.SetValue('iCemCiOwner', $Owner); $Owned.Add($Key) } finally { $Node.Dispose() }
+        try { $Owned.Add($Key); $Node.SetValue('iCemCiOwner', $Owner) } finally { $Node.Dispose() }
     }
     foreach ($Id in $Iids | Sort-Object -Unique) {
         $Node = $Classes.CreateSubKey("Interface\$Id\ProxyStubClsid32", $true)
@@ -94,23 +96,41 @@ EXPORTS
     }
     $Node = $Classes.CreateSubKey("CLSID\$Proxy\InprocServer32", $true)
     try { $Node.SetValue('', (Join-Path $Work 'icem_opc_proxy.dll')); $Node.SetValue('ThreadingModel', 'Both') } finally { $Node.Dispose() }
+    $env:ICEM_OPC_STA_CLIENT = Join-Path $Work 'sta_client.exe'
     Push-Location $Root
     try {
         Native 'cargo' @('test', '-p', 'icem-opc-da-sidecar', '--test', 'windows_process', '--locked', '--offline', '--', '--ignored', '--nocapture')
     } finally { Pop-Location }
-    Write-Host 'Matching pinned OPC proxy/stub + actual Rust MTA cross-process gate: PASS'
+    Write-Host 'Matching pinned OPC proxy/stub + actual Rust MTA and independent C++ STA cross-process gates: PASS'
 } finally {
-    if ($null -ne $Classes) {
+    $CleanupErrors = [System.Collections.Generic.List[string]]::new()
+    try {
+        if ($null -ne $Classes) {
+            try {
+                foreach ($Key in $Owned) {
+                    try {
+                        $Node = $Classes.OpenSubKey($Key)
+                        if ($null -eq $Node) { throw "Owned OPC mapping disappeared: $Key" }
+                        try {
+                            $Marker = $Node.GetValue('iCemCiOwner')
+                            # Marker-write failure can leave our newly created empty root.
+                            # Any unmarked content or changed marker is foreign: never delete.
+                            $Empty = $Node.ValueCount -eq 0 -and $Node.SubKeyCount -eq 0
+                            $MatchesOwner = $Marker -ceq $Owner -or ($null -eq $Marker -and $Empty)
+                        } finally { $Node.Dispose() }
+                        if (-not $MatchesOwner) { throw "Refusing cleanup of foreign OPC mapping: $Key" }
+                        $Classes.DeleteSubKeyTree($Key, $false)
+                    } catch { $CleanupErrors.Add($_.Exception.Message) }
+                }
+            } finally { $Classes.Dispose() }
+        }
+    } finally {
         try {
-            foreach ($Key in $Owned) {
-                $Node = $Classes.OpenSubKey($Key)
-                if ($null -eq $Node) { throw "Owned OPC mapping disappeared: $Key" }
-                try { $MatchesOwner = $Node.GetValue('iCemCiOwner') -ceq $Owner } finally { $Node.Dispose() }
-                if (-not $MatchesOwner) { throw "Refusing cleanup of foreign OPC mapping: $Key" }
-                $Classes.DeleteSubKeyTree($Key, $false)
-            }
-        } finally { $Classes.Dispose() }
+            foreach ($Name in $Saved.Keys) { [Environment]::SetEnvironmentVariable($Name, $Saved[$Name], 'Process') }
+            $env:ICEM_OPC_STA_CLIENT = $SavedClient
+        } finally {
+            if (Test-Path $Work) { Remove-Item -Recurse -Force $Work }
+        }
     }
-    foreach ($Name in $Saved.Keys) { [Environment]::SetEnvironmentVariable($Name, $Saved[$Name], 'Process') }
-    if (Test-Path $Work) { Remove-Item -Recurse -Force $Work }
+    if ($CleanupErrors.Count -ne 0) { throw ('OPC registry cleanup failed: ' + ($CleanupErrors -join '; ')) }
 }

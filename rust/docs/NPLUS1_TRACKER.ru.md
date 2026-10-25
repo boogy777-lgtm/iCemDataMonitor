@@ -17,12 +17,12 @@ N+1-плана, а не всей миграции .NET → Rust.
 | P7. OPC UA, затем OPC DA | Реализованы оба adapter; Linux UA client и Windows DA in-process tests подтверждены. RPC/Windows client gates — R2/R3 |
 | P8. Необязательный словарь | Не активирован: практической потребности нет; базовая работа от словаря не зависит |
 
-## Оставшиеся программные блоки: 5
+## Оставшиеся программные блоки: 4
 
 | ID | Работа | Состояние и критерий закрытия |
 |---|---|---|
-| R1 | Ранний допуск DA AsyncRead/Refresh | Код завершён; финальные три COM-regressions ожидают Windows CI. Production checkpoint уже имеет полный green CI |
-| R2 | DA STA/MTA и callbacks между процессами | Следующее поручение: проверенные pinned IDL, matching proxy/stub, реальный Windows client, 4096-item RPC и cleanup |
+| R1 | Ранний допуск DA AsyncRead/Refresh | Закрыт: финальные три COM-regressions и все SDK37/37 + sidecar11/11 прошли Windows run40170843310. Весь run cancelled при следующем checkpoint, это не full green |
+| R2 | DA STA/MTA и callbacks между процессами | В работе: pinned IDL + mandatory CI proxy build/owned cleanup, Rust MTA и независимый C++ STA4096/reconnect harness подготовлены; actual Windows MIDL/RPC/runtime ещё OPEN |
 | R3 | Windows MQTT/OPC UA interoperability | Запустить реальные клиенты/broker в целевой ОС; подтвердить типы, identity, quality/time, disconnect/reconnect |
 | R4 | Windows Release measurements | Capture/decode/publication, MMF lock hold, allocations и Modbus/Web p95/p99 с описанной методикой; не выдавать CI fixture за production hardware |
 | R5 | Итоговая интеграция | Независимая сверка плана, полный CI окончательного head, актуальный отчёт и завершение PR |
@@ -42,8 +42,9 @@ COM/RPC unmarshalling до SDK entrypoint и не обещание whole-process
 - Независимое callback review исправило пять HIGH findings. Windows runtime
   pre-R6 head: SDK27/27 и sidecar11/11, включая все пять regressions, PASS.
 - Финальный R6 local `6fa8dc9`: queue12/health3/codec5, Python44, original42
-  provenance, fmt/diff-check и Windows all-target Clippy PASS. Runtime новых
-  трёх fixtures должен подтвердить CI следующего опубликованного head.
+  provenance, fmt/diff-check и Windows all-target Clippy PASS. Actual Windows runtime всех трёх fixtures подтверждён: [run40170843310/job121101210357](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40170843310/job/121101210357),
+  SDK37/37 + sidecar11/11 PASS, 06:59:56UTC. Весь run cancelled после
+  SDK gate при публикации R2; full CI этого head не заявляется.
 - Массив/SIMD: [измерения и решение](NPLUS1_PERFORMANCE.ru.md).
   Постоянный Vec<Value>/Vec<Variable> не создаётся. Ручной SIMD не добавлен:
   значимый end-to-end выигрыш не доказан; unsafe policy сохранена.
