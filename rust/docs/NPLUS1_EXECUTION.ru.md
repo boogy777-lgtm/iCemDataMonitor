@@ -676,3 +676,24 @@ sidecar11/11 runtime PASS (including five review regressions); cancelled run is 
 full CI green and does not prove R6. See P7_CALLBACK_REVIEW for exact run/job.
 This bounds SDK-owned preparation only, not pre-entrypoint COM/RPC unmarshalling
 or whole-process RSS. Existing P7 Windows/proxy/operator gates remain OPEN.
+
+
+## R2: matching OPC RPC proxy + independent STA, 2026-10-25
+
+Class/Inv/N+1 and new CI-only native boundary were recorded in ADR0019 before
+implementation. Byte-exact pinned upstream DA/Common IDLs/notices are separate
+from42 runtime SDK inputs. Windows SDK MIDL x64 /robust /Oicf + MSVC build only
+under RUNNER_TEMP, with a private proxy CLSID and owned/refuse-existing HKCU64
+mappings. Production COM/unsafe boundaries and other adapters are unchanged.
+
+Actual Windows SDK gate SUCCESS on remote75a19342905c270efd431e77519badbaeff7ee0c
+(treecef5a5f18e1e2ee90f73ddee37ee0289ff7490bf, local692dee3),
+[run40171770730/job121104122819](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40171770730/job/121104122819),
+07:14:26–07:15:19UTC. Exact mandatory command contract includes proxy build,
+explicit ignored Rust MTA process test, independent C++ owner-STA callbacks with
+4096 native items/two sinks, activity/rate/handles/read/refresh/cancel/read-only
+writes/reentrant teardown,40 reconnects and finally cleanup. Synthetic200ms IPC
+keeps capture fresh without changing writer FILETIME or the acquisition contract.
+Full job was still running later checks; no full-head CI claim. R2 closed for this
+profile; remaining R3/R4/R5 plus distinct operator/hardware/distribution gates.
+See P7_SDK_CI for exact source/local checks and evidence limits.

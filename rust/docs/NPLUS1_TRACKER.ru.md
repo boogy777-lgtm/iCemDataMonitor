@@ -17,12 +17,12 @@ N+1-плана, а не всей миграции .NET → Rust.
 | P7. OPC UA, затем OPC DA | Реализованы оба adapter; Linux UA client и Windows DA in-process tests подтверждены. RPC/Windows client gates — R2/R3 |
 | P8. Необязательный словарь | Не активирован: практической потребности нет; базовая работа от словаря не зависит |
 
-## Оставшиеся программные блоки: 4
+## Оставшиеся программные блоки: 3
 
 | ID | Работа | Состояние и критерий закрытия |
 |---|---|---|
 | R1 | Ранний допуск DA AsyncRead/Refresh | Закрыт: финальные три COM-regressions и все SDK37/37 + sidecar11/11 прошли Windows run40170843310. Весь run cancelled при следующем checkpoint, это не full green |
-| R2 | DA STA/MTA и callbacks между процессами | В работе: pinned IDL + mandatory CI proxy build/owned cleanup, Rust MTA и независимый C++ STA4096/reconnect harness подготовлены; actual Windows MIDL/RPC/runtime ещё OPEN |
+| R2 | DA STA/MTA и callbacks между процессами | Закрыт: mandatory Windows SDK step SUCCESS на remote75a1934, run40171770730/job121104122819. Matching MIDL proxy, Rust MTA + independent C++ STA4096,40 reconnects и owned cleanup; full CI этого head ещё не заявлен |
 | R3 | Windows MQTT/OPC UA interoperability | Запустить реальные клиенты/broker в целевой ОС; подтвердить типы, identity, quality/time, disconnect/reconnect |
 | R4 | Windows Release measurements | Capture/decode/publication, MMF lock hold, allocations и Modbus/Web p95/p99 с описанной методикой; не выдавать CI fixture за production hardware |
 | R5 | Итоговая интеграция | Независимая сверка плана, полный CI окончательного head, актуальный отчёт и завершение PR |
@@ -45,6 +45,13 @@ COM/RPC unmarshalling до SDK entrypoint и не обещание whole-process
   provenance, fmt/diff-check и Windows all-target Clippy PASS. Actual Windows runtime всех трёх fixtures подтверждён: [run40170843310/job121101210357](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40170843310/job/121101210357),
   SDK37/37 + sidecar11/11 PASS, 06:59:56UTC. Весь run cancelled после
   SDK gate при публикации R2; full CI этого head не заявляется.
+- R2: [run40171770730/job121104122819](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40171770730/job/121104122819),
+  remote `75a19342905c270efd431e77519badbaeff7ee0c`, tree
+  `cef5a5f18e1e2ee90f73ddee37ee0289ff7490bf` (local `692dee3`).
+  Обязательный Windows SDK step COMPLETED SUCCESS, 07:14:26–07:15:19UTC.
+  Точный cache/command contract требует MIDL/CL proxy build, ignored Rust RPC test,
+  independent owner-STA client4096/40 reconnects и успешный finally cleanup.
+  Это actual Windows runtime gate; full job/общий окончательный CI — R5.
 - Массив/SIMD: [измерения и решение](NPLUS1_PERFORMANCE.ru.md).
   Постоянный Vec<Value>/Vec<Variable> не создаётся. Ручной SIMD не добавлен:
   значимый end-to-end выигрыш не доказан; unsafe policy сохранена.

@@ -491,3 +491,19 @@ then Unadvise+60s idle requiring exit70<=6s. Pure queue race/health execute on L
 Opt-in process harness now includes actual callbacks/refresh, remains ignored until
 matching proxy/stub gate. Neither compiled tests nor in-process tests prove external
 cross-apartment/process acceptance. Root separately owns proxy/stub CI investigation.
+
+
+## Current R2 RPC acceptance, 2026-10-25
+
+The earlier OPEN/ignored proxy-gate entries above describe historical checkpoints.
+Matching pinned MIDL proxy generation/build, real Rust MTA and independent C++ STA
+cross-process callbacks now pass the mandatory Windows SDK step on remote75a1934,
+[run40171770730/job121104122819](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40171770730/job/121104122819).
+The nonagile generated-header STA client asserts owner-thread delivery,4096-item
+native values/NaN/writer FILETIME/quality, activity/rate/handles, read-only writes,
+Read/Refresh/cancel/reentrant teardown and40 full reconnect loops. Registration is
+owned ephemeral HKCU64 only, with refusal of existing vendor keys and finally
+cleanup. Details/exact-head/evidence limits: P7_SDK_CI R2 actual Windows RPC gate.
+This closes tracker R2's software gate; full final-head CI, industrial client,
+actual MMF/AddIn/hardware, x86/DCOM/operator/deployment and license/distribution
+acceptance remain separate. No full DA3 or general native-memory guarantee.

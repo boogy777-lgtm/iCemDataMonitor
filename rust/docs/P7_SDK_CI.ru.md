@@ -114,3 +114,57 @@ not a proxy/runtime pass. The correction uses a controlled temporary init.cmd,
 ProcessStartInfo raw cmd `/d /s /c ""path""` quoting, concurrent private stdout/stderr
 capture and a30s owned-child deadline; only PATH/INCLUDE/LIB/LIBPATH are imported.
 No full environment is emitted. MIDL/CL/RPC and R2 remain pending actual CI.
+
+
+## R2 actual Windows RPC gate — 2026-10-25
+
+R2 software acceptance is closed for the documented x64 read-only DA2 profile.
+[Run40171770730/job121104122819](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40171770730/job/121104122819)
+ran remote `75a19342905c270efd431e77519badbaeff7ee0c`, byte-identical tree
+`cef5a5f18e1e2ee90f73ddee37ee0289ff7490bf` to local
+`692dee3bd5356a4f0ef7685f702ae0f8dcc246b0`. Root independently observed the
+mandatory `Verify reviewed OPC SDK and sidecar on Windows` step COMPLETED SUCCESS
+from07:14:26 to07:15:19UTC. This is actual Windows runtime, not cross compilation.
+
+Evidence at this checkpoint is the successful mandatory step plus its exact
+checked commands/source. That step has no cache-hit condition, continue-on-error
+or bypass: Test-OpcDaInterop must successfully generate/build/register its matching
+proxy, run the explicitly ignored Rust process test and the independent C++ STA
+executable, and finish owned registry/environment/temp cleanup. Direct named test
+output can be attached once completed-job logs are available. The entire job was
+still running later emulator checks when this SDK result was recorded; full CI
+of this head and final integration are not claimed here.
+
+The runtime gate covers real LOCAL_SERVER activation/group/items/native reads,
+MTA Rust callbacks plus two independent apartment-bound C++ sinks. The latter
+reject IMarshal and assert every callback executes on the initiating STA thread;
+COM is pumped using bounded CoWaitForMultipleHandles, proving actual marshalling.
+4096-item RPC arrays check U16, signed I32, raw F32 NaN payload, exact writer
+FILETIME, strict current quality and client/group handles. Group activity/rate,
+Sync/AsyncRead, Refresh, read-only Sync/AsyncWrite, successful queued Cancel plus
+late/repeated rejection, Unadvise isolation, reentrant Unadvise/RemoveGroup and40
+complete server/group connect-close cycles execute against the sidecar process.
+These40 cycles detect exhaustion/leaks of32-slot group/server leases; they do not
+establish a general native heap/RSS bound.
+
+Fixture capture is kept fresh by a bounded200ms one-frame/ACK synthetic producer;
+writer FILETIME and values remain unchanged. Own-child60s/45s watchdogs kill/reap
+sidecar/client; no process-name termination or extra MMF source is used. Callback
+borrowed handlers are cleared by RAII before any failure-path proxy teardown can
+pump COM, preventing retained sinks from accessing partially destroyed Group state.
+
+Proxy inputs are exact separately pinned/noticed IDLs, compiled by installed
+Windows SDK MIDL x64 /robust /Oicf and MSVC; ABI declarations are generated, no
+handwritten Rust/C++ vtables/transmute/unsafe Send/Sync. Private proxy factory
+CLSID and ownership-marked HKCU64 mappings refuse existing HKCU/HKLM32/64 keys;
+cleanup attempts all owned keys even on partial failure and never deletes foreign
+content. No DCOM/DACL/security weakening, installer download or production payload.
+Application/shared forbid, runtime SDK original42 hashes/four-file allowlist,
+core/acquisition/other adapters/.NET/AddIn/proto/assets remain unchanged by R2.
+
+Source/local checks: exact Rust1.99.1 Windows x64 SDK+sidecar all-target Clippy
+-D warnings, workspace rustfmt, Python CI44/44, cache contract and diff-check PASS.
+Full P7, UA/MQTT Windows acceptance, final-head full CI, industrial third-party
+clients, actual MMF/AddIn/hardware, x86/DCOM/operator deployment and distribution
+terms remain separate gates. OPC notices/license grant are preserved; this is not
+legal certification, production distribution acceptance or full DA3 compliance.

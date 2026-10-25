@@ -174,3 +174,17 @@ own-child kill/reap остаётся последней границей. Это
 
 Source review завершено с исправлениями. Adoption остаётся условным до выполнения
 этих gates; P7 остаётся PARTIAL.
+
+
+## R2 gate follow-up, 2026-10-25
+
+Matching proxy/STA/MTA cross-process software gate is now PASS in the documented
+x64 read-only profile: remote75a19342905c270efd431e77519badbaeff7ee0c,
+[run40171770730/job121104122819](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40171770730/job/121104122819),
+mandatory SDK step SUCCESS07:14:26–07:15:19UTC. See P7_SDK_CI R2 actual gate for
+exact tree, proof source,4096-item native RPC/two nonagile STA sinks,40 reconnects,
+queued cancel/reentrant teardown and owned cleanup. This closes item2's CI software
+profile, not industrial client/deployment/distribution acceptance or full P7.
+Final R6 native fixtures also passed earlier Windows SDK37/37 + sidecar11/11
+(run40170843310/job121101210357); that run was cancelled after the SDK gate.
+No full-job green is transferred to a later head without independent verification.
