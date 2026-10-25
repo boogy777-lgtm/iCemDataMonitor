@@ -39,7 +39,7 @@ def main():
                        'Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name'),
         'cpu_count': os.cpu_count(), 'compiler': command('rustc', '--version', '--verbose'),
         'profile': 'workspace Release: opt-level=s, thin LTO, codegen-units=1; no target-cpu override',
-        'allocation_calls': 'NOT_MEASURED: requires external Windows heap profiler; no allocator hook',
+        'allocation_calls': 'SEPARATE_PROFILE: heap/heap-summary.json and raw PID xperf totals; no allocator hook',
         'limitations': ['CI VM; no CPU isolation or production hardware',
                         'MMF: static 650-register file-backed mapping, uncontended unique named mutex',
                         'Lock hold upper bound includes release and Instant overhead; no contention distribution',
@@ -62,7 +62,7 @@ def main():
         evidence['network'] = json.loads(network.read_text())
         evidence['raw_sha256'] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                                   for p in (csv_path, network)}
-        evidence['status'] = 'PASS_MEASUREMENTS_ALLOCATIONS_OPEN'
+        evidence['status'] = 'PASS_LATENCY_MEASUREMENTS_HEAP_SEPARATE'
     except Exception as error:
         evidence['status'] = 'FAIL'
         evidence['error'] = str(error)

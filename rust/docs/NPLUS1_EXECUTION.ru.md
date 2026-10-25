@@ -719,5 +719,8 @@ Windows client evidence, source/tree and artifact digest are recorded in
 NPLUS1_TRACKER.ru.md. Earlier R3 awaiting-execution text is historical.
 R4 adds a separate mandatory Windows Release job and benchmark-only safe MMF
 example, with raw distributions, actual WindowsBusReader path and checked bits/Arc.
-Allocation calls remain NOT_MEASURED pending an external Windows heap profile;
-no production instrumentation, dependency or unsafe exception was introduced.
+Followup adds a separate built-in WPR/xperf heap profile (actual PID ETL/totals,
+zero-capture startup control, trace-loss check and fail-closed OPEN diagnostics).
+Native totals include harness/startup and report sizes in KB; exact isolated
+capture/request byte attribution remains OPEN. No production instrumentation,
+dependency or unsafe exception was introduced; actual Windows run remains required.

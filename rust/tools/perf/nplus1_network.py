@@ -62,4 +62,5 @@ def run(a):
                 except subprocess.TimeoutExpired:p.kill();p.wait()
                 log.close()
     return {'binary':a.binary,'fixture':a.fixture,'rounds':rounds,'warmup_per_client':a.warmup,'concurrency':'one persistent Modbus + one persistent grpc-Web HTTP1 client; host synthetic fixture, no MMF','clock':'perf_counter_ns roundtrip','platform':platform.system()+' '+platform.machine()}
-p=argparse.ArgumentParser();p.add_argument('--binary',required=True);p.add_argument('--fixture',required=True);p.add_argument('--requests',type=int,default=1000);p.add_argument('--warmup',type=int,default=100);p.add_argument('--rounds',type=int,default=3);p.add_argument('--output',required=True);a=p.parse_args();result=run(a);pathlib.Path(a.output).write_text(json.dumps(result,indent=2)+'\n');print('Network measurements saved:', a.output)
+if __name__ == '__main__':
+    p=argparse.ArgumentParser();p.add_argument('--binary',required=True);p.add_argument('--fixture',required=True);p.add_argument('--requests',type=int,default=1000);p.add_argument('--warmup',type=int,default=100);p.add_argument('--rounds',type=int,default=3);p.add_argument('--output',required=True);a=p.parse_args();result=run(a);pathlib.Path(a.output).write_text(json.dumps(result,indent=2)+'\n');print('Network measurements saved:', a.output)

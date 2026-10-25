@@ -87,9 +87,41 @@ Host synthetic fixture и MMF microbenchmark — отдельные нагруз
 в producer-to-client latency. Summary сохраняет git source/tree, CPU, OS, compiler,
 profile и SHA256 raw files. Таймеры — Instant/perf_counter_ns; CI VM не изолирована.
 
-Allocator call/byte counts остаются `NOT_MEASURED`: ownership bytes не заменяют heap
-profile. Ни unsafe GlobalAlloc hook, ни новая production dependency не добавлены.
-Для закрытия этой части R4 нужен внешний Windows heap profiler с raw trace и разделением
-harness/startup/request/capture allocations. Live AddIn, mutex contention,5Hz acquisition
-с LAN updates при frozen COM, slow/disconnected adapters и supported hardware остаются
-отдельной production performance acceptance. До actual CI evidence R4 не закрыт.
+Отдельный `tools/perf/windows_heap.py` запускается **после** unprofiled latency,
+используя установленный Windows Performance Toolkit (`wpr.exe`/`xperf.exe`).
+[Microsoft WPR method](https://learn.microsoft.com/en-us/windows-hardware/test/wpt/recording-for-heap-analysis):
+уникальная копия benchmark EXE → owned IFEO key → `-HeapTracingConfig enable` →
+`-start Heap -filemode` → workload → `-stop trace.etl` → finally disable/delete empty owned key.
+Чужие IFEO key и известные WPR/HeapSession recordings не изменяются; неизвестный
+`wpr -status` отвергается. Никаких downloads/dependencies/unsafe allocator hooks.
+
+Два отдельных процесса/trace: `--heap 0` (startup/fixture/setup/checks/teardown control)
+и `--heap 10000` (те же границы плюс physical WindowsBusReader capture/publication,
+latest read и correctness check). Нет timing CSV/vector в heap workload.
+Actual PID берётся из Popen; `xperf -i trace.etl -o totals.txt -a heap -pid PID -totals`
+сохраняет native allocation/reallocation counts и allocated size в KB.
+[Формат xperf](https://learn.microsoft.com/en-us/windows-hardware/test/wpt/heap)
+не обещает точности отдельного byte в печатном KB report: raw ETL сохранён для
+повторного анализа. Summary включает исходную totals table, source/tree/compiler,
+SHA256 EXE/ETL, commands, exits и PID; parser принимает только явные allocation
+count/number + KB size columns и требует положительный capture count. Неизвестные
+headers дают OPEN, числа из них не угадываются.
+
+Это **aggregate process totals**, не изолированные allocations на capture. Startup
+control не вычитается как точное измерение: разные процессы имеют runtime noise.
+В эту нагрузку не входят network requests. Их heap attribution остаётся OPEN.
+`xperf -a tracestats -detail` даёт raw trace statistics; parser требует реальные
+нулевые event/buffer loss counters. Неизвестный формат, потеря событий, занятый
+recorder, отсутствие toolkit/privileges или ошибка cleanup дают `OPEN` + actual error
+и ненулевой exit, сохраняя доступные raw files. `RECORDED_RAW_HEAP_TOTALS` означает
+собранные native tables, не production performance acceptance.
+
+Воспроизведение отдельного heap profile из elevated terminal после Release build:
+
+```powershell
+python tools/perf/windows_heap.py --output target/windows-release-evidence/heap
+```
+
+Live AddIn, mutex contention,5Hz acquisition с LAN updates при frozen COM,
+slow/disconnected adapters и supported hardware остаются отдельной production
+performance acceptance. До actual Windows CI evidence R4 не закрыт.

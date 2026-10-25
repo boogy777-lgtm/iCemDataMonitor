@@ -22,7 +22,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Check heap evidence validation
+        shell: pwsh
+        run: python -m unittest discover -s tools/perf -p "test_windows*.py" -v
       - name: Build real Release Host and safe MMF harness
+        id: release-build
         shell: pwsh
         run: |
           cargo fetch --locked
@@ -31,10 +35,30 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo build --release --locked --offline -p icem-platform-windows --example windows_release_measure
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build --release --locked --offline -p icem-platform-windows --example windows_live_load
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Measure Windows Release fixtures
         shell: pwsh
         run: |
           python tools/perf/windows_release.py --output "$env:RUNNER_TEMP/icem-release-measurements"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Measure real live-reader load and process resources
+        if: ${{ !cancelled() && steps.release-build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          python tools/perf/windows_live_load.py --output "$env:RUNNER_TEMP/icem-release-measurements/live"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Profile warmed allocation windows separately from latency
+        if: ${{ !cancelled() && steps.release-build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          python tools/perf/windows_heap_window.py --output "$env:RUNNER_TEMP/icem-release-measurements/heap-window"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Profile Windows heap separately from latency
+        if: ${{ !cancelled() && steps.release-build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          python tools/perf/windows_heap.py --output "$env:RUNNER_TEMP/icem-release-measurements/heap"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload raw Release measurements
         if: always()

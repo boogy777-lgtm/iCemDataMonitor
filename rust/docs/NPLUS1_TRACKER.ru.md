@@ -13,19 +13,19 @@ N+1-плана, а не всей миграции .NET → Rust.
 | P3. Единственный acquisition 200 мс | Реализован. Consumer requests не запускают MMF read |
 | P4. Modbus/Web и измерения | Реализован; Linux Release baseline есть. Windows Release measurements остаются R4 ниже |
 | P5. Lifecycle и общий harness | Реализован; bounded stop, собственные worker/process handles |
-| P6. MQTT | Реализован; real Mosquitto interoperability на Linux. Windows acceptance — R3 |
-| P7. OPC UA, затем OPC DA | Реализованы оба adapter; Linux UA client и Windows DA in-process tests подтверждены. RPC/Windows client gates — R2/R3 |
+| P6. MQTT | Реализован; real Mosquitto interoperability на Linux. Windows loopback acceptance R3 подтверждён ниже |
+| P7. OPC UA, затем OPC DA | Реализованы оба adapter; Linux UA client и Windows DA in-process tests подтверждены. RPC/Windows client gates R2/R3 подтверждены ниже |
 | P8. Необязательный словарь | Не активирован: практической потребности нет; базовая работа от словаря не зависит |
 
-## Оставшиеся программные блоки: 3
+## Оставшиеся программные блоки: 2
 
 | ID | Работа | Состояние и критерий закрытия |
 |---|---|---|
 | R1 | Ранний допуск DA AsyncRead/Refresh | Закрыт: финальные три COM-regressions и все SDK37/37 + sidecar11/11 прошли Windows run40170843310. Весь run cancelled при следующем checkpoint, это не full green |
 | R2 | DA STA/MTA и callbacks между процессами | Закрыт: mandatory Windows SDK step SUCCESS на remote75a1934, run40171770730/job121104122819. Matching MIDL proxy, Rust MTA + independent C++ STA4096,40 reconnects и owned cleanup; full CI этого head ещё не заявлен |
 | R3 | Windows MQTT/OPC UA interoperability | Закрыт для loopback fixture: run40172775150/job121107195362 SUCCESS; Mosquitto2.0.22 QoS2/restart/retained, asyncua2.1.0 read/subscription/types/quality/clocks. Live MMF/hardware отдельно |
-| R4 | Windows Release measurements | Capture/decode/publication, MMF lock hold, allocations и Modbus/Web p95/p99 с описанной методикой; не выдавать CI fixture за production hardware |
-| R5 | Итоговая интеграция | Независимая сверка плана, полный CI окончательного head, актуальный отчёт и завершение PR |
+| R4 | Windows Release measurements | OPEN: fixture harness готов; нужны actual Windows artifacts, 5Hz multi-consumer software load, CPU/peak memory и allocations/bytes attribution. Process heap totals не равны точным allocations на capture/request; hardware отдельно |
+| R5 | Итоговая интеграция | Независимая сверка выполнена, найденный cleanup defect исправлен; OPEN до R4 и полного CI окончательного head, актуального отчёта и завершения PR |
 
 R1: SDK-owned preparation + retained/canceled requests используют общий лимит32
 на группу до decode/service/output. RAII возвращает credits при error/all-failed/
@@ -74,4 +74,6 @@ SDK37/37 + sidecar11/11 and independent STA4096/40reconnects/RustMTA PASS.
 Legacy .NET Modbus test failed separately; no full-workflow green claim.
 
 R4 fixture/method/raw-artifact harness: see NPLUS1_PERFORMANCE.ru.md.
-Allocator counts and production hardware acceptance remain OPEN.
+Separate WPR/xperf heap profile is implemented; actual Windows counts and production hardware acceptance remain OPEN.
+
+[Независимая R5 сверка и точные оставшиеся software/hardware gates](NPLUS1_R5_REVIEW.ru.md).
