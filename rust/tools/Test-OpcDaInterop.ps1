@@ -36,8 +36,30 @@ try {
     if ($LASTEXITCODE -ne 0 -or -not $VS) { throw 'MSVC Build Tools not found' }
     $DevCmd = Join-Path $VS 'Common7/Tools/VsDevCmd.bat'
     # Import only build variables; never echo the inherited environment/secrets.
-    $BuildEnv = & $env:ComSpec /d /s /c "`"`"$DevCmd`" -no_logo -arch=x64 -host_arch=x64 >nul && set`""
-    if ($LASTEXITCODE -ne 0) { throw 'VsDevCmd failed' }
+    # Use a controlled batch file and raw cmd command-line syntax: PowerShell7
+    # native argument rewriting must not add another quote around VsDevCmd.
+    $InitCmd = Join-Path $Work 'init-msvc.cmd'
+    @('@echo off', ('call "' + $DevCmd + '" -no_logo -arch=x64 -host_arch=x64 >nul'),
+      'if errorlevel 1 exit /b %errorlevel%', 'set PATH', 'set INCLUDE', 'set LIB', 'set LIBPATH') |
+        Set-Content -Encoding ascii $InitCmd
+    $Info = [System.Diagnostics.ProcessStartInfo]::new()
+    $Info.FileName = $env:ComSpec
+    $Info.Arguments = '/d /s /c ""' + $InitCmd + '""'
+    $Info.UseShellExecute = $false
+    $Info.RedirectStandardOutput = $true
+    $Info.RedirectStandardError = $true
+    $Init = [System.Diagnostics.Process]::new()
+    $Init.StartInfo = $Info
+    try {
+        if (-not $Init.Start()) { throw 'MSVC environment child did not start' }
+        $Stdout = $Init.StandardOutput.ReadToEndAsync()
+        $Stderr = $Init.StandardError.ReadToEndAsync()
+        if (-not $Init.WaitForExit(30000)) { $Init.Kill($true); $Init.WaitForExit(); throw 'VsDevCmd exceeded30s' }
+        # Capture privately; never print inherited environment or command output.
+        $BuildEnv = $Stdout.GetAwaiter().GetResult() -split "`r?`n"
+        $null = $Stderr.GetAwaiter().GetResult()
+        if ($Init.ExitCode -ne 0) { throw "VsDevCmd failed with exit $($Init.ExitCode)" }
+    } finally { $Init.Dispose() }
     foreach ($Name in @('PATH', 'INCLUDE', 'LIB', 'LIBPATH')) {
         $Saved[$Name] = [Environment]::GetEnvironmentVariable($Name, 'Process')
         $Line = $BuildEnv | Where-Object { $_.StartsWith($Name + '=', [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1

@@ -160,6 +160,13 @@ static void run(uint64_t writer) {
         auto handles = group.add(count);
         ComPtr<Sink> a; a.Attach(new Sink(writer,count));
         ComPtr<Sink> b; b.Attach(new Sink(writer,count));
+        // Class: foreign-retained STA sinks borrowing this Group during acceptance.
+        // Inv: clear borrowed handlers before any proxy/Group teardown can pump COM,
+        // including exceptions; N+1: every borrowed handler belongs to this guard.
+        struct ClearHandlers {
+            Sink& a; Sink& b;
+            ~ClearHandlers() { a.reentrant = {}; b.reentrant = {}; }
+        } clearHandlers{*a.Get(), *b.Get()};
         // Prove that COM cannot shortcut callback apartment affinity through FTM.
         ComPtr<IMarshal> marshal;
         require(a.As(&marshal)==E_NOINTERFACE, "STA sink unexpectedly agile");

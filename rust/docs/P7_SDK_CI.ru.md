@@ -105,3 +105,12 @@ cleanup even if one mapping cleanup fails.
 
 Linux source checks: exact Rust1.99.1 Windows x64 all-target Clippy -D warnings
 PASS; C++/MIDL/PowerShell runtime require actual Windows CI. R2 remains OPEN.
+
+
+First actual Windows proxy attempt: run40171220913/job121102485283 stopped before
+MIDL because PowerShell7 native argument quoting passed an extra leading quote to
+cmd/VsDevCmd (`'""C:\Program' is not recognized`). This is harness setup evidence,
+not a proxy/runtime pass. The correction uses a controlled temporary init.cmd,
+ProcessStartInfo raw cmd `/d /s /c ""path""` quoting, concurrent private stdout/stderr
+capture and a30s owned-child deadline; only PATH/INCLUDE/LIB/LIBPATH are imported.
+No full environment is emitted. MIDL/CL/RPC and R2 remain pending actual CI.
