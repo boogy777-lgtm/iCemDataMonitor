@@ -16,7 +16,7 @@ import subprocess
 import threading
 import uuid
 
-from windows_heap import loss_counters
+from windows_heap import existing_profile_loggers, loss_counters
 
 
 def event_totals(text, pid, require_positive=True):
@@ -96,8 +96,10 @@ def main():
                               'no exact operation attribution unless zero-operation control has zero events',
                               'schema and ETW loss validation mandatory; no rounded-KB conversion']}
     active = None
+    kernel_instance = None
     process = None
     xperf = None
+    wpr = None
     def run(*command):
         result = subprocess.run([str(c) for c in command], text=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, timeout=180)
@@ -111,32 +113,42 @@ def main():
             raise RuntimeError('Windows required')
         toolkit = Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) / 'Windows Kits/10/Windows Performance Toolkit'
         xperf = shutil.which('xperf.exe') or str(toolkit / 'xperf.exe')
-        if not Path(xperf).is_file():
-            raise RuntimeError('installed xperf unavailable')
+        wpr = shutil.which('wpr.exe') or str(toolkit / 'wpr.exe')
+        if not Path(xperf).is_file() or not Path(wpr).is_file():
+            raise RuntimeError('installed xperf/wpr unavailable')
         report['source'] = run('git', 'rev-parse', 'HEAD').strip()
         report['tree'] = run('git', 'rev-parse', 'HEAD^{tree}').strip()
-        (output / 'loggers-before.txt').write_text(run(xperf, '-loggers'))
+        inventory = run(xperf, '-loggers')
+        (output / 'loggers-before.txt').write_text(inventory)
+        if existing_profile_loggers(inventory):
+            raise RuntimeError('existing WPR/heap session; refusing to modify it')
         for kind, iterations in [('capture', 0), ('capture', 10000), ('modbus', 0), ('modbus', 10000)]:
             label = f'{kind}-{iterations}'
             item = {'kind': kind, 'operations': iterations, 'label': label}
             report['runs'].append(item)
+            kernel_instance = 'icem_process_' + uuid.uuid4().hex
+            # Unique WPR instance owns process/thread metadata from before launch.
+            # Never start/stop the global NT Kernel Logger or another WPR instance.
+            run(wpr, '-start', 'CPU.Light', '-filemode', '-instancename', kernel_instance)
+            item['process_recording_status'] = run(wpr, '-status', '-instancename', kernel_instance)
+            kernel = output / f'{label}-process.etl'
             stderr = (output / f'{label}-stderr.txt').open('w')
-            process = subprocess.Popen(['target/release/examples/windows_release_measure.exe',
-                                        '--heap-window', kind, str(iterations)], stdin=subprocess.PIPE,
-                                       stdout=subprocess.PIPE, stderr=stderr, text=True, bufsize=1)
-            item['pid'] = process.pid
             try:
+                process = subprocess.Popen(['target/release/examples/windows_release_measure.exe',
+                                            '--heap-window', kind, str(iterations)], stdin=subprocess.PIPE,
+                                           stdout=subprocess.PIPE, stderr=stderr, text=True, bufsize=1)
+                item['pid'] = process.pid
                 read_protocol(process, 'WARM')
                 process.stdin.write('WARMUP\n')
                 process.stdin.flush()
                 read_protocol(process, f'READY {process.pid}')
                 session = 'icem_heap_' + uuid.uuid4().hex
-                etl = output / f'{label}.etl'
+                heap = output / f'{label}-heap.etl'
                 # Start only our uniquely named heap logger; never start/stop a global kernel session.
                 # Set ownership before call: a partially successful start still needs bounded cleanup.
                 active = session
                 run(xperf, '-start', session, '-heap', '-pids', process.pid,
-                    '-BufferSize', 1024, '-MinBuffers', 32, '-MaxBuffers', 32, '-f', etl)
+                    '-BufferSize', 1024, '-MinBuffers', 32, '-MaxBuffers', 32, '-f', heap)
                 process.stdin.write('START\n')
                 process.stdin.flush()
                 read_protocol(process, f'DONE {iterations}')
@@ -149,8 +161,12 @@ def main():
                 process.stdin.close()
                 process.stdout.close()
                 process = None
+                run(wpr, '-stop', kernel, '-instancename', kernel_instance)
+                kernel_instance = None
             finally:
                 stderr.close()
+            etl = output / f'{label}.etl'
+            run(xperf, '-merge', heap, kernel, etl)
             events = output / f'{label}-events.csv'
             trace_stats = output / f'{label}-tracestats.txt'
             run(xperf, '-i', etl, '-o', events, '-a', 'dumper')
@@ -158,7 +174,14 @@ def main():
             item['events_sha256'] = hashlib.sha256(events.read_bytes()).hexdigest()
             item['events_file'] = events.name
             try:
-                item['loss'] = loss_counters(trace_stats.read_text(errors='replace'))
+                # Validate both original sessions as well as the merged trace:
+                # merging must never hide loss in one source.
+                item['loss'] = {}
+                for source_name, trace in [('heap', heap), ('process', kernel)]:
+                    raw = output / f'{label}-{source_name}-events.csv'
+                    run(xperf, '-i', trace, '-o', raw, '-a', 'dumper')
+                    item['loss'][source_name] = loss_counters(raw.read_text(errors='replace'))
+                item['loss']['merged'] = loss_counters(events.read_text(errors='replace'))
                 item['recorded_window'] = event_totals(events.read_text(errors='replace'), item['pid'], iterations > 0)
             except (ValueError, RuntimeError) as error:
                 item['validation_error'] = str(error)
@@ -168,6 +191,8 @@ def main():
         for item in report['runs']:
             if item['operations']:
                 item['control_zero_events'] = not any(controls[item['kind']].values())
+                item['recorded_window_per_operation_including_overhead'] = {
+                    key: value / item['operations'] for key, value in item['recorded_window'].items()}
                 if item['control_zero_events']:
                     item['per_operation'] = {key: value / item['operations'] for key, value in item['recorded_window'].items()}
         report['status'] = ('RECORDED_ISOLATED_OPERATION_WINDOWS' if all(
@@ -182,10 +207,22 @@ def main():
             except Exception as error:
                 errors.append(str(error))
         if process is not None:
-            process.kill()
-            process.wait(timeout=10)
-            process.stdin.close()
-            process.stdout.close()
+            try:
+                process.kill()
+                process.wait(timeout=10)
+            except Exception as error:
+                errors.append(f'child stop: {error}')
+            for stream in (process.stdin, process.stdout):
+                try:
+                    stream.close()
+                except Exception as error:
+                    errors.append(f'child stream close: {error}')
+        if kernel_instance is not None:
+            try:
+                run(wpr, '-stop', output / 'interrupted-process.etl',
+                    '-instancename', kernel_instance)
+            except Exception as error:
+                errors.append(str(error))
         report['cleanup_errors'] = errors
         if errors:
             report['status'] = 'OPEN'

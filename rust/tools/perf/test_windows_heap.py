@@ -1,5 +1,6 @@
 """Fail-closed checks for external ETW evidence validation; no Windows dependency."""
 import unittest
+from pathlib import Path
 from unittest.mock import Mock
 from windows_heap import existing_profile_loggers, heap_totals, loss_counters, remove_owned_executable
 
@@ -34,6 +35,14 @@ class CleanupEvidence(unittest.TestCase):
 
 
 class TraceLossEvidence(unittest.TestCase):
+    def test_actual_dumper_trace_header(self):
+        raw = (Path(__file__).parent / 'fixtures/run40192653339-dumper-excerpt.csv').read_text()
+        self.assertEqual(loss_counters(raw), {'events lost': [0], 'buffers lost': [0]})
+        with self.assertRaisesRegex(RuntimeError, 'lost events'):
+            loss_counters(raw.replace('Events Lost: 0', 'Events Lost: 1'))
+        with self.assertRaisesRegex(RuntimeError, 'unknown ETW loss'):
+            loss_counters(raw.replace('Buffers lost: 0', 'Buffers lost: unknown'))
+
     def test_zero_actual_counters(self):
         self.assertEqual(loss_counters('Events Lost: 0\nLog Buffers Lost: 0\n'),
                          {'events lost': [0], 'log buffers lost': [0]})
@@ -50,6 +59,15 @@ class TraceLossEvidence(unittest.TestCase):
 
 
 class HeapCountEvidence(unittest.TestCase):
+    def test_actual_xperf_total_and_per_heap_rows_are_not_summed(self):
+        raw = (Path(__file__).parent / 'fixtures/run40192653339-heap-totals.txt').read_text()
+        rows = heap_totals(raw, True)
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[0]['allocation_calls'], 783)
+        self.assertEqual(rows[0]['allocated_size_KB_native'], '222.7')
+        self.assertEqual(rows[0]['native_row'][-1], 'TOTAL')
+        self.assertEqual(rows[1]['allocation_calls'], 773)
+
     def test_native_table_preserves_kb_precision(self):
         rows = heap_totals('Alloc Count,Alloc Size (KB),Heap Handle\n12,2.125,0x1234\n', True)
         self.assertEqual(rows[0]['allocation_calls'], 12)

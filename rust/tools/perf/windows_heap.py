@@ -25,11 +25,20 @@ def existing_profile_loggers(text):
 
 
 def loss_counters(text):
-    """Fail closed: require actual event and buffer loss fields from trace stats."""
+    """Recognize explicit loss fields, including the actual dumper trace summary."""
     counters = {}
-    for label, value in re.findall(
-            r'(?im)^\s*((?:(?:real time|log)\s+)?(?:events?|buffers?)\s+lost)\s*[:=,]\s*(\d+)\s*$', text):
-        counters.setdefault(label.lower(), []).append(int(value))
+    pattern = r'\s*((?:(?:real time|log)\s+)?(?:events?|buffers?)\s+lost)\s*[:=,]\s*(.*?)\s*'
+    for line in text.splitlines():
+        # -a tracestats -detail may contain only provider counts. The dumper's
+        # OS Version summary contains actual trace-header Events/Buffers Lost.
+        fields = next(csv.reader([line])) if line.startswith('OS Version:') else [line]
+        for field in fields:
+            match = re.fullmatch(pattern, field, re.I)
+            if match:
+                label, value = match.groups()
+                if not re.fullmatch(r'[0-9]+', value):
+                    raise RuntimeError(f'unknown ETW loss counter {label}: {value!r}')
+                counters.setdefault(label.lower(), []).append(int(value))
     if not any('event' in key for key in counters) or not any('buffer' in key for key in counters):
         raise RuntimeError('trace statistics lack recognized event/buffer loss counters; inspect raw stats')
     if any(value for values in counters.values() for value in values):
@@ -51,7 +60,7 @@ def heap_totals(text, require_positive=False):
         counts = [i for i, cell in enumerate(header)
                   if re.fullmatch(r'alloc(?:ation)?[ _]*(?:count|number|num|#)', cell)]
         sizes = [i for i, cell in enumerate(header)
-                 if re.fullmatch(r'alloc(?:ation)?[ _]*size\s*\(?kb\)?', cell)]
+                 if re.fullmatch(r'alloc(?:ation)?[ _]*(?:size[ _]*)?\(?kb\)?', cell)]
         if len(counts) != 1 or len(sizes) != 1:
             continue
         rows = []
@@ -170,7 +179,9 @@ def main():
             stats = output / f'{label}-tracestats.txt'
             run(xperf, '-i', etl, '-o', totals, '-a', 'heap', '-pid', str(item['pid']), '-totals')
             run(xperf, '-i', etl, '-o', stats, '-a', 'tracestats', '-detail')
-            item['loss_counters'] = loss_counters(stats.read_text(errors='replace'))
+            events = output / f'{label}-events.csv'
+            run(xperf, '-i', etl, '-o', events, '-a', 'dumper')
+            item['loss_counters'] = loss_counters(events.read_text(errors='replace'))
             raw_totals = totals.read_text(errors='replace')
             item['native_allocation_rows'] = heap_totals(raw_totals, require_positive=iterations > 0)
             item['totals_file'] = totals.name

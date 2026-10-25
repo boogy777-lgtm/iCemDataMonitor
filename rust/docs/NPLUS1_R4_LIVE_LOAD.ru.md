@@ -82,8 +82,11 @@ Example делает100 warmup операций и предварительны�
 инициализации stdin/stdout buffers. Driver дожидается READY, начинает только
 свой уникальный heap session через `xperf -start NAME -heap -pids PID ... -f ETL`,
 передаёт START, ждёт DONE, останавливает только NAME, затем передаёт RELEASE.
-Startup/fixture setup/warmup и teardown находятся вне окна. Нет модификации IFEO
-или глобального kernel logger. Положительный и нулевой controls для capture и
+Startup/fixture setup/warmup и teardown находятся вне heap окна. До child launch
+отдельный WPR `CPU.Light -instancename UNIQUE` записывает process/thread metadata;
+тот же instance suffix обязателен для status/stop/cleanup. Он работает до child exit,
+затем собственные heap и process ETLs сливаются через xperf для разрешения PID.
+Нет модификации IFEO или глобального kernel logger. Положительный и нулевой controls для capture и
 FC03 codec записываются отдельно. Любой driver wait bounded; ошибка убивает
 собственный process и останавливает собственный session.
 
@@ -92,10 +95,13 @@ FC03 codec записываются отдельно. Любой driver wait bou
 раздельно считает allocation calls/bytes и reallocation calls/NewSize bytes.
 Они не являются net live bytes. Неизвестные schema/columns, отсутствие PID или
 loss counters и ненулевой ETW loss сохраняют OPEN, не нулевые allocations.
+Loss fields читаются из actual dumper trace-header summary, отдельно для обоих
+исходных ETLs и merged trace; provider-count table `tracestats` сам по себе их не содержит.
 Все четыре raw windows сохраняются даже при неизвестной parser schema, чтобы
 actual Windows output позволял адаптацию с воспроизводимыми regressions.
-При ненулевом zero-operation control window overhead остаётся OPEN; subtraction
-не выполняется. Per-operation averages выводятся только при zero measured control.
+При ненулевом zero-operation control точная operation-only атрибуция остаётся OPEN;
+subtraction не выполняется. Recorded-window average на operation включает overhead
+и подписан явно; отдельное operation-only поле разрешено только при zero measured control.
 Это контролируемое attribution window, не универсальная гарантия нулевого noise.
 
 Capture workload включает настоящий reader + publish + latest handle; request
@@ -156,3 +162,35 @@ Actual heap allocation counts/bytes и loss statistics этого run отсут
 не останавливается. Regression проверяет actual Defender name, profile names и
 unknown inventory.18Python tests PASS локально; новый Windows toolkit/runtime
 и окончательный полный CI всё ещё требуются. R4/R5 не закрываются этим checkpoint.
+
+## Toolkit/schema checkpoint: run40192653339
+
+Source `0065ed06e46a0d07cdea19671896069cdc7d1a38`, CI merge
+`6112781af99c10d0895ea6474b9c55b89402c906`, tree
+`0fdea396072a96d6ec267bb041ae86a24de96f8a`; Release job121166826994.
+Build, latency и live load вновь PASS, оба heap steps FAILED на evidence parsing.
+Artifact12598996146, ZIP SHA256
+`9e5c3eb04d5e7bd4245dc141085302a23513dfe79f6b66608b05ccbb70457a3c`
+проверен после download. Все четыре warmed windows записаны в raw ETL/CSV,
+attach/stop/handshake и owned session cleanup успешны.
+
+Actual `tracestats -detail` содержит provider counts, но не loss counters;
+`dumper` trace header явно содержит `Events Lost: 0, Buffers lost: 0`.
+Actual process-lifetime table использует `Alloc#`, `Alloc KB`; total и per-heap
+rows остаются раздельными и не суммируются повторно. Оба формата теперь покрыты
+точными excerpts этого artifact и положительными/отрицательными regressions.
+
+В heap-only ETL отсутствует process/thread mapping: `HeapAlloc` rows показывают
+`"Unknown" ( -1)`. Они отвергаются, даже когда trace attach нацелен на один PID;
+allocation numbers этому PID не приписаны. Follow-up добавляет собственный WPR
+instance `CPU.Light` до запуска child и merge собственных traces после child exit.
+Это измерительный metadata collector; production/MMF/consumers не меняются.
+Тест по actual unresolved-PID excerpt требует fail-closed error. Child-launch fault
+проверяет stop только того же WPR instance; child cleanup fault сохраняет
+WPR stop и summary с error.23 Python tests
+PASS локально; новый Windows run должен подтвердить разрешённый PID, loss checks,
+данные обоих controls/workloads и полный окончательный CI. R4/R5 пока OPEN.
+
+Все p50/p95/p99 в raw summaries используют отсортированный массив и точный индекс
+`min(n-1, floor(n*p))` при p=0.50/0.95/0.99. Это фиксированная convention harness,
+не утверждение канонического nearest-rank algorithm; numeric baselines не менялись.

@@ -1,0 +1,6 @@
+OS Version: 10.0.26100, Trace Size: 4096KB, Events Lost: 0, Buffers lost: 0, Trace Start: 134374049414674449, Trace Length: 0 sec, PointerSize: 8, Trace Name: D:\a\_temp\icem-release-measurements\heap-window\capture-0.etl
+              HeapAlloc,  TimeStamp,     Process Name ( PID),   ThreadID,         HeapHandle,            Address,       Size, Source
+            HeapRealloc,  TimeStamp,     Process Name ( PID),   ThreadID,         HeapHandle,         NewAddress,         OldAddress,    NewSize,    OldSize, Source
+              HeapAlloc,       4249,        "Unknown" (  -1),       3400, 0x000001551d580000, 0x000001551d59da50, 0x00000058, LOWFRAG
+              HeapAlloc,       4258,        "Unknown" (  -1),       3400, 0x000001551d580000, 0x000001551d58dd40, 0x00000069, MAINPATH
+              HeapAlloc,       4260,        "Unknown" (  -1),       3400, 0x000001551d580000, 0x000001551d596160, 0x00000018, LOWFRAG

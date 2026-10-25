@@ -1,0 +1,8 @@
+
+Heap totals for icem_heap_fc867a97dcee46ed9cb4b312fbb53f1d.exe (7952)
+  Alloc#,   Alloc KB,     Out#,     Out KB, Realloc#, Extents KB, Out Ext KB, Heap Handle
+
+     783,      222.7,      467,      101.2,       21,      200.0,      200.0, TOTAL
+     773,      195.3,      463,       88.1,       21,      164.0,      164.0, 0x23cee160000
+      10,       27.4,        4,       13.1,        0,       36.0,       36.0, 0x23cee440000
+       0,        0.0,        0,        0.0,        0,        0.0,        0.0, 0x23cedf80000
