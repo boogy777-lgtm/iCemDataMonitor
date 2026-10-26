@@ -32,11 +32,11 @@
   ],
   "files": [
     {
-      "source": "rust/assets/iCemDataMonitor.ico",
+      "source": "src/rust/assets/iCemDataMonitor.ico",
       "destination": "assets/iCemDataMonitor.ico"
     },
     {
-      "source": "rust/assets/iCemEmule.ico",
+      "source": "src/rust/assets/iCemEmule.ico",
       "destination": "assets/iCemEmule.ico"
     },
     {
@@ -44,19 +44,19 @@
       "destination": "assets/Burservis_logo_cyr_red.png"
     },
     {
-      "source": "rust/installer/windows/Start-Host.ps1",
+      "source": "src/rust/installer/windows/Start-Host.ps1",
       "destination": "Start-Host.ps1"
     },
     {
-      "source": "rust/installer/windows/Start-Shell.ps1",
+      "source": "src/rust/installer/windows/Start-Shell.ps1",
       "destination": "Start-Shell.ps1"
     },
     {
-      "source": "rust/installer/windows/Start-Emulator.ps1",
+      "source": "src/rust/installer/windows/Start-Emulator.ps1",
       "destination": "Start-Emulator.ps1"
     },
     {
-      "source": "rust/installer/windows/README-Windows.txt",
+      "source": "src/rust/installer/windows/README-Windows.txt",
       "destination": "README-Windows.txt"
     },
     {
@@ -64,13 +64,13 @@
       "destination": "templates/variable_registry.json"
     },
     {
-      "source": "iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json",
+      "source": "src/net/iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json",
       "destination": "templates/lantable_registry.json"
     }
   ],
   "directories": [
     {
-      "source": "iCemEmulator/templates",
+      "source": "src/net/iCemEmulator/templates",
       "destination": "emulator/templates",
       "pattern": "*.json"
     }

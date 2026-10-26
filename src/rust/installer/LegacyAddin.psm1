@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $AssemblyName = 'Burservis.iCem.DataMonitor'
 $Framework = '.NETFramework,Version=v4.8'
 function Get-LegacyAddinSdkReferences([string] $RepositoryRoot) {
-    $Project = [xml](Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot "$AssemblyName/$AssemblyName.csproj"))
+    $Project = [xml](Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot "src/net/$AssemblyName/$AssemblyName.csproj"))
     return @($Project.SelectNodes('//*[local-name()="Reference"]') | ForEach-Object {
         $Hint = $_.SelectSingleNode('*[local-name()="HintPath"]')
         if ($Hint -and $Hint.InnerText -like '*Halliburton\iCem\Bin\*') {
@@ -13,11 +13,11 @@ function Get-LegacyAddinSdkReferences([string] $RepositoryRoot) {
     })
 }
 function Get-LegacyAddinInputs([string] $RepositoryRoot) {
-    $ProjectPath = "$AssemblyName/$AssemblyName.csproj"
+    $ProjectPath = "src/net/$AssemblyName/$AssemblyName.csproj"
     $Project = [xml](Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot $ProjectPath))
     $Compile = @($Project.SelectNodes('//*[local-name()="Compile"]'))
     if (-not $Compile.Count) { throw 'AddIn project has no explicit compile inputs' }
-    $Paths = @($ProjectPath) + @($Compile | ForEach-Object { "$AssemblyName/$($_.Include.Replace('\', '/'))" })
+    $Paths = @($ProjectPath) + @($Compile | ForEach-Object { "src/net/$AssemblyName/$($_.Include.Replace('\', '/'))" })
     foreach ($File in @('Directory.Build.props', 'Directory.Build.targets', 'global.json')) {
         if (Test-Path -LiteralPath (Join-Path $RepositoryRoot $File)) { $Paths += $File }
     }

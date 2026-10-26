@@ -4,14 +4,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 function New-WindowsPackagingFixture([string] $Directory) {
     $Root = Split-Path $PSScriptRoot -Parent
-    $SourceRoot = Split-Path $Root -Parent
+    $SourceRoot = Split-Path (Split-Path $Root -Parent) -Parent
     Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1')
     $Repo = Join-Path $Directory 'repo'
     $Bins = Join-Path $Directory 'bins'
     $Bundle = Join-Path $Directory 'addin'
     [IO.Directory]::CreateDirectory($Bins) | Out-Null
-    [IO.Directory]::CreateDirectory((Join-Path $Repo 'rust/installer')) | Out-Null
-    Copy-Item -LiteralPath (Join-Path $Root 'installer/windows-payload.json') -Destination (Join-Path $Repo 'rust/installer/windows-payload.json')
+    [IO.Directory]::CreateDirectory((Join-Path $Repo 'src/rust/installer')) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $Root 'installer/windows-payload.json') -Destination (Join-Path $Repo 'src/rust/installer/windows-payload.json')
     [IO.Directory]::CreateDirectory((Join-Path $Repo 'installer/assets')) | Out-Null
     foreach ($Name in @('gen-payload.ps1', 'gen-ui-bmps.ps1', 'assets/Burservis_logo_cyr_red.png', 'assets/app-icon.ico')) {
         Copy-Item -LiteralPath (Join-Path $SourceRoot "installer/$Name") -Destination (Join-Path $Repo "installer/$Name")
@@ -27,7 +27,7 @@ function New-WindowsPackagingFixture([string] $Directory) {
         [IO.Directory]::CreateDirectory($Target) | Out-Null
         Get-ChildItem -LiteralPath (Join-Path $SourceRoot $Folder.source) -File -Filter $Folder.pattern | Copy-Item -Destination $Target
     }
-    $Project = Join-Path $Repo 'Burservis.iCem.DataMonitor'
+    $Project = Join-Path $Repo 'src/net/Burservis.iCem.DataMonitor'
     [IO.Directory]::CreateDirectory($Project) | Out-Null
     [IO.File]::WriteAllText((Join-Path $Project 'Burservis.iCem.DataMonitor.csproj'), '<Project><ItemGroup><Compile Include="Fixture.cs" /><Reference Include="SYNTHETIC_TEST_ONLY"><HintPath>C:\Program Files\Halliburton\iCem\Bin\fixture.dll</HintPath></Reference></ItemGroup></Project>')
     $Code = '[assembly:System.Runtime.Versioning.TargetFrameworkAttribute(".NETFramework,Version=v4.8")] public class InstallerFixture {}'

@@ -55,7 +55,7 @@ try {
         (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemEmulator/templates/variable_registry.json')).Hash -or
         $HostRegistry -ceq $EmulatorRegistry) { throw 'Host/emulator canonical registries were merged or substituted' }
     $HostLantable = Join-Path $Unpack 'templates/lantable_registry.json'
-    if ((Get-FileHash $HostLantable).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json')).Hash) { throw 'Host lantable catalog missing or substituted' }
+    if ((Get-FileHash $HostLantable).Hash -cne (Get-FileHash (Join-Path $Repo 'src/net/iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json')).Hash) { throw 'Host lantable catalog missing or substituted' }
     # The installer is rendered from the already verified inventory, including
     # the integrity manifest itself. Adding a payload file cannot miss the MSI.
     $Numeric = Package '0.1.0'
@@ -155,7 +155,7 @@ try {
     Assert-Rejected { Package '0.1.0-test' } 'already exists'
     [IO.File]::WriteAllText((Join-Path $Unpack 'assets/iCemDataMonitor.ico'), 'tampered')
     Assert-Rejected { Test-WindowsPayload $Unpack } 'hash/size mismatch'
-    Copy-Item -LiteralPath (Join-Path $Repo 'rust/assets/iCemDataMonitor.ico') -Destination (Join-Path $Unpack 'assets/iCemDataMonitor.ico') -Force
+    Copy-Item -LiteralPath (Join-Path $Repo 'src/rust/assets/iCemDataMonitor.ico') -Destination (Join-Path $Unpack 'assets/iCemDataMonitor.ico') -Force
     [IO.File]::WriteAllText((Join-Path $Unpack 'extra.txt'), 'unexpected')
     Assert-Rejected { Test-WindowsPayload $Unpack } 'Unexpected payload file count'
     Remove-Item -LiteralPath (Join-Path $Unpack 'extra.txt')
@@ -179,7 +179,7 @@ try {
     $Adapter = New-WindowsInstallerAssets $Repo (Join-Path $Temp 'ui-work')
     if ((Get-FileHash (Join-Path $Adapter 'assets/Burservis_logo_cyr_red.png')).Hash -cne (Get-FileHash (Join-Path $Repo 'installer/assets/Burservis_logo_cyr_red.png')).Hash) { throw 'Original Burservis logo changed' }
     if (@(Get-ChildItem -LiteralPath $Adapter -Recurse -File).Count -ne 3) { throw 'Branding adapter contains unrelated policy/scripts' }
-    $PlanPath = Join-Path $Repo 'rust/installer/windows-payload.json'
+    $PlanPath = Join-Path $Repo 'src/rust/installer/windows-payload.json'
     $Original = Get-Content -Raw -LiteralPath $PlanPath
     foreach ($Bad in @('../escape.ico', '/absolute.ico', 'C:\escape.ico', 'assets//empty.ico', 'release-manifest.json')) {
         $Plan = $Original | ConvertFrom-Json
