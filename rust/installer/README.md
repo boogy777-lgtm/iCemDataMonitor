@@ -59,12 +59,12 @@ There is one inventory, not a second manually maintained MSI file list.
 | Registries | Original Host registry (3507 variables) under `templates/`; original emulator registry (140 variables) and other templates under `emulator/templates/`; launchers read role paths from manifest |
 | AddIn | `[ICEMDIR]\Bin\Modules\Burservis.iCem.DataMonitor.dll`; provenance stays in runtime `addin/` |
 | iCem path | Standard default in the directory wizard; explicit CLI/wizard ICEMDIR remains authoritative |
-| In-use files | Native Restart Manager: graceful shutdown by default, explicit per-operation force checkbox for unresponsive file owners; no WMI/process-name kills or kill on Cancel |
+| In-use files | Native Restart Manager: graceful shutdown by default, explicit per-operation force checkbox for unresponsive file owners; no WMI/process-name kills; Cancel before execute leaves owners untouched, rollback cannot restore processes already closed by RM |
 | Desktop/autostart | Opt-in, default OFF. Desktop targets Shell; installing user's HKCU Run targets Host `--autostart`; emulator never autostarts. Task Manager disable state is not erased |
-| N → N+1 | Separate stable Rust UpgradeCode and component GUID namespace; new ProductCode, increasing numeric versions, transactional removal, blocked downgrade; saved paths/options restored automatically |
+| Replacement / N → N+1 | Separate stable Rust UpgradeCode and component GUID namespace; independent same-version ProductCodes replace transactionally, lower numeric versions are blocked; saved paths/options restored automatically |
 | Uninstall | Removes only MSI-owned files/AddIn/options; preserves user-created config/data/logs. No recursive wipe |
 | Registration | Visible in installed applications; standard MSI uninstall/repair |
-| Legacy cutover | Registered legacy MSI detected with OnlyDetect and blocks installation; never automatically removed |
+| Legacy cutover | Registered legacy MSI detected with OnlyDetect blocks incoming installation; installed Rust maintenance/removal remains available; legacy is never automatically removed |
 
 Repeat launching the same MSI repairs missing **and corrupt** owned files, with
 saved runtime/AddIn paths and options. The maintenance wizard offers Repair and
@@ -126,18 +126,20 @@ After the workflows reach main:
 
 ## Evidence: installer contracts versus real release
 
-On PRs, the Windows `installer-contracts` job validates packaging and builds two
+On PRs, the Windows `installer-contracts` job validates packaging and builds independent same-version, higher-version and test-only failing
 MSIs with test runtime bytes (a Windows system EXE) and a synthetic managed DLL. It exercises
 **native WiX authoring, original branding generation and Windows Installer**:
-install N, two mounts, shortcut/autostart targets, repeated repair of missing/corrupt files, saved preferences, graceful/explicit force file-owner shutdown with same-name foreign process isolation, upgrade N+1, blocked downgrade,
+fresh wizard custom AddIn path and Cancel, install N, two mounts, shortcut/autostart targets, repeated repair of missing/corrupt files, saved preferences, graceful/explicit force file-owner shutdown with same-name foreign process isolation, independent same-version replacement, transaction failure after InstallExecute with restored prior hashes/registration/options/configuration, upgrade N+1, blocked downgrade,
 then removal of owned resources while retaining unowned data. Default opt-out is also tested. It publishes logs, never a fixture MSI. This proves
 installer mechanics, not an actual AddIn build or Rust runtime behavior.
 
 The native wizard is also exercised through Windows UI Automation: checkbox
-defaults, saved and explicit zero choices, force on/off, Back, Cancel and a repair
+defaults, saved and explicit zero choices, force on/off, Back, live AddIn owner surviving Cancel with force checked, a repair that closes that owner with explicit UI force consent, maintenance Remove, and a repair
 that commits opt-out, then reopens with it unchecked. UI uses null for unchecked;
 only the execute sequence converts this to numeric zero. Force consent is never
-saved. Interaction checks do not establish visual/DPI acceptance.
+saved. A registry-only MSI with the legacy UpgradeCode checks native family
+detection, blocked incoming installation and available existing repair/removal.
+Cancel is tested before execute; rollback cannot restore already closed processes. Interaction checks do not establish visual/DPI acceptance.
 
 A manually requested real release additionally requires the real SDK-built AddIn,
 full baseline/scaffold/Rust checks, optimized MSVC runtime binaries, extracted EXE
@@ -145,7 +147,7 @@ smoke checks and Chrome/theme contracts. The prior release attempt on `5d464d1`
 failed before MSI creation in the unchanged Rust pipe rebind test; a separate full
 Windows Rust CI passed that same head. That lifecycle race is recorded in PR #4,
 not bypassed by packaging. SDK-backed release, visual wizard acceptance, iCem DLL
-loading, production/offline/rollback/failure/running-process acceptance remain open.
+loading and production/offline/failure/running-process acceptance remain open. The new lifecycle fixture cases require a Windows run; test-only injected rollback is not production rollback evidence.
 
 
 The bundled `icem-opc-da-sidecar.exe` remains opt-in through Host

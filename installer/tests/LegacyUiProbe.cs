@@ -15,7 +15,7 @@ internal static class InstallerUiProbe
         return element.Current.Name.Replace("&", "").Trim();
     }
 
-    private static AutomationElement Find(ControlType type, string prefix)
+    private static AutomationElement Find(ControlType type, string prefix, bool enabledOnly = true)
     {
         var windows = AutomationElement.RootElement.FindAll(TreeScope.Children,
             new PropertyCondition(AutomationElement.ProcessIdProperty, client.Id));
@@ -36,7 +36,7 @@ internal static class InstallerUiProbe
             {
                 try
                 {
-                    if (control.Current.IsEnabled && Name(control).StartsWith(prefix, StringComparison.Ordinal))
+                    if ((!enabledOnly || control.Current.IsEnabled) && Name(control).StartsWith(prefix, StringComparison.Ordinal))
                         return control;
                 }
                 catch (ElementNotAvailableException)
@@ -110,44 +110,44 @@ internal static class InstallerUiProbe
     [STAThread]
     private static int Main(string[] args)
     {
-        // MSI, log path, saved option state, explicit CLI zero, apply UI opt-out.
-        if (args.Length != 6) return 2;
+        // MSI, log, saved options, explicit zero, opt-out, mode, AddIn path, runtime path.
+        if (args.Length != 8) return 2;
         using (log = new StreamWriter(args[1] + ".ui.log"))
         {
             log.AutoFlush = true;
             try
             {
                 bool apply = args[4] == "1";
+                string mode = args[5];
+                bool fresh = mode.StartsWith("fresh-", StringComparison.Ordinal);
+                bool remove = mode == "remove";
+                bool force = mode == "force-repair" || mode == "cancel-live";
                 var expected = args[2] == "1" ? ToggleState.On : ToggleState.Off;
                 string properties = args[3] == "1" ? " CREATEDESKTOPSHORTCUT=0 ADDAUTOSTART=0 MSIRMSHUTDOWN=0" : "";
                 var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "msiexec.exe"),
                     "/i \"" + args[0] + "\" /norestart /l*v \"" + args[1] + "\"" + properties);
+                if (fresh) start.Arguments += " MONITORROOT=\"" + args[7] + "\"";
                 start.UseShellExecute = false;
                 client = Process.Start(start);
                 Click("Next");
-                if (args[5] == "fresh-cancel")
+                if (fresh)
                 {
-                    Click("Cancel", "Отмена");
-                    Click("Yes");
-                    WaitForExit(1602);
-                    log.WriteLine("PASS fresh wizard cancellation");
-                    return 0;
+                    var directory = Wait(ControlType.Edit, "");
+                    ((ValuePattern)directory.GetCurrentPattern(ValuePattern.Pattern)).SetValue(args[6]);
+                    Click("Next");
                 }
-                if (args[5] == "remove")
+                else Click(remove ? "Remove" : "Repair");
+                if (remove)
                 {
-                    Click("Remove");
                     Check("Принудительно закрыть", ToggleState.Off);
-                    Click("Далее");
-                    Click("Back");
-                    Check("Принудительно закрыть", ToggleState.Off);
-                    Click("Далее");
-                    Click("Remove");
-                    WaitForExit(0);
-                    log.WriteLine("PASS maintenance Remove with Back");
-                    return 0;
+                    foreach (string label in new[] { "Создать ярлык", "Добавить Host" })
+                    {
+                        var option = Find(ControlType.CheckBox, label, false);
+                        if (option == null || option.Current.IsEnabled)
+                            throw new InvalidOperationException("Remove must disable option: " + label);
+                    }
                 }
-                Click("Repair");
-                Options(expected);
+                else Options(expected);
                 Check("Принудительно закрыть", ToggleState.Off).Toggle();
                 Check("Принудительно закрыть", ToggleState.On).Toggle();
                 Check("Принудительно закрыть", ToggleState.Off);
@@ -158,13 +158,29 @@ internal static class InstallerUiProbe
                     Check("Добавить Host", ToggleState.On).Toggle();
                     expected = ToggleState.Off;
                 }
+                if (force) Check("Принудительно закрыть", ToggleState.Off).Toggle();
                 Click("Далее");
                 Click("Back");
-                Options(expected);
-                if (apply)
+                Check("Принудительно закрыть", force ? ToggleState.On : ToggleState.Off);
+                if (!remove)
+                {
+                    Check("Создать ярлык", expected);
+                    Check("Добавить Host", expected);
+                }
+                if (fresh)
+                {
+                    Click("Назад");
+                    var directory = Wait(ControlType.Edit, "");
+                    string actual = ((ValuePattern)directory.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
+                    if (!String.Equals(actual.TrimEnd('\\'), args[6].TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("Custom AddIn path lost on Back: " + actual);
+                    Click("Next");
+                    Options(expected);
+                }
+                if (apply || mode == "fresh-install" || remove || mode == "force-repair")
                 {
                     Click("Далее");
-                    Click("Repair");
+                    Click(fresh ? "Install" : (remove ? "Remove" : "Repair"));
                     WaitForExit(0);
                 }
                 else
@@ -173,7 +189,7 @@ internal static class InstallerUiProbe
                     Click("Yes");
                     WaitForExit(1602);
                 }
-                log.WriteLine("PASS MSI UI: default force Off; saved/CLI options; toggle and Back; " + (apply ? "committed opt-out repair" : "Cancel without mutation"));
+                log.WriteLine("PASS MSI UI mode=" + mode + "; options, force choice and navigation checked; exit verified");
                 return 0;
             }
             catch (Exception error)

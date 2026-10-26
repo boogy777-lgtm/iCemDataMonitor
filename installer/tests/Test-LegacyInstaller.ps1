@@ -112,13 +112,15 @@ function New-FixtureMsi([string] $Version, [string] $Label, [switch] $FailDuring
     $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable); $Ns.AddNamespace('w','http://wixtoolset.org/schemas/v4/wxs')
     $Package = $Xml.SelectSingleNode('/w:Wix/w:Package',$Ns)
     if ($FailDuringTransaction) {
-        # Test-only native error CA fails after old-product removal, inside rollback boundary.
+        # Execute deferred file/registry changes before the test-only error, inside rollback boundary.
         $Action = $Xml.CreateElement('CustomAction',$Ns.LookupNamespace('w'))
         $Action.SetAttribute('Id','FixtureFailure'); $Action.SetAttribute('Error','Expected fixture rollback')
         $null = $Package.AppendChild($Action)
         $Sequence = $Xml.CreateElement('InstallExecuteSequence',$Ns.LookupNamespace('w'))
+        $Execute = $Xml.CreateElement('InstallExecute',$Ns.LookupNamespace('w'))
+        $Execute.SetAttribute('Before','InstallFinalize'); $null = $Sequence.AppendChild($Execute)
         $Custom = $Xml.CreateElement('Custom',$Ns.LookupNamespace('w'))
-        $Custom.SetAttribute('Action','FixtureFailure'); $Custom.SetAttribute('After','InstallFiles'); $Custom.SetAttribute('Condition','1')
+        $Custom.SetAttribute('Action','FixtureFailure'); $Custom.SetAttribute('After','InstallExecute'); $Custom.SetAttribute('Condition','1')
         $null = $Sequence.AppendChild($Custom); $null = $Package.AppendChild($Sequence)
     }
     $Xml.Save($Source)
@@ -169,7 +171,7 @@ function Assert-Installed($Fixture) {
 }
 function Invoke-InstallerUi($Fixture,[string] $Label,[string] $Mode = 'repair',[string] $Expected = '1',[switch] $ApplyOptOut, [switch] $ExplicitZero) {
     $Info = [Diagnostics.ProcessStartInfo]::new($UiProbe); $Info.UseShellExecute = $false
-    foreach ($Argument in @($Fixture.msi,(Join-Path $Work "$Label.log"),$Expected,([int][bool]$ExplicitZero).ToString(),([int][bool]$ApplyOptOut).ToString(),$Mode)) { $Info.ArgumentList.Add($Argument) }
+    foreach ($Argument in @($Fixture.msi,(Join-Path $Work "$Label.log"),$Expected,([int][bool]$ExplicitZero).ToString(),([int][bool]$ApplyOptOut).ToString(),$Mode,$IcemRoot,$Install)) { $Info.ArgumentList.Add($Argument) }
     $Process = [Diagnostics.Process]::Start($Info)
     try {
         if (-not $Process.WaitForExit(240000)) { $Process.Kill($true); $null = $Process.WaitForExit(5000); throw 'Legacy UI probe timed out' }
@@ -200,8 +202,8 @@ try {
     & (Join-Path $Framework 'csc.exe') /nologo /target:exe "/out:$UiProbe" "/reference:$Framework/WPF/UIAutomationClient.dll" "/reference:$Framework/WPF/UIAutomationTypes.dll" "/reference:$Framework/WPF/WindowsBase.dll" (Join-Path $PSScriptRoot 'LegacyUiProbe.cs')
     if ($LASTEXITCODE -ne 0) { throw 'Legacy UI fixture compilation failed' }
     Invoke-InstallerUi $N 'fresh-cancel' 'fresh-cancel' '0'
-    if (@(Installed-Products).Count) { throw 'Fresh cancellation installed a product' }
-    Invoke-Msi @('/i',$N.msi) 'default-off' -InitialPaths
+    if (@(Installed-Products).Count -or (Test-Path -LiteralPath $Modules) -or (Test-Path -LiteralPath $Install)) { throw 'Fresh cancellation changed installation' }
+    Invoke-InstallerUi $N 'fresh-custom-path-install' 'fresh-install' '0'
     Assert-Installed $N
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Defaults enabled opt-ins' }
     # Explicit path properties must win over a stale saved directory.
@@ -227,8 +229,20 @@ try {
     Invoke-Msi @('/i',$Next.msi) 'upgrade'
     Assert-Installed $Next
     if (-not (Test-Path -LiteralPath $Shortcut)) { throw 'Upgrade lost saved options' }
-    Invoke-Msi @('/i',$Failed.msi) 'rollback-after-old-removal' 1603
+    $BeforeState = Get-ItemProperty -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\Installer'
+    Invoke-Msi @('/i',$Failed.msi,'CREATEDESKTOPSHORTCUT=0','ADDAUTOSTART=0') 'rollback-after-old-removal' 1603
+    $RollbackLog = Get-Content -Raw -LiteralPath (Join-Path $Work 'rollback-after-old-removal.log')
+    foreach ($Action in @('RemoveExistingProducts','InstallFiles','InstallExecute','FixtureFailure')) {
+        if ($RollbackLog -notmatch ('Action start .*: ' + $Action + '\.')) { throw "Rollback did not reach $Action" }
+    }
+    if ($RollbackLog -notmatch 'Rollback:') { throw 'Failure did not execute rollback script' }
     Assert-Installed $Next
+    $AfterState = Get-ItemProperty -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\Installer'
+    foreach ($Name in @('RuntimeDirectory','IcemDirectory','DesktopChoice','AutostartChoice')) {
+        if ($BeforeState.$Name -cne $AfterState.$Name) { throw "Rollback changed saved $Name" }
+    }
+    if (-not (Test-Path -LiteralPath $Shortcut) -or
+        (Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'iCemDataMonitor.Host.exe') + '" --autostart')) { throw 'Rollback lost shortcut/autostart' }
     Invoke-Msi @('/i',$N.msi) 'permitted-downgrade'
     Assert-Installed $N
     # Real file-owner tests share only the disposable C# lock fixture with Rust.
@@ -240,12 +254,17 @@ try {
     $Foreign = Start-FileOwner $OwnerExe $ForeignFile 'foreign' 'stubborn'
     $Addin = Join-Path $Modules 'Burservis.iCem.DataMonitor.dll'
     $Graceful = Start-FileOwner $OwnerExe $Addin 'graceful' 'graceful'
-    Invoke-InstallerUi $N 'cancel-with-live-owner'
+    Invoke-InstallerUi $N 'cancel-with-live-owner' 'cancel-live'
     if ($Graceful.process.HasExited -or $Foreign.process.HasExited) { throw 'Cancel stopped an external file owner' }
     Invoke-Msi @('/i',$N.msi) 'graceful-owner'
     Assert-OwnerStopped $Graceful $true
     Assert-Installed $N
     $Stubborn = Start-FileOwner $OwnerExe $Addin 'stubborn' 'stubborn'
+    Invoke-InstallerUi $N 'ui-force-owner' 'force-repair'
+    Assert-OwnerStopped $Stubborn $false
+    Assert-Installed $N
+    if ($Foreign.process.HasExited) { throw 'UI force stopped unrelated owner' }
+    $Stubborn = Start-FileOwner $OwnerExe $Addin 'cli-stubborn' 'stubborn'
     Invoke-Msi @('/i',$N.msi,'MSIRMSHUTDOWN=1') 'force-owner'
     Assert-OwnerStopped $Stubborn $false
     if ($Foreign.process.HasExited) { throw 'Force stopped unrelated same-name process' }

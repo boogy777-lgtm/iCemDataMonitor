@@ -129,7 +129,7 @@
           <Publish Event="SpawnDialog" Value="CancelDlg" />
         </Control>
       </Dialog>
-      <!-- Fresh and maintenance operations share options; Cancel has no side effects. -->
+      <!-- Fresh and maintenance operations share options; Cancel before execute leaves file owners untouched. -->
       <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="4" Condition="NOT Installed" />
       <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="4" Condition="NOT Installed" />
       <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Order="5" Condition="NOT Installed AND (WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID=&quot;1&quot;)" />

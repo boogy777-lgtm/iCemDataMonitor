@@ -45,7 +45,8 @@ Desktop shortcut и HKCU Host autostart опциональны, default OFF. Emu
 Upgrade N→N+1 сохраняет paths/options; downgrade блокируется. Удаление убирает
 MSI-owned resources и сохраняет пользовательские config/data/logs.
 Restart Manager сначала просит graceful shutdown; force — явная опция конкретной
-операции. Отмена не убивает процессы. Reboot-required не считается успешным
+операции. Отмена до execute sequence не останавливает владельцев файлов;
+после закрытия Restart Manager rollback не восстанавливает состояние процессов. Reboot-required не считается успешным
 завершением release gate. Установленный legacy MSI обнаруживается и блокирует
 Rust MSI: автоматического production cutover нет.
 
@@ -65,7 +66,9 @@ Rust MSI: автоматического production cutover нет.
 
 Restart Manager закрывает только владельцев затронутых файлов, сначала штатно.
 Принудительное закрытие зависших владельцев требует checkbox либо
-`MSIRMSHUTDOWN=1` для текущей операции. Отмена не останавливает процессы/службы.
+`MSIRMSHUTDOWN=1` для текущей операции. Отмена до execute sequence
+не останавливает процессы/службы; rollback после закрытия Restart Manager
+не восстанавливает их состояние.
 Опции ярлыка и HKCU autostart по умолчанию выключены; последующие repair/upgrade
 сохраняют выбранные paths/options. CLI overrides имеют приоритет; явный `0`
 выключает опцию. Выбор относится к пользователю, выполняющему установку.

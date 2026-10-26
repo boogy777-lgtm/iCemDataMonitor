@@ -155,7 +155,13 @@ class RoutingTests(unittest.TestCase):
             '            ${{ runner.temp }}/legacy-ci-diagnostics/*.log',
             '            **/TestResults/**/*.trx',
             '            **/TestResults/**/*Sequence.xml',
-            '            **/TestResults/**/*.log'])
+            '            **/TestResults/**/*.log',
+            '            installer/artifacts/*.log'])
+        lifecycle = steps['Verify legacy MSI lifecycle with disposable payload']
+        self.assertIn('        run: installer/tests/Test-LegacyInstaller.ps1\n', lifecycle)
+        self.assertIn('        timeout-minutes: 15\n', lifecycle)
+        self.assertNotIn('continue-on-error:', lifecycle)
+        self.assertIn('-NoPause -AllowMissingAddinForCi', steps['Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)'])
         self.assertIn('          if-no-files-found: warn\n', upload)
         self.assertIn('          retention-days: 7\n', upload)
 

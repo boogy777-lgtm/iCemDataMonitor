@@ -60,7 +60,9 @@ try {
         $Xml.SelectNodes('//w:Component[@Id="Cmp.DesktopShortcut"]/w:CreateFolder', $Ns).Count -ne 1 -or
         $Xml.SelectSingleNode('//w:RegistryValue[@Name="iCemDataMonitorHost"]', $Ns).Value -cne '"[MONITORROOT]icem-host-dev.exe" --autostart' -or
         $Xml.SelectSingleNode('//w:UpgradeVersion[@Property="LEGACY_MONITOR_PRESENT"]', $Ns).OnlyDetect -ne 'yes') { throw 'Native MSI UI/paths/options/ownership failed' }
-    if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
+    if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).AllowSameVersionUpgrades -ne 'yes' -or
+        $Xml.SelectNodes('//w:Launch[@Condition="Installed OR NOT LEGACY_MONITOR_PRESENT"]', $Ns).Count -ne 1 -or
+        $Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
         $Xml.SelectSingleNode('//w:Package', $Ns).Scope -ne 'perMachine') { throw 'MSI transaction policy failed' }
     # Guard the reviewed package boundary, not implementation layout: payload,
     # native shortcut/Run value, stock UI and the exact additive station ACL.
