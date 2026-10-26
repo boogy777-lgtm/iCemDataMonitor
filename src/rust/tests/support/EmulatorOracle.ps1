@@ -20,6 +20,6 @@ $Files = @(
     (Join-Path $Core 'Dfb/Blocks/TotalizerBlock.cs'),
     (Join-Path $PSScriptRoot 'EmulatorOracle.cs')
 )
-$Files += @((Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
+$Files += @((Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
 Add-Type -Path $Files -CompilerOptions '/nullable:enable' -IgnoreWarnings
 [EmulatorOracle]::Run($RepoRoot)

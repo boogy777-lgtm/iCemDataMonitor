@@ -1,6 +1,6 @@
 param([Parameter(Mandatory)][string]$RepoRoot,[Parameter(Mandatory)][string]$InputDir,[Parameter(Mandatory)][string]$OutputDir)
 $ErrorActionPreference='Stop'
-$Core=Join-Path $RepoRoot 'iCemEmule.Core/Core'
+$Core=Join-Path $RepoRoot 'src/net/iCemEmule.Core/Core'
 $Files=@((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'),(Join-Path $Core 'EmuSettings.cs'),(Join-Path $Core 'DeviceTemplate.cs'),(Join-Path $Core 'SimulationEngine.cs'),(Join-Path $Core 'TemplateCatalog.cs'),(Join-Path $Core 'SimFileResolver.cs'),(Join-Path $Core 'UnitConversion.cs'))
 $Source=Get-Content (Join-Path $Core 'EmulatorStep.cs') -Raw
 $Start=$Source.IndexOf('    private double[] FrozenComValues()')
@@ -48,7 +48,7 @@ $Wrapper+=$Method+"`n}"
 New-Item -ItemType Directory -Path $OutputDir -Force|Out-Null
 $WrapperPath=Join-Path $OutputDir 'OriginalComFreezeOracle.cs'
 $Wrapper|Set-Content $WrapperPath -Encoding utf8NoBOM
-$Files += @((Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
+$Files += @((Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
 Add-Type -Path ($Files+@($WrapperPath)) -CompilerOptions '/nullable:enable' -IgnoreWarnings
 foreach($File in Get-ChildItem $InputDir -File -Filter '*.xml'){
  [Halliburton.iCemEmule.Core.EmuSettings]::SettingsPathOverride=$File.FullName

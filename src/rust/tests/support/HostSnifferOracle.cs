@@ -24,7 +24,7 @@ public static class HostSnifferOracle
     }
     public static void Run(string root)
     {
-        var registry=LantableRegistry.Load(Path.Combine(root,"iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json"));
+        var registry=LantableRegistry.Load(Path.Combine(root,"src/net/iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json"));
         var cases=new List<object>();
         foreach(var vector in registry.ServiceVectors.OrderBy(v=>v.SvNumber)) {
             foreach(int seed in new[]{0,17,255,7919}) {

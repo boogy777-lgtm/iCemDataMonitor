@@ -1,6 +1,6 @@
 param([Parameter(Mandatory)][string]$RepoRoot,[Parameter(Mandatory)][string]$PairsPath)
 $ErrorActionPreference='Stop'
-$Core=Join-Path $RepoRoot 'iCemEmule.Core/Core'
+$Core=Join-Path $RepoRoot 'src/net/iCemEmule.Core/Core'
 # Compile unmodified original classes. Reflection supplies constructor-owned
 # state to avoid ambient installation discovery; every invoked method is original.
 $Wrapper=@'
@@ -35,7 +35,7 @@ $Files=@((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'),(Join-Path $Core '
 $temp=Join-Path ([System.IO.Path]::GetTempPath()) ('icem-identity-oracle-'+[guid]::NewGuid()+'.cs')
 try {
  $Wrapper|Set-Content $temp -Encoding utf8NoBOM
- $Files += @((Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
+ $Files += @((Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
  Add-Type -Path ($Files+@($temp)) -CompilerOptions '/nullable:enable' -IgnoreWarnings
  [UnicodeIdentityOracle]::Run($PairsPath)
 } finally { Remove-Item $temp -ErrorAction SilentlyContinue }

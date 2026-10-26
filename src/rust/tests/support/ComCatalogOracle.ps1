@@ -1,6 +1,6 @@
 param([Parameter(Mandatory)][string]$RepoRoot,[Parameter(Mandatory)][string]$InputDir,[Parameter(Mandatory)][string]$OutputDir)
 $ErrorActionPreference='Stop'
-$Core=Join-Path $RepoRoot 'iCemEmule.Core/Core'
+$Core=Join-Path $RepoRoot 'src/net/iCemEmule.Core/Core'
 $Source=Get-Content (Join-Path $Core 'TemplateCatalog.cs') -Raw
 # Bind only the two ambient file locations. Every method body and DTO remains
 # byte-identical to the original source; no test-authored catch or deserializer.
@@ -52,6 +52,6 @@ public static class OriginalComCatalogOracle {
 $WrapperPath=Join-Path $OutputDir 'OriginalComCatalogOracle.cs'
 $Wrapper|Set-Content $WrapperPath -Encoding utf8NoBOM
 $Files=@((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'),(Join-Path $Core 'DeviceTemplate.cs'),(Join-Path $Core 'SimulationEngine.cs'),(Join-Path $Core 'SimFileResolver.cs'),(Join-Path $Core 'SignalWireCodec.cs'),(Join-Path $Core 'LantableRegistry.cs'),$CatalogPath,$WrapperPath)
-$Files += @((Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
+$Files += @((Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/OwnedFileLog.cs'),(Join-Path $RepoRoot 'src/net/iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs'))
 Add-Type -Path $Files -CompilerOptions '/nullable:enable' -IgnoreWarnings
 [OriginalComCatalogOracle]::Run($InputDir)
