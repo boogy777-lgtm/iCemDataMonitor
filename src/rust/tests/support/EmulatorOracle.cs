@@ -11,7 +11,7 @@ public static class EmulatorOracle {
     public static string Run(string root) {
         var flags=BindingFlags.NonPublic|BindingFlags.Static;
         var options=new JsonSerializerOptions {PropertyNameCaseInsensitive=true};
-        string folder=Path.Combine(root,"iCemEmulator","templates");
+        string folder=Path.Combine(root,"src","net","iCemEmulator","templates");
         var registry=JsonDocument.Parse(File.ReadAllText(Path.Combine(folder,"variable_registry.json")));
         var field=typeof(TemplateCatalog).GetField("_registryVars",flags)!;
         field.SetValue(null,JsonSerializer.Deserialize(registry.RootElement.GetProperty("variables").GetRawText(),field.FieldType,options));

@@ -55,7 +55,7 @@ public static class LanPayloadOracle {
     }
     static object Def(LantableRegistry.SignalDef s)=>new{byte_offset=s.ByteOffset,size=s.Size,value_type=s.ValueType,das_factor=s.DasFactor,name=s.Name,uom=s.UoM};
     public static string Run(string root) {
-        var templates=Path.Combine(root,"iCemEmulator","templates");var registry=Registry(templates);var b=Base(registry,templates);
+        var templates=Path.Combine(root,"src","net","iCemEmulator","templates");var registry=Registry(templates);var b=Base(registry,templates);
         var inventory=registry.All.Values.Select(v=>new{sv=v.SvNumber,name=v.Name,equipment_type=v.EquipmentType,signals=v.Signals.Select(Def).ToArray()}).ToArray();
         var bases=new List<object>();
         foreach(bool firmware in new[]{false,true}) foreach(double elapsed in new[]{0.0,0.25,1.0,37.5,1000.0}) {

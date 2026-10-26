@@ -25,7 +25,7 @@
 
   <ItemGroup>
     <!-- Same source-of-truth file + content-link mechanism as the production project. -->
-    <Content Include="..\templates\variable_registry.json">
+    <Content Include="..\..\..\templates\variable_registry.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>templates\variable_registry.json</Link>
     </Content>
