@@ -194,3 +194,82 @@ PASS локально; новый Windows run должен подтвердит�
 Все p50/p95/p99 в raw summaries используют отсортированный массив и точный индекс
 `min(n-1, floor(n*p))` при p=0.50/0.95/0.99. Это фиксированная convention harness,
 не утверждение канонического nearest-rank algorithm; numeric baselines не менялись.
+
+## Resolved ETW checkpoint и live readiness: run40194159508
+
+Source `9c42e9799fb0949e4bc9f0b541216bb4d5131b9d`, CI merge
+`498392bf0d60b28b25345c2b6ebf0a84b8f693d3`, tree
+`e109c26c44a41b8e0a31a172624633b3148692dc`; Release job121171358225.
+Artifact12599418106, ZIP SHA256
+`c0cf2d6b38080ada94125c530caa7e2dc6aedbe86cb9962d9f57ec7f4f82990a`
+проверен после download; hashes всех четырёх merged event CSV, обоих lifetime
+ETL и latency CSV/JSON также совпали с raw summaries. Малый авторитетный
+[численный checkpoint](evidence/nplus1-r4-run40194159508.json) сохраняет числа,
+source/tree, PID, raw hashes и точные ограничения; bulk ETL остаются в CI artifact.
+
+Оба heap steps PASS. Четыре windows имеют разрешённый target PID; для каждого
+original heap ETL, original process ETL и merged ETL Events Lost=Buffers Lost=0;
+owned collector cleanup успешен. Startup/control и10000operations записаны отдельно.
+
+| Workload | HeapAlloc events | Sum Size bytes | HeapRealloc events | Sum NewSize bytes |
+|---|---:|---:|---:|---:|
+| Capture control,0ops |10|7697|0|0|
+| Capture+publication+latest,10000ops |50010|30127697|0|0|
+| FC03 codec control,0ops |10|7697|0|0|
+| FC03 codec100words,10000ops |70010|5077697|60000|5040000|
+
+Это native ETW HeapAlloc/HeapRealloc events, **не** доказанный счётчик вызовов
+Rust GlobalAlloc; native reallocation может также порождать HeapAlloc event.
+Size и NewSize totals не складываются в net live bytes. Inclusive recorded-window
+averages: capture5.001 HeapAlloc events/3012.7697 Size bytes на operation;
+FC03 7.001 HeapAlloc events/507.7697 Size bytes и6 HeapRealloc events/504 NewSize
+bytes на request. В них включён control overhead; subtraction не выполнялась.
+Control bytes составляют примерно0.026% capture window и0.152% FC03 window.
+Точная operation-only attribution остаётся ограничением, а не нулевым overhead claim.
+Process-lifetime totals отдельно: startup783 HeapAlloc events/222.7 native KB;
+10000capture/publication process50663events/29322.8KB. Они включают startup/teardown,
+не подменяют warmed-window figures и не пересчитываются в точные bytes.
+
+Actual live step FAILED в Modbus consumer на `COM source time changed`;
+actual bits/sample index в старом exception отсутствовали. Retention probe прошёл
+60captures/peak4, Host/writer не сообщили раннего завершения. Причина именно этого
+unlogged значения не доказана; нулевой initial mirror — обоснованная inference.
+Source-established fixture race существует независимо: `Acquisition::start` отправляет
+ready после создания source, **до** первой acquisition; `main::refresh` может увидеть
+absence и оставить initial zero bank. Первое scheduled mirror refresh назначается
+на500ms после завершения boot, тогда как Web listener доступен раньше. Driver's
+fixed500ms после TCP-connect не гарантирует первую публикацию/refresh.
+
+Class: initial Modbus mirror readiness в `windows_live_load.py`, не production
+acquisition, mirror semantics или допустимые ответы measured workload.
+Inv: только initial zero до measurement считается pending; ожидаемый nonzero COM
+value подтверждён FC03 под тем же10s startup deadline. Wrong nonzero, timeout и
+любой invalid/zero measured response fail;12s load, частоты и проверки прежние.
+N+1: fixture требует COM value, отличимый от initial zero; readiness helper имеет
+regressions zero→valid, pending timeout, wrong nonzero и measured-zero failure.
+Exception теперь сохраняет actual/expected, Modbus kind/rate/sample index.
+Connect/send и каждый fragmented recv ограничены остатком общего deadline;
+даже ожидаемый ответ после deadline отклоняется. Regressions проверяют late-valid
+response и исчерпание бюджета между fragments. Fixture Host duration увеличен
+с25s до30s: разрешённые10s startup +16s sampler не помещались в25s.
+Это только lifetime тестового процесса; measured workload остаётся12s.
+28 Python perf tests,46 CI tests и diff-check PASS локально; actual Windows live verdict follow-up
+ещё требуется. Production Rust/COM/AddIn и существующие CI gates не менялись.
+
+| План §13.4 / R4 requirement | Доступное evidence | Остаток |
+|---|---|---|
+| Capture/decode/publication time, MMF hold | Current unprofiled1000samples: capture+publication p95=24.0µs,p99=40.4µs; hold upper p95=4.0µs,p99=4.4µs | Uncontended650words, не production mutex-contention distribution |
+| Allocations/allocated bytes на capture/request | Current PID-resolved/loss-free native event windows выше; representative real capture и production FC03 codec | Window averages включают измеренный control; Web/network heap attribution не заявлена |
+| Peak live snapshots и memory/CPU | Separate5Hz topology probe60captures/peak4; run40191811070 PASS actualHostCPU/memory и12s multi-client load | Probe peak не Host-wide Arc count; process memory не allocator live bytes; current live follow-up обязателен |
+| Modbus/Web p95/p99 и разная частота/slow clients | run40191811070 и40192653339 live PASS; current live FAIL сохранён с минимальным readiness fix | Новый actual Windows live PASS без ослабления measured assertions |
+| Final software CI | run40194159508: Rust verify/routing/baseline/packaging и legacy PASS; Release FAIL только live-load, оба heap steps PASS | Все обязательные jobs окончательного опубликованного дерева и R5 review |
+| Physical deployment | Software writer/file-backed MMF/CI VM | AddIn, поддерживаемое оборудование, настоящая producer contention, operator/UI/SDK-distribution acceptance отдельно |
+
+Первые строки являются scoped software measurement, а не обещанием абсолютного
+отсутствия allocation noise, универсального memory bound или ускорения относительно
+другого оборудования/рантайма. R4 остаётся OPEN до live follow-up и окончательного CI.
+Software R4 acceptance относится к явно измеренным fixture boundaries; exact
+operation-only cost при ненулевом control, Web/network heap attribution и Host-wide
+Arc count не становятся доказанными после одного live PASS. Это отдельно названные
+границы evidence, а не скрытое требование нулевого allocation noise для приёмки
+представленных software measurements.

@@ -91,13 +91,63 @@ def web_values(body):
 
 def check_values(values, com_bits):
     if values.get(4) != com_bits:
-        raise ValueError('COM source time changed')
+        raise ValueError(f'COM source time changed: actual={values.get(4)!r}, expected={com_bits}')
     lan, raw = values.get(200), values.get(400)
     if lan != raw or lan is None or not 0x3f000001 <= lan < 0x3f001000:
         raise ValueError(f'incoherent/missing LAN RAW: {lan}, {raw}')
     if values.get(402) != 0x80000000 or values.get(404) != 1:
         raise ValueError('RAW IEEE bits changed')
     return lan
+
+
+def wait_for_initial_com(read_com, expected, deadline, clock=time.monotonic, pause=time.sleep):
+    """Initial zero mirror is pending only before measurements, under startup budget."""
+    if expected == 0:
+        raise ValueError('readiness fixture must distinguish COM source time from initial zero mirror')
+    started = clock()
+    attempts = zeros = 0
+    while clock() < deadline:
+        actual = read_com()
+        attempts += 1
+        if clock() >= deadline:
+            break
+        if actual == expected:
+            return {'attempts': attempts, 'initial_zero_reads': zeros,
+                    'com_bits': actual, 'elapsed_s': clock() - started}
+        if actual != 0:
+            raise ValueError(f'initial COM mismatch: actual={actual!r}, expected={expected}')
+        zeros += 1
+        pause(min(.05, max(0, deadline - clock())))
+    raise RuntimeError('initial Modbus COM mirror did not become ready within Host startup deadline')
+
+
+def read_initial_com(connection, deadline, clock=time.monotonic):
+    """Read FC03 COM bits, bounding every fragmented I/O by the startup deadline."""
+    def remaining():
+        budget = deadline - clock()
+        if budget <= 0:
+            raise RuntimeError('initial Modbus COM read exceeded Host startup deadline')
+        return min(3, budget)
+
+    def receive(count):
+        result = bytearray()
+        while len(result) < count:
+            connection.settimeout(remaining())
+            part = connection.recv(count - len(result))
+            if not part:
+                raise ValueError('incomplete initial FC03 response')
+            result.extend(part)
+        return bytes(result)
+
+    request = struct.pack('>HHHBBHH', 0, 0, 6, 1, 3, 4, 2)
+    connection.settimeout(remaining())
+    connection.sendall(request)
+    header = receive(6)
+    body = receive(int.from_bytes(header[4:6], 'big'))
+    if header[:4] != request[:4] or body[:3] != bytes([1, 3, 4]) or len(body) != 7:
+        raise ValueError('invalid initial FC03 response')
+    low, high = struct.unpack('>HH', body[3:])
+    return low | high << 16
 
 
 def consumer(kind, port, hz, duration, com_bits):
@@ -130,7 +180,10 @@ def consumer(kind, port, hz, duration, com_bits):
                 # and fixed COM/IEEE probes. Web single-reply check proves whole-frame coherence.
                 lan = values[200]
                 values[200] = values[400]
-                check_values(values, com_bits)
+                try:
+                    check_values(values, com_bits)
+                except ValueError as error:
+                    raise ValueError(f'{kind} {hz}Hz sample={len(samples)}: {error}') from error
                 if not 0x3f000001 <= lan < 0x3f001000:
                     raise ValueError('invalid LAN raw marker')
             else:
@@ -228,7 +281,7 @@ def run(args):
             p2 = freeport()
         host = launch([args.binary, '--bus-live', fixture, '--bus-map', missing_map,
                        '--bus-mutex', mutex, '--bind', f'127.0.0.1:{p1}', '--web-bind',
-                       f'127.0.0.1:{p2}', '--duration-ms', 25000, '--theme-file', root / 'theme'], 'host')
+                       f'127.0.0.1:{p2}', '--duration-ms', 30000, '--theme-file', root / 'theme'], 'host')
         deadline = time.monotonic() + 10
         while True:
             try:
@@ -238,7 +291,15 @@ def run(args):
                 if host.poll() is not None or time.monotonic() > deadline:
                     raise RuntimeError('live Host failed startup; see host.log')
                 time.sleep(.05)
-        time.sleep(.5)
+        # Listener readiness does not imply the first acquisition/mirror tick ran.
+        # Warm up only initial zero COM under the SAME startup deadline, before
+        # the measured 12s workload. Every measured response still checks all bits.
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError('live Host exceeded startup deadline')
+        with socket.create_connection(('127.0.0.1', p1), timeout=min(3, remaining)) as initial:
+            report['initial_mirror'] = wait_for_initial_com(
+                lambda: read_initial_com(initial, deadline), com_bits, deadline)
         # One external sampler, independent from request timings. CPU is cumulative user+kernel.
         metric_log = (args.output / 'process-metrics.jsonl').open('w')
         script = ('$ErrorActionPreference="Stop"; 1..32 | ForEach-Object { '
