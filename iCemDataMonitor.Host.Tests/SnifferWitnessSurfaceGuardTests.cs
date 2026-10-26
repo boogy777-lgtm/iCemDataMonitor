@@ -8,8 +8,7 @@ namespace iCemDataMonitor.Host.Tests;
 /// This guard pins the three faces of the witness surface from source text:
 ///   1. per-minute host log line  "[Ace] witness: …"   (AceSnifferService)
 ///   2. additive status fields AceFrames/DistinctMacs   (AceSnifferStatus)
-///   3. /api/sniffer/status + /api/status/summary keys  (SnifferEndpoints +
-///      HostComposition.GetSnifferStatsShape)
+///   3. /api/status/summary keys (HostComposition.GetSnifferStatsShape)
 /// so the surface cannot silently regress. Behavior itself is proven in
 /// Transport.Tests (Witness_* tests over ProcessFrame).
 /// </summary>
@@ -74,18 +73,6 @@ public class SnifferWitnessSurfaceGuardTests
 
         var eqSrc = LoadSource("iCemDataMonitor.Transport", "Models", "AceEquipmentStatus.cs");
         Assert.Contains("public long TotalFrames { get; set; }", eqSrc, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void SnifferEndpoints_MapWitnessFields_Additively()
-    {
-        var src = LoadSource("iCemDataMonitor.Host.Core", "Endpoints", "SnifferEndpoints.cs");
-        var mapStart = src.IndexOf("MapAceStatus", StringComparison.Ordinal);
-        Assert.True(mapStart >= 0, "MapAceStatus disappeared");
-        var mapSlice = src.Substring(mapStart);
-        Assert.Contains("aceFrames = s.AceFrames", mapSlice, StringComparison.Ordinal);
-        Assert.Contains("distinctMacs = s.DistinctMacs", mapSlice, StringComparison.Ordinal);
-        Assert.Contains("totalFrames = e.TotalFrames", mapSlice, StringComparison.Ordinal);
     }
 
     [Fact]

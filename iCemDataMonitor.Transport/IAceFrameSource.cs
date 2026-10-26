@@ -4,7 +4,6 @@ namespace iCemDataMonitor.Transport;
 /// Seam for unit-testing ACE frame capture without real Npcap hardware.
 /// Production: SharpPcapAceSource (live adapter).
 /// Test: ReplayAceFrameSource (pcapng replay).
-/// Mirrors the ISerialPort pattern used by SerialTeeService.
 /// </summary>
 public interface IAceFrameSource : IDisposable
 {

@@ -18,13 +18,11 @@
     <!-- 2026-09-01 (owner decree «Блок 2 п.5/6»): Microsoft.* on the 10.0.0
          train (matches the net10.0 runtime wave); SharpPcap/PacketDotNet are
          third-party and stay pinned. -->
-    <PackageReference Include="System.IO.Ports" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     <PackageReference Include="SharpPcap" Version="6.0.0" />
     <PackageReference Include="PacketDotNet" Version="1.4.7" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
