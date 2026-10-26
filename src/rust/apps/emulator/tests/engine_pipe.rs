@@ -39,7 +39,7 @@ fn headless_engine_cli_shared_state_quit_ack_and_clean_rebind() -> Result {
     let config = directory.join("settings.xml");
     let pipe = format!("icem-engine-test-{}", std::process::id());
     let templates =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../iCemEmulator/templates");
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../net/iCemEmulator/templates");
     let spawn = || {
         Command::new(exe)
             .env("LOCALAPPDATA", directory.join("local"))

@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::{path::PathBuf, process::Command};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn templates() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../iCemEmulator/templates")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../net/iCemEmulator/templates")
 }
 fn bytes(v: &Value) -> TestResult<Vec<u8>> {
     let s = v.as_str().ok_or("not hex")?;

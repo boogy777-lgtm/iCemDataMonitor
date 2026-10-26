@@ -1078,7 +1078,7 @@ mod tests {
     #[test]
     fn portable_cases_use_real_catalogs() -> Result {
         let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../iCemEmulator/templates");
+            .join("../../../net/iCemEmulator/templates");
         for id in (1..=26).filter(|id| !matches!(id, 4 | 26)) {
             let mut c = Case::default();
             execute(id, &mut c, &dir)?;

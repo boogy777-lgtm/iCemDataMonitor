@@ -31,7 +31,7 @@ impl Stage {
         }
         std::fs::copy(env!("CARGO_BIN_EXE_icem-emulator-engine-dev"), &exe)?;
         let source =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../iCemEmulator/templates");
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../net/iCemEmulator/templates");
         for entry in std::fs::read_dir(source)? {
             let entry = entry?;
             if entry.path().extension().is_some_and(|x| x == "json") {
