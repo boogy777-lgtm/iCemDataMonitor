@@ -1,6 +1,6 @@
 param([Parameter(Mandatory)][string]$RepoRoot)
 $ErrorActionPreference = 'Stop'
-$Core = Join-Path $RepoRoot 'iCemEmule.Core'
+$Core = Join-Path $RepoRoot 'src/net/iCemEmule.Core'
 $Files = @(
     (Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'),
     (Join-Path $Core 'Core/DeviceTemplate.cs'),

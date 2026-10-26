@@ -162,11 +162,11 @@
       "category": "legacy",
       "paths": [
         "CI.slnf",
-        "src/net/iCemDataMonitor.sln",
         "VERSION",
         "build.ps1",
         "installer/**",
-        "src/net/Burservis.iCem.DataMonitor/**"
+        "src/net/Burservis.iCem.DataMonitor/**",
+        "iCemDataMonitor.sln"
       ]
     }
   ]

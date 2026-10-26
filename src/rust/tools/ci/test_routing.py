@@ -341,10 +341,10 @@ class GitDiffTests(GitFixture):
 
 
 class LedgerRoutingTests(GitFixture):
-    A = 'iCemDataMonitor.Core/A.cs'
-    B = 'iCemDataMonitor.UI.Tests/B.cs'
-    SHARED = 'iCemDataMonitor.Data/Bus/BusReader.cs'
-    FROZEN = 'iCemDataMonitor.Host/wwwroot/index.html'
+    A = 'src/net/iCemDataMonitor.Core/A.cs'
+    B = 'src/net/iCemDataMonitor.UI.Tests/B.cs'
+    SHARED = 'src/net/iCemDataMonitor.Data/Bus/BusReader.cs'
+    FROZEN = 'src/net/iCemDataMonitor.Host/wwwroot/index.html'
 
     def setUp(self):
         super().setUp()
