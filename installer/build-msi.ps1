@@ -84,6 +84,9 @@ $InstallerDir = $PSScriptRoot
 $Repo = Split-Path -Parent $InstallerDir
 $Stage = Join-Path $InstallerDir 'stage'
 Import-Module (Join-Path $InstallerDir 'BuildPaths.psm1') -Force
+# The script-level trap is hoisted: preflight exceptions occur before transcription.
+# Keep its log state defined so an early invalid path can propagate unchanged.
+$BuildLog = $null
 if ($AllowMissingAddinForCi -and $env:GITHUB_ACTIONS -ne 'true') {
     throw '-AllowMissingAddinForCi is restricted to GitHub Actions smoke builds.'
 }
@@ -135,6 +138,8 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Start-Transcript -Path $BuildLog -Force | Out-Null
 
 trap {
+    # Preflight errors have no log/transcript; let the caller catch the original error.
+    if (-not $BuildLog) { break }
     Write-Host ""
     Write-Host ("BUILD FAILED: {0}" -f $_.Exception.Message) -ForegroundColor Red
     Write-Host ("Build log: $BuildLog")

@@ -319,7 +319,9 @@ def run(args):
             report['consumers'] = [future.result() for future in futures]
             report['slow_client'] = slow.result()
         report['workload_wall_s'] = time.perf_counter() - started
-        if sampler.wait(timeout=10):
+        # 32 x 500 ms already requires >=16 s, before PowerShell startup,
+        # collection overhead and scheduling delays on a loaded CI runner.
+        if sampler.wait(timeout=45):
             raise RuntimeError('process metrics failed')
         metric_log.close()
         metric_log = None

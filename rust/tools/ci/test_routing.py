@@ -205,7 +205,7 @@ class RoutingTests(unittest.TestCase):
         fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text()
         self.assertIn('    Test-BuildOutputPaths\n', fixture)
         for path in ('README.md', 'rust/README.md', 'docs/install.md', 'rust/installer/README.md'):
-            self.assertIn('dist/rust/', (ROOT / path).read_text())
+            self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
         self.assertIn('dist/legacy/', (ROOT / 'docs/release.md').read_text())
 
     def test_workflow_wiring(self):
