@@ -11,13 +11,13 @@ jobs:
     timeout-minutes: 35
     defaults:
       run:
-        working-directory: rust
+        working-directory: src/rust
     steps:
       - uses: actions/checkout@v5
       - name: Install pinned Rust toolchain
         shell: pwsh
         run: |
-          # rustup installs the toolchain/components from rust/rust-toolchain.toml.
+          # rustup installs the toolchain/components from src/rust/rust-toolchain.toml.
           rustup show
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           rustc --version --verbose
@@ -59,7 +59,7 @@ jobs:
         id: cargo-debug
         uses: actions/cache/restore@v5
         with:
-          path: rust/target/debug
+          path: src/rust/target/debug
           key: ${{ steps.cache-identity.outputs.build_key }}
           restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}
       - name: Verify owned Host diagnostic window on Windows
@@ -134,11 +134,11 @@ jobs:
         with:
           name: emulator-differential
           path: |
-            rust/target/control-differential-report.json
-            rust/target/emu-differential-report.json
-            rust/target/dfb-differential-report.json
-            rust/target/lan-differential-report.json
-            rust/target/host-sniffer-differential-report.json
+            src/rust/target/control-differential-report.json
+            src/rust/target/emu-differential-report.json
+            src/rust/target/dfb-differential-report.json
+            src/rust/target/lan-differential-report.json
+            src/rust/target/host-sniffer-differential-report.json
           if-no-files-found: ignore
       - name: Save Cargo downloads after all checks
         if: success() && steps.cargo-downloads.outputs.cache-hit != 'true'
@@ -155,7 +155,7 @@ jobs:
         if: success() && steps.cargo-debug.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
-          path: rust/target/debug
+          path: src/rust/target/debug
           key: ${{ steps.cache-identity.outputs.build_key }}
       - name: Record bounded cache evidence
         if: always()
