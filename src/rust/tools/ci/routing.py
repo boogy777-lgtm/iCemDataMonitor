@@ -10,8 +10,8 @@ import subprocess
 
 COMPONENTS = ('legacy', 'rust', 'packaging')
 RULES_PATH = Path(__file__).with_name('routing-rules.json')
-LEDGER_PATH = 'rust/migration/legacy-divergences.json'
-MANIFEST_PATH = 'rust/migration/source-manifest.json'
+LEDGER_PATH = 'src/rust/migration/legacy-divergences.json'
+MANIFEST_PATH = 'src/rust/migration/source-manifest.json'
 # These small JSON metadata documents are currently below 128 KiB each.
 METADATA_LIMIT = 1024 * 1024
 

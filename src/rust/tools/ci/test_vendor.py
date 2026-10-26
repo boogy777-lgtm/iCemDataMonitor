@@ -9,8 +9,8 @@ import sys
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[3]
-VENDOR = Path('rust/third-party/rust_opc')
+ROOT = Path(__file__).resolve().parents[4]
+VENDOR = Path('src/rust/third-party/rust_opc')
 
 
 class VendorTests(unittest.TestCase):

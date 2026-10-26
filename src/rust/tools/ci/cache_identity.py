@@ -12,31 +12,31 @@ import tomllib
 # Hash the actual command owners, including their common pre-restore guards.
 COMMON_SCAFFOLD_INPUTS = (
     '.github/workflows/rust-migration.yml',
-    'rust/tools/Verify-Scaffold.ps1',
-    'rust/tools/Verify-ScaffoldInputs.ps1',
-    'rust/tools/Test-BaselineGuard.ps1',
-    'rust/tools/Test-WindowsPackaging.ps1',
-    'rust/tools/Verify-Baseline.ps1',
-    'rust/tools/Test-DesktopMappingGuard.ps1',
-    'rust/tools/Verify-DesktopMapping.ps1',
-    'rust/tools/Test-OpcDaInterop.ps1',
-    'rust/tools/acceptance/windows_counterparts.py',
-    'rust/tools/acceptance/windows-counterparts.json',
-    'rust/tools/acceptance/windows-asyncua.requirements.txt',
-    'rust/tools/acceptance/mosquitto-no-tls.cmake',
-    'rust/tools/acceptance/nplus1_mqtt_broker.py',
-    'rust/tools/acceptance/nplus1_opcua_client.py',
-    'rust/tests/opc-da-interop/upstream.json',
-    'rust/tests/opc-da-interop/sta_client.cpp',
-    'rust/tests/opc-da-interop/opcda.idl',
-    'rust/tests/opc-da-interop/opccomn.idl',
-    'rust/tools/ci/cache_identity.py',
-    'rust/tools/ci/cache_contract.py',
-    'rust/third-party/rust_opc/verify.py',
-    'rust/third-party/rust_opc/upstream-files.sha256.json',
+    'src/rust/tools/Verify-Scaffold.ps1',
+    'src/rust/tools/Verify-ScaffoldInputs.ps1',
+    'src/rust/tools/Test-BaselineGuard.ps1',
+    'src/rust/tools/Test-WindowsPackaging.ps1',
+    'src/rust/tools/Verify-Baseline.ps1',
+    'src/rust/tools/Test-DesktopMappingGuard.ps1',
+    'src/rust/tools/Verify-DesktopMapping.ps1',
+    'src/rust/tools/Test-OpcDaInterop.ps1',
+    'src/rust/tools/acceptance/windows_counterparts.py',
+    'src/rust/tools/acceptance/windows-counterparts.json',
+    'src/rust/tools/acceptance/windows-asyncua.requirements.txt',
+    'src/rust/tools/acceptance/mosquitto-no-tls.cmake',
+    'src/rust/tools/acceptance/nplus1_mqtt_broker.py',
+    'src/rust/tools/acceptance/nplus1_opcua_client.py',
+    'src/rust/tests/opc-da-interop/upstream.json',
+    'src/rust/tests/opc-da-interop/sta_client.cpp',
+    'src/rust/tests/opc-da-interop/opcda.idl',
+    'src/rust/tests/opc-da-interop/opccomn.idl',
+    'src/rust/tools/ci/cache_identity.py',
+    'src/rust/tools/ci/cache_contract.py',
+    'src/rust/third-party/rust_opc/verify.py',
+    'src/rust/third-party/rust_opc/upstream-files.sha256.json',
 )
 DOWNLOAD_PATHS = ('registry/index', 'registry/cache', 'registry/src', 'git/db', 'git/checkouts')
-BUILD_PATH = 'rust/target/debug'
+BUILD_PATH = 'src/rust/target/debug'
 NATIVE_OVERRIDE_FAMILIES = frozenset({
     'CC', 'CXX', 'AR', 'RANLIB', 'RC', 'CFLAGS', 'CXXFLAGS', 'ARFLAGS',
     'RANLIBFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CC_MASM_ASM', 'CXXSTDLIB', 'CXXSTDLIB_STATIC',
@@ -57,13 +57,13 @@ def reject_overrides(env):
 
 def digest_inputs(root, cargo_home):
     paths = set(COMMON_SCAFFOLD_INPUTS)
-    paths.update(('rust/Cargo.toml', 'rust/Cargo.lock', 'rust/rust-toolchain.toml'))
-    for directory, children, files in os.walk(root / 'rust'):
+    paths.update(('src/rust/Cargo.toml', 'src/rust/Cargo.lock', 'src/rust/rust-toolchain.toml'))
+    for directory, children, files in os.walk(root / 'src/rust'):
         children[:] = sorted(name for name in children if name not in ('target', 'node_modules', '.git', 'dist'))
         if 'Cargo.toml' in files:
             paths.add((Path(directory) / 'Cargo.toml').relative_to(root).as_posix())
     # Cargo discovers config in the invocation directory and every ancestor.
-    configs = [parent / '.cargo' / name for parent in (root / 'rust', root, *root.parents)
+    configs = [parent / '.cargo' / name for parent in (root / 'src/rust', root, *root.parents)
                for name in ('config', 'config.toml')]
     configs.extend(cargo_home / name for name in ('config', 'config.toml'))
     for path in configs:
@@ -90,7 +90,7 @@ def identity(root, cargo_home, env, compiler, cargo, source):
         raise ValueError('Expected exact source SHA')
     inputs_digest = digest_inputs(root, cargo_home)
     pin = re.search(r'(?m)^channel\s*=\s*"(\d+\.\d+\.\d+)"',
-                    (root / 'rust/rust-toolchain.toml').read_text())
+                    (root / 'src/rust/rust-toolchain.toml').read_text())
     if not pin or not compiler.startswith('rustc ' + pin[1] + ' '):
         raise ValueError('Compiler differs from exact stable pin')
     host = re.search(r'(?m)^host: (.+)$', compiler)
@@ -117,10 +117,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True)
     args = parser.parse_args()
-    root = Path(__file__).resolve().parents[3]
+    root = Path(__file__).resolve().parents[4]
     cargo_home = Path(os.environ.get('CARGO_HOME', str(Path.home() / '.cargo'))).resolve()
     def version(command):
-        return subprocess.check_output(command, cwd=root / 'rust', text=True).strip()
+        return subprocess.check_output(command, cwd=root / 'src/rust', text=True).strip()
     result = identity(root, cargo_home, os.environ, version(['rustc', '--version', '--verbose']),
                       version(['cargo', '--version']), os.environ.get('GITHUB_SHA', ''))
     Path(args.output).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
