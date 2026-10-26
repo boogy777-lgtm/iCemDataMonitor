@@ -887,11 +887,11 @@
     {
       "path": "docs/install.md",
       "baseline_blob_sha1": "84ec4832c8e545fcf77ea171fe3868f76242c770",
-      "approved_blob_sha1": "8c29f3dbfe4158e48a40e494df4e960e37e02bab",
+      "approved_blob_sha1": "c3d350a56202b1abc7089375669794271cd68388",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
-        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent installer lifecycle repair: Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
       },
       "operation": "modify"
     },
@@ -1132,6 +1132,48 @@
         "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
       },
       "operation": "modify"
+    },
+    {
+      "path": "installer/Product.wxs",
+      "baseline_blob_sha1": "b5931fca85372b1c47546548370393f9fe5a9fd6",
+      "operation": "modify",
+      "approved_blob_sha1": "b3da3b7ec95e6c1e7307b9798406973bc0cac789",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
+      }
+    },
+    {
+      "path": "installer/build-msi.ps1",
+      "baseline_blob_sha1": "d057ca637febb604b7dd3b970e98bf9118ee9e45",
+      "operation": "modify",
+      "approved_blob_sha1": "3913c818c4e5099b830d9a6af4af2c70f6f78e97",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
+      }
+    },
+    {
+      "path": "installer/assets/CheckConflicts.js",
+      "baseline_blob_sha1": "e135cc8127ee486d380cf3de8a83a137c0c10725",
+      "operation": "delete",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
+      }
+    },
+    {
+      "path": "installer/assets/CheckConflicts.harness.js",
+      "baseline_blob_sha1": "3e98d287fed3f6a083909f70cef60f9dc7951453",
+      "operation": "delete",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
+      }
     }
   ]
 }
