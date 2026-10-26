@@ -10,7 +10,7 @@ if (-not $IsWindows -or ($env:GITHUB_ACTIONS -ne 'true' -and -not $AllowMachineC
 $Root = Split-Path $PSScriptRoot -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
-if (-not $RepositoryRoot) { $RepositoryRoot = Split-Path $Root -Parent }
+if (-not $RepositoryRoot) { $RepositoryRoot = Split-Path (Split-Path $Root -Parent) -Parent }
 if (-not $BinaryDirectory) { $BinaryDirectory = Join-Path $Root 'target/x86_64-pc-windows-msvc/release' }
 $Policy = Read-WindowsInstallerPolicy
 $Msi = (Resolve-Path -LiteralPath $Msi).Path

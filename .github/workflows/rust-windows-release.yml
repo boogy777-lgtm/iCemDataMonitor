@@ -93,7 +93,7 @@ jobs:
         run: |
           if ($env:ADDIN_RUN_ID) {
             Import-Module ./installer/LegacyAddin.psm1 -Force
-            $Bundle = Test-LegacyAddinBundle (Join-Path $env:RUNNER_TEMP 'icem-addin') (Split-Path $PWD -Parent)
+            $Bundle = Test-LegacyAddinBundle (Join-Path $env:RUNNER_TEMP 'icem-addin') $env:GITHUB_WORKSPACE
             if ($Bundle.source_commit -cne $env:ICEM_ADDIN_SOURCE_COMMIT) { throw 'AddIn manifest commit differs from SDK workflow run' }
             ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION -AddinDirectory (Join-Path $env:RUNNER_TEMP 'icem-addin')
           } else {
@@ -101,11 +101,11 @@ jobs:
           }
       - name: Smoke test extracted release outside checkout
         run: |
-          $Archive = Join-Path (Split-Path $PWD -Parent) "dist/src/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
+          $Archive = Join-Path $env:GITHUB_WORKSPACE "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
           ./tools/Test-WindowsRelease.ps1 -Archive $Archive
       - name: Install N, upgrade N+1, reject downgrade and uninstall MSI
         run: |
-          $Msi = Join-Path (Split-Path $PWD -Parent) "dist/src/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"
+          $Msi = Join-Path $env:GITHUB_WORKSPACE "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"
           ./tools/Test-WindowsMsiUpgrade.ps1 -Msi $Msi
       - name: Browser contracts against the extracted release EXE
         env:
@@ -122,8 +122,8 @@ jobs:
         with:
           name: windows-x64-release
           path: |
-            dist/src/rust/*.msi
-            dist/src/rust/*.msi.sha256
+            dist/rust/*.msi
+            dist/rust/*.msi.sha256
           if-no-files-found: error
       - name: Upload release evidence
         if: always()
@@ -165,7 +165,7 @@ jobs:
           $Private = & gh repo view $env:GITHUB_REPOSITORY --json isPrivate --jq .isPrivate
           if ($LASTEXITCODE -ne 0 -or $Private -ne 'true') { throw 'This workflow publishes only inside the existing private repository.' }
           $Name = "iCemDataMonitor-rust-dev-$env:RELEASE_VERSION-windows-x64.msi"
-          $Msi = Join-Path $PWD "dist/src/rust/$Name"
+          $Msi = Join-Path $PWD "dist/rust/$Name"
           $Checksum = "$Msi.sha256"
           if ((Get-Content -Raw -LiteralPath $Checksum).Split(' ')[0] -ine (Get-FileHash -LiteralPath $Msi).Hash) { throw 'Downloaded MSI checksum mismatch' }
           $Notes = "Windows x64 Rust development installer. Source: $env:GITHUB_SHA. Installation, N to N+1 upgrade, downgrade rejection, uninstall, executable smoke and browser contracts passed in Actions run $env:GITHUB_RUN_ID. Hardware/UI equivalence and production cutover remain open. Unsigned development candidate with verified net48 AddIn. Legacy .NET MSI cutover is blocked."
