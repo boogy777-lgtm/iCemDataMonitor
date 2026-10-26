@@ -1,5 +1,10 @@
 # C6 / L05: единственный захват legacy bus
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 ## Class / Inv / N+1 (решение до изменения кода)
 
 Class: acquisition — отдельный BackgroundService в Data; publication — неизменяемый coherent record + Volatile reference; consumers — только ILatestBusState. BusReader сохраняет файловый lifecycle, sticky ACL policy, memcpy/decode под mutex и C5 owned immutable arrays.

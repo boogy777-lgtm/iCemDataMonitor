@@ -1,5 +1,11 @@
 # Web development-инкремент
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Порядок пользователя: **web server → emulator → tray**. Desktop backend — GPUI.
 Web frontend выбран прежний HTML/CSS/JS: 4 dashboard assets неизменны; в index.html
 исправлены только инверсия темы D16 и разбор trailer D17. Assets embedded в Rust EXE. Ни controls, ни CSS, ни chart renderer, ни SVG иконки не перерисовываются.

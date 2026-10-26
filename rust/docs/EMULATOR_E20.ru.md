@@ -1,5 +1,11 @@
 # E20 — типизированные данные ответов emulator
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База E19: c1c4c0daf2addc59d517e853d4a8faa3a0ba5922 / tree
 8b70979f512a5e0daeac3025a6d4a97d3d4199c9. Во время работы отдельно слит PR16,
 main 8f835aaf148ce0a120503d2a9a5884b8d778e606: только MetricsSamplerTests harness

@@ -1,5 +1,10 @@
 # C8 / L10–L11 — lifecycle Modbus и владельцы Host IPC
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 ## Статус и исходные данные
 
 План до существенного кода, по L10/L11 документа `b973e50ca5853f3804ace7853183a9f3bc94ec92:docs/LEGACY_REFACTORING_PLAN.ru.md`. Проверен исходный tree C7 `eb45dc58342e8f22cbd37ef3ee6a25dd0a141bfe`. Первый checkpoint содержал только документ, без production/tests, restore/build/tests. После green merge C7 план перенесён на фактический main `8dd9dccf207b6d67be79dc0e4fa26f92a7c11223`; реализация отдельно разрешена. Исходные решения ниже сохранены как план до кода, фактическая реализация и проверки описаны в конце.

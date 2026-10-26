@@ -4,7 +4,7 @@
 
 - Канонический путь: `C:\ProgramData\Halliburton\iCem\DataMonitoring\config.ini`.
 - **В MSI не входит**: host создаёт файл при первом запуске (UTF-8 с BOM) с точными дефолтами; дефолты в коде (`IniOptions`) — единственный источник истины.
-- Деинсталляция MSI стирает папку вместе с `config.ini`; апгрейд — сохраняет (см. [install.md](install.md)).
+- Rust MSI сохраняет пользовательские config/data/logs при удалении и апгрейде (см. [install.md](install.md)).
 
 ## Закон read-once (горячей перезагрузки нет)
 
@@ -19,10 +19,10 @@ Host читает `config.ini` **один раз при старте**. Прав
 | Ключ | Дефолт | Смысл | Рестарт |
 |---|---|---|---|
 | `modbus_on` | `1` | Включает ModbusTcpPublisher на `:modbus_port` (чекбокс в shell = runtime start/stop) | да |
-| `web_on` | `1` | Включает Kestrel SPA-дашборд на `:web_port` (SPA + gRPC-Web + `/api/regs/history` + кольцевой сэмплер 1 Гц). OPTIONAL: отсутствует ⇒ 1 (старый файл получает дашборд, не теряет). При `0` ops-поверхность `/api/status*`, `/api/regs` всё равно обслуживается | да |
-| `lansniffer_on` | `1` | Регистрирует AceSnifferService → LanBusSink (в v5 sink отложен — записей в шину нет) | да |
-| `opcda_on` | `0` | Заглушка: OPC DA — внешняя проекция, in-process слоя нет (чекбокс серый) | да |
-| `web_remote_on` | `0` | `0` = привязка `:web_port` только loopback; `1` = ListenAnyIp (закрытый контур, правило firewall — шаг runbook) | да |
+| `web_on` | `1` | Включает SPA-дашборд Rust Host на `:web_port` (SPA + gRPC-Web + `/api/regs/history` + кольцевой сэмплер 1 Гц). OPTIONAL: отсутствует ⇒ 1 (старый файл получает дашборд, не теряет). При `0` ops-поверхность `/api/status*`, `/api/regs` всё равно обслуживается | да |
+| `lansniffer_on` | `1` | Включает пассивную ACE диагностику Host; MMF не пишет | да |
+| `opcda_on` | `0` | Legacy toggle остаётся external no-op; Rust OPC DA sidecar включается отдельным startup JSON | да |
+| `web_remote_on` | `0` | `0` = привязка `:web_port` только loopback; `1` = доступ на всех интерфейсах (закрытый контур, правило firewall — шаг runbook) | да |
 | `modbus_port` | `502` | Порт Modbus TCP ([1..65535]) | да |
 | `web_port` | `8090` | Порт веб-дашборда ([1..65535]) | да |
 | `mmf_name` | `Global\iCemDataMonitorBus_v1` | Имя memory-mapped file шины | да |
@@ -33,15 +33,26 @@ Host читает `config.ini` **один раз при старте**. Прав
 
 **Каноническая таблица всех ключей и retired-ключей — [specs/dotnet-server/Э5_config.csv](../specs/dotnet-server/Э5_config.csv).** Там же перечислены retired-ключи (`com_port`, `com_base/com_len`, `lan_base/lan_len`, `raw_base/raw_len`, `emule_on`): они принимаются, но игнорируются (никогда не фатальны) и больше не записываются при сохранении — не возвращать.
 
-Парсер строгий: синтаксис, неизвестные/дублирующиеся/пропущенные ключи, нечисловые значения, диапазоны (порты, `modbus_tick_ms`, `total`, чётность длин зон для float32 CDAB, непересечение зон) — любое нарушение даёт `IniConfigException` со списком всех нарушений.
+Парсер строгий: синтаксис, неизвестные/дублирующиеся/пропущенные ключи, нечисловые значения, диапазоны (порты, `modbus_tick_ms`, `total`, геометрия фиксированных зон) — любое нарушение даёт диагностическую ошибку запуска со списком всех нарушений.
 
 ## emule_config.xml (кратко)
 
 - Путь: `C:\ProgramData\Halliburton\iCem\DataMonitoring\emule_config.xml`.
-- Создаётся **приложением iCemEmulator** (не host'ом); host его не пишет и не управляет эмулятором.
+- Создаётся **независимым emulator** (не host'ом); host его не пишет и не управляет эмулятором.
 - Читается эмулятором **при старте** (один раз); все тумблеры эмуляции (например, `ComEnabled`/`LanEnabled`) по умолчанию **OFF** — свежесозданный файл ничего не стримит; потоки стартуют только при явном включении в файле.
-- Стёрт деинсталляцией MSI вместе с папкой (см. [install.md](install.md)).
+- Пользовательский файл сохраняется при деинсталляции Rust MSI (см. [install.md](install.md)).
 
 ## Data.dat и mmf_name
 
-Шина данных — memory-mapped file с именем `mmf_name` (`Global\iCemDataMonitorBus_v1`), файловая подложка — `mmf_path` (`Data.dat`). AddIn внутри iCem.exe — единственный писатель шины (CreateFromFile на `Data.dat`); host и CLI — читатели. Геометрия зон — compile-time (`BusLayout`), `total` — runtime-данные. Wire-формат регистров см. [architecture.md](architecture.md) и [../PROTOCOL.md](../PROTOCOL.md).
+Шина данных — memory-mapped file с именем `mmf_name` (`Global\iCemDataMonitorBus_v1`), файловая подложка — `mmf_path` (`Data.dat`). AddIn внутри iCem.exe — единственный писатель шины (CreateFromFile на `Data.dat`); Host — reader, CLI получает данные через Host. Геометрия зон — compile-time (`BusLayout`), `total` — runtime-данные. Wire-формат регистров см. [architecture.md](architecture.md) и [../PROTOCOL.md](../PROTOCOL.md).
+
+## Текущее Rust расширение
+
+Один MMF acquisition работает каждые 200 мс; `modbus_tick_ms` управляет только
+зеркалом. MQTT, OPC UA и OPC DA используют общий snapshot и отдельные startup
+JSON configs, передаваемые `--mqtt-config`, `--opcua-config`, `--opc-da-config`.
+[MQTT profile](../rust/docs/MQTT_P6.ru.md), [UA profile](../rust/docs/OPCUA_P7A.ru.md),
+[DA profile](../rust/docs/OPCDA_P7B.ru.md). Не менять legacy `opcda_on` на
+неявный sidecar launch. Read-once сохраняется; повреждённый файл не затирается.
+Emulator COM через внешнюю пару com0com не требует удалённых Tee/admin wrappers.
+[Текущее состояние](../rust/docs/NPLUS1_TRACKER.ru.md), [retirement C11](LEGACY_REFACTORING_C11.ru.md).

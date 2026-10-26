@@ -1,5 +1,11 @@
 # E13 — управляемая видимость консоли и Ctrl+C
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База: PR #8 слит по команде пользователя, main
 `cf6bc282429f8732d279b93d67e9e44bf9a8659c`, tree
 `79770936ce08b63dfbb329f0bad2122779d4ad82` совпадает с head #8.

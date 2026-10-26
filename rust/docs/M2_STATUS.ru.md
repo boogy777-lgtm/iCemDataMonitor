@@ -1,5 +1,11 @@
 # M2: Windows MMF, INI и живой development host
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Инкремент от 2026-10-16, Rust 1.99.1 / Edition 2024. M2 выполнен частично.
 Исходные .NET проекты и AddIn не меняются. Контракты взяты из pinned baseline:
 BusMapping/BusReader, IniSchema/IniOptions/IniConfig и ModbusTcpPublisher.

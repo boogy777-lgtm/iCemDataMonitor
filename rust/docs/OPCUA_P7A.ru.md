@@ -1,5 +1,14 @@
 # P7a: read-only OPC UA consumer
 
+**Текущий статус, 26 октября 2026:** согласованный software scope и N+1 v1.7
+реализованы; [tracker](NPLUS1_TRACKER.ru.md) содержит точные checkpoints.
+Hardware/operator/visual/real SDK/release acceptance и production cutover
+проверяются отдельно. Слияние C11 требует полного Windows CI exact head; verdict — в
+[PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Ниже сохранены исторические критерии/инкрементальные facts: старые NEXT/PARTIAL
+не являются текущим coding backlog. [Retirement C11](../../docs/LEGACY_REFACTORING_C11.ru.md):
+21 dormant route RETIRED, active OpenAPI неизменён; com0com driver KEEP.
+
 Отдельный `apps/host/src/opcua_consumer/` использует настоящий OPC UA Binary/TCP
 server FreeOpcUa async-opcua 0.19.0. В Host добавлены только optional typed config
 и registration `opcua` в existing lifecycle registry. Reader/core, MQTT, Modbus,

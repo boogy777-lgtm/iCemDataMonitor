@@ -1,5 +1,11 @@
 # Host E10: пассивный capture owner
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База main: `1f205c1abfdef187821235bd5c37aa085aa6f415` (merge PR #5).
 Rust push CI 39093573051 SUCCESS; legacy push CI 39093573086 FAILURE на sampler
 и console-show тестах. E10 не меняет legacy. PR #4 `rust/windows-release`

@@ -1,5 +1,11 @@
 # Host E8: фактические пробелы после E7
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Проверена база main `a38d372911fa6972f9620a458588023141e6ef13`.
 Development EXE не является production/MSI replacement. Полная parity не доказана.
 

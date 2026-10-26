@@ -1,5 +1,11 @@
 # CI-2b / D55: synthetic register mirror fixture и CI diagnostics
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Scope: отдельный prerequisite CI-1 поверх CI-2a/D54. Production .NET, Rust
 runtime, baseline manifest, frozen proto/SPA, toolchain и зависимости не меняются.
 E23 и ensure-host не входят в изменение.

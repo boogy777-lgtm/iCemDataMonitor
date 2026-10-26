@@ -1,5 +1,10 @@
 # C5 / L03 — owned immutable BusSnapshot
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 ## До изменений
 
 Class: BusSnapshot — опубликованное point-in-time значение; BusReader копирует MMF под mutex, потребители декодируют вне mutex. Public ushort[] Words позволял менять уже опубликованное значение через constructor alias, свойство и record with.

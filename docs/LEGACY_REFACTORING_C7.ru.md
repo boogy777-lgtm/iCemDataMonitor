@@ -1,5 +1,10 @@
 # C7 / L09 — повторное использование ограниченного файлового журнала
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 ## Class / Inv / N+1
 
 Class: управляемые диагностические журналы с явно известным владельцем и путём. Данные Data.dat, конфигурация, шаблоны, триггеры и DEBUG-пробы не входят в этот класс.

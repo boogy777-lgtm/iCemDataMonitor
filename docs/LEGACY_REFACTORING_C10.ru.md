@@ -1,5 +1,10 @@
 # C10 / L14–L15 — удаление dormant v1: план и implementation evidence
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 ## Текущий статус реализации / 2026-10-23
 
 C10 реализован после фактического merge C9: main

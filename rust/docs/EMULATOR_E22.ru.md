@@ -1,5 +1,11 @@
 # E22 — встроенный emulator --selftest
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Источники: pinned `iCemEmule.Core/SelfTest/FrameRoundTrip.cs` (T1–T20),
 `CommandChannelTests.cs` (T21–T26), dispatch `iCemEmulator/Program.cs` и
 `Control/EmulatorAppContract.cs`. .NET sources/source-manifest/ledger не менялись.

@@ -1,5 +1,11 @@
 # D22c — кодировки файлов каталогов Host и emulator
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Корректные operator-edited каталоги в UTF-16/32 с BOM теперь читаются теми
 путями Rust, для которых исходный .NET использует `File.ReadAllText`.
 Вместо отдельного декодера в каждом загрузчике используется прежний механизм

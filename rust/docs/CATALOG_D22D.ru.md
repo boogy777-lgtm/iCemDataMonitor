@@ -1,5 +1,11 @@
 # D22d — Unicode-идентичность имён emulator
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Ссылка `ДАВЛЕНИЕ` теперь находит registry variable `Давление`, а команды
 выбора профиля, чтения и изменения переменной используют ту же идентичность.
 Исходное написание имени сохраняется в ответах и каталоге. Исправлен также

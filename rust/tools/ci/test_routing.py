@@ -47,6 +47,13 @@ class RoutingTests(unittest.TestCase):
             'iCemDataMonitor.Host/wwwroot/main.css': routing.COMPONENTS,
             'Directory.Build.targets': routing.COMPONENTS,
             'README.md': (), 'rust/docs/CI_CD.ru.md': (), 'docs/development.md': (),
+            'docs/images/software-architecture.svg': (),
+            'docs/images/next-architecture.svg': (),
+            'docs/images/new.binary': routing.COMPONENTS,
+            'docs/images/new.ps1': routing.COMPONENTS,
+            'docs/runtime/new.svg': routing.COMPONENTS,
+            'assets/new.svg': routing.COMPONENTS,
+            'rust/assets/new.svg': ('rust', 'packaging'),
             'rust/docs/new.binary': ('rust', 'packaging'),
             'docs/new.binary': routing.COMPONENTS,
             'NewProject/New.csproj': routing.COMPONENTS,
@@ -58,6 +65,8 @@ class RoutingTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(routing.classify([path]), {c: str(c in selected).lower() for c in routing.COMPONENTS})
         self.assertEqual(routing.classify(['rust/README.md', 'iCemDataMonitor.Core/New.cs', 'rust/apps/new.rs']), dict.fromkeys(routing.COMPONENTS, 'true'))
+        self.assertEqual(routing.categories('docs/images/software-architecture.svg'), {'documentation'})
+        self.assertEqual(routing.categories('docs/images/next-architecture.svg'), {'documentation'})
         self.assertEqual(routing.categories('rust/crates/icem-bus/src/lib.rs'), {'rust', 'shared-contracts'})
         self.assertEqual(routing.categories('installer/Product.wxs'), {'legacy', 'packaging'})
         self.assertEqual(routing.categories('rust/migration/source-manifest.json'), {'rust', 'shared-contracts', 'infrastructure'})

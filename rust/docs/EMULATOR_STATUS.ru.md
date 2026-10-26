@@ -1,5 +1,11 @@
 # Эмулятор — вычислительная основа и dev preview
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Rust 1.99.1 / Edition 2024. Первый рабочий инкремент этапа emulator; не полный M5.
 Порядок пользователя остаётся web → emulator → tray. Desktop UI должен быть GPUI
 с исходными Mac/Apple custom controls, которые перечислены в desktop-ui-inventory.json.

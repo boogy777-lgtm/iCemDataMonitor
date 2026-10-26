@@ -1,5 +1,14 @@
 # Проверка миграции Rust
 
+**Текущий статус, 26 октября 2026:** согласованный software scope и N+1 v1.7
+реализованы; [tracker](NPLUS1_TRACKER.ru.md) содержит точные checkpoints.
+Hardware/operator/visual/real SDK/release acceptance и production cutover
+проверяются отдельно. Слияние C11 требует полного Windows CI exact head; verdict — в
+[PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Ниже сохранены исторические критерии/инкрементальные facts: старые NEXT/PARTIAL
+не являются текущим coding backlog. [Retirement C11](../../docs/LEGACY_REFACTORING_C11.ru.md):
+21 dormant route RETIRED, active OpenAPI неизменён; com0com driver KEEP.
+
 План Б от 2026-10-16: workspace находится в `rust/` исходного приватного репозитория.
 Исходные .NET-файлы сохраняются в корне, второй копии в `rust/` нет.
 Baseline привязан к `96e2206562c9389d1543095232115d81eae4b692`; manifest содержит все 513 исходных файлов.

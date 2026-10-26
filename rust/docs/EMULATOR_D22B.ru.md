@@ -1,5 +1,11 @@
 # D22b — COM catalog recovery и явная Rust validation
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Evidence: pinned `iCemEmule.Core/Core/TemplateCatalog.cs`: discovery, DTO, valid
 resolution, fallback и внешние результаты. Изменены только rust/ implementation,
 tests/docs. .NET, CI, deps/lints/unsafe policy и D22a implementation прежние.

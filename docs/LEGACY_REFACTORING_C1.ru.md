@@ -1,5 +1,10 @@
 # Legacy C1: единая конфигурация запуска Host
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 23 октября 2026. Отдельный инкремент C#/.NET по C1/L01 из
 [legacy-плана в PR №29](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/29).
 База: `4578ab57266b7d25aed82df41c6276597a270c1e`.

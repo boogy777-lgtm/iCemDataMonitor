@@ -1,5 +1,11 @@
 # Трекер выполнения плана N+1 v1.7
 
+Текущее согласованное software implementation завершено. Последующий
+[C11 retirement](../../docs/LEGACY_REFACTORING_C11.ru.md) сохраняет эти N+1
+контракты; его final-head CI verdict фиксируется в
+[PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Ниже — доказательства N+1 на названных checkpoints, не результаты будущих heads.
+
 Обновлено: 26 октября 2026. Публикация: [PR43](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/43).
 Исполнение: последовательно GPT-6.1 Sol, effort medium. Это трекер данного
 N+1-плана, а не всей миграции .NET → Rust.

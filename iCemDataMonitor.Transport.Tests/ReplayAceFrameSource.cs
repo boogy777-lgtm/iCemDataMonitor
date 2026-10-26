@@ -2,7 +2,6 @@ namespace iCemDataMonitor.Transport.Tests;
 
 /// <summary>
 /// Test IAceFrameSource that replays frames from a pcapng file.
-/// Matches the ISerialPort test seam pattern.
 /// Use the PcapCapture constructor for unit tests that don't need a real file.
 /// </summary>
 public sealed class ReplayAceFrameSource : IAceFrameSource

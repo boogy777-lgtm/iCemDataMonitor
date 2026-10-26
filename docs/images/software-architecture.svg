@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140" role="img" aria-labelledby="title desc">
+<title id="title">Архитектура iCemDataMonitor: COM и LAN, iCem/AddIn, MMF и Rust Host</title>
+<desc id="desc">Реальные COM/FLECS и LAN/ACE источники либо отдельный эмулятор через com0com и Npcap поступают во внешний legacy iCem. AddIn .NET48 является единственным писателем MMF. Rust Host читает MMF одним acquisition с периодом 200 мс и публикует неизменяемый Arc Snapshot для Modbus, MQTT, OPC UA и OPC DA sidecar. Web, GPUI Shell и CLI используют API Host. Пассивный LAN sniffer не пишет MMF.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker></defs>
+<rect width="1600" height="1140" fill="#f5f8fc"/>
+<g font-family="DejaVu Sans, Arial, sans-serif">
+<text x="50" y="58" font-size="39" fill="#12263f" font-weight="700" text-anchor="start">iCemDataMonitor</text>
+<text x="50" y="98" font-size="24" fill="#475569" font-weight="400" text-anchor="start">Источники данных → общая MMF → промышленные протоколы</text>
+<text x="50" y="143" font-size="15" fill="#52677f" font-weight="600" text-anchor="start">COM И LAN — НЕЗАВИСИМЫЕ ВХОДЫ   /   ОДИН ПИСАТЕЛЬ MMF   /   ОБЩИЙ СНИМОК</text>
+<rect x="50" y="220" width="310" height="220" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="50" y="240" width="5" height="180" rx="2" fill="#0e8f73"/>
+<text x="72" y="255" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">Входы iCem</text>
+<text x="72" y="288" font-size="19" fill="#334155" font-weight="400" text-anchor="start">COM / FLECS</text>
+<text x="72" y="317" font-size="19" fill="#334155" font-weight="400" text-anchor="start">LAN / ACE</text>
+<text x="72" y="346" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Оборудование или стенд</text>
+<rect x="430" y="220" width="310" height="220" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<text x="452" y="259" font-size="27" fill="#12263f" font-weight="600" text-anchor="start">Legacy iCem</text>
+<text x="452" y="291" font-size="20" fill="#334155" font-weight="400" text-anchor="start">Приём COM и LAN</text>
+<line x1="452" y1="313" x2="718" y2="313" stroke="#e2e8f0"/>
+<text x="452" y="350" font-size="25" fill="#12263f" font-weight="600" text-anchor="start">AddIn (.NET48)</text>
+<text x="452" y="383" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Единственный писатель</text>
+<text x="452" y="412" font-size="19" fill="#334155" font-weight="400" text-anchor="start">общей MMF</text>
+<rect x="810" y="220" width="290" height="220" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="810" y="240" width="5" height="180" rx="2" fill="#b45309"/>
+<text x="832" y="255" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">MMF / Data.dat</text>
+<text x="832" y="288" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Layout v5</text>
+<text x="832" y="317" font-size="19" fill="#334155" font-weight="400" text-anchor="start">COM · LAN · RAW</text>
+<text x="832" y="346" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Типы и исходные биты</text>
+<rect x="1170" y="220" width="380" height="220" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="1170" y="240" width="5" height="180" rx="2" fill="#0b63ce"/>
+<text x="1192" y="255" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">Rust Host</text>
+<text x="1192" y="288" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Один acquisition · 200 мс</text>
+<text x="1192" y="317" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Неизменяемый Arc&lt;Snapshot&gt;</text>
+<text x="1192" y="346" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Общая публикация данных</text>
+<path d="M368 330 H420" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M748 330 H800" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M1108 330 H1160" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+<text x="782" y="190" font-size="15" fill="#64748b" font-weight="400" text-anchor="middle">запись</text>
+<text x="1135" y="190" font-size="15" fill="#64748b" font-weight="400" text-anchor="middle">чтение</text>
+<rect x="50" y="550" width="690" height="440" rx="22" fill="#eaf7f3" stroke="#b7ddd0" stroke-width="1.5"/>
+<text x="78" y="588" font-size="17" fill="#0b7059" font-weight="600" text-anchor="start">ОТДЕЛЬНОЕ ПРИЛОЖЕНИЕ ДЛЯ СТЕНДА</text>
+<rect x="78" y="660" width="225" height="180" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="78" y="680" width="5" height="140" rx="2" fill="#0e8f73"/>
+<text x="100" y="695" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">Эмулятор</text>
+<text x="100" y="728" font-size="19" fill="#334155" font-weight="400" text-anchor="start">COM / FLECS</text>
+<text x="100" y="757" font-size="19" fill="#334155" font-weight="400" text-anchor="start">LAN / ACE</text>
+<text x="100" y="786" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Rust / legacy .NET</text>
+<rect x="360" y="625" width="310" height="105" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="360" y="645" width="5" height="65" rx="2" fill="#0e8f73"/>
+<text x="382" y="660" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">com0com</text>
+<text x="382" y="693" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Внешняя пара COM-портов</text>
+<rect x="360" y="785" width="310" height="105" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="360" y="805" width="5" height="65" rx="2" fill="#0e8f73"/>
+<text x="382" y="820" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">Npcap</text>
+<text x="382" y="853" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Отправка raw ACE-кадров</text>
+<path d="M311 710 H330 V677 H350" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M311 790 H330 V837 H350" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M678 677 H710 V500 H205 V450" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M678 837 H710 V677" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="340" y="487" font-size="18" fill="#0b7059" font-weight="400" text-anchor="start">Тестовые входы iCem</text>
+<text x="78" y="939" font-size="18" fill="#0b7059" font-weight="400" text-anchor="start">Порты и адаптер выбираются в эмуляторе.</text>
+<text x="78" y="968" font-size="18" fill="#0b7059" font-weight="400" text-anchor="start">Host не запускает и не останавливает эмулятор.</text>
+<rect x="810" y="550" width="740" height="440" rx="22" fill="#edf4ff" stroke="#c3d7f5" stroke-width="1.5"/>
+<text x="838" y="588" font-size="17" fill="#1456a3" font-weight="600" text-anchor="start">ПРОТОКОЛЫ И КЛИЕНТЫ HOST</text>
+<path d="M1360 450 V490 H1180 V540" fill="none" stroke="#64748b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="838" y="620" width="320" height="105" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="838" y="640" width="5" height="65" rx="2" fill="#0b63ce"/>
+<text x="860" y="655" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">Modbus TCP</text>
+<text x="860" y="688" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Read / write mirror</text>
+<rect x="1198" y="620" width="320" height="105" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="1198" y="640" width="5" height="65" rx="2" fill="#0b63ce"/>
+<text x="1220" y="655" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">MQTT</text>
+<text x="1220" y="688" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Publisher → broker</text>
+<rect x="838" y="750" width="320" height="105" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="838" y="770" width="5" height="65" rx="2" fill="#0b63ce"/>
+<text x="860" y="785" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">OPC UA</text>
+<text x="860" y="818" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Read-only server</text>
+<rect x="1198" y="750" width="320" height="105" rx="18" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<rect x="1198" y="770" width="5" height="65" rx="2" fill="#0b63ce"/>
+<text x="1220" y="785" font-size="23" fill="#12263f" font-weight="600" text-anchor="start">OPC DA sidecar</text>
+<text x="1220" y="818" font-size="19" fill="#334155" font-weight="400" text-anchor="start">Отдельный COM-процесс</text>
+<rect x="838" y="880" width="680" height="68" rx="12" fill="#fff" stroke="#c3d7f5" stroke-width="1.5"/>
+<text x="859" y="909" font-size="21" fill="#12263f" font-weight="600" text-anchor="start">Web dashboard · GPUI Shell / tray · CLI</text>
+<text x="859" y="934" font-size="17" fill="#334155" font-weight="400" text-anchor="start">Клиентский доступ через API Host</text>
+<text x="838" y="972" font-size="17" fill="#1456a3" font-weight="400" text-anchor="start">Промышленные потребители получают один общий снимок.</text>
+<rect x="50" y="1022" width="1500" height="58" rx="14" fill="#fff" stroke="#d9e2ee" stroke-width="1.5"/>
+<text x="75" y="1058" font-size="21" fill="#334155" font-weight="400" text-anchor="start">LAN sniffer Host — пассивная диагностика; он не записывает данные в MMF.</text>
+<text x="50" y="1112" font-size="18" fill="#64748b" font-weight="400" text-anchor="start">com0com и Npcap — внешние драйверы. Внутренний приёмник iCem находится за границей репозитория.</text>
+</g></svg>

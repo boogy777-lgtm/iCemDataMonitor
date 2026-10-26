@@ -1,5 +1,11 @@
 # Эмулятор E2 — фиксированная DFB-сеть
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Rust 1.99.1 / Edition 2024. Перенесена CementUnitNetworkFactory из baseline
 96e2206562c9389d1543095232115d81eae4b692. Это вычислительный инкремент,
 а не полный emulator M5 и не произвольный IEC 61131-3 runtime.

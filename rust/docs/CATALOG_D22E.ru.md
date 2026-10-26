@@ -1,5 +1,11 @@
 # D22e — типизированный вход COM-каталогов
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 COM JSON `{"name":"first","NAME":"last"}` теперь выбирает `last`;
 обратный порядок выбирает `first`. Повторный nested object заменяет прежний
 целиком, а не объединяет его поля. File/string loaders сохраняют порядок JSON

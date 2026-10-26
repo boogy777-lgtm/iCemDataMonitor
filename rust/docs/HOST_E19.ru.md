@@ -1,5 +1,11 @@
 # Host E19 — типизированные логи
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 `icem-logging::Command` исключает set без bool. Status хранит tri-state enabled,
 available/recording, directory/error/operation/written. Reply различает Completed,
 Applied и Incomplete; clear возвращает фактические counts/reopened локально.

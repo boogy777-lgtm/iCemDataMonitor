@@ -1,25 +1,43 @@
-﻿# Релизный цикл
+# Релизный процесс
 
-## Главный закон релиза
+Software implementation и [N+1 v1.7](../rust/docs/NPLUS1_TRACKER.ru.md) завершены.
+Release acceptance — отдельная проверка: exact-head Windows CI, реальный SDK-built
+AddIn, загрузка в iCem, hardware/operator/visual walkthrough и distribution terms.
+Текущий Rust MSI остаётся development candidate; `*-dev.exe` не переименованы.
 
-**`ProductCode="*"` (авто на каждую сборку), `UpgradeCode` (`{34A0FD7C-EBD5-4E28-BA96-AE6575896F32}`) стабилен навсегда.** (2026-09-01 PM, аутопсия 1731/10005: ручная ротация GUID по bump'у версии отменена — same-version пересборка со стабильным ProductCode давала новый PackageCode и взрывала repair/reconfigure ошибкой 1731 «source package out of sync», а блокировка даунгрейда била владельца ошибкой 10005 «A newer version is already installed».) Каждая сборка — новый продукт; `MajorUpgrade` с `AllowDowngrades="yes"` (поглощает same-version; WiX запрещает комбинацию — WIX0035) снимает установленное в ОБЕ стороны, поэтому любой кликнутый MSI устанавливается, а `config.ini`/`Data.dat` выживают (у старого продукта выставляется `UPGRADINGPRODUCTCODE`). Скрипт релиза валидирует, что маркер `ProductCode="*"` на месте.
+## Rust Windows release
 
-## Цикл релиза
+[Полный runbook](../rust/installer/README.md), workflow
+`.github/workflows/rust-windows-release.yml` (фактический файл workflow — источник
+параметров). Сборка из корня:
 
-1. **Ничего руками в `Product.wxs` не крутить** — версия приходит define'ом `MsiVersion`, ProductCode автоматический.
-2. **Закоммитить** рабочее дерево.
-3. **Запустить релизный скрипт**: `.\scripts\make-release.ps1 -Version X.Y.Z -Push` (файл поддерживается релизным агентом; он валидирует закон ProductCode и пушит тег).
-4. **Пуш тега `v*`** запускает `.github/workflows/release.yml`: CI собирает MSI и публикует GitHub Release с артефактом.
-5. **Проверить артефакт** в GitHub Release: `iCemDataMonitor-<version>-x64.msi`.
+```powershell
+pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
+```
 
-Локальная альтернатива (без CI): `.\installer\build-msi.ps1` — без аргументов: версия берётся из `VERSION` в корне репо (bump = править файл, затем закоммитить); явная версия для конкретного релиза — `-MsiVersion X.Y.Z`. Полный цикл: publish host/shell/emulator (2026-09-02: framework-dependent — self-contained отменён декретом «передавать 3 файла»), сборка AddIn, harvest payload, `wix build` → `dist\iCemDataMonitor-<version>-x64.msi` + копирование двух рантайм-установщиков из `installer\` в `dist\` (handoff-бандл), затем stage и bin/obj вычищаются. Пререквизиты — Windows x64, .NET 10 SDK (см. `global.json`), WiX v5 (`dotnet tool install --global wix --version 5.0.2`; расширения Util/UI 5.0.2 доставляются скриптом).
+Требуются Windows x64/PowerShell7.4+, Rust pin/MSVC/SDK, .NET SDK/WiX5.0.2 и
+настоящий iCem SDK либо проверенный AddIn bundle. SDK workflow выпускает bundle;
+hosted release связывает успешный run/source hashes с текущими AddIn inputs.
+Synthetic installer fixtures подтверждают mechanics, а не release payload.
 
-## Чек-лист приёмки MSI
+Manual release выбирает `next` либо возрастающий `X.Y.Z` в пространстве
+`rust-vX.Y.Z`, отдельном от legacy `vX.Y.Z`. После install/repair/upgrade/uninstall
+checks доступны MSI и SHA256; `publish: true` создаёт draft prerelease.
+Не подменять предыдущие assets. Rust MSI имеет собственные стабильные UpgradeCode
+и component namespace, новый ProductCode и блокировку downgrade. Пользовательские
+config/data/logs сохраняются; legacy MSI blocks cutover и автоматически не удаляется.
 
-Кратко; полный гейт проходит через мастер в каждом сценарии (конфликт-гейт показывается всегда):
+## Evidence перед merge/release
 
-- **Чистая машина**: Windows 10 1809+ x64; сначала оба рантайм-установщика из `dist\` (aspnetcore-runtime + windowsdesktop-runtime — 2026-09-02: MSI больше не self-contained), затем MSI; после установки — `http://localhost:8090` отвечает, `iCemDataMonitor.Host.exe snapshot` возвращает JSON (exit 0).
-- **Апгрейд с сохранением данных**: установка новой версии поверх старой — `config.ini` и `Data.dat` в `C:\ProgramData\Halliburton\iCem\DataMonitoring` выживают; payload перезаписан целиком (REINSTALLMODE=amus).
-- **Деинсталляция с wipe**: `msiexec /x` удаляет всё, включая runtime-созданные `config.ini`, `Data.dat`, `Logs\`, `emule_config.xml`, кэш WebView2 (WipeMonitorRoot); перезагрузка не требуется никогда (RebootPrompt=no).
+Успешный предыдущий N+1 [run40253303600](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40253303600)
+относится к предыдущему head. Для слияния C11 необходимы публикация exact commit и успешные обязательные
+Windows jobs; актуальный verdict — в [PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44). Нельзя объявлять новый head
+проверенным по старому run. [C11](LEGACY_REFACTORING_C11.ru.md) фиксирует source
+retirement; manifest/ledger сохраняют настоящую provenance.
 
-См. также: [install.md](install.md) (семантика установки/апгрейда/деинсталляции), [development.md](development.md) (пререквизиты сборки).
+## Legacy reference release
+
+Корневые `installer/build-msi.ps1`, `VERSION`, `.github/workflows/release.yml`
+и legacy `v*` сохранены как отдельный reference/build path. Версия старого builder
+читается из `VERSION`, override — `-MsiVersion X.Y.Z`. Автоматический ProductCode,
+legacy downgrade/wipe/runtime policy не переносятся на Rust MSI.

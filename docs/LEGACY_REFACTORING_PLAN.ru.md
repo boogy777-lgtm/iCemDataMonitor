@@ -1,5 +1,10 @@
 # iCemDataMonitor: план рефакторинга и упрощения legacy .NET
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 Версия 1.0, 23 октября 2026. Статус: план, реализация не начата.
 База исследования: `4578ab57266b7d25aed82df41c6276597a270c1e` в `boogy777-lgtm/iCemDataMonitor`. Исследованные .NET участки сверены с этой базой; выводы первоначального аудита использованы повторно.
 

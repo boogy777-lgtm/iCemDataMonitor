@@ -1,5 +1,8 @@
 # Legacy C2 behavior and validation
 
+Исторический C2 checkpoint. Текущее software completion и retirement:
+[C11](../LEGACY_REFACTORING_C11.ru.md). Факты этого отчёта сохраняются.
+
 L02 intentionally corrects observed gRPC status after a Modbus bind failure:
 requested and persisted `modbus_on=1` no longer imply a bound socket. The
 production factory probes publisher `IsBound` and sniffer `IsRunning` (missing
