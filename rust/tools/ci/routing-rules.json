@@ -85,6 +85,7 @@
         "PROTOCOL.md",
         "AGENTS.md",
         "docs/*.md",
+        "docs/images/*.svg",
         "rust/*.md",
         "rust/docs/*.md",
         "rust/installer/README.md"

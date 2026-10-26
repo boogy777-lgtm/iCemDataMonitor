@@ -27,11 +27,11 @@
     {
       "path": "docs/development.md",
       "baseline_blob_sha1": "66ccd373b78e913acf66d0679158cba8a01eaf91",
-      "approved_blob_sha1": "20e05a93e333868e9c4db065fd9b82935bf9774d",
+      "approved_blob_sha1": "5b198a68367ae975cc6e8e411ba5825ac650d96c",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/2",
-        "commit": "ad70c31c007a6b51ae6ca18f38d97c11ceec1b7f",
-        "reason": "Document CI fixes and current validation limits."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Document CI fixes and current validation limits. Subsequent C11 approval: Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
       },
       "operation": "modify"
     },
@@ -104,13 +104,12 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
       "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
-      "approved_blob_sha1": "22ab3d12fa03aa94b673ca6c621f2d8ddca3d3f6",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/17",
-        "commit": "b4211289e6f94fb5a09f493563bf1fa12e92d0f0",
-        "reason": "User-authorized D46 follow-up: cancel the retry-only fixture on the same factory call stack after its expected second-attempt signal, preserving actual production retry, PAIR_MISSING/pair=false, exact attempt2 and 15s/10s bounds; assert no third attempt after Stop. Add monotonic signal/wait/deadline timestamps, signal result and source TCS status. Controlled runtime10.0.13 experiment proves deferred WaitAsync completion can lose to timeout and same-stack cleanup releases it; exact Windows CI timing cause remains unproved. Production .NET unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "User-authorized D46 follow-up: cancel the retry-only fixture on the same factory call stack after its expected second-attempt signal, preserving actual production retry, PAIR_MISSING/pair=false, exact attempt2 and 15s/10s bounds; assert no third attempt after Stop. Add monotonic signal/wait/deadline timestamps, signal result and source TCS status. Controlled runtime10.0.13 experiment proves deferred WaitAsync completion can lose to timeout and same-stack cleanup releases it; exact Windows CI timing cause remains unproved. Production .NET unchanged. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
       },
-      "operation": "modify"
+      "operation": "delete"
     },
     {
       "path": "iCemEmule.Core/Control/ControlPipeServer.cs",
@@ -224,11 +223,11 @@
     {
       "path": "iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs",
       "baseline_blob_sha1": "86e60a66a6e2af8f8d11c13a3cb21714c957dafa",
-      "approved_blob_sha1": "885e77287b07bdb00ecff0149cfa1e44c295a0b1",
+      "approved_blob_sha1": "9f5faafc10485abf8f890ac69a4a31c04a2a73ae",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
-        "commit": "22aa889341dbe49c66312b47651ba9399751f753",
-        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
       },
       "operation": "modify"
     },
@@ -833,14 +832,13 @@
     },
     {
       "path": "iCemDataMonitor.UI.Tests/B5ContractTests.cs",
-      "operation": "modify",
       "baseline_blob_sha1": "808b2bff061b3e2937c60ab1d5169e4d018ab2e9",
-      "approved_blob_sha1": "58c73b9254382247cf115ca424a2b4693ccb7c78",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
-        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
-        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
-      }
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
     },
     {
       "path": "iCemDataMonitor.UI.Tests/ContractTests.cs",
@@ -852,6 +850,288 @@
         "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
         "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
       }
+    },
+    {
+      "path": "README.md",
+      "baseline_blob_sha1": "1cc13aab5d4274ec185e65e2aa99d565d2369656",
+      "approved_blob_sha1": "3b9063a80e24f319354c0df1159c01a4d8663706",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/architecture.md",
+      "baseline_blob_sha1": "464e1416c3a4d6e4d82b837d33932db8fac82284",
+      "approved_blob_sha1": "fc2ab5d56717b0104c3cbdc7c7fcd922d1df0d8d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/config.md",
+      "baseline_blob_sha1": "84f5df4052dc1cd967a353c5591defd9e74fbf7e",
+      "approved_blob_sha1": "b820196f999fdd942e33118892ac9b74635019ff",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/install.md",
+      "baseline_blob_sha1": "84ec4832c8e545fcf77ea171fe3868f76242c770",
+      "approved_blob_sha1": "8c29f3dbfe4158e48a40e494df4e960e37e02bab",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/release.md",
+      "baseline_blob_sha1": "f57a3104c227cbb997c059a8969554343e1be698",
+      "approved_blob_sha1": "6d0d59cd8081ce7a4e068bd7d613ca133612f12b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/Com0ComEndpoints.cs",
+      "baseline_blob_sha1": "ec17077e89e545e9e5c6fd5a688bb59e428f0a78",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/ModbusPreviewEndpoints.cs",
+      "baseline_blob_sha1": "afd7271b2581224ae8a48b40cfd727e7926b8216",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs",
+      "baseline_blob_sha1": "c78d6ec5804d448fbdf9abf6f374e490acc00d7f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/ServiceFacades.cs",
+      "baseline_blob_sha1": "48b1e2b78e255b042412ddb3f8840fb6fcdc91a7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "baseline_blob_sha1": "4b47a851006245f940ec4f55230b4413cd60dd4e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/SourceEndpoints.cs",
+      "baseline_blob_sha1": "9cf9e71f4f36abae57d18a5161f6bb476ab9b80e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/TemplatesEndpoints.cs",
+      "baseline_blob_sha1": "62493d0be4739e3500164b998fd9a027a13fc1ef",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/Com0ComMonitorTests.cs",
+      "baseline_blob_sha1": "058198af520efdaa5c6eaffcdc4ea12faa04877c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/ReplayAceFrameSource.cs",
+      "baseline_blob_sha1": "46425a31ce7f6603a48be56e6df9e3ca7bd4bb67",
+      "approved_blob_sha1": "2b31fd4ba6b31b9098c0c559b0b9a582a7a55732",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/iCemDataMonitor.Transport.Tests.csproj",
+      "baseline_blob_sha1": "0cf39bfb10f22be4e9ffed1173722782bd2998df",
+      "approved_blob_sha1": "3aecb789a70737d8c7de428c7ae2749cf5449cfb",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Com0ComMonitor.cs",
+      "baseline_blob_sha1": "40e0d64e6d4e0f82f24068dee116ba6c6806a61f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/IAceFrameSource.cs",
+      "baseline_blob_sha1": "7f29e0ea4205159c6d7e1c3e70b4915b30a2cb9e",
+      "approved_blob_sha1": "738d0085022ebc7c0461167d4b241dbc2e805a21",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/ISerialPort.cs",
+      "baseline_blob_sha1": "4d294ad8d0ccd690edca2fdde75d54d7e4eb43c4",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/Com0ComStatus.cs",
+      "baseline_blob_sha1": "1f16bc1514d70f3d91e33ec45c147ba9a33b7a2c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/ComTeeStatus.cs",
+      "baseline_blob_sha1": "2664559bfa40cb44a498d6416a6a7de5ab8effe5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/TeeOptions.cs",
+      "baseline_blob_sha1": "889c29ed6e6188eb2f8415f91c5052a50f6422f2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/SerialPortAdapter.cs",
+      "baseline_blob_sha1": "63fb9d6e52d9c7f86e437d940ee7666a0e6a4222",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/SerialTeeService.cs",
+      "baseline_blob_sha1": "2814d72e490395bf29fad6ec5808a83ddf0482cc",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/iCemDataMonitor.Transport.csproj",
+      "baseline_blob_sha1": "5ba9014ee26cc3bcc04d590c12a1c8c9d3016463",
+      "approved_blob_sha1": "c52f3d4bcecdd065688fa50e2ea37782c95f7dc5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "specs/INDEX.yaml",
+      "baseline_blob_sha1": "ecc760a0add9d67f1ccc3d7e7a47355d5212d74b",
+      "approved_blob_sha1": "d4ff94f0b2de8bb87883846abb5e6f969e7be696",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "specs/PLAN_lifecycle_ABD.md",
+      "baseline_blob_sha1": "9f7b9c8e412adf5157460d5456094e65e2b9a04b",
+      "approved_blob_sha1": "127fbedede1a90eec3c559f4ded827fd3a17f22e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "specs/stand_topology.mmd",
+      "baseline_blob_sha1": "fa222eb16796192f307c2c2a14d14f6e8a020b22",
+      "approved_blob_sha1": "44c0874ff86d0744bc31b7e3c8cfdb365a9cc17f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
     }
   ]
 }

@@ -1,36 +1,53 @@
-# CURRENT OVERRIDE 2026-10-26: Rust software implementation + N+1 v1.7 complete.
-# Legacy unit descriptions below are historical reference, not current runtime topology.
-# AddIn is the single MMF writer; standalone emulator uses external com0com/Npcap.
-# 21 dormant routes retired C11; com0com driver KEEP. Hardware/release gates separate.
-# INDEX — entry point for EVERY new LLM chat working on the iCem POC stand.
-# rule: load this file FIRST; route by task type; never read code before specs.
-# doctrine: specs = CURRENT STATE ONLY. Process artifacts (incident logs, change
-# history, migration narration) are archived OUT of the docs system, never linked.
-# binding: C:\Users\HALLIBURTON\iCemPOC\.opencode\Rules\specs-workflow.md (r1-r10) governs all work below.
+# Repository-relative documentation router. Current software entry points are below;
+# unit specifications retain their dated legacy evidence and frozen contracts.
+# No machine-local OpenCode rules or absent operator tools are required to use it.
 
 entry:
-  root: C:\Users\HALLIBURTON\iCemPOC\specs\
-  router: specs/INDEX.yaml          # ← you are here
-  charter: specs/TZ-DOCSYS-001.yaml # mission + present state + stage ladder definition
+  root: specs/
+  router: specs/INDEX.yaml
+  project: README.md
+  development: docs/development.md
+  architecture: docs/architecture.md
+  software_status: rust/docs/IMPLEMENTATION_STATUS.ru.md
+  nplus1_evidence: rust/docs/NPLUS1_TRACKER.ru.md
+
+current_architecture:
+  applications: "Rust Host and GPUI Shell; independent Rust COM/LAN emulator"
+  runtime_binaries: "icem-host-dev.exe; icem-shell-dev.exe; icem-emulator-engine-dev.exe"
+  writer: "Vendor iCem.exe + net48 Burservis.iCem.DataMonitor AddIn: sole MMF layout5 writer"
+  acquisition: "Host reads MMF once per 200 ms and shares immutable typed snapshots with consumers"
+  consumers: "Modbus; Web/SPA + gRPC; Shell/CLI local pipe; optional MQTT, OPC UA and OPC DA sidecar"
+  emulator: "External com0com driver pair for COM FLECS; Npcap for LAN ACE; Host does not own emulator lifecycle"
+  sniffer: "Passive Host diagnostics; never an MMF writer"
+  legacy_retirement: "docs/LEGACY_REFACTORING_C11.ru.md: 21 dormant REST routes and serial Tee/Com0ComMonitor retired; com0com driver retained"
+  acceptance: "Software implementation + N+1 v1.7 complete; exact-head Windows CI, real SDK/AddIn, hardware/operator/visual and release gates have separate evidence"
 
 route_by_task:
-  symptom:   "specs/<unit>/Э6_failures.csv → grep symptom_signature → probe+remediation in-row"
-  change:    "specs/<unit>/Э2_contracts.csv → Э4_invariants.yaml → Э7_verification.csv"
-  new_unit:  "specs/<unit>/Э0 → Э1 → Э2 → Э4"
-  cross_unit: "docs/architecture.md (current software); specs/stand_topology.mmd"
-  software_status: "rust/docs/NPLUS1_TRACKER.ru.md"
+  build_or_launch: "README.md; rust/README.md; docs/development.md"
+  runtime_config: "docs/config.md; rust/docs/API_SPEC.ru.md"
+  current_api: "rust/docs/API_SPEC.ru.md; rust/contracts/http/openapi.json"
+  cross_unit: "docs/architecture.md; rust/docs/ARCHITECTURE.ru.md"
+  software_status: "rust/docs/IMPLEMENTATION_STATUS.ru.md; rust/docs/NPLUS1_TRACKER.ru.md"
   legacy_retirement: "docs/LEGACY_REFACTORING_C11.ru.md"
+  windows_ci: "rust/docs/CI_CD.ru.md; .github/workflows/ci.yml"
+  release: "docs/release.md; rust/installer/README.md"
+  hardware_acceptance: "rust/docs/HARDWARE_ACCEPTANCE.ru.md"
+  legacy_symptom: "specs/<unit>/Э6_failures.csv: dated symptom/probe/remediation evidence; verify against current wiring"
+  contract_change: "specs/<unit>/Э2_contracts.csv; Э4_invariants.yaml; Э7_verification.csv where present; compare current API and pinned source evidence"
+  source_provenance: "rust/docs/SOURCE_AUDIT.ru.md; rust/migration/source-manifest.json; rust/migration/legacy-divergences.json"
 
-units:
-  iCemEmule:       "specs/iCemEmule/Э0..Э7 + Э2c_lan_zone_classification.csv (legacy engine reference; current Rust emulator is independent COM/LAN application)"
-  dotnet_server:  "specs/dotnet-server/Э0..Э7 + Э2b_ace_full_measurement.csv (POC: WinUI 3 shell iCemDataMonitor.WinUI.exe + legacy tray rollback, MMF bus, modbus :502, sniffer)"
-  iCemAddIn:      "specs/iCemAddIn/Э0..Э6 + Э2b_edge_truth_tables.csv + Э8_design_variableid.yaml (dll inside iCem.exe; DUMB TRANSLATOR byte-exact; source C:\Users\HALLIBURTON\iCemPOC\Burservis.iCem.DataMonitor, v5 contract code-authoritative)"
+reference_units:
+  iCemEmule: "specs/iCemEmule/: legacy engine contracts, topology, state machines, invariants and verification; current emulator is an independent Rust application"
+  dotnet_server: "specs/dotnet-server/: legacy .NET Host/Shell reference; current application entry points are in rust/"
+  iCemAddIn: "specs/iCemAddIn/: preserved net48 byte-exact translator contracts; implementation in Burservis.iCem.DataMonitor/"
+  wire_config: "specs/contracts/: preserved wire/config contracts; resolve historical topology claims using current architecture and executable evidence"
 
 future_plans:
-  iCemAddIn_full_coverage: "specs/iCemAddIn/FUTURE_full_coverage_spec.md — 100% named COM/LAN coverage project (tiers T1/T2/T3, 3-layer VariableId design v2, capacity decrees); promotion-candidate §15.2, implementation ONLY on explicit user decree; machine source: Э8_design_variableid.yaml"
+  iCemAddIn_full_coverage: "specs/iCemAddIn/FUTURE_full_coverage_spec.md; specs/iCemAddIn/Э8_design_variableid.yaml: optional full-coverage/VariableId design, implementation only on explicit user authorization; not remaining N+1 software work"
 
-global_artifacts:
-  stand_topology: "specs/stand_topology.mmd   # one cross-unit mermaid (READY)"
-  live_gate:      "run-live-gate.ps1 (repo root — scripted full-gate choreography: kill Emu, launch gate, restart iCem AFTER the emitter is live, prompt for the LAN-acquisition UI step) + LiveGateGui/ (operator console: button-per-step pipeline, quick-launch exe bar, text report live-gate-report-*.txt); stand laws: emitter opens ONLY on LanEnabled master; after an iCem restart LAN telemetry acquisition must be STARTED in the iCem UI (the one manual step)"
-
-acceptance: "fresh chat reads THIS file + one route ⇒ works without code access"
+historical_reference:
+  charter: "specs/TZ-DOCSYS-001.yaml: dated POC documentation charter and stage ladder"
+  stand_topology: "specs/stand_topology.mmd: legacy POC topology, not current Rust runtime topology"
+  archived_process: "specs/_archive/devlog/: historical process evidence"
+  migration_reports: "rust/docs/: dated E1–E24/D22/M0–M8 reports retain checkpoint PASS/FAIL and former NEXT/PARTIAL claims; current status routes above take precedence"
+  legacy_cleanup_reports: "docs/LEGACY_REFACTORING_C11.ru.md links preserved C1–C10 evidence"
