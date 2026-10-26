@@ -52,7 +52,7 @@ try {
     $HostRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'host').templates_directory) + '/variable_registry.json')
     $EmulatorRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'emulator').templates_directory) + '/variable_registry.json')
     if ((Get-FileHash $HostRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'templates/variable_registry.json')).Hash -or
-        (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemEmulator/templates/variable_registry.json')).Hash -or
+        (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'src/net/iCemEmulator/templates/variable_registry.json')).Hash -or
         $HostRegistry -ceq $EmulatorRegistry) { throw 'Host/emulator canonical registries were merged or substituted' }
     $HostLantable = Join-Path $Unpack 'templates/lantable_registry.json'
     if ((Get-FileHash $HostLantable).Hash -cne (Get-FileHash (Join-Path $Repo 'src/net/iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json')).Hash) { throw 'Host lantable catalog missing or substituted' }
