@@ -9,10 +9,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             prost,
             &["../../../net/iCemDataMonitor.Contracts/Protos/telemetry.proto"],
             &[
-                "../../../iCemDataMonitor.Contracts/Protos",
+                "../../../net/iCemDataMonitor.Contracts/Protos",
                 &protoc_bin_vendored::include_path()?.to_string_lossy(),
             ],
         )?;
-    println!("cargo:rerun-if-changed=../../../net/iCemDataMonitor.Contracts/Protos/telemetry.proto");
+    println!(
+        "cargo:rerun-if-changed=../../../net/iCemDataMonitor.Contracts/Protos/telemetry.proto"
+    );
     Ok(())
 }
