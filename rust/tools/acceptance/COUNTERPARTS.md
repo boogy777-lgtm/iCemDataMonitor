@@ -53,8 +53,9 @@ crypto wheel is shipped with the native Windows product.
 The probes preserve type/identity, raw NaN payload and negative zero, read-only
 Write, inactive/active quality, absent SourceTimestamp, present ServerTimestamp,
 COM stream time and writer metadata. MQTT checks QoS2, broker restart/reconnect,
-unchanged bits/clocks and retained delivery after Host exit0. UA checks independent
-browse/read/subscription and graceful Host exit0. Existing mandatory Host tests
+unchanged bits/clocks and retained delivery after Host exit0. UA checks two independent sessions/reconnect, exact canonical IDs/writer ticks,
+browse/read/subscription and graceful Host exit0. MQTT also compares every typed
+ID, register address and raw bits with the original fixture. Existing mandatory Host tests
 cover UA source outage/lifecycle and MQTT all QoS/offline acquisition independently.
 Fixture scope does not establish live Windows MMF/AddIn/hardware behavior.
 
@@ -62,4 +63,12 @@ Each probe uses its own temporary config/fixture, loopback ephemeral ports and
 owned child handles. Host duration is derived from explicit startup/test budgets;
 UA verification has an overall async deadline, MQTT CLI and broker boots have
 explicit deadlines. Waiting for intentional Host duration proves graceful exit;
-cleanup only terminates the probe's own outstanding child processes.
+cleanup only terminates the probe's own outstanding child processes (kill fallback
+after a three-second terminate budget). Download bounds are32MiB/artifact and
+90seconds plus one bounded socket read; build/install commands have300second
+deadlines and owned Windows process-tree cleanup on timeout.
+
+Linux source-build check: the pinned Mosquitto broker, libmosquitto and CLI compile/link
+with these exact flags/hook. Dynamic-link inspection shows no SSL/crypto/pthread
+library dependency. This proves the test-only no-TLS build path on Linux; Windows
+MSVC build and interoperability remain separate mandatory runtime evidence.

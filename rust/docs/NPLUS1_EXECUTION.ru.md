@@ -736,6 +736,18 @@ assertions сохранены; probe durations выведены из startup/tes
 Windows execution ожидается: Linux verification не закрывает R3, MMF/hardware
 и full final CI не заявляются. R1/R2 mandatory gates сохранены.
 
+### Историческая проверка дополнительных R3 probes (25 октября 2026)
+
+R3 follow-up source verification: exact1.99.1 locked/offline Linux Host build PASS;
+pinned Mosquitto2.0.22 noTLS/noThreading real broker/library/CLI compile+link PASS,
+без SSL/crypto/pthread dynamic dependency. Усиленные probes actual Linux PASS:
+MQTT все typed IDs/register addresses/raw bits и writer clocks сверены с fixture,
+broker restart generation1→3, retained generation250/flag1, Host exit0;
+asyncua2.1.0 две независимые sessions/reconnect, browse368/all canonical IDs,
+UInt16/Int32/Float, NaN7fc01234/−0, exact writer ticks, unchanged COM1700000000,
+quality/timestamps/read-only/subscription и Host exit0. Python CI45/45, vendor42
+provenance и diff-check PASS. Это проверка test-tool path, не Windows R3 closure.
+
 
 ## R3 actual Windows evidence / R4 measurement preparation
 

@@ -1,0 +1,42 @@
+name: retire-merged-branches
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/retire-merged-branches.yml]
+permissions:
+  contents: write
+concurrency:
+  group: retire-merged-branches
+  cancel-in-progress: false
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Delete only fully merged branches with atomic head leases
+        env:
+          EXPECTED_MAIN: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os, subprocess
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          expected = os.environ['EXPECTED_MAIN']
+          rows = [line.split() for line in git('ls-remote', '--heads', 'origin').splitlines()]
+          heads = {ref: sha for sha, ref in rows}
+          if heads.get('refs/heads/main') != expected:
+              raise SystemExit('main moved; no branch is deleted')
+          targets = {ref: sha for ref, sha in heads.items() if ref != 'refs/heads/main'}
+          for ref, sha in targets.items():
+              subprocess.run(['git', 'merge-base', '--is-ancestor', sha, expected], check=True)
+          if targets:
+              leases = [f'--force-with-lease={ref}:{sha}' for ref, sha in targets.items()]
+              subprocess.run(['git', 'push', '--atomic', *leases, '--delete', 'origin', *targets], check=True)
+          remaining = [line.split()[1] for line in git('ls-remote', '--heads', 'origin').splitlines()]
+          if remaining != ['refs/heads/main']:
+              raise SystemExit(f'Unexpected remaining branches: {remaining}')
+          print(f'Verified: main retained; {len(targets)} merged branches deleted atomically.')
+          PY
