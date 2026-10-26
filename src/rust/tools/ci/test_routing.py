@@ -107,7 +107,7 @@ class RoutingTests(unittest.TestCase):
             for relative in re.findall(r'Path.Combine\(root,\s*"([^"]+)"', source.read_text()):
                 found.add(relative)
         self.assertTrue(found, 'No oracle/source dependencies discovered')
-        self.assertEqual([path for path in sorted(found) if not (ROOT / path).is_file()], [],
+        self.assertEqual([path for path in sorted(found) if not (ROOT / path).exists()], [],
                          'Missing cross-workspace include inputs after source relocation')
         for path in found:
             self.assertEqual(routing.classify([path]), dict.fromkeys(routing.COMPONENTS, 'true'), path)

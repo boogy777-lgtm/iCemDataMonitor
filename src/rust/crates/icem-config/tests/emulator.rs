@@ -23,7 +23,7 @@ fn defaults_schema_and_source_inventory() -> R {
         (d.lan_equipment, d.unit_preset, d.window_x),
         (0x00A8_6F46, 1, -1)
     );
-    let source = include_str!("../../../../iCemEmule.Core/Core/EmuSettings.cs");
+    let source = include_str!("../../../../net/iCemEmule.Core/Core/EmuSettings.cs");
     let names: Vec<_> = source
         .lines()
         .filter(|s| s.contains("{ get; set; }") && !s.contains("static "))
