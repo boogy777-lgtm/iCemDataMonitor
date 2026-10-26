@@ -1,0 +1,173 @@
+{
+  "workloads": {
+    "legacy": [
+      "legacy"
+    ],
+    "rust": [
+      "rust",
+      "packaging"
+    ],
+    "shared-contracts": [
+      "legacy",
+      "rust",
+      "packaging"
+    ],
+    "packaging": [
+      "rust",
+      "packaging"
+    ],
+    "infrastructure": [
+      "legacy",
+      "rust",
+      "packaging"
+    ],
+    "documentation": []
+  },
+  "rules": [
+    {
+      "category": "infrastructure",
+      "paths": [
+        ".github/**",
+        "src/rust/migration/**",
+        "src/rust/tools/ci/**"
+      ]
+    },
+    {
+      "category": "shared-contracts",
+      "paths": [
+        "src/net/iCemEmule.Core/**",
+        "src/net/iCemDataMonitor.Contracts/**",
+        "specs/**",
+        "assets/**",
+        "src/net/iCemEmulator/templates/**",
+        "templates/**",
+        "src/net/iCemDataMonitor.Plugins.Icem/LantableRegistry.cs",
+        "src/net/iCemDataMonitor.Plugins.Icem/templates/**",
+        "docs/Wireshark/**",
+        "Directory.Build.props",
+        "Directory.Build.targets",
+        "global.json",
+        "src/net/iCemDataMonitor.Host/wwwroot/**",
+        "src/net/iCemDataMonitor.Sdk/Bus/**",
+        "src/net/iCemDataMonitor.Sdk/Models/ModbusRegisterEntry.cs",
+        "src/net/iCemDataMonitor.Sdk/IModbusPublisher.cs",
+        "src/net/iCemDataMonitor.Transport/Modbus*.cs",
+        "src/net/iCemDataMonitor.Transport/Models/Modbus*.cs",
+        "src/net/iCemDataMonitor.Host/Grpc/**",
+        "src/net/iCemDataMonitor.Host.Core/Endpoints/**",
+        "src/rust/contracts/**",
+        "src/rust/crates/icem-bus/**",
+        "src/rust/crates/icem-protocols/**",
+        "src/rust/migration/**",
+        "src/net/iCemDataMonitor.Data/Bus/**",
+        "src/net/iCemDataMonitor.Data/Telemetry/RegisterDecoder.cs"
+      ]
+    },
+    {
+      "category": "packaging",
+      "paths": [
+        "installer/**",
+        "src/net/Burservis.iCem.DataMonitor/**",
+        "src/rust/installer/**",
+        "src/rust/tools/Build-Windows*.ps1",
+        "src/rust/tools/Build-LegacyAddin.ps1",
+        "src/rust/tools/WindowsPackagingFixture.psm1",
+        "src/rust/tools/Test-Windows*.ps1"
+      ],
+      "exclude": [
+        "src/rust/installer/README.md"
+      ]
+    },
+    {
+      "category": "documentation",
+      "paths": [
+        "README.md",
+        "PROTOCOL.md",
+        "AGENTS.md",
+        "docs/*.md",
+        "docs/images/*.svg",
+        "src/rust/*.md",
+        "src/rust/docs/*.md",
+        "src/rust/installer/README.md"
+      ]
+    },
+    {
+      "category": "rust",
+      "paths": [
+        "src/rust/**"
+      ],
+      "exclude": [
+        "README.md",
+        "PROTOCOL.md",
+        "AGENTS.md",
+        "docs/*.md",
+        "src/rust/*.md",
+        "src/rust/docs/*.md",
+        "src/rust/installer/README.md"
+      ]
+    },
+    {
+      "category": "legacy",
+      "paths": [
+        "src/net/Burservis.iCem.DataMonitor.Tests/**",
+        "src/net/Burservis.iCem.DataMonitor/**",
+        "src/net/iCemDataMonitor.Contracts.Tests/**",
+        "src/net/iCemDataMonitor.Contracts/**",
+        "src/net/iCemDataMonitor.Core.Tests/**",
+        "src/net/iCemDataMonitor.Core/**",
+        "src/net/iCemDataMonitor.Data.Tests/**",
+        "src/net/iCemDataMonitor.Data/**",
+        "src/net/iCemDataMonitor.Emulator.WinUI/**",
+        "src/net/iCemDataMonitor.Host.Core/**",
+        "src/net/iCemDataMonitor.Host.Tests/**",
+        "src/net/iCemDataMonitor.Host/**",
+        "src/net/iCemDataMonitor.HostClient/**",
+        "src/net/iCemDataMonitor.Plugins.Icem.Tests/**",
+        "src/net/iCemDataMonitor.Plugins.Icem/**",
+        "src/net/iCemDataMonitor.Sdk.Tests/**",
+        "src/net/iCemDataMonitor.Sdk/**",
+        "src/net/iCemDataMonitor.Shell.WinUI/**",
+        "src/net/iCemDataMonitor.Tools.IconGen/**",
+        "src/net/iCemDataMonitor.Transport.Tests/**",
+        "src/net/iCemDataMonitor.Transport/**",
+        "src/net/iCemDataMonitor.UI.Tests/**",
+        "src/net/iCemEmulator/**",
+        "src/net/iCemEmule.Core/**",
+        "src/net/iCemEmule.Tests/**",
+        "scripts/**",
+        "installer/**"
+      ],
+      "extensions": [
+        ".cs",
+        ".csproj",
+        ".json",
+        ".xaml",
+        ".ps1",
+        ".bmp",
+        ".js",
+        ".ico",
+        ".png",
+        ".manifest",
+        ".csv",
+        ".sha256",
+        ".proto",
+        ".html",
+        ".css",
+        ".bat",
+        ".wxs",
+        ".ssf"
+      ]
+    },
+    {
+      "category": "legacy",
+      "paths": [
+        "CI.slnf",
+        "iCemDataMonitor.sln",
+        "VERSION",
+        "build.ps1",
+        "installer/**",
+        "src/net/Burservis.iCem.DataMonitor/**"
+      ]
+    }
+  ]
+}

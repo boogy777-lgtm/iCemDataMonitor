@@ -1,0 +1,208 @@
+#requires -Version 7.4
+[CmdletBinding()]
+param()
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+$Root = Split-Path $PSScriptRoot -Parent
+Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
+Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
+Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'WindowsPackagingFixture.psm1') -Force
+$Temp = Join-Path ([IO.Path]::GetTempPath()) ('icem-package-tests-' + [guid]::NewGuid().ToString('N'))
+$Repo = Join-Path $Temp 'repo'
+$Bins = Join-Path $Temp 'bins'
+$Output = Join-Path $Temp 'out'
+function Assert-Rejected([scriptblock] $Operation, [string] $Message) {
+    $Failed = $false
+    try { & $Operation | Out-Null } catch {
+        if (-not $_.Exception.Message.Contains($Message)) { throw }
+        $Failed = $true
+    }
+    if (-not $Failed) { throw "Expected rejection: $Message" }
+}
+function Package([string] $Version) {
+    New-WindowsArchive -RepositoryRoot $Repo -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Output -Version $Version -Commit ('1' * 40) -Compiler 'synthetic packaging fixture'
+}
+try {
+    $Fixture = New-WindowsPackagingFixture $Temp
+    # Delivery overrides must survive invocation from outside the checkout.
+    Push-Location $Temp
+    try {
+        foreach ($Case in @(
+            @{ repository = 'repo'; output = 'delivery space'; expected = (Join-Path $Repo 'delivery space'); version = '0.2.0-relative' },
+            @{ repository = $Repo; output = (Join-Path $Temp 'absolute delivery'); expected = (Join-Path $Temp 'absolute delivery'); version = '0.2.0-absolute' }
+        )) {
+            $Delivered = New-WindowsArchive -RepositoryRoot $Case.repository -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Case.output -Version $Case.version -Commit ('1' * 40) -Compiler 'synthetic output-path fixture'
+            if ((Split-Path $Delivered.archive -Parent) -cne $Case.expected -or
+                -not (Test-Path -LiteralPath $Delivered.checksum)) { throw 'Delivery output override depends on caller working directory' }
+        }
+        if (Test-Path -LiteralPath (Join-Path $Temp 'delivery space')) { throw 'Relative delivery output escaped repository root' }
+    } finally { Pop-Location }
+    $Pe = $Fixture.pe
+    $ExpectedCount = $Fixture.plan.files.Count + $Fixture.plan.binaries.Count + 2
+    foreach ($Folder in $Fixture.plan.directories) { $ExpectedCount += @(Get-ChildItem -LiteralPath (Join-Path $Repo $Folder.source) -Filter $Folder.pattern -File).Count }
+    $Result = Package '0.1.0-test'
+    $Unpack = Join-Path $Temp 'relocated space'
+    [IO.Compression.ZipFile]::ExtractToDirectory($Result.archive, $Unpack)
+    $Verified = Test-WindowsPayload $Unpack
+    if ($Verified.files.Count -ne $ExpectedCount) { throw 'Template directory was not packaged completely' }
+    $DaBinary = @($Verified.binaries | Where-Object role -CEQ 'opc-da-sidecar')
+    if ($DaBinary.Count -ne 1 -or $DaBinary[0].destination -cne 'icem-opc-da-sidecar.exe' -or
+        -not (Test-Path -LiteralPath (Join-Path $Unpack $DaBinary[0].destination) -PathType Leaf)) { throw 'DA sidecar omitted from payload' }
+    $HostRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'host').templates_directory) + '/variable_registry.json')
+    $EmulatorRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'emulator').templates_directory) + '/variable_registry.json')
+    if ((Get-FileHash $HostRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'templates/variable_registry.json')).Hash -or
+        (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'src/net/iCemEmulator/templates/variable_registry.json')).Hash -or
+        $HostRegistry -ceq $EmulatorRegistry) { throw 'Host/emulator canonical registries were merged or substituted' }
+    $HostLantable = Join-Path $Unpack 'templates/lantable_registry.json'
+    if ((Get-FileHash $HostLantable).Hash -cne (Get-FileHash (Join-Path $Repo 'src/net/iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json')).Hash) { throw 'Host lantable catalog missing or substituted' }
+    # The installer is rendered from the already verified inventory, including
+    # the integrity manifest itself. Adding a payload file cannot miss the MSI.
+    $Numeric = Package '0.1.0'
+    $NumericPayload = Join-Path $Temp 'msi payload'
+    [IO.Compression.ZipFile]::ExtractToDirectory($Numeric.archive, $NumericPayload)
+    $Wxs = Join-Path $Temp 'Package.wxs'
+    if ((Write-WindowsInstallerSource $NumericPayload '0.1.0' $Wxs) -ne ($ExpectedCount + 1)) { throw 'MSI omitted a payload file' }
+    $Xml = [xml](Get-Content -Raw -LiteralPath $Wxs)
+    $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable)
+    $Ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
+    if ($Xml.SelectNodes('//w:WixVariable[@Id="WixUIBannerBmp" or @Id="WixUIDialogBmp"]', $Ns).Count -ne 2 -or
+        $Xml.SelectNodes('//w:Dialog[@Id="OptionsDlg"]', $Ns).Count -ne 1 -or
+        $Xml.SelectSingleNode('//w:StandardDirectory[@Id="CommonAppDataFolder"]//w:Directory[@Id="MONITORROOT"]', $Ns).Name -ne 'DataMonitoring' -or
+        $Xml.SelectSingleNode('//w:Shortcut[@Id="DesktopMonitorShortcut"]', $Ns).Target -cne '[MONITORROOT]icem-shell-dev.exe' -or
+        $Xml.SelectNodes('//w:Component[@Id="Cmp.DesktopShortcut"]/w:CreateFolder', $Ns).Count -ne 1 -or
+        $Xml.SelectSingleNode('//w:RegistryValue[@Name="iCemDataMonitorHost"]', $Ns).Value -cne '"[MONITORROOT]icem-host-dev.exe" --autostart' -or
+        $Xml.SelectSingleNode('//w:UpgradeVersion[@Property="LEGACY_MONITOR_PRESENT"]', $Ns).OnlyDetect -ne 'yes') { throw 'Native MSI UI/paths/options/ownership failed' }
+    if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).AllowSameVersionUpgrades -ne 'yes' -or
+        $Xml.SelectNodes('//w:Launch[@Condition="Installed OR NOT LEGACY_MONITOR_PRESENT"]', $Ns).Count -ne 1 -or
+        $Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
+        $Xml.SelectSingleNode('//w:Package', $Ns).Scope -ne 'perMachine') { throw 'MSI transaction policy failed' }
+    # Guard the reviewed package boundary, not implementation layout: payload,
+    # native shortcut/Run value, stock UI and the exact additive station ACL.
+    # No elevated deletion/process
+    # scripts, service ownership, hidden uninstall or forced repair policy.
+    if ($Xml.SelectNodes('//w:CustomAction | //w:Binary | //w:RemoveFile | //w:RemoveFolder | //w:RemoveRegistryValue | //w:ServiceControl | //w:ServiceInstall', $Ns).Count -or
+        $Xml.SelectNodes('//w:Property[@Id="ARPSYSTEMCOMPONENT"]', $Ns).Count -or
+        $Xml.SelectSingleNode('//w:Property[@Id="MSIRESTARTMANAGERCONTROL"]', $Ns).Value -cne '0') { throw 'MSI exceeds reviewed native resource ownership' }
+    # This is an exact allowlist, not permission to add arbitrary Util resources.
+    $Util = @($Xml.SelectNodes('//*[namespace-uri()="http://wixtoolset.org/schemas/v4/wxs/util"]', $Ns))
+    $ExpectedAcl = @{ User='Users'; Inheritable='yes'; Read='yes'; CreateFile='yes'; CreateChild='yes'; Traverse='yes'; Delete='yes'; ReadAttributes='yes'; WriteAttributes='yes'; ReadExtendedAttributes='yes'; WriteExtendedAttributes='yes'; ReadPermission='yes'; Synchronize='yes' }
+    if ($Util.Count -ne 1 -or $Util[0].LocalName -cne 'PermissionEx' -or
+        $Util[0].ParentNode.LocalName -cne 'CreateFolder' -or
+        $Util[0].ParentNode.ParentNode.Id -cne 'Cmp.StationDirectory' -or
+        $Util[0].ParentNode.ParentNode.Directory -cne 'STATIONDATAROOT' -or
+        $Xml.SelectSingleNode('//w:Directory[@Id="STATIONDATAROOT"]', $Ns).Name -cne 'DataMonitoring' -or
+        $Xml.SelectSingleNode('//w:Directory[@Id="STATIONDATAROOT"]', $Ns).ParentNode.Id -cne 'IcemDataDir' -or
+        $Util[0].Attributes.Count -ne $ExpectedAcl.Count) { throw 'Unreviewed/missing station ACL resource' }
+    foreach ($Name in $ExpectedAcl.Keys) {
+        if ($Util[0].GetAttribute($Name) -cne $ExpectedAcl[$Name]) { throw "Station ACL invariant failed: $Name" }
+    }
+    $ExpectedTransfers = @('RestoreMONITORROOT','RestoreICEMDIR','RestoreCREATEDESKTOPSHORTCUT','RestoreADDAUTOSTART','DefaultIcemDirectory','SetPREFERENCES_INITIALIZED','ClearCREATEDESKTOPSHORTCUT','ClearADDAUTOSTART','ClearMSIRMSHUTDOWN','NormalizeCREATEDESKTOPSHORTCUT','NormalizeADDAUTOSTART','NormalizeMSIRMSHUTDOWN','SetREINSTALL','SetREINSTALLMODE')
+    $Transfers = @($Xml.SelectNodes('//w:SetProperty', $Ns))
+    $ActualTransfers = @($Transfers | ForEach-Object { if ($_.HasAttribute('Action')) { $_.Action } else { 'Set' + $_.Id } })
+    if (($ExpectedTransfers -join ',') -cne ($ActualTransfers -join ',')) { throw 'Unreviewed/missing native property transfer' }
+    $Previous = 'AppSearch'
+    foreach ($Transfer in $Transfers) {
+        if ($Transfer.After -cne $Previous) { throw 'Preference/repair sequencing is incomplete' }
+        $Previous = if ($Transfer.HasAttribute('Action')) { $Transfer.Action } else { 'Set' + $Transfer.Id }
+    }
+    foreach ($Property in @('CREATEDESKTOPSHORTCUT','ADDAUTOSTART','MSIRMSHUTDOWN')) {
+        $Clear = $Xml.SelectSingleNode('//w:SetProperty[@Action="Clear' + $Property + '"]', $Ns)
+        $Normalize = $Xml.SelectSingleNode('//w:SetProperty[@Action="Normalize' + $Property + '"]', $Ns)
+        if ($Xml.SelectSingleNode('//w:Property[@Id="' + $Property + '"]', $Ns).HasAttribute('Value') -or
+            $Clear.Value -cne '' -or $Clear.Condition -cne ($Property + '="0"') -or $Clear.Sequence -cne 'both' -or
+            $Normalize.Value -cne '0' -or $Normalize.Condition -cne ('NOT ' + $Property) -or $Normalize.Sequence -cne 'execute') { throw "UI/backend checkbox conversion failed: $Property" }
+    }
+    if (
+        $Xml.SelectSingleNode('//w:Control[@Id="ForceCloseCheck"]', $Ns).Property -cne 'MSIRMSHUTDOWN' -or
+        $Xml.SelectSingleNode('//w:Control[@Id="ForceCloseCheck"]', $Ns).CheckBoxValue -cne '1' -or
+        $Xml.SelectNodes('//w:RegistryValue[@Value="[MSIRMSHUTDOWN]"]', $Ns).Count) { throw 'Force consent is not explicit/per-operation' }
+    foreach ($Property in @('MONITORROOT','ICEMDIR','CREATEDESKTOPSHORTCUT','ADDAUTOSTART')) {
+        if ($Xml.SelectNodes('//w:Property[@Id="SAVED_' + $Property + '"]/w:RegistrySearch', $Ns).Count -ne 1 -or
+            $Xml.SelectNodes('//w:Component[@Id="Cmp.InstallState"]/w:RegistryValue[@Value="[' + $Property + ']"]', $Ns).Count -ne 1) { throw "Incomplete persisted preference $Property" }
+        $Restore = $Xml.SelectSingleNode('//w:SetProperty[@Action="Restore' + $Property + '"]', $Ns)
+        if ($Restore.Condition -cne ('NOT PREFERENCES_INITIALIZED AND NOT ' + $Property + ' AND SAVED_' + $Property)) { throw 'Saved value overrides CLI/UI input' }
+    }
+    if ($Xml.SelectSingleNode('//w:SetProperty[@Id="REINSTALLMODE"]', $Ns).Value -cne 'amus' -or
+        $Xml.SelectSingleNode('//w:SetProperty[@Id="REINSTALLMODE"]', $Ns).Condition -cne 'Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE' -or
+        $Xml.SelectNodes('//w:Component[@Transitive="yes"]', $Ns).Count -ne 2) { throw 'Repeat install/option reconciliation policy failed' }
+    foreach ($Button in @('RepairButton','RemoveButton')) {
+        if ($Xml.SelectNodes('//w:Publish[@Dialog="MaintenanceTypeDlg" and @Control="' + $Button + '" and @Value="OptionsDlg"]', $Ns).Count -ne 1) { throw 'Force choice is unreachable in maintenance operation' }
+    }
+    foreach ($Control in @('DesktopShortcutCheck','AutostartCheck')) {
+        if ($Xml.SelectSingleNode('//w:Control[@Id="' + $Control + '"]', $Ns).DisableCondition -cne 'WixUI_InstallMode="Remove"') { throw 'Uninstall offers unrelated install choices' }
+    }
+    $InvalidNavigation = $Xml.SelectSingleNode('//w:Publish[@Dialog="InstallDirDlg" and @Value="OptionsDlg"]', $Ns)
+    if (-not $InvalidNavigation.Condition.Contains('WIXUI_INSTALLDIR_VALID="1"')) { throw 'Options navigation bypasses directory validation' }
+    $Ids = @($Xml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id + ':' + $_.Guid })
+    $Relocated = Join-Path $Temp 'relocated msi payload'
+    Copy-Item -LiteralPath $NumericPayload -Destination $Relocated -Recurse
+    $null = Write-WindowsInstallerSource $Relocated '0.1.0' $Wxs
+    $RelocatedXml = [xml](Get-Content -Raw -LiteralPath $Wxs)
+    if (($Ids -join ',') -cne (($RelocatedXml.SelectNodes('//w:Component', $Ns) | ForEach-Object { $_.Id + ':' + $_.Guid }) -join ',')) { throw 'MSI component identity depends on build directory' }
+    Assert-Rejected { Write-WindowsInstallerSource $NumericPayload '0.1.1' $Wxs } 'must match'
+    foreach ($BadVersion in @('0.1.0-dev', '01.0.0', '256.0.0', '0.256.0', '0.1.65536', '1.2', '1.2.3.4')) {
+        Assert-Rejected { Assert-WindowsMsiVersion $BadVersion } 'MSI version'
+    }
+    if ((Select-WindowsReleaseVersion 'next' @()) -cne '0.1.0' -or
+        (Select-WindowsReleaseVersion 'next' @('v99.0.0', 'rust-v0.1.9', 'refs/tags/rust-v0.1.10')) -cne '0.1.11' -or
+        (Select-WindowsReleaseVersion '0.2.0' @('rust-v0.1.10')) -cne '0.2.0') { throw 'Rust N+1 version selection failed' }
+    Assert-Rejected { Select-WindowsReleaseVersion '0.1.10' @('rust-v0.1.10') } 'must exceed'
+    Assert-Rejected { Select-WindowsReleaseVersion '0.1.9' @('rust-v0.1.10') } 'must exceed'
+    Assert-Rejected { Get-NextWindowsMsiVersion '0.1.65535' } 'Patch version exhausted'
+    $ExpectedChecksum = (Get-FileHash -LiteralPath $Result.archive).Hash.ToLowerInvariant() + '  ' + [IO.Path]::GetFileName($Result.archive)
+    if ((Get-Content -Raw -LiteralPath $Result.checksum).Trim() -cne $ExpectedChecksum) { throw 'Bad ZIP checksum or artifact filename' }
+    Assert-Rejected { Package '0.1.0-test' } 'already exists'
+    [IO.File]::WriteAllText((Join-Path $Unpack 'assets/iCemDataMonitor.ico'), 'tampered')
+    Assert-Rejected { Test-WindowsPayload $Unpack } 'hash/size mismatch'
+    Copy-Item -LiteralPath (Join-Path $Repo 'src/rust/assets/iCemDataMonitor.ico') -Destination (Join-Path $Unpack 'assets/iCemDataMonitor.ico') -Force
+    [IO.File]::WriteAllText((Join-Path $Unpack 'extra.txt'), 'unexpected')
+    Assert-Rejected { Test-WindowsPayload $Unpack } 'Unexpected payload file count'
+    Remove-Item -LiteralPath (Join-Path $Unpack 'extra.txt')
+    Remove-Item -LiteralPath (Join-Path $Unpack 'icem-host-dev.exe')
+    Assert-Rejected { Test-WindowsPayload $Unpack } 'Missing payload file'
+    $AddinManifestPath = Join-Path $Fixture.addin 'addin-manifest.json'
+    $Provenance = Get-Content -Raw -LiteralPath $AddinManifestPath
+    $BadProvenance = $Provenance | ConvertFrom-Json
+    $BadProvenance.sources[0].sha256 = '0' * 64
+    [IO.File]::WriteAllText($AddinManifestPath, ($BadProvenance | ConvertTo-Json -Depth 8))
+    Assert-Rejected { Test-LegacyAddinBundle $Fixture.addin $Repo } 'AddIn source mismatch'
+    [IO.File]::WriteAllText($AddinManifestPath, $Provenance)
+    $BadProvenance = $Provenance | ConvertFrom-Json
+    $BadProvenance.framework = '.NETCoreApp,Version=v10.0'
+    [IO.File]::WriteAllText($AddinManifestPath, ($BadProvenance | ConvertTo-Json -Depth 8))
+    Assert-Rejected { Test-LegacyAddinBundle $Fixture.addin $Repo } 'Invalid AddIn provenance'
+    [IO.File]::WriteAllText($AddinManifestPath, $Provenance)
+    [IO.File]::WriteAllText((Join-Path $Fixture.addin 'vendor.dll'), 'must not redistribute SDK')
+    Assert-Rejected { Test-LegacyAddinBundle $Fixture.addin $Repo } 'exactly DLL and provenance'
+    Remove-Item -LiteralPath (Join-Path $Fixture.addin 'vendor.dll')
+    $Adapter = New-WindowsInstallerAssets $Repo (Join-Path $Temp 'ui-work')
+    if ((Get-FileHash (Join-Path $Adapter 'assets/Burservis_logo_cyr_red.png')).Hash -cne (Get-FileHash (Join-Path $Repo 'installer/assets/Burservis_logo_cyr_red.png')).Hash) { throw 'Original Burservis logo changed' }
+    if (@(Get-ChildItem -LiteralPath $Adapter -Recurse -File).Count -ne 3) { throw 'Branding adapter contains unrelated policy/scripts' }
+    $PlanPath = Join-Path $Repo 'src/rust/installer/windows-payload.json'
+    $Original = Get-Content -Raw -LiteralPath $PlanPath
+    foreach ($Bad in @('../escape.ico', '/absolute.ico', 'C:\escape.ico', 'assets//empty.ico', 'release-manifest.json')) {
+        $Plan = $Original | ConvertFrom-Json
+        $Plan.files[0].destination = $Bad
+        [IO.File]::WriteAllText($PlanPath, ($Plan | ConvertTo-Json -Depth 8))
+        Assert-Rejected { Package '0.1.1-test' } $(if ($Bad -eq 'release-manifest.json') { 'reserved payload path' } else { 'relative payload path' })
+    }
+    $Plan = $Original | ConvertFrom-Json
+    $Plan.files += $Plan.files[0]
+    [IO.File]::WriteAllText($PlanPath, ($Plan | ConvertTo-Json -Depth 8))
+    Assert-Rejected { Package '0.1.1-test' } 'Duplicate/reserved payload path'
+    [IO.File]::WriteAllText($PlanPath, $Original)
+    $Pe[68] = 0x4C; $Pe[69] = 1 # reject x86 rather than pretending Windows x64
+    [IO.File]::WriteAllBytes((Join-Path $Bins 'icem-host-dev.exe'), $Pe)
+    Assert-Rejected { Package '0.1.1-test' } 'AMD64 PE'
+    [IO.File]::WriteAllText((Join-Path $Bins 'icem-host-dev.exe'), 'ELF is not a Windows executable')
+    Assert-Rejected { Package '0.1.1-test' } 'Not a Windows PE'
+    [IO.File]::WriteAllBytes((Join-Path $Bins 'icem-host-dev.exe'), [byte[]]@(0x4D))
+    Assert-Rejected { Package '0.1.1-test' } 'Not a Windows PE'
+    [IO.File]::WriteAllBytes((Join-Path $Bins 'icem-host-dev.exe'), [byte[]]::new(128))
+    Assert-Rejected { Package '0.1.1-test' } 'Not a Windows PE'
+    if (@(Get-ChildItem -LiteralPath $Output -Filter '.package-*' -Force).Count) { throw 'Failed packaging left staging directories' }
+    if (@(Get-ChildItem -LiteralPath $Output -Filter '*0.1.1*').Count) { throw 'Failed packaging published an archive' }
+    Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture, failure cleanup; full AddIn inventory, native MSI ownership/UI/options/paths, stable option components and N+1 version selection.'
+} finally { if (Test-Path -LiteralPath $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force } }
+

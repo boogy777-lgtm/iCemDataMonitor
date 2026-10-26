@@ -1,0 +1,109 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- iCemEmulator (owner decree 2026-08-27: «Эмулятор теперь будет отдельным
+       и независимым процессом... встроенный UI + CLI. Своя папка внутри
+       C:\Program Files\Halliburton\iCemMonitor»):
+       ONE standalone WinUI 3 app — the EmulatorPage UX (macOS kit theme, all
+       COM/LAN/Units controls) in a framed window + the ENGINE RUNNING IN-PROCESS
+       (EmuEngineHost as a hosted service, no child spawn, no host RPC) + the
+       CLI mode `iCemEmulator.exe <cli flag> <command>` over the SAME control pipe
+       \\.\pipe\iCemEmule.Control (one-shot console commands against the
+       RUNNING instance; honest «эмулятор не запущен» when none runs).
+       Deploy folder: C:\Program Files\Halliburton\iCemMonitor\iCemEmulator\
+       (installer does placement — layout expectations live here and in
+       specs/iCemEmule).
+       Cross-zone pin (transport live gates): output
+       bin\x64\<Config>\net10.0-windows10.0.19041.0\iCemEmulator.exe, process
+       name `iCemEmulator`, settings path (2026-08-31 owner decree — moved
+       from the legacy %LOCALAPPDATA%\...\iCemEmule\settings.xml):
+       %ProgramData%\Halliburton\iCem\DataMonitoring\emule_config.xml. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <RootNamespace>Halliburton.iCemEmulator</RootNamespace>
+    <AssemblyName>iCemEmulator</AssemblyName>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\..\assets\iCemEmule.ico</ApplicationIcon>
+    <!-- Custom Main: CLI / selftest / landiag dispatch BEFORE WinUI bootstraps. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260804001" />
+<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
+<!-- 2026-09-01 (owner decree «Блок 2 п.5», payload audit): the emulator pulled
+     WebView2 1.0.3179.45 TRANSITIVELY from WindowsAppSDK while Shell.WinUI
+     pins 1.0.4129.50 — the MSI keep-first dedupe then picked an arbitrary
+     winner for WebView2.Core/.Projection.dll. Pin the SAME version here so
+     both stages carry the identical DLL. -->
+<PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Engine library (EmuEngineHost, control pipe, emitters, selftests). -->
+    <ProjectReference Include="..\iCemEmule.Core\iCemEmule.Core.csproj" />
+    <!-- Page library (EmulatorPage + EmulatorViewModel) — moved into emulator
+         ownership; the shell no longer references it. -->
+    <ProjectReference Include="..\iCemDataMonitor.Emulator.WinUI\iCemDataMonitor.Emulator.WinUI.csproj" />
+  </ItemGroup>
+
+  <!-- macOS tokens: the SAME file the EmulatorPage merges at page level
+       (linked, not copied) — app-level fallback for window chrome only;
+       engine icon for the window caption -->
+  <ItemGroup>
+    <Page Include="..\iCemDataMonitor.Emulator.WinUI\ThemeResources.xaml" Link="ThemeResources.xaml" />
+    <Content Include="..\..\..\assets\iCemEmule.ico" Link="iCemEmule.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="templates\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!--
+    P1 2026-08-26 fix ported from Shell.WinUI (2026-08-28: the emulator GUI
+    did not start at all — stowed exception 0xC000027B on the stand):
+    dotnet publish DROPS the app's OWN compiled XAML resources when a WinUI
+    class library is referenced (this project references
+    iCemDataMonitor.Emulator.WinUI). The library .pri reached the publish
+    output, but the APP .pri (iCemEmulator.pri) and the loose .xbf/.xaml stayed
+    in $(OutDir) — Application.InitializeComponent then cannot resolve
+    ms-appx:///App.xaml and the exe dies silently at startup. Copy the app
+    .pri + loose .xbf/.xaml into the publish output — additive, idempotent,
+    safe for both -o and default publish dirs (the wildcard also covers the
+    referenced library's loose .xbf, replacing the old _ShellPublishEmuLoose).
+  -->
+  <Target Name="EnsureWinUIResourcesInPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_EmuPublishPri Include="$(OutDir)*.pri" />
+      <_EmuPublishXbf Include="$(OutDir)*.xbf" />
+      <_EmuPublishXaml Include="$(OutDir)*.xaml" />
+      <!-- W15 2026-08-28: the Emulator.WinUI library ALSO emits loose XAML/XBF
+           under its own subfolder in $(OutDir) (EmulatorPage.xaml/.xbf,
+           ThemeResources.xaml/.xbf). The top-level wildcards above never
+           matched them, so publish/stage layouts shipped without the subfolder
+           (today's XamlParseException evidence: crash.log 2026-08-28 07:20 and
+           07:53 = MainWindow.InitializeComponent «XAML parsing failed» on the
+           pre-fix layout). Copy the subfolder too — additive, idempotent; the
+           .pri stays authoritative, the loose files are the fallback path. -->
+      <_EmuPublishLibXaml Include="$(OutDir)iCemDataMonitor.Emulator.WinUI\**\*.xaml" />
+      <_EmuPublishLibXbf Include="$(OutDir)iCemDataMonitor.Emulator.WinUI\**\*.xbf" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_EmuPublishPri)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_EmuPublishXbf)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_EmuPublishXaml)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_EmuPublishLibXaml)" DestinationFolder="$(PublishDir)iCemDataMonitor.Emulator.WinUI" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_EmuPublishLibXbf)" DestinationFolder="$(PublishDir)iCemDataMonitor.Emulator.WinUI" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

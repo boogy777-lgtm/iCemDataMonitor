@@ -1,0 +1,1278 @@
+{
+  "schema_version": 2,
+  "source_commit": "96e2206562c9389d1543095232115d81eae4b692",
+  "changes": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
+      "approved_blob_sha1": "dc08ac7a74a6c3e1061dbe1cc020828e8c9a16b3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "baseline_blob_sha1": "c1eeef21286f688da9b9e05d4fddc99277b7366d",
+      "approved_blob_sha1": "bb8da88cb6aa045c66cd27b9f18d8ae8a4feb54b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
+        "reason": "Use the existing -NoPause MSI option in unattended releases. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": ".gitignore",
+      "baseline_blob_sha1": "30b63e9c3a60741814ae7b79790e2e45e405bc7d",
+      "operation": "modify",
+      "approved_blob_sha1": "d78d9197267667853d3c92a00cc84132bafc56a7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
+        "reason": "Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+      }
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/DataMonitorEdgeTruthTableTests.cs",
+      "baseline_blob_sha1": "7c37c7726713e2eb044673b7c35b6b7ce34d861c",
+      "approved_blob_sha1": "f14b0d4034e223cff6c4e2c74a7f08f5df51ddb2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/DataMonitorPollLivenessTests.cs",
+      "baseline_blob_sha1": "f3a1605b4a9fd7cac9fe2bf8c595527ddff2cae8",
+      "approved_blob_sha1": "41f1e73991f07e0b90fb0a8d158c938d06ff6b1e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/TapLogTests.cs",
+      "baseline_blob_sha1": "3e09f435111a31e4bb25ae036cb0daece0e879ee",
+      "approved_blob_sha1": "06605982fccddc687cd6fe3f4a2cbd92a43f5073",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj",
+      "baseline_blob_sha1": "b2e07d754433cffaa4207850430546dccb11b95a",
+      "approved_blob_sha1": "4ef07f988d42d93a64f25a599f7ee0764dab79c3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/BusWriter.cs",
+      "baseline_blob_sha1": "ae1d03cbce01108d5894929a5a4c6cb9deed1c46",
+      "approved_blob_sha1": "d6ff53c351f4c6ceeec2750161134fd81d90ed81",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/DataMonitorModule.cs",
+      "baseline_blob_sha1": "407dd96f533fdbf1a477aa75ac270dab3e2cde2e",
+      "approved_blob_sha1": "069b2fa5806583ac0df491a65bfcb6580c41149a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/TapLog.cs",
+      "baseline_blob_sha1": "1be16afeb82f9b4c18939f6b2d176f5051486b0d",
+      "approved_blob_sha1": "9257fbdbfb91117d29254d0034a6920cb455ce2c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "CI.slnf",
+      "operation": "modify",
+      "baseline_blob_sha1": "4fb782b92866b62d8aac981ddf1491e015e4a14a",
+      "approved_blob_sha1": "b6653e3b8df3263fb1381c4aacdcc38fe5bd4a05",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      }
+    },
+    {
+      "path": "docs/architecture.md",
+      "baseline_blob_sha1": "464e1416c3a4d6e4d82b837d33932db8fac82284",
+      "approved_blob_sha1": "fc2ab5d56717b0104c3cbdc7c7fcd922d1df0d8d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/config.md",
+      "baseline_blob_sha1": "84f5df4052dc1cd967a353c5591defd9e74fbf7e",
+      "approved_blob_sha1": "b820196f999fdd942e33118892ac9b74635019ff",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/development.md",
+      "baseline_blob_sha1": "66ccd373b78e913acf66d0679158cba8a01eaf91",
+      "approved_blob_sha1": "5b198a68367ae975cc6e8e411ba5825ac650d96c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Document CI fixes and current validation limits. Subsequent C11 approval: Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/install.md",
+      "baseline_blob_sha1": "84ec4832c8e545fcf77ea171fe3868f76242c770",
+      "approved_blob_sha1": "5781a976881dc9ed447044e7de48d3b27e9c4c86",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/release.md",
+      "baseline_blob_sha1": "f57a3104c227cbb997c059a8969554343e1be698",
+      "approved_blob_sha1": "3233962caf00478dd95d98572f15139633f99ef3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/ArchTests.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "a8c57cb7b2b9dcbfac28008695eecde056166e51",
+      "approved_blob_sha1": "3dbbc6b386d3557a64fbf92ce7a0e0d4f4c3e136",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "2f332af1dcd46ffcd7c7ce7dd91a0cbc3217a2ac",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/ContractTests.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "9fc8930f326d3154ff67ff11bc99367f0007bdad",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "User-authorized Legacy CI repair: Wait for the actual MongoDown health event within a bounded async-operation budget, retain exact DbOk assertion and always stop/join/dispose the loop. Historical approval retained; Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core.Tests/iCemDataMonitor.Core.Tests.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "3da90787fd9889a38a9592ff19006a3995de61a4",
+      "approved_blob_sha1": "89d49f70a1a52442ac310472e18f454aa9fd8543",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/Extensions/CoreServicesExtensions.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "ffc3324c3cbb87bd2106579c26c38da60105b554",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/HealthCheckService.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "11448d2eb9d6795924f24732cecc6db9b0be23fc",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/iCemDataMonitor.Core.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "068177be668d4d244f0ea9317cc66e06aa4a2c83",
+      "approved_blob_sha1": "22cc4c9377497fec467a055ebb66667502eaceb6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/Models/CoreOptions.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "ff9f6f835a23909c813009cb062cc19b2b3443b6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/Models/HealthEvent.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "ce543500262a74bbfc1edf5030b3d4012944f179",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Core/PipelineWorker.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "a03ae6dfafc29d951a7c372601caa96003337718",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusAccessDeniedTests.cs",
+      "baseline_blob_sha1": "5b3df6e7adeb6a2ce539e1177348e58b5e4ac4f2",
+      "approved_blob_sha1": "b780a4469aa433d0c9a9204eb40494c299a46fa6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusReaderReadOnlyTests.cs",
+      "baseline_blob_sha1": "1694a68773a6c894e4dc5c3384704572dee9a5b8",
+      "approved_blob_sha1": "428545e00de3d87ec6c520374a1c7442faab6aec",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusReaderTests.cs",
+      "baseline_blob_sha1": "4d72e2182707ecfc9bc980542665d581939333d9",
+      "approved_blob_sha1": "7e31361d9e54027298faf9550c6e876c98e66ed5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/BusRingServiceTests.cs",
+      "baseline_blob_sha1": "c5d65a88cdd3477637f4f9ea28fcc80c58c09337",
+      "approved_blob_sha1": "c78a8cda6760ee92424ace5f78f2a49494d245d2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/DataBusLogTests.cs",
+      "baseline_blob_sha1": "11d81cf04fa6899de8ecb7227c085e7b4b549f2d",
+      "approved_blob_sha1": "56bbe16b4111831dac810791e9c72cce0fbc2490",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "5b435efb9b4ef1ec5353af0cd851b37b66c09e22",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs",
+      "baseline_blob_sha1": "faded2621f43084b8298713488c354e3a77c4834",
+      "approved_blob_sha1": "b415ec92e9ac96557182a4580349c0473509eddd",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "User-authorized D48 legacy test repair following post-merge E19 CI failure: the DropOldest overflow test acquires its initial full sample on an observed-loss-free attempt within the original shared 15s budget; wrong values still fail. Preserve original float assertion, actual overflow/drop thresholds, post-full heartbeat marker, producer stop/join, exact single retained sample and heartbeat3, 10s cleanup. Dispose test writer. Production sampler unchanged; D45 freshness and all other methods unchanged. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusAddrRingService.cs",
+      "baseline_blob_sha1": "707a2d3110d2ca9487380b875822c52825b89dba",
+      "approved_blob_sha1": "b4e196fa77d5c6c0c1ddb9ced4394efa15430163",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusReader.cs",
+      "baseline_blob_sha1": "0de6a74f8f2517e1e946525e958f37b61b156822",
+      "approved_blob_sha1": "5ea5d5e093e0279dfdb3b1f276f487a992cbf2b3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Calculate zone activity and age at the same captured UTC instant. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data/Bus/BusRingService.cs",
+      "baseline_blob_sha1": "14e1451d73a5a472ae1e5ec6c2796677ab2a0d54",
+      "approved_blob_sha1": "66b226620171daaca4cf013f4d736641c76ab412",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data/iCemDataMonitor.Data.csproj",
+      "baseline_blob_sha1": "338696acd1e8ddda2283d6376c6371ed58249a92",
+      "approved_blob_sha1": "c6ac40484bf587ecbfc44fefa8a04a5776643821",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data/LogsCleanup.cs",
+      "operation": "delete",
+      "baseline_blob_sha1": "8350b47e38d936c942f4a99118977932b02145c0",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Data/Telemetry/MetricsSampler.cs",
+      "baseline_blob_sha1": "2cd119edb2fb2ba2c7ee590713c0a5a78fc9885c",
+      "approved_blob_sha1": "8c69b27cdbf7ae4a5936321ca68c0730cdc16a2d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Use one captured UTC instant for sample zone liveness. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Emulator.WinUI/UiTrace.cs",
+      "baseline_blob_sha1": "0e6c0a9e0d45765feaaa80b8b739386efb62ac6a",
+      "approved_blob_sha1": "8fc732907b466ad6a0fa96726c6ac937f18587e1",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/DefaultLayerActuator.cs",
+      "baseline_blob_sha1": "49c9e7b470048549d1e6e0585506bc561e71c7ad",
+      "approved_blob_sha1": "91a92a0b44f5f2431b8c69c21304a6bbc312e346",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/Com0ComEndpoints.cs",
+      "baseline_blob_sha1": "ec17077e89e545e9e5c6fd5a688bb59e428f0a78",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/ModbusPreviewEndpoints.cs",
+      "baseline_blob_sha1": "afd7271b2581224ae8a48b40cfd727e7926b8216",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs",
+      "baseline_blob_sha1": "53a06293e2748d4c66af7ed5632c0112d363ce7c",
+      "approved_blob_sha1": "4d449b8c82b74c336e050510c73d9618ef625023",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs",
+      "baseline_blob_sha1": "c78d6ec5804d448fbdf9abf6f374e490acc00d7f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/ServiceFacades.cs",
+      "baseline_blob_sha1": "48b1e2b78e255b042412ddb3f8840fb6fcdc91a7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/SnifferEndpoints.cs",
+      "baseline_blob_sha1": "4b47a851006245f940ec4f55230b4413cd60dd4e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/SourceEndpoints.cs",
+      "baseline_blob_sha1": "9cf9e71f4f36abae57d18a5161f6bb476ab9b80e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Endpoints/TemplatesEndpoints.cs",
+      "baseline_blob_sha1": "62493d0be4739e3500164b998fd9a027a13fc1ef",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/Health/BusHealthMonitor.cs",
+      "baseline_blob_sha1": "5f5aa0b001d1d0d71d8ef21f6a42aebcd31de043",
+      "approved_blob_sha1": "77ad56d9bf77c64c2323099362a0f375a2f81a1c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Inject UTC clock and evaluate all zones at the same instant. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/HostComposition.cs",
+      "baseline_blob_sha1": "213428c7d9b689f1caaf38737a02453be9abcb05",
+      "approved_blob_sha1": "73e0198838cba7b9928ade93521a69dc0c141bf3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/37",
+        "commit": "c336f33548c67b8d603c2ad8e5bd4dff44571acd",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance. Subsequent C8 approval: Owner-authorized L10/L11 concrete Modbus generation lifecycle serializes idempotent start, stop and disposal, joins accept/refresh/client work, releases completed clients, preserves register image and truthful bound status. Boot and runtime use the same singleton; boot retains five attempts/four five-second delays with cancellation and typed address-in-use-only retry, actual-port/socket-cause diagnostics. Host owns both named-event workers and joins before shared handle and final DI disposal; existing host StopAsync and blunt restart remain. Preserve frozen MMF/layout/time/mirror/PDU, C2 commands, C6 acquisition, proto/assets/SPA and Rust runtime. Independent GPT-6.1 Sol medium review found no defects; portable Transport11/11 and Host66 plus5 Windows-only skips passed independently. Windows CI is required before merge. PR37 and exact remote code commits record provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Core/LayerRuntimeController.cs",
+      "baseline_blob_sha1": "f88a44393efe1e3e833d7b50fbb2edc11ca98b30",
+      "approved_blob_sha1": "c6e4773f0338d5d3bfd47f6ed2a8f8e57dce9534",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/BusHealthMonitorTests.cs",
+      "baseline_blob_sha1": "99f4cd70c791d65204b3c7ec3de72ce706f0614b",
+      "approved_blob_sha1": "5dcae4bb33fbf859d47085e1a77d4f4d83438bc3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Hold the real mutex on its owning thread; deterministic UTC boundary cases. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs",
+      "baseline_blob_sha1": "86e60a66a6e2af8f8d11c13a3cb21714c957dafa",
+      "approved_blob_sha1": "9f5faafc10485abf8f890ac69a4a31c04a2a73ae",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/StationFileLogHostContractTests.cs",
+      "baseline_blob_sha1": "baf1dfd05946b58b2edf65bb0dfaaca58849e65f",
+      "approved_blob_sha1": "7258fc3db9303f6cfbeb820210eebc3ab0a5ab5a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "2b1c51c22eb865242b1bdf952a6599b812c1b29c",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/TelemetryServiceImplTests.cs",
+      "baseline_blob_sha1": "17e0892b004f2a1df5049d3c0e597ac86f7a8a7a",
+      "approved_blob_sha1": "c2ae1c1da3b2583de38486b3d974006b05a75c9d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/UiNavigationServiceTests.cs",
+      "baseline_blob_sha1": "cd63ce5bde8d413fda1e13dffab850721f8cba07",
+      "approved_blob_sha1": "a19e1c02224cbfd26843e0bb7c3c5f355c311e8f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/14",
+        "commit": "03c27552bb7fc3af2e70cf0842a4c1fa39f5bdb7",
+        "reason": "User-authorized Legacy CI repair: replace three ThreadPool/sleep mutex holders with one dedicated-thread fixture using acquisition acknowledgement, explicit release and bounded join; retain navigation assertions and add ownership/release regression. Production navigation is unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs",
+      "baseline_blob_sha1": "10202f0b8fb32bed197ca0872047d6cb1b87af6f",
+      "approved_blob_sha1": "ad159a13cbe9cf870c16e15aad2cf76e859d0cd0",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host/HostAppFactory.cs",
+      "baseline_blob_sha1": "08db0675da20e42f7e4a01668513e6d469eee062",
+      "approved_blob_sha1": "2c2701ca9ab23e01411c240fe8a1b40975c13044",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged. Replaces the prior approved C1 factory blob from PR30 while preserving its read-once boot context. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host/iCemDataMonitor.Host.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "852bca27a01d0a5ba2b253e45fdddba625e458d5",
+      "approved_blob_sha1": "26529869e6f27569a73d76821cd1b2f658870c3a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Host/Program.cs",
+      "baseline_blob_sha1": "9b1cfeb146c218ad9055ff0f5bb15f3540a91697",
+      "approved_blob_sha1": "cf24b741a81ebbbb3139d1cb040dbaf64dccf34d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/37",
+        "commit": "e02226d40fcd70b03ed5e47534339f487bc87b0a",
+        "reason": "Owner-requested legacy refactoring plan C1/L01, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Load one HostBootContext (options, actual absolute INI path, bind plan) and share it across Program, DI, endpoints and startup layers. Preserve config schema/search/migration, CLI override persistence and external contracts. New fault regressions cover changed/invalid INI after load and independent ActivePath changes; historical manifest and oracle fixtures are unchanged. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance. Subsequent C8 approval: Owner-authorized L10/L11 concrete Modbus generation lifecycle serializes idempotent start, stop and disposal, joins accept/refresh/client work, releases completed clients, preserves register image and truthful bound status. Boot and runtime use the same singleton; boot retains five attempts/four five-second delays with cancellation and typed address-in-use-only retry, actual-port/socket-cause diagnostics. Host owns both named-event workers and joins before shared handle and final DI disposal; existing host StopAsync and blunt restart remain. Preserve frozen MMF/layout/time/mirror/PDU, C2 commands, C6 acquisition, proto/assets/SPA and Rust runtime. Independent GPT-6.1 Sol medium review found no defects; portable Transport11/11 and Host66 plus5 Windows-only skips passed independently. Windows CI is required before merge. PR37 and exact remote code commits record provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host/StartupLog.cs",
+      "baseline_blob_sha1": "35c09a47401b34f9f00516ab083db70e3f6beca0",
+      "approved_blob_sha1": "0724726cc17e778ff50b58aacf685f79dec9bab5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/CrossProcessNames.cs",
+      "baseline_blob_sha1": "d73caaa66f899a4d06afdc7ab9f12cca9bca19f4",
+      "approved_blob_sha1": "c2da0b898ca346c6890aeabe98ad4f52d3ceb8e1",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/32",
+        "commit": "37abf4ff668743819a32e1b1fdb2796873abfc36",
+        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host/Tray/UiPrefsStore.cs",
+      "baseline_blob_sha1": "af60ca6a5ce69de9032ae4ece0f2850afcc1dbcc",
+      "approved_blob_sha1": "25f4f08918dc4c73cb6cdb40a82733837842b973",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/32",
+        "commit": "37abf4ff668743819a32e1b1fdb2796873abfc36",
+        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/IHostApi.cs",
+      "baseline_blob_sha1": "28b35ef8a339b0208ccff2b18a52af4326d96816",
+      "approved_blob_sha1": "652f9f5518e3a096a37a431748014ce69c80a107",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/32",
+        "commit": "37abf4ff668743819a32e1b1fdb2796873abfc36",
+        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/DeviceCatalogRegistry.cs",
+      "baseline_blob_sha1": "b192b5dd6b7996de2efd9dcf7a61ad9f77fec726",
+      "approved_blob_sha1": "91513f2cbd202dcf18c14d879e12313335c5c107",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "4fe2f7ebfb6535c19dbfc27a8b777427eae4d723",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/FlecsVariableCatalog.cs",
+      "baseline_blob_sha1": "f7f246f46f10c98f7145b923e7453740eb748278",
+      "approved_blob_sha1": "f88c7dc09e70589c27ac08b39ccea87e7cffe01d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
+        "commit": "15b5a33860e01f2b6ae497492c2f279516256d25",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/iCemDataMonitor.Plugins.Icem.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "5c69ad9ab8a86f2a260a6720af6a80ddd942e0dc",
+      "approved_blob_sha1": "ad1b2e6de71d33c5d9470723f7d1d934c4d0de7f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/LanVariableCatalog.cs",
+      "baseline_blob_sha1": "d63bb61d85a6db1e236696ff38660ae677e3203e",
+      "approved_blob_sha1": "13453fbcc2019845a280ecb9a94248ddcf55830e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
+        "commit": "15b5a33860e01f2b6ae497492c2f279516256d25",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/PlcVariableCatalog.cs",
+      "baseline_blob_sha1": "d18b4093dc5660bac7857114b08136ca7063d9ce",
+      "approved_blob_sha1": "1357b331a01dbb58ded77bc6fe09cc5f58a673af",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/33",
+        "commit": "15b5a33860e01f2b6ae497492c2f279516256d25",
+        "reason": "Owner-authorized C4/L06-L07 legacy refactoring: one owned registry snapshot drives catalog and Modbus metadata, no hidden second deployment load; cache family catalogs as read-only projections and share small catalog projector while preserving canonical lookup, aliases, offsets, order, fallback vectors and palettes. Optional registry failure fixes absence for lifetime; strict Load, MMF, frozen wire surfaces and Rust runtime unchanged. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; portable Plugin166/166 and Data integration1/1. Reviewed code commits and PR33 provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Sdk.Tests/iCemDataMonitor.Sdk.Tests.csproj",
+      "baseline_blob_sha1": "882d3349d89b2edd2101ebeefc74c690f65030b6",
+      "approved_blob_sha1": "769c6592206d904e9d74a946015a465a490da083",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "d473b24833a7ebe9b151979c43bc476d8508ba5c",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs",
+      "baseline_blob_sha1": "4a203d1f2e1069d360fff60a03fd9b18a93f4979",
+      "approved_blob_sha1": "5e334263315c28a2172cb565a14d1f22709ee1cf",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IConfigStore.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "c4c09a186421b26915f3cbc2c493c2ec7c552de9",
+      "approved_blob_sha1": "582aa89d97a1aa723a74c6f57d1d129c2102f96e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Sdk/IModbusPublisher.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "30e930ad40e2bd9ac2146aea68ec2afb491faf4b",
+      "approved_blob_sha1": "a31ca0b766836fd538a85cf77a5f1909235a77dd",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/App.xaml.cs",
+      "baseline_blob_sha1": "e03b217b11a2d90715f394ea246200fe69de1342",
+      "approved_blob_sha1": "f9bf86d3857013ed0eb168b6c4d2da7d18150b6f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/iCemDataMonitor.Shell.WinUI.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "cfe1d48f1f1298b7a4cde7570e1232f37956ab53",
+      "approved_blob_sha1": "0239c1657090386492392aa2e34a5204bbf43547",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml.cs",
+      "baseline_blob_sha1": "0caf4ac714d76b9b397b350268d36d554e9eef61",
+      "approved_blob_sha1": "f6081d5caec03675893b2fa6ff849a4b8ccc36aa",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "074056ec3410ef9a46adc5646f6851f2715a70c1",
+        "reason": "Owner-requested legacy C3/L08, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Share atomic station theme storage and current-projection reconciliation; notify only after successful commit, surface write errors through existing logger. Serialize UI theme operations, suppress stale session completions, refresh on attach/Connected/first pipe-alive; known pipe Down before send may use local storage, unknown outcome after attempted RPC never starts a second writer. Frozen bool-only UiPrefs is current projection, not write acknowledgement; default-dark and cross-process last-commit-wins remain explicit. Store 9/9, RPC 1/1 and coordinator 14/14 tests pass; Windows-only permission and WinUI gates separate. Historical manifest, frozen surfaces and Rust runtime remain unchanged. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.sln",
+      "operation": "modify",
+      "baseline_blob_sha1": "3f39ac89a671cee80e1b15c0a6a029703cfd5ed7",
+      "approved_blob_sha1": "3d224b82e697c1e830506ceb509ff1e1467be300",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/Com0ComMonitorTests.cs",
+      "baseline_blob_sha1": "058198af520efdaa5c6eaffcdc4ea12faa04877c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/iCemDataMonitor.Transport.Tests.csproj",
+      "baseline_blob_sha1": "0cf39bfb10f22be4e9ffed1173722782bd2998df",
+      "approved_blob_sha1": "3aecb789a70737d8c7de428c7ae2749cf5449cfb",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/LiveModbusEmulatorTests.cs",
+      "baseline_blob_sha1": "5abc1d22a88b5bcd94d5b806941b806bf8002477",
+      "approved_blob_sha1": "219176df02c85f57cf6ec8639d7c160d0e85adff",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
+        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/ModbusContractTests.cs",
+      "baseline_blob_sha1": "e01e35d5563db01ed786cff91c151adcd2a6ceda",
+      "approved_blob_sha1": "502b00e4f74b3ae9c3b6c277e70502fa42b52a32",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "a2c39bddc552785f0c10d9229c7ba93ea31d3303",
+        "reason": "Wait for actual tick/recovery results through TCP. Subsequent C5 approval: Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance. Subsequent C7 CI correction: recovery is acknowledged by one complete TCP window containing header7 and exact active-zone CDAB words [0,0x3F80], not a header that may legally be mirrored from retained stale state. Preserve original deadline, delay and exact assertions; deterministic stale-first/fresh-next vector proves the former handshake was insufficient. No Modbus production change. PR36 and exact remote code commit record provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/ReplayAceFrameSource.cs",
+      "baseline_blob_sha1": "46425a31ce7f6603a48be56e6df9e3ca7bd4bb67",
+      "approved_blob_sha1": "2b31fd4ba6b31b9098c0c559b0b9a582a7a55732",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/SerialTeeServiceTests.cs",
+      "baseline_blob_sha1": "b59afbbc4b2282e1aaa5817b8457c2415b8c3647",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "User-authorized D46 follow-up: cancel the retry-only fixture on the same factory call stack after its expected second-attempt signal, preserving actual production retry, PAIR_MISSING/pair=false, exact attempt2 and 15s/10s bounds; assert no third attempt after Stop. Add monotonic signal/wait/deadline timestamps, signal result and source TCS status. Controlled runtime10.0.13 experiment proves deferred WaitAsync completion can lose to timeout and same-stack cleanup releases it; exact Windows CI timing cause remains unproved. Production .NET unchanged. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Com0ComMonitor.cs",
+      "baseline_blob_sha1": "40e0d64e6d4e0f82f24068dee116ba6c6806a61f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/IAceFrameSource.cs",
+      "baseline_blob_sha1": "7f29e0ea4205159c6d7e1c3e70b4915b30a2cb9e",
+      "approved_blob_sha1": "738d0085022ebc7c0461167d4b241dbc2e805a21",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/iCemDataMonitor.Transport.csproj",
+      "baseline_blob_sha1": "5ba9014ee26cc3bcc04d590c12a1c8c9d3016463",
+      "approved_blob_sha1": "c52f3d4bcecdd065688fa50e2ea37782c95f7dc5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/ISerialPort.cs",
+      "baseline_blob_sha1": "4d294ad8d0ccd690edca2fdde75d54d7e4eb43c4",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/ModbusTcpPublisher.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "2af3376650e74e5e7d8ed49c6bf404cdcd2793eb",
+      "approved_blob_sha1": "55c936d7d5d356a5ffc1a77a90bb5123178f9ad8",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "b988985d5745eeeadb4fb254ab94d17e93635584",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance. Subsequent C8 approval: Owner-authorized L10/L11 concrete Modbus generation lifecycle serializes idempotent start, stop and disposal, joins accept/refresh/client work, releases completed clients, preserves register image and truthful bound status. Boot and runtime use the same singleton; boot retains five attempts/four five-second delays with cancellation and typed address-in-use-only retry, actual-port/socket-cause diagnostics. Host owns both named-event workers and joins before shared handle and final DI disposal; existing host StopAsync and blunt restart remain. Preserve frozen MMF/layout/time/mirror/PDU, C2 commands, C6 acquisition, proto/assets/SPA and Rust runtime. Independent GPT-6.1 Sol medium review found no defects; portable Transport11/11 and Host66 plus5 Windows-only skips passed independently. Windows CI is required before merge. PR37 and exact remote code commits record provenance. Historical approval retained; Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/Com0ComStatus.cs",
+      "baseline_blob_sha1": "1f16bc1514d70f3d91e33ec45c147ba9a33b7a2c",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/ComTeeStatus.cs",
+      "baseline_blob_sha1": "2664559bfa40cb44a498d6416a6a7de5ab8effe5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/Models/TeeOptions.cs",
+      "baseline_blob_sha1": "889c29ed6e6188eb2f8415f91c5052a50f6422f2",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/SerialPortAdapter.cs",
+      "baseline_blob_sha1": "63fb9d6e52d9c7f86e437d940ee7666a0e6a4222",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.Transport/SerialTeeService.cs",
+      "baseline_blob_sha1": "2814d72e490395bf29fad6ec5808a83ddf0482cc",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/B5ContractTests.cs",
+      "baseline_blob_sha1": "808b2bff061b3e2937c60ab1d5169e4d018ab2e9",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+      },
+      "operation": "delete"
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/ContractTests.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "9a5aa576a5c4d0d1971fa98d6670a265fd5961fa",
+      "approved_blob_sha1": "85e10f2de74403bcbaff27ca90d1cef840a4964a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
+        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+      }
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/iCemDataMonitor.UI.Tests.csproj",
+      "baseline_blob_sha1": "e30b3a2af7d868c6ccfdb66587d0890c3949c8e9",
+      "approved_blob_sha1": "a61bc72e34ff682090c7bdc685472e05adede978",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "8522f15f623eab2a024a841490b893ff74aa9f4a",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/LayerRuntimeControllerTests.cs",
+      "baseline_blob_sha1": "c032db27af2fb8fab941123b33936d1f38841b5b",
+      "approved_blob_sha1": "00880be7e49a3f870f66a26dafa4f7d4dac7c0d7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/31",
+        "commit": "8a3939d3268a153fcf134fad4d8ffe559d8c0d4e",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/RegisterMirrorTests.cs",
+      "baseline_blob_sha1": "54a32036f138fa28a6fa717da69f1fd1855a34a4",
+      "approved_blob_sha1": "f15a80494f214060e123a2509460de23e573f1e9",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/35",
+        "commit": "86dcb27c376ab5ed03ad04d579bf3d6059f527c8",
+        "reason": "User-authorized D55 synthetic register fixture repair: explicit future-clock LAN/COM exercise age clamp0, all46 original assertions plus claim/age/count checks; exact staleLAN now-6000 and health boundary matrix preserved. Await startup, own clients/apps/readers, dispose responses and cleanup, report monotonic phase/liveness diagnostics. Original CI activefalse cause remains inferred because age was unlogged. No production .NET behavior, dependencies, retries, sleeps or request-timeout increase. Subsequent C6 approval: Owner-authorized C6/L05 legacy refactoring: one sequential Data acquisition owner publishes immutable coherent state; requests/subscribers/health/ring/Modbus consume latest state without source IO. Reference-based successful capture sequence handles Reader last-good fallback, explicit 200ms sample-then-delay and period+500ms publication expiry, initial warming and 1Hz health CaseState timing; DI factory owns Reader with stop/dispose join. Preserve layout5, int32 CDAB COM time, independent LAN/RAW and every-tick Modbus resize/header/stale/active overwrite. Migrate fixtures and add lifecycle/coherence/no-IO/Windows MMF/ACL and honest same-binary call-pattern measurements. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; local pure Data6/6 Host13 reported (one Windows guard) Transport1 UI1; Windows CI required before merge. PR35 and exact reviewed code commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmulator/iCemEmulator.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "0a89c531143b876322b047dd6f58f5c167a165b9",
+      "approved_blob_sha1": "558b537837afc4b526ca77a168c3de69844a79a6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      }
+    },
+    {
+      "path": "iCemEmule.Core/Control/ControlPipeServer.cs",
+      "baseline_blob_sha1": "eca06cfd407774457107c71483a8723160c28088",
+      "approved_blob_sha1": "40483a1e16d96218e8686d06f66f962a213e3bd4",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/5",
+        "commit": "c3788065909d8e60c4b45cabc38a93bdfbe0e783",
+        "reason": "User-authorized quit ACK repair: register drain ownership before command execution and synchronize shutdown tests without ThreadPool timing assumptions."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Core/Core/CrashLog.cs",
+      "baseline_blob_sha1": "a5192ba5ec4853a1ca8387b7896f840ed64d035d",
+      "approved_blob_sha1": "9231078a2199ca61bbf7cc07f22a66f1f6f6e68a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Core/Core/EmuEngineHost.cs",
+      "baseline_blob_sha1": "b0bda5f6207ddee0a2f2a3cbef56edbd89057293",
+      "approved_blob_sha1": "b03427cf5dcbb538c7f2ddd481046a6593781af3",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "24fe43cc77a8c9d1ef272e527c0d358c3300199c",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Core/Core/LantableRegistry.cs",
+      "baseline_blob_sha1": "dca824e65cae274a3cf47cd56f54e025b388ec08",
+      "approved_blob_sha1": "f3c4685c592d6007a2c7ee8a44fdd51cc20328bf",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "7d98a9314bb39dff66064f06b2568aad4c4ae539",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Core/Core/SignalWireCodec.cs",
+      "baseline_blob_sha1": "69fdd84066203c66b31e532fec4a2faaa9914124",
+      "approved_blob_sha1": "a78f822397e7d4b98edc952423cfc7a02ab20ead",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "24fe43cc77a8c9d1ef272e527c0d358c3300199c",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Core/Core/TemplateCatalog.cs",
+      "baseline_blob_sha1": "0109931c78282b188338f503f91a7973703c9c6a",
+      "approved_blob_sha1": "8397998079b9be6afa23bdd39848636853127c9f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "10e5474fff0b9553e73ecb48a5303e26ef9f5807",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Core/Core/UnitConvertingPayloadProvider.cs",
+      "baseline_blob_sha1": "49789579088abb47afc599bf5bd6e64c83ab91fd",
+      "approved_blob_sha1": "52398131e07dbe2c38842c09715dc1ba1492d93e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
+        "commit": "7d98a9314bb39dff66064f06b2568aad4c4ae539",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Core/iCemEmule.Core.csproj",
+      "baseline_blob_sha1": "8288ec9e14b8f46af50332b19779fb5e5eab60cb",
+      "approved_blob_sha1": "060f9b3892170fcf8d44edfb21b01c28010e2e32",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Tests/ControlPipeServerTests.cs",
+      "baseline_blob_sha1": "921b22aba9a37cff258299a3426f3662d8bca726",
+      "approved_blob_sha1": "259145121302eab0f7419944632fb9379c45bf12",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/5",
+        "commit": "c3788065909d8e60c4b45cabc38a93bdfbe0e783",
+        "reason": "User-authorized quit ACK repair: register drain ownership before command execution and synchronize shutdown tests without ThreadPool timing assumptions."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Tests/CrashLogTests.cs",
+      "baseline_blob_sha1": "ab21930f76dc07b685fa9e0ac6d403558411a1aa",
+      "approved_blob_sha1": "463902eebcb60aa7ebaa5920189ca027106791e5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/36",
+        "commit": "770347ce10364ad3524c4f9069afbd0052b2d515",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "installer/assets/CheckConflicts.harness.js",
+      "baseline_blob_sha1": "3e98d287fed3f6a083909f70cef60f9dc7951453",
+      "operation": "delete",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
+      }
+    },
+    {
+      "path": "installer/assets/CheckConflicts.js",
+      "baseline_blob_sha1": "e135cc8127ee486d380cf3de8a83a137c0c10725",
+      "operation": "delete",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
+      }
+    },
+    {
+      "path": "installer/build-msi.ps1",
+      "baseline_blob_sha1": "d057ca637febb604b7dd3b970e98bf9118ee9e45",
+      "operation": "modify",
+      "approved_blob_sha1": "60dbccfd539bea7717c647c5b53aae34ab86e95b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      }
+    },
+    {
+      "path": "installer/Product.wxs",
+      "baseline_blob_sha1": "b5931fca85372b1c47546548370393f9fe5a9fd6",
+      "operation": "modify",
+      "approved_blob_sha1": "b3da3b7ec95e6c1e7307b9798406973bc0cac789",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "da3f9ca447755a1e9f0757a09b6bc38207330a0f",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation."
+      }
+    },
+    {
+      "path": "README.md",
+      "baseline_blob_sha1": "1cc13aab5d4274ec185e65e2aa99d565d2369656",
+      "approved_blob_sha1": "8c29884a0b357fae2c288869cfdcc3d28ad0ff33",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "32e713a79f5b9bb904927022b5f32c8a56d56856",
+        "reason": "PR46 owner-requested source-layout consolidation. Preserve historical upstream blob hashes and manifest paths. Relocate existing .NET project source under src/net and Rust workspace under src/rust; retarget root solution, CI routing, MSI/packaging consumers, shared asset references and documentation without changing runtime behavior. Require full Windows CI gate before merge."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "scripts/make-release.ps1",
+      "baseline_blob_sha1": "4ade480bd5683bb59649bd35587048af1fdea89f",
+      "operation": "modify",
+      "approved_blob_sha1": "0bbfe505f4e7ebe97f63b66c3126c0a56c5e30d7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
+        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
+        "reason": "Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+      }
+    },
+    {
+      "path": "specs/INDEX.yaml",
+      "baseline_blob_sha1": "ecc760a0add9d67f1ccc3d7e7a47355d5212d74b",
+      "approved_blob_sha1": "3f9265721bf5cf8b6ce96b9f40cb3f083171db2e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "2f610180f6426b096251ae85f02e05d21ba46faf",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent independent C11 review: replace obsolete machine-local OpenCode and absent LiveGateGui instructions with a repository-relative current documentation router; distinguish historical contracts and optional AddIn plans. Actual source commit 2f610180 and PR44 provide provenance; active wire contracts are unchanged."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "specs/PLAN_lifecycle_ABD.md",
+      "baseline_blob_sha1": "9f7b9c8e412adf5157460d5456094e65e2b9a04b",
+      "approved_blob_sha1": "127fbedede1a90eec3c559f4ded827fd3a17f22e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "specs/stand_topology.mmd",
+      "baseline_blob_sha1": "fa222eb16796192f307c2c2a14d14f6e8a020b22",
+      "approved_blob_sha1": "44c0874ff86d0744bc31b7e3c8cfdb365a9cc17f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
+        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/iCemDataMonitor.Plugins.Icem.Tests.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "d091a1d6872c8bc27a5c6fd91a7d7460f5aed6c8",
+      "approved_blob_sha1": "652966c5e6056d0d977b8cd8f32f89ddd0ce5b8b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "d91c945fd8af83973413fc068c20a95b3fc8c12d",
+        "reason": "PR46 exact approved repository src/net, src/rust structural migration. Preserve frozen original manifest and baseline hash, update shared .NET template path. Subject to complete Windows CI before main."
+      }
+    }
+  ]
+}

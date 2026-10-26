@@ -43,7 +43,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          Import-Module ./rust/installer/WindowsInstaller.psm1 -Force
+          Import-Module ./src/rust/installer/WindowsInstaller.psm1 -Force
           $Tags = @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/git/matching-refs/tags/rust-v" --jq '.[].ref')
           if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate Rust tags' }
           $Tags += @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases" --jq '.[].tag_name')
@@ -61,7 +61,7 @@ jobs:
       ICEM_RELEASE_VERSION: ${{ needs.resolve-version.outputs.version || '0.1.0' }}
     defaults:
       run:
-        working-directory: rust
+        working-directory: src/rust
         shell: pwsh
     steps:
       - uses: actions/checkout@v5
@@ -93,7 +93,7 @@ jobs:
         run: |
           if ($env:ADDIN_RUN_ID) {
             Import-Module ./installer/LegacyAddin.psm1 -Force
-            $Bundle = Test-LegacyAddinBundle (Join-Path $env:RUNNER_TEMP 'icem-addin') (Split-Path $PWD -Parent)
+            $Bundle = Test-LegacyAddinBundle (Join-Path $env:RUNNER_TEMP 'icem-addin') $env:GITHUB_WORKSPACE
             if ($Bundle.source_commit -cne $env:ICEM_ADDIN_SOURCE_COMMIT) { throw 'AddIn manifest commit differs from SDK workflow run' }
             ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION -AddinDirectory (Join-Path $env:RUNNER_TEMP 'icem-addin')
           } else {
@@ -101,11 +101,11 @@ jobs:
           }
       - name: Smoke test extracted release outside checkout
         run: |
-          $Archive = Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
+          $Archive = Join-Path $env:GITHUB_WORKSPACE "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
           ./tools/Test-WindowsRelease.ps1 -Archive $Archive
       - name: Install N, upgrade N+1, reject downgrade and uninstall MSI
         run: |
-          $Msi = Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"
+          $Msi = Join-Path $env:GITHUB_WORKSPACE "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"
           ./tools/Test-WindowsMsiUpgrade.ps1 -Msi $Msi
       - name: Browser contracts against the extracted release EXE
         env:
@@ -132,7 +132,7 @@ jobs:
           name: windows-release-evidence
           path: |
             ${{ runner.temp }}/icem-release-ui
-            rust/artifacts/msi/*.log
+            src/rust/artifacts/msi/*.log
           if-no-files-found: ignore
       - name: Remove owned smoke extraction on persistent runners
         if: always()

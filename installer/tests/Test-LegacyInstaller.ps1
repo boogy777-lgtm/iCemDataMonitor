@@ -312,7 +312,7 @@ try {
     # Real file-owner tests share only the disposable C# lock fixture with Rust.
     $Locks = Join-Path $Work 'locks'; [IO.Directory]::CreateDirectory($Locks) | Out-Null
     $OwnerExe = Join-Path $Locks ('icem-lock-' + [guid]::NewGuid().ToString('N') + '.exe')
-    & (Join-Path $Framework 'csc.exe') /nologo /target:winexe /platform:x64 "/out:$OwnerExe" "/reference:$Framework/System.Windows.Forms.dll" "/reference:$Framework/System.Drawing.dll" (Join-Path $Repository 'rust/installer/tests/LockedFileOwner.cs') | Out-Host
+    & (Join-Path $Framework 'csc.exe') /nologo /target:winexe /platform:x64 "/out:$OwnerExe" "/reference:$Framework/System.Windows.Forms.dll" "/reference:$Framework/System.Drawing.dll" (Join-Path $Repository 'src/rust/installer/tests/LockedFileOwner.cs') | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'File-owner fixture compilation failed' }
     $ForeignFile = Join-Path $Locks 'foreign.dll'; [IO.File]::WriteAllText($ForeignFile,'unrelated')
     $Foreign = Start-FileOwner $OwnerExe $ForeignFile 'foreign' 'stubborn'
