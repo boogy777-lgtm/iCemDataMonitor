@@ -89,13 +89,84 @@ internal static class InstallerUiProbe
         Check("Принудительно закрыть", ToggleState.Off);
     }
 
-    private static void WaitForExit(int expectedExit)
+    private static AutomationElement ExactControl(AutomationElement window, ControlType type, string name)
+    {
+        foreach (AutomationElement control in window.FindAll(TreeScope.Descendants,
+            new PropertyCondition(AutomationElement.ControlTypeProperty, type)))
+        {
+            if (control.Current.IsEnabled && Name(control) == name) return control;
+        }
+        return null;
+    }
+
+    private static bool ConfirmRestartManager()
+    {
+        var windows = AutomationElement.RootElement.FindAll(TreeScope.Children,
+            new PropertyCondition(AutomationElement.ProcessIdProperty, client.Id));
+        foreach (AutomationElement window in windows)
+        {
+            try
+            {
+                // Stock WiX MsiRMFilesInUse requires separate consent in full UI.
+                // Identify both alternatives in this window before selecting closure;
+                // never accept an arbitrary OK, Ignore, Retry or reboot prompt.
+                var close = ExactControl(window, ControlType.RadioButton,
+                    "Close the applications and attempt to restart them.");
+                var reboot = ExactControl(window, ControlType.RadioButton,
+                    "Do not close applications. A reboot will be required.");
+                var ok = ExactControl(window, ControlType.Button, "OK");
+                if (close == null || reboot == null || ok == null) continue;
+                var selection = (SelectionItemPattern)close.GetCurrentPattern(SelectionItemPattern.Pattern);
+                selection.Select();
+                if (!selection.Current.IsSelected)
+                    throw new InvalidOperationException("Restart Manager close option was not selected");
+                log.WriteLine("MsiRMFilesInUse: selected " + Name(close) + "; click " + Name(ok));
+                ((InvokePattern)ok.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+                return true;
+            }
+            catch (ElementNotAvailableException)
+            {
+                // A transition retired this read snapshot; poll again within the deadline.
+                continue;
+            }
+        }
+        return false;
+    }
+
+    private static void DumpWindows()
+    {
+        var windows = AutomationElement.RootElement.FindAll(TreeScope.Children, Condition.TrueCondition);
+        foreach (AutomationElement window in windows)
+        {
+            try
+            {
+                log.WriteLine("Window PID=" + window.Current.ProcessId + " " + Name(window));
+                if (client == null || window.Current.ProcessId != client.Id) continue;
+                foreach (AutomationElement control in window.FindAll(TreeScope.Descendants, Condition.TrueCondition))
+                {
+                    try
+                    {
+                        log.WriteLine("  " + control.Current.ControlType.ProgrammaticName +
+                            " id=" + control.Current.AutomationId + " enabled=" + control.Current.IsEnabled +
+                            " offscreen=" + control.Current.IsOffscreen + " name=" + Name(control));
+                    }
+                    catch (ElementNotAvailableException) { log.WriteLine("  Control retired during diagnostics"); }
+                }
+            }
+            catch (ElementNotAvailableException) { log.WriteLine("Window retired during diagnostics"); }
+        }
+    }
+
+    private static void WaitForExit(int expectedExit, bool committed = false)
     {
         var clock = Stopwatch.StartNew();
         bool finished = false;
+        bool confirmedRestartManager = false;
         while (!client.WaitForExit(100))
         {
             if (clock.Elapsed.TotalSeconds > 180) throw new TimeoutException("MSI UI operation exceeded 180 seconds; no retry");
+            if (committed && !confirmedRestartManager)
+                confirmedRestartManager = ConfirmRestartManager();
             var finish = Find(ControlType.Button, "Finish");
             if (!finished && finish != null)
             {
@@ -181,7 +252,7 @@ internal static class InstallerUiProbe
                 {
                     Click("Далее");
                     Click(fresh ? "Install" : (remove ? "Remove" : "Repair"));
-                    WaitForExit(0);
+                    WaitForExit(0, true);
                 }
                 else
                 {
@@ -195,9 +266,8 @@ internal static class InstallerUiProbe
             catch (Exception error)
             {
                 log.WriteLine(error);
-                var windows = AutomationElement.RootElement.FindAll(TreeScope.Children, Condition.TrueCondition);
-                foreach (AutomationElement window in windows)
-                    log.WriteLine("Window PID=" + window.Current.ProcessId + " " + Name(window));
+                try { DumpWindows(); }
+                catch (Exception diagnostics) { log.WriteLine("UI diagnostics failed: " + diagnostics); }
                 return 1;
             }
             finally

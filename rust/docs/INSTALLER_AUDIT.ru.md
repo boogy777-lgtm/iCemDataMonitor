@@ -142,3 +142,13 @@ FindRelatedProducts обнаруживает fixture, incoming Rust блокир
 а не установки production legacy payload рядом с Rust.
 Эти новые Windows сценарии локально не запускались; Linux XML/Python checks
 не доказывают MSI/RM/UI поведение. Production acceptance выше остаётся открытой.
+
+
+Full-UI regression: run 40291633330 дошёл до `InstallValidate` с
+`MSIRMSHUTDOWN=1`, затем ждал подтверждения native Files in Use; прежний probe
+ожидал только Finish. Оба UI probe теперь после commit распознают пару штатных
+RM radio options в одном окне msiexec, выбирают закрытие приложений и однократно
+нажимают OK. Cancel-пути не дают такого согласия. Ignore/reboot не принимаются;
+180-second timeout, exit/hash/owner checks сохранены, failure logs включают controls.
+Checkbox force разрешает завершение зависших владельцев, но не пропускает
+стандартное full-UI подтверждение закрытия приложений.

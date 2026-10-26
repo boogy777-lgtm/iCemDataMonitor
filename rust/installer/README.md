@@ -139,6 +139,10 @@ that commits opt-out, then reopens with it unchecked. UI uses null for unchecked
 only the execute sequence converts this to numeric zero. Force consent is never
 saved. A registry-only MSI with the legacy UpgradeCode checks native family
 detection, blocked incoming installation and available existing repair/removal.
+Full UI also requires selecting “Close the applications and attempt to restart them”
+and OK in the standard Files in Use dialog when it appears; the force checkbox
+does not bypass that confirmation. Committed UI probes acknowledge only that
+identified native dialog once, without accepting Ignore or reboot prompts.
 Cancel is tested before execute; rollback cannot restore already closed processes. Interaction checks do not establish visual/DPI acceptance.
 
 A manually requested real release additionally requires the real SDK-built AddIn,

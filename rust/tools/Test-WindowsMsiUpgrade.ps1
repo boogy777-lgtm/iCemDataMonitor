@@ -357,14 +357,29 @@ try {
     $FailedMsi = New-FailingUpgrade $NextArchive.archive $Next
     $FailedCode = Read-MsiProperty $FailedMsi 'ProductCode'
     $ProductCodes.Add($FailedCode)
+    $StationPath = Join-Path $env:ProgramData 'Halliburton/iCem/DataMonitoring'
+    $BeforeAcl = (Get-Acl -LiteralPath $StationPath).GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)
     $BeforeState = Get-ItemProperty -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer'
     Invoke-Msi @('/i', $FailedMsi, 'CREATEDESKTOPSHORTCUT=0', 'ADDAUTOSTART=0') 'upgrade-transaction-rollback' 1603
     $RollbackLog = Get-Content -Raw -LiteralPath (Join-Path $Work 'upgrade-transaction-rollback.log')
     foreach ($Action in @('RemoveExistingProducts', 'InstallFiles', 'InstallExecute', 'FixtureFailAfterInstallExecute')) {
         if ($RollbackLog -notmatch ('Action start .*: ' + $Action + '\.')) { throw "Rollback did not reach $Action" }
     }
-    if ($RollbackLog -notmatch 'Rollback:') { throw 'Failure did not execute rollback script' }
+    # /qn logs native script operations, not the full-UI "Rollback:" progress text.
+    # Restrict evidence to AFTER this fixture's failed action; normal execution
+    # also emits RollbackInfo and must never satisfy the rollback proof.
+    $FailureEnd = [regex]::Match($RollbackLog, '(?m)^Action ended [^\r\n]*: FixtureFailAfterInstallExecute\. Return value 3\.\r?$')
+    if (-not $FailureEnd.Success) { throw 'Injected failure did not return failure status' }
+    $RollbackScript = $RollbackLog.Substring($FailureEnd.Index + $FailureEnd.Length)
+    foreach ($Operation in @('Executing op: Header\([^\r\n]*ScriptType=2,',
+        'Executing op: RollbackInfo\([^\r\n]*RollbackAction=Rollback,',
+        'Executing op: RegRemoveValue\(', 'Executing op: FileCopy\(SourceName=[^\r\n]*\.rbf,',
+        'Executing op: RegAddValue\(Name=RuntimeDirectory,')) {
+        if ($RollbackScript -notmatch $Operation) { throw "Missing executed rollback operation: $Operation" }
+    }
     Assert-Installed $Version $FirstCode
+    $AfterAcl = (Get-Acl -LiteralPath $StationPath).GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)
+    if ($AfterAcl -cne $BeforeAcl) { throw 'Rollback changed station directory access permissions' }
     $AfterState = Get-ItemProperty -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer'
     foreach ($Name in @('RuntimeDirectory', 'IcemDirectory', 'DesktopChoice', 'AutostartChoice')) {
         if ($BeforeState.$Name -cne $AfterState.$Name) { throw "Rollback changed saved $Name" }
