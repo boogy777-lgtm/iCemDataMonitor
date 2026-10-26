@@ -125,14 +125,14 @@
     },
     {
       "path": "docs/architecture.md",
+      "operation": "modify",
       "baseline_blob_sha1": "464e1416c3a4d6e4d82b837d33932db8fac82284",
-      "approved_blob_sha1": "fc2ab5d56717b0104c3cbdc7c7fcd922d1df0d8d",
+      "approved_blob_sha1": "1a16053fa116be7efe07a03962d3a8245afa3d38",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
-        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
-      },
-      "operation": "modify"
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/47",
+        "commit": "af3f3b3a9913821b6cce53adee8c5b5093de2626",
+        "reason": "Owner-approved source-layout documentation update: current navigation and build paths now refer to src/net and src/rust. Frozen upstream source hashes remain unchanged; full Windows CI is required before merge."
+      }
     },
     {
       "path": "docs/config.md",
@@ -147,36 +147,36 @@
     },
     {
       "path": "docs/development.md",
+      "operation": "modify",
       "baseline_blob_sha1": "66ccd373b78e913acf66d0679158cba8a01eaf91",
-      "approved_blob_sha1": "5b198a68367ae975cc6e8e411ba5825ac650d96c",
+      "approved_blob_sha1": "6f7ed0bbc240bf7880676c58fb7b7f0fffa2d5d5",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
-        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
-        "reason": "Document CI fixes and current validation limits. Subsequent C11 approval: Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
-      },
-      "operation": "modify"
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/47",
+        "commit": "af3f3b3a9913821b6cce53adee8c5b5093de2626",
+        "reason": "Owner-approved source-layout documentation update: current navigation and build paths now refer to src/net and src/rust. Frozen upstream source hashes remain unchanged; full Windows CI is required before merge."
+      }
     },
     {
       "path": "docs/install.md",
+      "operation": "modify",
       "baseline_blob_sha1": "84ec4832c8e545fcf77ea171fe3868f76242c770",
-      "approved_blob_sha1": "afb2e95cf07509bc1ee873cca34631453f143ed5",
+      "approved_blob_sha1": "a6c455c86e58e292829cb4d9c7ddd0898594a692",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent installer lifecycle repair: Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation. Actual Windows follow-up: document native Files in Use radio/OK confirmation separately from force consent; probe-only dialog handling and strict post-failure rollback script/operation and DACL checks retain all owner/hash/registration/state assertions. Exact published source 54bcb426 and PR45 provide updated documentation provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
-      },
-      "operation": "modify"
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/47",
+        "commit": "af3f3b3a9913821b6cce53adee8c5b5093de2626",
+        "reason": "Owner-approved source-layout documentation update: current navigation and build paths now refer to src/net and src/rust. Frozen upstream source hashes remain unchanged; full Windows CI is required before merge."
+      }
     },
     {
       "path": "docs/release.md",
+      "operation": "modify",
       "baseline_blob_sha1": "f57a3104c227cbb997c059a8969554343e1be698",
-      "approved_blob_sha1": "ec720d2ff266dd7121db054961f71353346db47e",
+      "approved_blob_sha1": "35c700ec598abce0ff714685b14934665c466803",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
-      },
-      "operation": "modify"
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/47",
+        "commit": "af3f3b3a9913821b6cce53adee8c5b5093de2626",
+        "reason": "Owner-approved source-layout documentation update: current navigation and build paths now refer to src/net and src/rust. Frozen upstream source hashes remain unchanged; full Windows CI is required before merge."
+      }
     },
     {
       "path": "iCemDataMonitor.Core.Tests/ArchTests.cs",
@@ -1221,14 +1221,14 @@
     },
     {
       "path": "README.md",
+      "operation": "modify",
       "baseline_blob_sha1": "1cc13aab5d4274ec185e65e2aa99d565d2369656",
-      "approved_blob_sha1": "4684735608fc8eedc9dd8419418413aeb3a2fc1b",
+      "approved_blob_sha1": "ae67cbf7e360b1bba2936746e1f304ca517b1704",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
-      },
-      "operation": "modify"
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/47",
+        "commit": "af3f3b3a9913821b6cce53adee8c5b5093de2626",
+        "reason": "Owner-approved source-layout documentation update: current navigation and build paths now refer to src/net and src/rust. Frozen upstream source hashes remain unchanged; full Windows CI is required before merge."
+      }
     },
     {
       "path": "scripts/make-release.ps1",
