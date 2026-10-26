@@ -1,23 +1,13 @@
-flowchart LR
-    EMU["iCemEmule<br/>COM2 serial + LAN ACE 82574L"]
-    C0C["com0com pair"]
-    COM1["COM1"]
-    ICEM["iCem.exe<br/>FLECS CMT v4.53 parser"]
-    ADDIN["AddIn dll in-proc v5.1<br/>DUMB TRANSLATOR byte-exact"]
-    BUS[("Data.dat<br/>Global\\iCemDataMonitorBus_v1 10001 regs")]
-    SNIFF["POC AceSnifferService<br/>direct from wire"]
-    SINK["LanBusSink to BusZoneWriter<br/>DEFERRAL-GATED"]
-    READER["BusReader to ModbusTcpPublisher"]
-    OPERATOR["SCADA / operator master"]
-
-    EMU -->|"FLECS CSV 32 fields 1 Hz"| C0C
-    C0C --> COM1
-    COM1 --> ICEM
-    EMU -->|"ACE raw 802.3 frames 1 Hz"| ICEM
-    EMU -->|"ACE raw 802.3 frames 1 Hz"| SNIFF
-    ICEM --> ADDIN
-    ADDIN -->|"v5.1: regs 0..3 + com_stream 4..199 (4..5 int32 unix ts) + lan_stream_crio 200..399 + raw_com_line 400..599 float32 CDAB positional; 73 lan aliases"| BUS
-    SNIFF --> SINK
-    SINK -.->|"DEFERRED: ace_full 600..10000 reserve — nobody writes"| BUS
-    BUS --> READER
-    READER -->|"Modbus TCP :502 FC03/FC04"| OPERATOR
+flowchart TD
+    PHYS["Физическая станция COM / LAN"] --> ICEM["Vendor iCem.exe"]
+    EMU["Независимый Rust emulator"] -->|"FLECS: внешняя пара com0com"| ICEM
+    EMU -->|"ACE LAN: Npcap"| ICEM
+    ICEM --> ADDIN["net48 AddIn: единственный writer"]
+    ADDIN --> BUS["MMF layout 5 / Data.dat"]
+    BUS --> HOST["Rust Host: один acquisition 200 мс"]
+    HOST --> SNAP["Typed Arc Snapshot"]
+    SNAP --> MODBUS["Modbus FC03/04/06/16"]
+    SNAP --> WEB["Web / Shell / CLI"]
+    SNAP --> PUB["MQTT / OPC UA / OPC DA sidecar"]
+    EMU -->|"ACE LAN"| SNIFF["Пассивный Host sniffer: только диагностика"]
+    PHYS -->|"ACE LAN"| SNIFF

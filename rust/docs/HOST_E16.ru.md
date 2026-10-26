@@ -1,5 +1,11 @@
 # E16 — Host sniffer decode/catalog
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Продолжение после E15 и разрешения владельца исправлять Legacy CI/сливать и
 продолжать миграцию. [ADR 0012](adr/0012-host-sniffer-decode.ru.md) содержит
 Class/Inv/N+1, source semantics, resource limits и intentional deltas.

@@ -1,5 +1,11 @@
 # Host E11: первый запуск, ensure и CLI
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База: main `369bf67f5559003e773ddd4ca17ae4018372f0bc`, PR #4 слит.
 Оба post-merge workflow 39122052529 (Rust) и 39122052490 (legacy) завершились SUCCESS.
 Legacy CI и исходные .NET/proto/SPA/AddIn не изменяются этим инкрементом.

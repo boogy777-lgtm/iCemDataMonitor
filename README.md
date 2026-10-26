@@ -1,104 +1,137 @@
-<!-- Бейджи-заглушки: после первого пуша в GitHub подставьте реальные владельца и имя репозитория в обе строки бейджей ниже. -->
-[![Сборка MSI](https://github.com/OWNER/REPO/actions/workflows/release.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/release.yml)
-[![Релизы](https://img.shields.io/github/v/release/OWNER/REPO?label=release)](https://github.com/OWNER/REPO/releases)
-
 # iCem Data Monitor
 
-Монитор данных станции iCem (Halliburton/Burservis): принимает поток данных от iCem-эмулятора (LAN ACE / COM), ведёт шину данных на memory-mapped file и публикует её в Modbus TCP, веб-дашборд и WinUI-оболочку.
+Монитор станции iCem (Halliburton/Burservis): Rust Host и нативная GPUI Shell,
+независимый Rust emulator, сохранённый net48 AddIn внутри vendor iCem.exe.
+Согласованный программный объём и N+1 v1.7 реализованы; [трекер и evidence](rust/docs/NPLUS1_TRACKER.ru.md)
+отделяют завершение software от production cutover, аппаратной, операторской,
+визуальной и реальной SDK/MSI-приёмки. Имена исполняемых файлов пока содержат `-dev`.
+Это не свидетельство прохождения перечисленных release gates.
 
-## Поток данных
+## Как проходят данные
 
-```
-+-------------------+  COM (com0com)   +---------------------------+
-|  iCem-эмулятор    | ---------------> | iCem.exe + AddIn (net48)  |
-|  (iCemEmulator)   |  LAN (ACE raw    | в процессе iCem: байт-    |
-+-------------------+  802.3, 1 Гц)    | точный транслятор         |
-         |                             +-------------+-------------+
-         |  LAN (ACE, сниффер)                       | регистры шины
-         v                                           v
-+--------------------------------------------------------------------+
-|   Шина: MMF Global\iCemDataMonitorBus_v1 + Data.dat (10001 рег.)   |
-+---------------------------------+----------------------------------+
-                                  |
-                                  v
-+--------------------------------------------------------------------+
-|  iCemDataMonitor.Host.exe (.NET 10 BackgroundService)              |
-|   - Modbus TCP publisher :502 (FC03/FC04)                          |
-|   - Kestrel web-дашборд :8090 (SPA + gRPC-Web)                     |
-|   - LAN-sniffer (ACE-кадры прямо из провода)                       |
-+---------------------------------+----------------------------------+
-                                  |
-                    +-------------+--------------+
-                    v                            v
-        +----------------------+    +---------------------------+
-        | WinUI 3 shell        |    | браузер                   |
-        | iCemDataMonitor.     |    | http://localhost:8090     |
-        | WinUI.exe            |    | (gRPC-Web + REST)         |
-        +----------------------+    +---------------------------+
-```
+![Архитектура: физическая станция или независимый эмулятор передают COM/LAN в iCem; AddIn единолично пишет MMF, Rust Host публикует общий снимок потребителям](docs/images/software-architecture.svg)
 
-## Возможности
+[Подробная архитектура и владение](docs/architecture.md).
+Физические COM/LAN либо самостоятельный emulator (COM FLECS через внешнюю пару
+com0com; LAN ACE через Npcap) подают данные в **iCem.exe**. AddIn переводит их в
+MMF layout 5 / `Data.dat` и остаётся **единственным writer**. Host читает MMF
+одним acquisition каждые 200 мс, затем разделяет типизированный `Arc<Snapshot>`
+между Modbus, Web, MQTT, OPC UA и OPC DA sidecar. Частоты потребителей независимы.
+Пассивный LAN sniffer Host обслуживает диагностику, decode/catalog и counters;
+он не пишет MMF. Host не запускает и не завершает emulator.
 
-- **Шина данных** — MMF `Global\iCemDataMonitorBus_v1` (10001 регистр) с файловой подложкой `Data.dat`; пишет AddIn внутри iCem.exe, читают host и CLI.
-- **Modbus TCP :502** — публикация шины SCADA-мастеру (FC03/FC04), обновление каждые `modbus_tick_ms` (по умолчанию 500 мс).
-- **Веб-дашборд :8090** — Kestrel SPA + gRPC-Web + история регистров (кольцевой сэмплер 1 Гц); по умолчанию только loopback (`web_remote_on=0`).
-- **LAN-сниффер** — приём ACE-кадров напрямую из сети (SharpPcap), независимо от iCem.
-- **WinUI 3 shell** — клиент host'а (gRPC over named pipe); вкладка «Дашборд» открывает веб-SPA через WebView2; без диалогов «Запустить хост?» — shell сам запускает host'а.
-- **CLI внутри host** — `iCemDataMonitor.Host.exe snapshot|get|header [--start]`; stdout = чистый JSON.
-- **Один MSI** — полностью offline/self-contained (.NET 10 встроен в payload, WinAppSDK self-contained), без перезагрузок; единственный внешний рантайм — WebView2 Evergreen.
+Снятые dormant REST/admin wrappers и serial Tee/Com0ComMonitor не нужны
+самостоятельному emulator. **Драйвер com0com сохранён**: он обеспечивает внешнюю
+пару портов. [C11: точный объём retirement](docs/LEGACY_REFACTORING_C11.ru.md).
+Legacy .NET assemblies остаются reference/build compatibility surface;
+фактическая история базового дерева сохраняется в manifest/ledger.
 
-## Быстрый старт
+## Что реализовано
 
-1. Скачайте `iCemDataMonitor-<version>-x64.msi` со страницы Releases (ссылка — бейдж «Релизы» вверху; после первого пуша она станет рабочей).
-2. Установите MSI (двойной клик) — подробности в [docs/install.md](docs/install.md).
-3. Что где появится:
-   - payload + конфиги + `Data.dat` — `C:\ProgramData\Halliburton\iCem\DataMonitoring`;
-   - AddIn dll — `C:\Program Files\Halliburton\iCem\Bin\Modules\`;
-   - `config.ini` в MSI не входит — host создаёт его при первом запуске.
-4. Запустите `iCemDataMonitor.WinUI.exe` (shell) — он сам запустит `iCemDataMonitor.Host.exe`; статус-область shell показывает живость host'а.
-5. Проверка:
-   - открыть `http://localhost:8090` — веб-дашборд;
-   - выполнить `iCemDataMonitor.Host.exe snapshot` — в stdout придёт JSON-массив слов шины.
+- MMF v5: owned copy под native mutex, decode после unlock, один источник снимков.
+- Modbus TCP FC03/04/06/16, отдельное writable зеркало и сохранённая политика зон.
+- Сохранённая SPA, четыре активных REST GET, история, gRPC/gRPC-Web и local pipe.
+- GPUI Shell и emulator UI; отдельные tray/lifecycle, managed logs, CLI.
+- Независимый emulator: DFB, COM FLECS, LAN ACE/Npcap, каталоги, units/overrides,
+  selftest, LAN diagnostic и stdin/control pipe.
+- Необязательные MQTT, read-only OPC UA и OPC DA sidecar над общей публикацией.
+- Windows MSI candidate: Rust приложения, обязательный оригинальный net48 AddIn,
+  Burservis branding, repair/upgrade/uninstall и сохранение пользовательских данных.
 
-## Сборка из исходников
+Приёмочные ограничения и точные Windows checkpoints: [N+1](rust/docs/NPLUS1_TRACKER.ru.md),
+[parity](rust/docs/PARITY_MATRIX.ru.md), [hardware](rust/docs/HARDWARE_ACCEPTANCE.ru.md).
+Слияние C11 допускается после полного Windows CI на exact head;
+актуальный verdict — в [PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Успешный предыдущий N+1 run [40253303600](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40253303600)
+не переносится автоматически на C11.
 
-Пререквизиты: Windows x64, .NET 10 SDK (версия из `global.json`), WiX v5 (`dotnet tool install --global wix --version 5.0.2`).
+## Сборка и запуск Rust
+
+Windows x64, PowerShell 7.4+, Git, rustup, MSVC C++ Build Tools и Windows SDK.
+Toolchain закреплён в `rust/rust-toolchain.toml`: Rust **1.99.1**, Edition 2024.
+Из `rust/`:
 
 ```powershell
-dotnet test iCemDataMonitor.sln
-.\installer\build-msi.ps1 -MsiVersion X.Y.Z
+cargo fetch --locked
+cargo fmt --all --check
+cargo check --workspace --all-targets --locked --offline
+cargo test --workspace --locked --offline
+cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+cargo build --release --locked --offline -p icem-host-app -p icem-shell-app -p icem-emulator-app -p icem-opc-da-sidecar
 ```
 
-Параметр `-MsiVersion` обязателен; артефакт — `dist\iCemDataMonitor-<version>-x64.msi`. В скрипте нет абсолютных путей — репозиторий можно клонировать куда угодно.
+Исполняемые файлы: `icem-host-dev.exe`, `icem-shell-dev.exe`, `icem-emulator-engine-dev.exe`.
+Shell обеспечивает запуск отсутствующего Host; emulator запускается отдельно.
+`icem-emulator-dev.exe` — отдельный FLECS preview с обязательным `--template`,
+без COM/LAN/UI; штатное приложение — `icem-emulator-engine-dev.exe`.
+Штатный Host принимает `--ini PATH`, `--autostart`, `--port N`; CLI:
 
-## Структура репозитория
+Пример после установки MSI в стандартный runtime directory (при переносе
+использовать фактический путь установки):
 
-| Путь | Содержимое |
+```powershell
+Set-Location "$env:ProgramData\Halliburton\iCem\DataMonitoring"
+.\icem-shell-dev.exe
+.\icem-emulator-engine-dev.exe
+.\icem-host-dev.exe snapshot
+.\icem-host-dev.exe get main
+.\icem-host-dev.exe header
+```
+
+Одной `cargo build` недостаточно для default UI launch: рядом с EXE требуются
+`assets/` и role catalogs (`emulator/templates/` для emulator), которые раскладывает
+release builder. Опциональный `Start-Emulator.ps1` запускает тот же engine с
+явными `--desktop --config --templates`.
+
+Изолированный пример без станции (fixture, не живые измерения):
+
+```powershell
+cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixtures/bus-v5-minimal.bin --bind 127.0.0.1:1502 --duration-ms 10000
+```
+
+Для полного MSI дополнительно нужны .NET SDK из `global.json`, WiX 5.0.2
+(закреплённый tool manifest) и **реальный iCem SDK либо проверенный SDK-built AddIn bundle**.
+Из корня репозитория:
+
+```powershell
+pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
+```
+
+Результат: `rust/dist/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` и SHA256.
+Отсутствие обязательного AddIn/SDK — ошибка; synthetic CI DLL не заменяет release DLL.
+[Prerequisites, AddIn bundle, launcher paths и MSI](rust/installer/README.md).
+
+## Конфигурация и стенд
+
+Каноническая runtime-папка: `C:\ProgramData\Halliburton\iCem\DataMonitoring`.
+Host читает `config.ini` один раз при старте; существующий повреждённый файл
+сохраняется и блокирует запуск. MSI не создаёт `config.ini` или `Data.dat`.
+Последний принадлежит AddIn. Emulator владеет собственным `emule_config.xml`;
+COM/LAN по умолчанию выключены. Npcap нужен для LAN capture/emission, com0com —
+для виртуального COM-стенда. Реальные COM-порты используют физическое соединение.
+
+По умолчанию Modbus `:502`, Web loopback `:8090`; включение удалённого Web —
+явная настройка закрытого контура. Acquisition 200 мс не заменяет
+`modbus_tick_ms` (по умолчанию 500 мс) и не обещает end-to-end latency 200 мс.
+[Конфигурация](docs/config.md), [установка](docs/install.md), [разработка](docs/development.md).
+
+## Репозиторий и документы
+
+| Путь | Назначение |
 |---|---|
-| Корень репозитория | Все проекты .NET 10 лежат в корне: headless host, WinUI shell, gRPC-контракты, шина/транспорт/конфиг + тесты; solution `iCemDataMonitor.sln` охватывает и эмулятор, и AddIn |
-| `iCemEmulator\` | Независимое WinUI-приложение эмулятора станции (COM FLECS + LAN ACE) |
-| `iCemEmule.Core\` | Движок эмуляции: эмиттеры FLECS COM и ACE LAN, реестры переменных |
-| `iCemEmule.Tests\` | Тесты движка эмуляции |
-| `Burservis.iCem.DataMonitor\` | AddIn dll (net48) внутри iCem.exe — байт-точный транслятор, пишет шину MMF + `Data.dat` |
-| `Burservis.iCem.DataMonitor.Tests\` | Тесты AddIn |
-| `installer\` | WiX v5 MSI: `Product.wxs`, `build-msi.ps1`, генераторы payload и битмапов |
-| `specs\` | Спеки-закон: `INDEX.yaml`, топология стенда, `Э5_config.csv` (канон конфига) и др. |
-| `templates\` | JSON-шаблоны реестров: `variable_registry.json`, `flecs_4.53.json`, `plc_basic.json` |
-| `docs\` | Документация (этот набор, на русском) |
-| `scripts\` | Релизные скрипты (`make-release.ps1` — файл поддерживается релизным агентом, появляется вместе с релизной инфраструктурой) |
+| `rust/apps/`, `rust/crates/` | Текущие Host, Shell, independent emulator, общие данные и adapters |
+| `rust/installer/`, `rust/tools/` | Windows candidate MSI, verification и release tooling |
+| `Burservis.iCem.DataMonitor/` | Сохранённый net48 AddIn внутри vendor iCem |
+| Корневые `.NET` проекты, `installer/` | Legacy reference/build compatibility и исходный MSI |
+| `rust/contracts/` | Действующий OpenAPI и исторический pinned route inventory |
+| `rust/migration/` | Неизменный source manifest и exact-hash legacy divergence ledger |
+| `specs/` | Wire/config contracts и legacy спецификации с явным current-status override |
+| `docs/`, `rust/docs/` | Текущие runbooks и исторические отчёты этапов |
 
-## Релизы
+- [Rust workspace и карта документов](rust/README.md)
+- [Архитектура](docs/architecture.md), [API](rust/docs/API_SPEC.ru.md), [ACE wire](PROTOCOL.md)
+- [Релизный процесс](docs/release.md), [план/критерии миграции](rust/docs/MIGRATION_PLAN.ru.md)
+- [C1–C10 history и C11 retirement](docs/LEGACY_REFACTORING_C11.ru.md)
+- [Source audit](rust/docs/SOURCE_AUDIT.ru.md), [спецификации](specs/INDEX.yaml)
 
-Пуш тега `v*` запускает `.github/workflows/release.yml`: CI собирает MSI и публикует GitHub Release. Главный закон релиза: **каждый bump версии — новый ProductCode GUID в `installer\Product.wxs`** (ручной шаг; проверяется `scripts\make-release.ps1`). Цикл и чек-лист приёмки — [docs/release.md](docs/release.md).
-
-## Документация
-
-- [docs/install.md](docs/install.md) — MSI: установка, апгрейд, деинсталляция, тихий режим.
-- [docs/config.md](docs/config.md) — `config.ini` (закон read-once, дефолты, миграция `station.ini`), `emule_config.xml`, `Data.dat`.
-- [docs/architecture.md](docs/architecture.md) — компонентная карта, поток данных, шина MMF/Data.dat, веб-дашборд.
-- [docs/release.md](docs/release.md) — релизный цикл и приёмка MSI.
-- [docs/development.md](docs/development.md) — сборка, тесты, отладка стенда, известные ограничения.
-- [PROTOCOL.md](PROTOCOL.md) — wire-протокол ACE (канонический формат кадра).
-- [specs/INDEX.yaml](specs/INDEX.yaml) — входная точка спецификаций (спеки — закон).
-
-Лицензия: TBD
+Лицензия: TBD; distribution terms требуют отдельного release решения.

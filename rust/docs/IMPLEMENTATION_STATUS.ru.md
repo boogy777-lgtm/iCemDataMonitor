@@ -1,5 +1,14 @@
 # Реализованные инкременты
 
+**Текущий статус, 26 октября 2026:** согласованный software scope и N+1 v1.7
+реализованы; [tracker](NPLUS1_TRACKER.ru.md) содержит точные checkpoints.
+Hardware/operator/visual/real SDK/release acceptance и production cutover
+проверяются отдельно. Слияние C11 требует полного Windows CI exact head; verdict — в
+[PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Ниже сохранены исторические критерии/инкрементальные facts: старые NEXT/PARTIAL
+не являются текущим coding backlog. [Retirement C11](../../docs/LEGACY_REFACTORING_C11.ru.md):
+21 dormant route RETIRED, active OpenAPI неизменён; com0com driver KEEP.
+
 Текущий этап: [независимый emulator, E1](EMULATOR_STATUS.ru.md).
 Предыдущий: [web backend + сохранённая SPA](WEB_STATUS.ru.md).
 Предыдущий: [Windows MMF + INI + live dev host](M2_STATUS.ru.md).

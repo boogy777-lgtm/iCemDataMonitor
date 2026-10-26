@@ -1,6 +1,15 @@
 # Архитектура миграции
 
-Статус: целевая архитектура; выполнен M0-каркас и первый Modbus-инкремент (см. IMPLEMENTATION_STATUS.ru.md). Контракты фактической базы перечислены
+**Текущий статус, 26 октября 2026:** согласованный software scope и N+1 v1.7
+реализованы; [tracker](NPLUS1_TRACKER.ru.md) содержит точные checkpoints.
+Hardware/operator/visual/real SDK/release acceptance и production cutover
+проверяются отдельно. Слияние C11 требует полного Windows CI exact head; verdict — в
+[PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Ниже сохранены исторические критерии/инкрементальные facts: старые NEXT/PARTIAL
+не являются текущим coding backlog. [Retirement C11](../../docs/LEGACY_REFACTORING_C11.ru.md):
+21 dormant route RETIRED, active OpenAPI неизменён; com0com driver KEEP.
+
+Историческая исходная архитектура M0 приведена ниже; текущая композиция реализована. Контракты фактической базы перечислены
 в API_SPEC.ru.md. Требование — функциональная идентичность с меньшим собственным
 дистрибутивом, без .NET 10/WinAppSDK в перенесённой части.
 
@@ -19,9 +28,11 @@ Host, клиентская оболочка и эмулятор переписы
 ```mermaid
 flowchart TD
   A["Legacy iCem + .NET AddIn"] --> B["MMF / Data.dat"]
-  B --> H["Rust host: снимки и управление"]
+  B --> H["Rust Host: acquisition 200 мс / Arc snapshot"]
   H --> M["Modbus TCP: зеркало"]
   H --> W["REST / gRPC-Web + SPA"]
+  H --> Q["MQTT / OPC UA"]
+  H --> D["OPC DA sidecar"]
   S["Rust shell"] <-->|"gRPC named pipe"| H
   E["Независимый Rust emulator"] -->|"COM / ACE LAN"| A
   E -->|"ACE LAN"| N["Сниффер host"]

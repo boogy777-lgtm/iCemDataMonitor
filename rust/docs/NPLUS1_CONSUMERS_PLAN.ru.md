@@ -1,5 +1,14 @@
 # iCemDataMonitor: N+1-потребители существующих MMF-данных
 
+**Текущий статус, 26 октября 2026:** согласованный software scope и N+1 v1.7
+реализованы; [tracker](NPLUS1_TRACKER.ru.md) содержит точные checkpoints.
+Hardware/operator/visual/real SDK/release acceptance и production cutover
+проверяются отдельно. Слияние C11 требует полного Windows CI exact head; verdict — в
+[PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Ниже сохранены исторические критерии/инкрементальные facts: старые NEXT/PARTIAL
+не являются текущим coding backlog. [Retirement C11](../../docs/LEGACY_REFACTORING_C11.ru.md):
+21 dormant route RETIRED, active OpenAPI неизменён; com0com driver KEEP.
+
 Проектное предложение, версия 1.7, 24 октября 2026.
 Версия 1.7 фиксирует решение пользователя: единый acquisition с периодом 200 мс (5 Гц) достаточен для всех N+1-потребителей. Частота больше не является открытым вопросом; число этапов остаётся восемь.
 Основание исследования: Rust main `4578ab57266b7d25aed82df41c6276597a270c1e`.

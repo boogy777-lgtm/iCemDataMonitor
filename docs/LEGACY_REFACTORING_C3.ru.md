@@ -1,5 +1,10 @@
 # Legacy C3: station UI theme
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 23 октября 2026. C3/L08 из [legacy-плана в PR №29](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/29).
 Исследованная база — `7f89f2fb02626493ee4426512565bd98c2de1297` (C2).
 Публикация начинается от `main` после merge C2 №31:

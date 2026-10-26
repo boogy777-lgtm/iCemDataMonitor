@@ -1,5 +1,11 @@
 # Host E9: boot replay, cancellation и navigation faults
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База: main `12303e1e79d43d8011b1812cbfb2f783f3108b00`, Rust CI
 39066331105 SUCCESS. Legacy CI 39066333747 FAILURE отмечен отдельно: диагностика,
 исправления и повторные запуски legacy CI не входят в этот инкремент.

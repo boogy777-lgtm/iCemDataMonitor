@@ -1,5 +1,11 @@
 # E15 — Host console X → Hide
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База `fcdb65b13d7aa4edd1cc901ac1d7d4b8edcb9823`, tree
 `65c1e25e7e9651da8e8912ee78907bd054004ecf`. Открытых PR при старте нет.
 Ветка `rust/host-console-close`. Новый PR не сливается без команды владельца.

@@ -1,5 +1,9 @@
 # PLAN — Lifecycle ремедиация A → B → D (SWARM-декомпозиция)
 
+Исторический legacy lifecycle plan. Текущая software архитектура —
+[docs/architecture.md](../docs/architecture.md). Endpoint/B5 references ниже
+относятся к прошлому; 21 dormant route retired [C11](../docs/LEGACY_REFACTORING_C11.ru.md).
+
 > **ОБНОВЛЕНИЕ 2026-08-24 (W19, решения владельца) — ЭТАП E, ПЛАНИРУЕТСЯ:**
 > три новых решения поверх выполненного BD:
 > **E.1 ТОКЕН ДЛЯ WEB ОТМЕНЁН** — «всё будет в закрытом контуре + web»:

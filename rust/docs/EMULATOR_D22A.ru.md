@@ -1,5 +1,11 @@
 # D22a — recovery production LAN catalog files
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Источники: pinned `iCemEmule.Core/Core/LantableRegistry.cs` (`LoadFile`,
 `LoadFirmwareFile`) и `AcePayloadProvider.cs` (`LoadSimFile`, `LanSimLookup`).
 .NET sources, proto, SPA, CI, dependencies и native policy не менялись.

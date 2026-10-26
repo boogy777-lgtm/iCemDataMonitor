@@ -1,5 +1,10 @@
 # C4: L06 / L07 — registry snapshot и каталоги
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 ## До существенных изменений
 
 Class: DeviceCatalogRegistry и family catalogs — проекции метаданных. Они не являются владельцами wire/MMF форматов. UnifiedVariableRegistry уже хранит immutable записи и frozen dictionaries; его internals и строгий Load не требуют изменений.

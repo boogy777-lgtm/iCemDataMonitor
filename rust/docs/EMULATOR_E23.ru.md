@@ -1,5 +1,11 @@
 # E23 — самостоятельный --landiag
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Источники: `iCemEmule.Core/SelfTest/LanLoopbackDiag.cs`, `Emitters/AceLanEmitter.cs`,
 `iCemEmulator/Program.cs` из pinned baseline. .NET/proto/SPA не менялись.
 

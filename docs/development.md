@@ -1,77 +1,70 @@
 # Разработка
 
-## Пререквизиты
+Текущий application workspace — `rust/`; [README](../README.md) содержит
+проверенные entry points, [Rust README](../rust/README.md) — подробные ссылки.
+Software implementation и N+1 v1.7 завершены; обязательные exact-head Windows CI,
+реальные SDK/AddIn, hardware/operator/visual и production-release gates различаются.
 
-- Windows x64 (проекты WinUI собираются только под Windows).
-- .NET 10 SDK — версия pinned в `global.json` (10.0.302, `rollForward: latestFeature`).
-- WiX v5 — только для сборки MSI: `dotnet tool install --global wix --version 5.0.2` (нужные расширения Util/UI скрипт MSI-сборки доставляет сам).
-- com0com — только для полного стенда с COM-эмуляцией (пара COM-портов между `iCemEmulator` и iCem.exe).
+## Rust
 
-## Сборка и тесты
-
-**Первый запуск с нуля** (2026-09-01): установить .NET 10 SDK → открыть `iCemDataMonitor.sln` в IDE (или `dotnet build iCemDataMonitor.sln` в консоли) → Build. Отдельный `dotnet restore` НЕ нужен — первая сборка восстановит NuGet-пакеты сама (фиды по умолчанию, `nuget.config` в репо отсутствует специально: всё приходит с nuget.org).
+Windows x64, PowerShell 7.4+, Git, rustup, MSVC Build Tools + Windows SDK.
+Toolchain 1.99.1/Edition 2024 задан в `rust/rust-toolchain.toml`.
+Из `rust/`:
 
 ```powershell
-dotnet build iCemDataMonitor.sln
-dotnet test iCemDataMonitor.sln
+cargo fetch --locked
+cargo fmt --all --check
+cargo check --workspace --all-targets --locked --offline
+cargo test --workspace --locked --offline
+cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+cargo build --release --locked --offline -p icem-host-app -p icem-shell-app -p icem-emulator-app -p icem-opc-da-sidecar
+pwsh -NoProfile -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
 ```
 
-### Проверки legacy CI и ожидания в тестах
+Первый fetch требует сети; последующие Rust checks работают offline.
+Browser checks используют npm lockfile. Pure/Linux checks не доказывают Windows
+MMF/COM/UI. Следовать [CI workflow/gates](../rust/docs/CI_CD.ru.md).
 
-Полный Windows-гейт — `.github/workflows/ci.yml`: сборка `CI.slnf`, все
-тесты кроме аппаратного `Category=Live`, сборка и публикация MSI-артефакта.
-Успех Linux-проверок не заменяет этот гейт.
+Для fixture smoke:
 
-Тесты `BusHealthMonitorTests` используют настоящий reader/MMF/mutex и
-управляемые UTC-часы: активность и возраст вычисляются для одного момента
-времени через существующий `BusZoneInfo`. Граница 5000 мс, будущий tick,
-неактивный флаг и свежий/stale-снимок проверяются для COM/LAN/Raw.
-Mutex принадлежит выделенному потоку и освобождается сигналом в `finally`
-после проверки, а не по истечении фиксированного времени.
+```powershell
+cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixtures/bus-v5-minimal.bin --bind 127.0.0.1:1502 --duration-ms 10000
+```
 
-Проверка DropOldest ждёт фактического переполнения, останавливает producer
-и проверяет единственный сохранённый сэмпл с новым heartbeat.
-Проверка восстановления Modbus ждёт тиков и результата через TCP.
-Ограничения времени в этих тестах выявляют зависание; скорость планировщика
-не определяет ожидаемые значения. Нельзя заменять такие ожидания увеличением
-`Sleep/Delay` или ослаблять предметные утверждения.
+Для штатного UI запуска использовать установленный release layout с `assets/`
+и role catalogs (`emulator/templates/`); `cargo build` сам их рядом с EXE не копирует.
+Для штатного запуска использовать `icem-shell-dev.exe`; emulator запускается
+отдельно (`icem-emulator-engine-dev.exe`). Host: `--ini PATH`, `snapshot`, `get main`,
+`header`, `stop|restart`; `--start` обеспечивает отсутствующий Host для CLI.
+См. [HOST_E11](../rust/docs/HOST_E11.ru.md) и [emulator CLI](../rust/docs/EMULATOR_E24.ru.md).
 
-Тестовый `InMemorySerialPort` синхронизирует чтение, подачу данных, запись
-и закрытие одним lock: `MemoryStream.Position` нельзя менять одновременно
-из feeder и reader. Пустое чтение имеет короткий timeout вместо busy loop.
-Tee-тесты ждут состояния/байтов и всегда вызывают `StopAsync` в `finally`;
-`StartAsync` сам по себе не является задачей времени жизни сервиса.
-Параллельная подача/чтение 32 КиБ проверяется на сохранение каждого байта.
+## Legacy reference/build compatibility
 
-WinUI-проекты (`Shell.WinUI`, `Emulator.WinUI`, `iCemEmulator`) собираются с `-p:Platform=x64`. Полный MSI: `.\installer\build-msi.ps1` — без аргументов, версия берётся из файла `VERSION` в корне репо (bump = править этот файл); явная версия: `-MsiVersion X.Y.Z` (2026-09-02, owner decree «скрипт должен быть самодостаточным» — интерактивных запросов нет). Весь прогон пишется в `dist\iCemDataMonitor-<ver>-x64.build.log` — все warning'и MSBuild/WiX остаются читаемыми после закрытия окна; в конце (и при падении сборки) окно ждёт нажатия клавиши, `-NoPause` отключает ожидание. Артефакт в `dist\`, после сборки stage и bin/obj вычищаются автоматически. В скриптах сборки нет абсолютных путей: репозиторий можно клонировать/переименовывать куда угодно.
+Корневая `iCemDataMonitor.sln`, `.NET` assemblies и `installer/` сохранены.
+Их сборка не переключает приложение на production Rust. Для reference build
+нужен Windows x64, .NET SDK из `global.json` (10.0.302), WinUI tooling;
+net48 AddIn требует настоящие vendor references из установки iCem.
 
-## Сборка из IDE (2026-09-01, owner request «человек собирает через средства разработки»)
+```powershell
+dotnet build iCemDataMonitor.sln -p:Platform=x64
+dotnet test CI.slnf --filter "Category!=Live" -p:Platform=x64
+```
 
-Репозиторий полностью IDE-совместим — решение открывается как есть, без скриптов:
+Полный legacy Windows gate задаётся `.github/workflows/ci.yml`, а не успехом
+изолированного Linux-теста. Никаких SDK stubs для release AddIn.
+[MSI build и prerequisites](../rust/installer/README.md).
 
-- **Visual Studio 2022 17.12+ / VS 2026.** Нужны компоненты: «.NET desktop development» + **Windows App SDK** (C# WinUI workload) + .NET 10 SDK (см. `global.json`). Открыть `iCemDataMonitor.sln` → Build Solution работает в любой конфигурации: WinUI-проекты и net48-AddIn в sln замаплены так, что `Any CPU` решения собирает их как `x64` автоматически. Тесты — через Test Explorer (xunit). MSI из VS не собирается — это скриптовый шаг (`installer\build-msi.ps1`, WiX v5).
-- **VS Code.** Рекомендуемые расширения уже лежат в `.vscode/extensions.json` (C# Dev Kit). Готовые задачи в `.vscode/tasks.json`: `build: solution` (Ctrl+Shift+B), `test: solution`, `msi: build` (с вводом версии), harness конфликт-гейта установщика. Отладка host'а: `dotnet run --project iCemDataMonitor.Host` (консольное приложение); WinUI-приложения из VS Code не отлаживаются — для них Visual Studio.
-- **Rider.** Открыть `iCemDataMonitor.sln` — то же, что VS (нужен .NET 10 SDK; WinUI-отладка под Rider на Windows поддерживается).
+## Стенд и обслуживание
 
-Стиль кода закреплён для IDE: `.editorconfig` (UTF-8, LF, 4 пробела C#) и `.gitattributes` (нормализация EOL, бинарники защищены) — человеческая IDE не будет перекрашивать файлы при первом сохранении.
+Canonical station directory: `C:\ProgramData\Halliburton\iCem\DataMonitoring`.
+`config.ini` read-once; после правки нужен restart. AddIn владеет `Data.dat`;
+Host его не создаёт. Для COM emulator нужна внешняя пара портов драйвера com0com,
+для LAN — Npcap/выбранный adapter. В iCem требуется явный запуск LAN acquisition.
+Sniffer Host — пассивная диагностика. Tee/Com0ComMonitor/admin REST удалены;
+тесты этих исключительно удалённых wrappers не входят в текущий suite.
+[Точный retirement и проверки](LEGACY_REFACTORING_C11.ru.md).
 
-## Отладка стенда
-
-- **Пути данных** (MONITORROOT): `C:\ProgramData\Halliburton\iCem\DataMonitoring` — тут живут `config.ini`, `Data.dat` (файловая подложка MMF `Global\iCemDataMonitorBus_v1`), `emule_config.xml` (создаётся эмулятором) и `Logs\`.
-- **Куда смотреть логи host'а**:
-  - `Logs\iCemDataMonitor.Host\startup.log` — загрузка host'а, строки-свидетельства (в т.ч. миграция конфига, READY-маркер);
-  - `Logs\iCemDataMonitor.Shell\shell-crash.log` — крэши WinUI shell'а;
-  - `Logs\<AppName>\data-bus.log` — журнал шины (Data);
-  - `Logs\iCemDataMonitor.Cli\cli.log` — диагностика CLI-режима (stdout всегда чистый JSON, stderr = логи).
-- **Прогон локально**: `iCemDataMonitor.Host.exe [--port N] [--ini PATH] [--autostart]`; CLI поверх живого host'а: `iCemDataMonitor.Host.exe snapshot|get|header [--start]` (exit-коды: 0 ok, 1 RPC-ошибка, 2 usage/host не отвечает).
-- **Правка конфига**: `config.ini` читается host'ом один раз при старте — после правки нужен рестарт host'а (см. [config.md](config.md)).
-
-## Спеки — закон (amendment-first)
-
-`specs\` — каноническое описание текущего состояния; входная точка — [../specs/INDEX.yaml](../specs/INDEX.yaml). Изменение поведения начинается с правки спека (amendment), код следует за ним. Ключевые файлы: [../specs/stand_topology.mmd](../specs/stand_topology.mmd) (топология стенда), [../specs/dotnet-server/Э5_config.csv](../specs/dotnet-server/Э5_config.csv) (каноническая таблица конфига), [../PROTOCOL.md](../PROTOCOL.md) (wire-формат ACE).
-
-## Известные ограничения
-
-- **LiveGateGui исключён из репо** (net8 ↔ net10 NU1201, мёртвый прототип); LiveGate-инструменты остались вне репо — полный гейт воспроизводится скриптово/вручную.
-- **Trimming/self-contained host'а — ОТМЕНЕНЫ** (2026-09-02, owner decree «убераем self contained — дешевле передавать core\runtime»; отменяет «Блок 2 п.4» 2026-09-01): host публикуется framework-dependent win-x64; рантаймы ставятся на целевую машину двумя установщиками из `dist\` (см. [install.md](install.md)).
-- Ретироуд-ключи `config.ini` (`com_port`, зонные ключи, `emule_on`) принимаются и игнорируются — сознательно, для совместимости живых файлов стенда.
+[Managed logging](../rust/docs/HOST_E12.ru.md), [конфиг](config.md),
+[аппаратная приёмка](../rust/docs/HARDWARE_ACCEPTANCE.ru.md).
+Исторические C1–C10 и инкрементальные Rust отчёты сохраняют факты своих commits;
+их прежние NEXT/TODO не являются новым согласованным coding backlog.

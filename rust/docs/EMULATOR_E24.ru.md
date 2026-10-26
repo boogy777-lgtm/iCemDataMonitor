@@ -1,5 +1,11 @@
 # E24 — launch modes, default UI и stdin CLI
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 Источники: pinned `Control/ControlClient.cs`, `Control/EmulatorAppContract.cs`,
 `iCemEmulator/Program.cs`. Application binary — `icem-emulator-engine-dev`;
 FLECS/DFB/LAN previews не менялись. Общий `cli_request` и wire grammar сохранены.

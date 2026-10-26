@@ -1,6 +1,15 @@
 # Спецификация API миграции — v0.1
 
-Статус: контракт переноса pinned baseline; актуальное состояние частичной Rust-реализации — HOST_E8, DESKTOP_STATUS и WEB_STATUS. Полный parity gate остаётся открыт.
+**Текущий статус, 26 октября 2026:** согласованный software scope и N+1 v1.7
+реализованы; [tracker](NPLUS1_TRACKER.ru.md) содержит точные checkpoints.
+Hardware/operator/visual/real SDK/release acceptance и production cutover
+проверяются отдельно. Слияние C11 требует полного Windows CI exact head; verdict — в
+[PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
+Ниже сохранены исторические критерии/инкрементальные facts: старые NEXT/PARTIAL
+не являются текущим coding backlog. [Retirement C11](../../docs/LEGACY_REFACTORING_C11.ru.md):
+21 dormant route RETIRED, active OpenAPI неизменён; com0com driver KEEP.
+
+Статус: контракт переноса pinned baseline; актуальное software-состояние — IMPLEMENTATION_STATUS и NPLUS1_TRACKER. Полный parity gate остаётся открыт.
 Источник каждого пункта — корень исходного репозитория на `96e2206562c9389d1543095232115d81eae4b692`.
 Имена DLL, API routes, package/service/method, field numbers, pipe/event names и
 значения байтов сохраняются. Нового C ABI для DLL не требуется.

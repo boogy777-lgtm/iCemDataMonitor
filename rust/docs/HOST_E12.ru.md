@@ -1,5 +1,11 @@
 # E12: управление файловыми логами из GPUI
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База main `13dea0c161e24cf0cad32f84c80c941d0a1b2eee`, PR #7 слит;
 открытого продолжения при старте не было. Ветка `rust/desktop-file-logs`.
 Решение и точные гарантии: [ADR 0008](adr/0008-managed-file-logs.ru.md).

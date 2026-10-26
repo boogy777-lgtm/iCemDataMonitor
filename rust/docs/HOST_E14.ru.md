@@ -1,5 +1,11 @@
 # E14 — lifecycle окон desktop
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 PR #9 слит по отдельной команде пользователя. База:
 `abd9055d65a9ca0f867e792a685287dcd473d3b0`, branch `rust/window-lifecycle`.
 Владелец сообщил об исчерпанном лимите Actions. Новый commit использует [skip ci];

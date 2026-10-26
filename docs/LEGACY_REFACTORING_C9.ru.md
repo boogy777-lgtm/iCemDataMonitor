@@ -1,5 +1,10 @@
 # C9: emulator и минимальные AddIn seams
 
+Исторический план/отчёт своего checkpoint; факты и прежние failures сохранены.
+Текущее завершение software и retirement 17-file closure описаны в
+[C11](LEGACY_REFACTORING_C11.ru.md). Старые dormant route/serial references не
+означают доступную текущую API или remaining migration.
+
 Статус: implementation C9 завершена для независимого review; Windows acceptance ещё не выполнен этим исполнителем. Основание — фактический main после merge C8: `0b0597b6d9cecd4e8f666e36a40eb6926708345e`, tree `9f1fdda9b0c1ff251cc4ed838f4dae703cb87a97`. Ранее существовавший локальный документ утрачен при восстановлении workspace; этот документ реконструирован из прочитанного плана и read-only preflight, а не объявлен восстановлением прежнего commit. Pre-code версия сохранена отдельным commit `9c5ad48c1a0b366896f3d5233ee572ab64345483` до production edits; build/test/restore при её составлении не выполнялись.
 
 Цель L12/L13: небольшие concrete helpers в существующих проектах, без новых assemblies/packages, generic framework, второго command bus и механического переноса UI.

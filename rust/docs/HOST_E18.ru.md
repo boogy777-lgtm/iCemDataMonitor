@@ -1,5 +1,11 @@
 # E18 — типизированный Shell → Host
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База main ed2b79f5b2d24fe387dff4e161032313e54f9655,
 tree e3811bcb11d27311f1cb5e8127f35be205af6c67. Post-merge Rust/MSVC
 [39213090749](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/39213090749)

@@ -1,5 +1,11 @@
 # E17 — application API и watch клиента emulator
 
+Исторический отчёт указанного инкремента. Текущее software-состояние:
+[N+1 tracker](NPLUS1_TRACKER.ru.md), [implementation status](IMPLEMENTATION_STATUS.ru.md).
+Прежние NEXT/PARTIAL описывают тот checkpoint; hardware/UI/operator/release gates
+остаются отдельными. [C11](../../docs/LEGACY_REFACTORING_C11.ru.md) удалил dormant
+REST/serial wrappers и их эксклюзивные tests; com0com driver сохранён.
+
 База main: `1b06a19888ccc5f4d450f501dd87ab2594c0ecd7`, tree
 `f6aacd0010000d897a393e2e41fee4b2bcf81618`. Post-merge Rust/MSVC
 [39207160572](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/39207160572)

@@ -1,4 +1,8 @@
-﻿# INDEX — entry point for EVERY new LLM chat working on the iCem POC stand.
+# CURRENT OVERRIDE 2026-10-26: Rust software implementation + N+1 v1.7 complete.
+# Legacy unit descriptions below are historical reference, not current runtime topology.
+# AddIn is the single MMF writer; standalone emulator uses external com0com/Npcap.
+# 21 dormant routes retired C11; com0com driver KEEP. Hardware/release gates separate.
+# INDEX — entry point for EVERY new LLM chat working on the iCem POC stand.
 # rule: load this file FIRST; route by task type; never read code before specs.
 # doctrine: specs = CURRENT STATE ONLY. Process artifacts (incident logs, change
 # history, migration narration) are archived OUT of the docs system, never linked.
@@ -13,10 +17,12 @@ route_by_task:
   symptom:   "specs/<unit>/Э6_failures.csv → grep symptom_signature → probe+remediation in-row"
   change:    "specs/<unit>/Э2_contracts.csv → Э4_invariants.yaml → Э7_verification.csv"
   new_unit:  "specs/<unit>/Э0 → Э1 → Э2 → Э4"
-  cross_unit: "specs/stand_topology.mmd"
+  cross_unit: "docs/architecture.md (current software); specs/stand_topology.mmd"
+  software_status: "rust/docs/NPLUS1_TRACKER.ru.md"
+  legacy_retirement: "docs/LEGACY_REFACTORING_C11.ru.md"
 
 units:
-  iCemEmule:       "specs/iCemEmule/Э0..Э7 + Э2c_lan_zone_classification.csv (headless stand emulator engine: ACE LAN + FLECS COM; UI = EmulatorPage OUT-OF-PROCESS, W12 owned-overlay embed into the shell)"
+  iCemEmule:       "specs/iCemEmule/Э0..Э7 + Э2c_lan_zone_classification.csv (legacy engine reference; current Rust emulator is independent COM/LAN application)"
   dotnet_server:  "specs/dotnet-server/Э0..Э7 + Э2b_ace_full_measurement.csv (POC: WinUI 3 shell iCemDataMonitor.WinUI.exe + legacy tray rollback, MMF bus, modbus :502, sniffer)"
   iCemAddIn:      "specs/iCemAddIn/Э0..Э6 + Э2b_edge_truth_tables.csv + Э8_design_variableid.yaml (dll inside iCem.exe; DUMB TRANSLATOR byte-exact; source C:\Users\HALLIBURTON\iCemPOC\Burservis.iCem.DataMonitor, v5 contract code-authoritative)"
 
