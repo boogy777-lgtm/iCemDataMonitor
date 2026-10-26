@@ -1262,6 +1262,17 @@
         "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
       },
       "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/iCemDataMonitor.Plugins.Icem.Tests.csproj",
+      "operation": "modify",
+      "baseline_blob_sha1": "d091a1d6872c8bc27a5c6fd91a7d7460f5aed6c8",
+      "approved_blob_sha1": "652966c5e6056d0d977b8cd8f32f89ddd0ce5b8b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/46",
+        "commit": "d91c945fd8af83973413fc068c20a95b3fc8c12d",
+        "reason": "PR46 exact approved repository src/net, src/rust structural migration. Preserve frozen original manifest and baseline hash, update shared .NET template path. Subject to complete Windows CI before main."
+      }
     }
   ]
 }
