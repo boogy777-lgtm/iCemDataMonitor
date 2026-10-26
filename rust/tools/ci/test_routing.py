@@ -206,7 +206,7 @@ class RoutingTests(unittest.TestCase):
         self.assertIn('    Test-BuildOutputPaths\n', fixture)
         for path in ('README.md', 'rust/README.md', 'docs/install.md', 'rust/installer/README.md'):
             self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
-        self.assertIn('dist/legacy/', (ROOT / 'docs/release.md').read_text())
+        self.assertIn('dist/legacy/', (ROOT / 'docs/release.md').read_text(encoding='utf-8-sig'))
 
     def test_workflow_wiring(self):
         workflows = ROOT / '.github/workflows'
