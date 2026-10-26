@@ -3,7 +3,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 #[test]
 fn real_executable_emits_32_flecs_fields_with_crlf_and_override() -> TestResult {
     let template = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../iCemEmulator/templates/flecs_4.53.json");
+        .join("../../../net/iCemEmulator/templates/flecs_4.53.json");
     let output = Command::new(env!("CARGO_BIN_EXE_icem-emulator-dev"))
         .arg("--template")
         .arg(template)
