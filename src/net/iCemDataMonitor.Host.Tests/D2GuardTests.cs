@@ -25,6 +25,8 @@ public class D2GuardTests
         throw new InvalidOperationException("solution directory not found");
     }
 
+    private static string FindSourceDir() => Path.Combine(FindSolutionDir(), "src", "net");
+
     private static List<string> SourceFiles(string projectDir) =>
         Directory.EnumerateFiles(projectDir, "*.*", SearchOption.AllDirectories)
             .Where(f =>
@@ -48,7 +50,7 @@ public class D2GuardTests
                         && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
             .ToList();
 
-        var expected = Path.Combine(slnDir, "iCemDataMonitor.Contracts", "Protos", "telemetry.proto");
+        var expected = Path.Combine(FindSourceDir(), "iCemDataMonitor.Contracts", "Protos", "telemetry.proto");
         Assert.Equal(new[] { expected }, protos);
     }
 
@@ -65,7 +67,7 @@ public class D2GuardTests
     [MemberData(nameof(GuardedProjects))]
     public void Project_HasNo_SignalRorCors_Packages(string projectName)
     {
-        var csproj = Path.Combine(FindSolutionDir(), projectName, $"{projectName}.csproj");
+        var csproj = Path.Combine(FindSourceDir(), projectName, $"{projectName}.csproj");
         Assert.True(File.Exists(csproj), $"missing {csproj}");
 
         var text = File.ReadAllText(csproj);
@@ -134,8 +136,8 @@ public class D2GuardTests
     private static List<string> HostZoneSourceFiles()
     {
         var sln = FindSolutionDir();
-        var hostCoreRoot = Path.Combine(sln, "iCemDataMonitor.Host.Core");
-        return SourceFiles(Path.Combine(sln, "iCemDataMonitor.Host"))
+        var hostCoreRoot = Path.Combine(FindSourceDir(), "iCemDataMonitor.Host.Core");
+        return SourceFiles(Path.Combine(FindSourceDir(), "iCemDataMonitor.Host"))
             .Concat(Directory.EnumerateFiles(hostCoreRoot, "*.cs", SearchOption.TopDirectoryOnly))
             .ToList();
     }
@@ -155,7 +157,7 @@ public class D2GuardTests
     [Fact]
     public void PipeName_Literal_DefinedExactlyOnce_InContracts()
     {
-        var contractsDir = Path.Combine(FindSolutionDir(), "iCemDataMonitor.Contracts");
+        var contractsDir = Path.Combine(FindSourceDir(), "iCemDataMonitor.Contracts");
         var hits = SourceFiles(contractsDir)
             .Where(f => File.ReadAllText(f).Contains(PipeNameLiteral, StringComparison.Ordinal))
             .ToList();
@@ -171,7 +173,7 @@ public class D2GuardTests
         var slnDir = FindSolutionDir();
         var offenders = new List<string>();
 
-        foreach (var project in Directory.EnumerateDirectories(slnDir))
+        foreach (var project in Directory.EnumerateDirectories(FindSourceDir()))
         {
             if (Path.GetFileName(project) == "iCemDataMonitor.Contracts")
                 continue; // the single sanctioned source (HostChannelNames.PipeName)
