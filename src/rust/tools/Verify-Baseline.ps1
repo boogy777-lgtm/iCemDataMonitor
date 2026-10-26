@@ -75,7 +75,7 @@ foreach ($Change in $Ledger.changes) {
 # physical location of tracked .NET files when the repository has the v2 layout.
 function Resolve-LayoutPath([string] $Relative) {
     if ((Test-Path -LiteralPath (Join-Path $SourceRoot 'src/net') -PathType Container) -and
-        $Relative -match '^(?:iCemDataMonitor\.|iCemEmul|Burservis\.iCem\.DataMonitor)') {
+        $Relative -match '^(?:iCemDataMonitor\.[^/]+|iCemEmulator|iCemEmule\.[^/]+|Burservis\.iCem\.DataMonitor(?:\.Tests)?)/') {
         return 'src/net/' + $Relative
     }
     return $Relative
