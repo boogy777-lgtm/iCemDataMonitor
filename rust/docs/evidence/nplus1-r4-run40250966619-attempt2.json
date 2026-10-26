@@ -1,0 +1,556 @@
+{
+  "schema": 1,
+  "run": 40250966619,
+  "attempt": 2,
+  "release_job": 121345765540,
+  "artifact": 12621084111,
+  "artifact_zip_sha256": "4d070c76289320e1476476190fc044b47f9479e9de12f8c97abcfb288b739f42",
+  "source": "7d8af1d22be2d38573d7a06b96b54c0f5a654423",
+  "tree": "7bfd3d4de60e463269e814269eede1356fb15791",
+  "status": "COMPLETE_SCOPED_SOFTWARE_VALIDATED_CODE_CHECKPOINT",
+  "platform": "Windows-2025Server-10.0.26100-SP0",
+  "cpu": "AMD EPYC 7763 64-Core Processor",
+  "cpu_count": 4,
+  "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "profile": "workspace Release: opt-level=s, thin LTO, codegen-units=1; no target-cpu override",
+  "mmf": {
+    "lock_wait_ns": {
+      "samples": 1000,
+      "p50_ns": 400,
+      "p95_ns": 400,
+      "p99_ns": 500
+    },
+    "lock_hold_upper_ns": {
+      "samples": 1000,
+      "p50_ns": 5000,
+      "p95_ns": 5300,
+      "p99_ns": 6400
+    },
+    "decode_arc_ns": {
+      "samples": 1000,
+      "p50_ns": 500,
+      "p95_ns": 600,
+      "p99_ns": 600
+    },
+    "publication_ns": {
+      "samples": 1000,
+      "p50_ns": 0,
+      "p95_ns": 100,
+      "p99_ns": 100
+    },
+    "boundary_total_ns": {
+      "samples": 1000,
+      "p50_ns": 5900,
+      "p95_ns": 6200,
+      "p99_ns": 7500
+    },
+    "reader_capture_ns": {
+      "samples": 1000,
+      "p50_ns": 38800,
+      "p95_ns": 48100,
+      "p99_ns": 92300
+    },
+    "reader_publication_total_ns": {
+      "samples": 1000,
+      "p50_ns": 38900,
+      "p95_ns": 48200,
+      "p99_ns": 92500
+    }
+  },
+  "raw_sha256": {
+    "mmf.csv": "9c9f2051af9070c0d653c7315a9086c3cbc44a007ef6d7853836d20eee13af47",
+    "network.json": "e9edbc0509c668db2437c88c7040da3d705d245dd3cca3c5c86a3570f035456f"
+  },
+  "live": {
+    "status": "PASS_LIVE_SOFTWARE_LOAD",
+    "acquisition_period_ms": 200,
+    "writer_period_ms": 50,
+    "limitations": [
+      "software file-backed MMF; no AddIn/hardware acceptance",
+      "Host acquisition count is not inferred from request/update count",
+      "retention probe is a separate sequential phase/process; its Arc count is not Host-wide",
+      "CPU samples are cumulative process user+kernel time; peak working set is process lifetime, not heap live bytes",
+      "slow clients hold incomplete requests, not an unbounded subscription backlog"
+    ],
+    "initial_mirror": {
+      "attempts": 8,
+      "initial_zero_reads": 7,
+      "com_bits": 1700000000,
+      "elapsed_s": 0.375
+    },
+    "consumers": [
+      {
+        "kind": "modbus",
+        "rate_hz": 2,
+        "roundtrip_scope": "three FC03 requests",
+        "latency": {
+          "samples": 24,
+          "p50_us": 6894.7,
+          "p95_us": 7819.6,
+          "p99_us": 7851.8,
+          "mean_us": 6914.0
+        }
+      },
+      {
+        "kind": "modbus",
+        "rate_hz": 50,
+        "roundtrip_scope": "three FC03 requests",
+        "latency": {
+          "samples": 600,
+          "p50_us": 6801.9,
+          "p95_us": 7924.6,
+          "p99_us": 14637.0,
+          "mean_us": 7050.23
+        }
+      },
+      {
+        "kind": "web",
+        "rate_hz": 1,
+        "roundtrip_scope": "one GetRegisters all",
+        "latency": {
+          "samples": 12,
+          "p50_us": 1708.2,
+          "p95_us": 2558.8,
+          "p99_us": 2558.8,
+          "mean_us": 1788.22
+        }
+      },
+      {
+        "kind": "web",
+        "rate_hz": 20,
+        "roundtrip_scope": "one GetRegisters all",
+        "latency": {
+          "samples": 240,
+          "p50_us": 1756.7,
+          "p95_us": 2318.6,
+          "p99_us": 4260.4,
+          "mean_us": 1953.0
+        }
+      }
+    ],
+    "slow_client": {
+      "partial_request_disconnect_cycles": 17,
+      "hold_s": 0.7
+    },
+    "workload_wall_s": 12.170895599999994,
+    "process": {
+      "pid": 8584,
+      "cpu_s_first": 0.046875,
+      "cpu_s_last": 0.46875,
+      "cpu_s_delta_during_sampling": 0.421875,
+      "peak_working_set_bytes": 14290944,
+      "max_sampled_private_bytes": 3514368,
+      "samples": 32,
+      "sample_period_ms": 500
+    },
+    "retention_probe": {
+      "captures": 60,
+      "peak_live_snapshot_payloads": 4,
+      "capture_publication": {
+        "samples": 60,
+        "p50_us": 168.5,
+        "p95_us": 203.9,
+        "p99_us": 215.0,
+        "mean_us": 170.04
+      },
+      "consumer_rates_hz": [
+        100,
+        20,
+        5,
+        1
+      ],
+      "pinned_old_snapshot": true,
+      "cadence": {
+        "intervals": 59,
+        "min_ms": 198.838,
+        "p50_ms": 200.0413,
+        "p95_ms": 201.0302,
+        "max_ms": 201.0792,
+        "span_ms": 11800.8429,
+        "scope": "separate probe, not actual Host acquisition count"
+      }
+    }
+  },
+  "warmed_heap": {
+    "status": "RECORDED_WINDOWS_OVERHEAD_OPEN",
+    "runs": [
+      {
+        "kind": "capture",
+        "operations": 0,
+        "label": "capture-0",
+        "pid": 2168,
+        "events_sha256": "8366d478a4224143189149e89a6ea3b1ef64b0ecd0a910282b667d1c5c282d47",
+        "events_file": "capture-0-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 10,
+          "allocated_bytes": 7697,
+          "reallocation_calls": 0,
+          "reallocated_new_bytes": 0
+        }
+      },
+      {
+        "kind": "capture",
+        "operations": 10000,
+        "label": "capture-10000",
+        "pid": 5076,
+        "events_sha256": "25aa5ec882aaaee183422f687153a5c4809e5d4c5abecf647ba75cf0cc0dd62e",
+        "events_file": "capture-10000-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 50010,
+          "allocated_bytes": 30127697,
+          "reallocation_calls": 0,
+          "reallocated_new_bytes": 0
+        },
+        "control_zero_events": false,
+        "recorded_window_per_operation_including_overhead": {
+          "allocation_calls": 5.001,
+          "allocated_bytes": 3012.7697,
+          "reallocation_calls": 0.0,
+          "reallocated_new_bytes": 0.0
+        }
+      },
+      {
+        "kind": "modbus",
+        "operations": 0,
+        "label": "modbus-0",
+        "pid": 8240,
+        "events_sha256": "6994cf3a6a287750894be231e2d40affc766c4aab634a0bfc1d21db7b10e1d2d",
+        "events_file": "modbus-0-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 10,
+          "allocated_bytes": 7697,
+          "reallocation_calls": 0,
+          "reallocated_new_bytes": 0
+        }
+      },
+      {
+        "kind": "modbus",
+        "operations": 10000,
+        "label": "modbus-10000",
+        "pid": 7732,
+        "events_sha256": "c8c2f2668cc5a43719ec4c4e35126f3631d912b5ed53870fbbb040efa9a3c2e2",
+        "events_file": "modbus-10000-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 70010,
+          "allocated_bytes": 5077697,
+          "reallocation_calls": 60000,
+          "reallocated_new_bytes": 5040000
+        },
+        "control_zero_events": false,
+        "recorded_window_per_operation_including_overhead": {
+          "allocation_calls": 7.001,
+          "allocated_bytes": 507.7697,
+          "reallocation_calls": 6.0,
+          "reallocated_new_bytes": 504.0
+        }
+      }
+    ],
+    "scope": "warmed capture+publication+latest OR prebuilt FC03 100-word codec requests; one single-thread workload, no Web or network I/O attribution",
+    "units": "ETW HeapAlloc Size bytes and HeapRealloc NewSize bytes; not live heap size",
+    "limitations": [
+      "window includes START read and DONE write; zero-operation control separately recorded",
+      "no exact operation attribution unless zero-operation control has zero events",
+      "schema and ETW loss validation mandatory; no rounded-KB conversion"
+    ],
+    "source": "0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb",
+    "tree": "7bfd3d4de60e463269e814269eede1356fb15791",
+    "cleanup_errors": []
+  },
+  "process_lifetime_heap": {
+    "status": "RECORDED_RAW_HEAP_TOTALS",
+    "runs": [
+      {
+        "label": "startup-control",
+        "iterations": 0,
+        "pid": 5708,
+        "exit": 0,
+        "loss_counters": {
+          "events lost": [
+            0
+          ],
+          "buffers lost": [
+            0
+          ]
+        },
+        "native_allocation_rows": [
+          {
+            "allocation_calls": 783,
+            "allocated_size_KB_native": "222.7",
+            "native_row": [
+              "783",
+              "222.7",
+              "467",
+              "101.2",
+              "21",
+              "200.0",
+              "200.0",
+              "TOTAL"
+            ]
+          },
+          {
+            "allocation_calls": 773,
+            "allocated_size_KB_native": "195.3",
+            "native_row": [
+              "773",
+              "195.3",
+              "463",
+              "88.1",
+              "21",
+              "164.0",
+              "164.0",
+              "0x2021b0d0000"
+            ]
+          },
+          {
+            "allocation_calls": 10,
+            "allocated_size_KB_native": "27.4",
+            "native_row": [
+              "10",
+              "27.4",
+              "4",
+              "13.1",
+              "0",
+              "36.0",
+              "36.0",
+              "0x2021b340000"
+            ]
+          },
+          {
+            "allocation_calls": 0,
+            "allocated_size_KB_native": "0.0",
+            "native_row": [
+              "0",
+              "0.0",
+              "0",
+              "0.0",
+              "0",
+              "0.0",
+              "0.0",
+              "0x2021aee0000"
+            ]
+          }
+        ],
+        "totals_file": "startup-control-totals.txt",
+        "raw_totals": "\nHeap totals for icem_heap_37101cc973d34e08a7381256bcb27f9a.exe (5708)\n  Alloc#,   Alloc KB,     Out#,     Out KB, Realloc#, Extents KB, Out Ext KB, Heap Handle\n\n     783,      222.7,      467,      101.2,       21,      200.0,      200.0, TOTAL\n     773,      195.3,      463,       88.1,       21,      164.0,      164.0, 0x2021b0d0000\n      10,       27.4,        4,       13.1,        0,       36.0,       36.0, 0x2021b340000\n       0,        0.0,        0,        0.0,        0,        0.0,        0.0, 0x2021aee0000\n",
+        "size_unit": "KB as reported by xperf; raw report precision, not exact byte attribution",
+        "trace_sha256": "7d18d849b3d8910783c0edc94f5e3af834d7d6ca3989ecd6be5788f37cd087e2"
+      },
+      {
+        "label": "capture-publication",
+        "iterations": 10000,
+        "pid": 2284,
+        "exit": 0,
+        "loss_counters": {
+          "events lost": [
+            0
+          ],
+          "buffers lost": [
+            0
+          ]
+        },
+        "native_allocation_rows": [
+          {
+            "allocation_calls": 50663,
+            "allocated_size_KB_native": "29322.8",
+            "native_row": [
+              "50663",
+              "29322.8",
+              "423",
+              "93.6",
+              "23",
+              "224.0",
+              "224.0",
+              "TOTAL"
+            ]
+          },
+          {
+            "allocation_calls": 50653,
+            "allocated_size_KB_native": "29295.4",
+            "native_row": [
+              "50653",
+              "29295.4",
+              "419",
+              "80.5",
+              "23",
+              "188.0",
+              "188.0",
+              "0x1f71f260000"
+            ]
+          },
+          {
+            "allocation_calls": 10,
+            "allocated_size_KB_native": "27.4",
+            "native_row": [
+              "10",
+              "27.4",
+              "4",
+              "13.1",
+              "0",
+              "36.0",
+              "36.0",
+              "0x1f71f480000"
+            ]
+          },
+          {
+            "allocation_calls": 0,
+            "allocated_size_KB_native": "0.0",
+            "native_row": [
+              "0",
+              "0.0",
+              "0",
+              "0.0",
+              "0",
+              "0.0",
+              "0.0",
+              "0x1f71f130000"
+            ]
+          }
+        ],
+        "totals_file": "capture-publication-totals.txt",
+        "raw_totals": "\nHeap totals for icem_heap_37101cc973d34e08a7381256bcb27f9a.exe (2284)\n  Alloc#,   Alloc KB,     Out#,     Out KB, Realloc#, Extents KB, Out Ext KB, Heap Handle\n\n   50663,    29322.8,      423,       93.6,       23,      224.0,      224.0, TOTAL\n   50653,    29295.4,      419,       80.5,       23,      188.0,      188.0, 0x1f71f260000\n      10,       27.4,        4,       13.1,        0,       36.0,       36.0, 0x1f71f480000\n       0,        0.0,        0,        0.0,        0,        0.0,        0.0, 0x1f71f130000\n",
+        "size_unit": "KB as reported by xperf; raw report precision, not exact byte attribution",
+        "trace_sha256": "4e379c09bd593d87a403a15048de15552222ef2ec106e2bdac48d5d4df3541da"
+      }
+    ],
+    "scope": "PID-filtered process-lifetime heap allocation events; startup, harness, fixture setup/checks/teardown included. Separate zero-capture control; no exact per-capture attribution or network request heap claim.",
+    "latency": "separate unprofiled run; no timings from this profile are accepted",
+    "source": "0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb",
+    "tree": "7bfd3d4de60e463269e814269eede1356fb15791",
+    "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "toolkit": {
+      "wpr": "C:\\Windows\\system32\\wpr.exe",
+      "xperf": "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\xperf.exe"
+    },
+    "binary_sha256": "6d4a1a1606aab480fed8fa629eb452c494ea0aea41dc44a9b9cbac54bfffb21f"
+  },
+  "verification": [
+    "artifact ZIP SHA256 verified",
+    "all summary raw SHA256 verified",
+    "four warmed event CSV SHA256 and PID event totals recomputed",
+    "original heap/process/merged zero-loss counters recomputed",
+    "live raw samples and quantile indices recomputed",
+    "two lifetime ETL hashes and native totals recomputed",
+    "both lifetime dumper zero-loss counters independently recomputed"
+  ],
+  "limitations": [
+    "attempt1 failure preserved separately; attempt2 workflow SUCCESS. Final documentation-head CI required before PR readiness",
+    "native HeapAlloc Size and HeapRealloc NewSize remain separate, inclusive control noise not subtracted",
+    "not exact Rust GlobalAlloc calls or net live bytes; Web/network heap and Host-wide Arc count not claimed",
+    "CI VM/software file-backed MMF; hardware/AddIn/UI/distribution/cutover acceptance separate"
+  ],
+  "ci_gate_job": 121348687621,
+  "jobs": {
+    "rust_verify": 121345766982,
+    "legacy": 121345766655,
+    "packaging": 121345766192,
+    "routing": 121345797634,
+    "baseline": 121345788060
+  },
+  "ci_merge": "0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb",
+  "workflow_status": "SUCCESS"
+}

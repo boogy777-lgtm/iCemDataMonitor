@@ -1,5 +1,29 @@
 # R4: исполнимый software live-load fixture
 
+## Окончательный software status — 26 октября 2026
+
+R4/R5 **закрыты для scoped N+1 v1.7 software checkpoint**: Windows
+[run40250966619, attempt2](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40250966619/attempts/2)
+SUCCESS, общий CI gate121348687621 и Release job121345765540 SUCCESS.
+Проверенный source `7d8af1d22be2d38573d7a06b96b54c0f5a654423`, CI merge
+`0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb`, tree
+`7bfd3d4de60e463269e814269eede1356fb15791`. Авторитетные raw-derived числа и
+hashes: [attempt2 evidence](evidence/nplus1-r4-run40250966619-attempt2.json).
+Attempt1 failed lifetime trace с4943lost events сохранён отдельно; loss check
+не ослаблялся, attempt2 на новом runner прошёл без изменения кода/gates.
+
+Ниже исторические OPEN/PENDING относятся к названным checkpoints. Current status
+имеет приоритет. Native window averages включают отдельно измеренный control
+noise; Size/NewSize не складываются в net live bytes. Exact Rust allocator calls,
+Web/network heap attribution и Host-wide Arc count не заявляются и не становятся
+новыми обязательными gates. Hardware/AddIn/UI/distribution/cutover остаются
+отдельными release gates.
+
+Этот отчёт привязан к validated code checkpoint. После публикации итогового
+documentation head обязательный CI должен пройти ещё раз; его успех здесь заранее
+не заявляется. PR готов к завершению после этого final-head CI; merge не заявлен.
+
+
 Class: независимый software writer и benchmark consumers реального Windows file-backed
 MMF (`examples/windows_live_load.rs`, `tools/perf/windows_live_load.py`);
 production AddIn и аппаратная producer contention вне класса.
@@ -9,7 +33,9 @@ Inv: один Host acquisition200ms; writer меняет LAN/RAW при fixed CO
 N+1: новая частота клиента добавляется в таблицу workload Python; проверка всех
 entries и наличие изменившихся LAN/RAW значений обязательны; production не меняется.
 
-Метод и границы измерений будут дополнены вместе с исполнимым harness.
+Метод, workload boundaries и actual checkpoints приведены ниже. Последние
+разделы имеют приоритет над историческими OPEN формулировками ранних checkpoints;
+финальный software R4/R5 verdict пока PENDING.
 
 Class: отдельное окно ETW capture/publication либо Modbus codec request после
 инициализации (`windows_release_measure --heap-window`, `windows_heap_window.py`);
@@ -273,3 +299,85 @@ operation-only cost при ненулевом control, Web/network heap attribut
 Arc count не становятся доказанными после одного live PASS. Это отдельно названные
 границы evidence, а не скрытое требование нулевого allocation noise для приёмки
 представленных software measurements.
+
+## Readiness actual PASS; process-lifetime loss: run40250966619, attempt1
+
+Release job121342608736: build, unprofiled latency, live-load и warmed heap windows
+SUCCESS. CI source `0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb`, tree
+`7bfd3d4de60e463269e814269eede1356fb15791`. Artifact12620647768 ZIP SHA256
+`1b406339ad874650216238fc171666e3df45dbb787c4cfe7c3d9f43e0cf6a992`
+проверен после download. Windows Server2025, Intel Xeon Platinum8573C,4vCPU,
+Rust1.99.1 MSVC, прежний workspace Release. Компактные числа и границы:
+[evidence attempt1](evidence/nplus1-r4-run40250966619-attempt1.json).
+
+Actual initial mirror:15zero reads, затем expected1700000000 на16-й попытке,
+elapsed0.781s. Это непосредственно подтверждает initial-zero readiness window
+в этом run; причина старого unlogged failure остаётся inference. Все measured
+assertions сохранены и PASS;12s нагрузка увидела fixed COM, изменяющиеся LAN/RAW
+и RAW IEEE probes при17incomplete/disconnected cycles по700ms.
+
+| Измерение | Actual attempt1 |
+|---|---|
+| Uncontended reader+publication,1000samples |p95=24.4µs,p99=47.1µs |
+| Mutex hold upper bound |p95=4.4µs,p99=5.9µs |
+| Separate5Hz retention probe |60captures,peak4; capture+publication p95=313.1µs,p99=342.6µs |
+| Modbus2Hz,24samples,три FC03 |p95=8.1354ms,p99=8.1356ms |
+| Modbus50Hz,600samples,три FC03 |p95=7.9000ms,p99=8.3916ms |
+| Web1Hz,12samples,один GetRegisters |p95=p99=3.5955ms |
+| Web20Hz,240samples,один GetRegisters |p95=2.4421ms,p99=2.7403ms |
+| Host sampler,32samples |CPU delta0.328125s; lifetime peak working set14249984bytes; max sampled private3452928bytes |
+
+Четыре warmed heap windows вновь имеют actual PID и нулевые loss counters во всех
+original heap/process/merged traces; native counts и Size/NewSize совпали с
+run40194159508, включая controls10events/7697bytes. Raw CSV hashes, PID totals,
+loss counters и live quantiles пересчитаны независимо при сохранении checkpoint.
+Control overhead по-прежнему включён; точное subtraction не выполняется.
+
+**Process-lifetime heap step FAILED**: WPR stop сохранил startup-control ETL,
+но сообщил4943dropped events; xperf подтвердил4943lost events и завершился
+2147943792. Summary остался OPEN; startup-control allocation totals не приняты,
+10000capture lifetime profile не выполнялся. Owned HeapTracingConfig disable
+завершился0; suppression, retries в driver или изменение loss gate не добавлены.
+Один этот failure не доказывает систематический дефект recorder или необходимый
+buffer-size fix. Это не потеря warmed-window events: отдельные traces выше loss-free.
+
+R4/R5 остаются **PENDING** итогового обязательного CI. Успешный live follow-up
+не делает Release job/общий run успешным при failed lifetime step; последующий
+manual failed-job rerun должен учитываться отдельным attempt и artifact, сохраняя
+этот failure. Hardware/AddIn, UI/distribution и cutover gates остаются отдельными.
+
+## Окончательный actual checkpoint: run40250966619, attempt2
+
+Failed Release job повторён на новом runner без правок source, buffer settings,
+loss parser или gates. Release job121345765540 и общий CI gate121348687621 SUCCESS;
+остальные обязательные jobs SUCCESS (включая сохранённые результаты исходного
+attempt). Source/merge/tree указаны в current status выше. Artifact12621084111,
+ZIP SHA256 `4d070c76289320e1476476190fc044b47f9479e9de12f8c97abcfb288b739f42`
+независимо проверен. Компактный [attempt2 evidence](evidence/nplus1-r4-run40250966619-attempt2.json)
+содержит PID, raw hashes, все измеренные поля и ограничения; attempt1 failure сохранён.
+
+| Измерение | Actual attempt2 |
+|---|---|
+| Reader+publication,1000samples |p95=48.2µs,p99=92.5µs |
+| Mutex hold upper bound |p95=5.3µs,p99=6.4µs |
+| Separate5Hz probe |60captures,peak4; capture+publication p95=203.9µs,p99=215.0µs |
+| Initial mirror |7zero reads; expected COM на8-й попытке,0.375s |
+| Modbus2Hz,24samples,три FC03 |p95=7.8196ms,p99=7.8518ms |
+| Modbus50Hz,600samples,три FC03 |p95=7.9246ms,p99=14.6370ms |
+| Web1Hz,12samples,один GetRegisters |p95=p99=2.5588ms |
+| Web20Hz,240samples,один GetRegisters |p95=2.3186ms,p99=4.2604ms |
+| Slow/disconnected client |17cycles,hold700ms; measured consumers PASS |
+| Host sampler,32samples |CPU delta0.421875s; lifetime peak working set14290944bytes; max sampled private3514368bytes |
+
+Все четыре warmed native windows снова loss-free, actual PID разрешён;
+HeapAlloc/Size и HeapRealloc/NewSize counts/totals совпали с двумя предшествующими
+checkpoints. Zero-operation control10HeapAlloc/7697Size bytes сохраняется отдельно.
+Lifetime startup783events/222.7native KB и10000capture50663events/29322.8KB
+теперь также loss-free; это process totals, не exact operation-only bytes.
+Обе lifetime ETL SHA256 и parsed native tables, все четыре merged CSV SHA256/PID
+totals, original/merged loss counters и live raw sample quantiles проверены независимо.
+
+R4/R5 scoped software measurement/integration завершены на validated code tree.
+Latency variation между attempts сохранена, улучшение производительности или
+production SLA не выводятся. Final documentation-head CI требуется после публикации;
+внешние release gates и явно названные attribution limits остаются прежними.

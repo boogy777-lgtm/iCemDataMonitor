@@ -1,92 +1,154 @@
-# R5: независимая интеграционная сверка, 25 октября 2026
+# R5: независимая интеграционная сверка, 26 октября 2026
 
-Проверено локальное дерево после `acabb06` (R4 heap follow-up), план N+1 v1.7,
-`AGENTS.md`, README, SOURCE_AUDIT и API_SPEC. Это review исходников и доступных
-Python checks; Windows execution и полный CI окончательного дерева не подменяются
-этой записью. R5 остаётся OPEN до окончательных R4 evidence и CI.
+## Окончательный software status — 26 октября 2026
 
-## Архитектурная сверка
+R4/R5 **закрыты для scoped N+1 v1.7 software checkpoint**: Windows
+[run40250966619, attempt2](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40250966619/attempts/2)
+SUCCESS, общий CI gate121348687621 и Release job121345765540 SUCCESS.
+Проверенный source `7d8af1d22be2d38573d7a06b96b54c0f5a654423`, CI merge
+`0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb`, tree
+`7bfd3d4de60e463269e814269eede1356fb15791`. Авторитетные raw-derived числа и
+hashes: [attempt2 evidence](evidence/nplus1-r4-run40250966619-attempt2.json).
+Attempt1 failed lifetime trace с4943lost events сохранён отдельно; loss check
+не ослаблялся, attempt2 на новом runner прошёл без изменения кода/gates.
 
-- `apps/host/src/acquisition.rs`: единственный source owner, период 200ms,
-  пропущенные слоты не догоняются. Requests получают read-only capability;
-  producer COM time не управляет расписанием и не становится LAN/RAW timestamp.
-- `crates/icem-core/src/publication.rs`: sole non-Clone publisher,
-  `Arc<Snapshot>` и latest cell. Retained/error не заменяют последний успешный
-  payload и не освежают capture generation/time. Reader clone не копирует body.
-- `apps/host/src/main.rs`: MQTT/UA/DA получают `snapshot_reader()` только при
-  composition registration. Их добавление не вводит protocol branch в reader,
-  publication, Modbus или Web. Modbus writable mirror остаётся отдельным bank.
-- `apps/host/src/consumers.rs`: bounded registry и общий stop deadline; cancel
-  вызывается для всех entries перед ожиданием. Существующие tests проверяют slow
-  consumer при изменениях LAN/RAW и fixed COM, source outage и held old frame.
-- Постоянный `Vec<Value>`/`Vec<Variable>`, ручной SIMD, новая dependency или unsafe
-  exception не добавлены. P8 dictionary по принятому решению не активирован.
-  CPU-specific fallback proof требуется только при будущем accelerated path.
+Ниже исторические OPEN/PENDING относятся к названным checkpoints. Current status
+имеет приоритет. Native window averages включают отдельно измеренный control
+noise; Size/NewSize не складываются в net live bytes. Exact Rust allocator calls,
+Web/network heap attribution и Host-wide Arc count не заявляются и не становятся
+новыми обязательными gates. Hardware/AddIn/UI/distribution/cutover остаются
+отдельными release gates.
 
-Нового нарушения этих границ в просмотренном scope не найдено. Это целевая
-сверка, не доказательство отсутствия любых дефектов всех adapters.
+Этот отчёт привязан к validated code checkpoint. После публикации итогового
+documentation head обязательный CI должен пройти ещё раз; его успех здесь заранее
+не заявляется. PR готов к завершению после этого final-head CI; merge не заявлен.
 
-## Исправление review
 
-Class: удаление собственного временного benchmark EXE в
-`tools/perf/windows_heap.py`; чужие registry/session objects вне класса.
-Inv: отказ cleanup сохраняет OPEN summary и ненулевой exit; проверяется
-`test_locked_executable_preserves_summary_error_path`.
-N+1: следующий owned cleanup добавляет ошибку в тот же accumulator, без изменений
-production source/consumers.
+Проверен software scope N+1 v1.7 на локальном source
+`767ab65b98dc834c5487188b9d8102c1bb4a9c8a`, tree
+`7bfd3d4de60e463269e814269eede1356fb15791`: readiness follow-up,
+ETW driver/schema/cleanup и representative workload. Прочитаны `rust/AGENTS.md`,
+README, SOURCE_AUDIT, API_SPEC, NPLUS1_CONSUMERS_PLAN, tracker и R4 evidence.
+Это независимое review исходников и доступные локальные проверки; финальный
+Windows CI code tree подтверждён actual attempt2 SUCCESS; итоговый
+documentation-head CI проверяется после публикации, как указано выше.
 
-Ранее `exe.unlink()` мог выбросить исключение из `finally` до записи
-`heap-summary.json`, скрыв доступные evidence и заявленный OPEN status.
-Теперь OSError сохраняется в `cleanup_errors`, и report записывается обычным
-путём. Эта коррекция не делает недоступный output volume записываемым.
+## Архитектура и инварианты
 
-## R4: что ещё требуется
+- `apps/host/src/acquisition.rs`: один physical source owner, период200ms,
+  пропущенные слоты не догоняются; protocol consumers получают read-only capability.
+  Producer COM time не управляет schedule и не становится LAN/RAW timestamp.
+- `crates/icem-core/src/publication.rs`: единственный non-Clone publisher,
+  `Arc<Snapshot>` и latest cell. Captured изменяет generation/capture time;
+  Retained/error сохраняют последний успешный payload. Reader clone не копирует body;
+  conversion/network/COM не выполняются под publication lock.
+- `apps/host/src/main.rs`: MQTT/UA/DA получают `snapshot_reader()` при composition
+  registration. Новый consumer требует свой module/config и регистрацию, без
+  protocol branch в reader/publication/Modbus/Web. Writable Modbus bank остаётся
+  отдельным projection owner; запросы не читают MMF самостоятельно.
+- `apps/host/src/consumers.rs`: bounded registry, cancel всех entries до ожидания,
+  один shared stop deadline. Tests сохраняют проверку slow consumer/source outage,
+  изменяющихся LAN/RAW при fixed COM и удержания старого immutable frame.
+- `Box<[u16]>` и typed source projections сохранены. Постоянный `Vec<Value>`/
+  `Vec<Variable>`, новый unsafe/dependency или CPU-specific dispatcher не добавлены.
+  Измеренного основания для manual SIMD нет; safe scalar/compiler path допустимо
+  завершает этот пункт плана. Optional P8 dictionary не активирован.
 
-| Gate | Текущий scope | Остаток |
+В просмотренном scope нового нарушения этих границ не найдено. Review не является
+доказательством отсутствия любых дефектов всех adapters или production parity.
+Последние исправления затрагивают только измерительный Python driver/tests/docs;
+.NET/AddIn, frozen protobuf, web assets и production Rust этим follow-up не менялись.
+
+## Readiness follow-up
+
+`Acquisition::start` подтверждает создание source до первого capture; initial
+`main::refresh` может увидеть absence, а следующий mirror refresh назначен позже.
+Поэтому TCP listener и fixed500ms sleep не доказывают готовность Modbus bank.
+Это подтверждённая кодом fixture race. В run40194159508 actual offending COM bits
+не записаны, поэтому нулевой initial mirror как причина именно того failure
+остаётся inference, а не установленным runtime фактом.
+
+`tools/perf/windows_live_load.py` теперь ждёт expected nonzero COM через FC03
+**до** measurement под тем же общим10s startup deadline. Только initial zero
+считается pending; wrong nonzero, late valid reply и timeout отклоняются. Connect,
+send и каждый fragmented recv используют оставшийся budget. В measured12s window
+zero/invalid COM по-прежнему fail; частоты/проверки LAN/RAW/IEEE bits не ослаблены.
+Errors сохраняют actual/expected; Modbus wrapper также записывает rate и sample
+index. Web `check_values` сохраняет actual/expected без rate/sample wrapper. Test Host duration30s
+вмещает10s startup и16s external sampling; measured workload остаётся12s.
+
+Regression checks: zero→valid, zero timeout, wrong nonzero, zero fixture rejection,
+late-valid deadline, fragmented receive budget и measured-zero failure PASS.
+Actual run40250966619 attempt1 подтвердил live PASS:15initial-zero reads,
+16-я попытка expected COM,0.781s до readiness. Это подтверждает readiness window
+этого run; причина старого unlogged значения остаётся inference. Attempt1 CI
+остался failed: process-lifetime heap step потерял4943events. Attempt2 прошёл
+этот gate и весь CI; failure сохранён в R4 report.
+
+## Измерительная атрибуция и cleanup
+
+`windows_release_measure --heap-window` выполняет100warmup операций и WARM/WARMUP
+до READY. START/DONE ограничивают attach window; RELEASE/teardown идут после stop.
+Capture workload использует настоящий `WindowsBusReader` + publication + latest;
+request workload — production `RegisterBank::process` FC03/100words с response
+allocation/drop. Это representative codec request, без network/Web heap claim.
+
+`windows_heap_window.py` использует уникальные owned heap session и WPR process
+metadata instance. Process metadata начинается до child, merge разрешает actual PID.
+На ошибке выполняются bounded owned child/session cleanup; child launch/cleanup
+fault tests подтверждают stop того же WPR instance и сохранение summary. Foreign
+recordings не останавливаются; неизвестный inventory/schema/PID/loss fail closed.
+Parser отдельно считает HeapAlloc Size и HeapRealloc NewSize bytes; original heap,
+original process и merged ETL требуют Events Lost=Buffers Lost=0.
+
+Ранее найденный R5 cleanup defect в `windows_heap.py` исправлен: отказ удаления
+собственной временной копии EXE попадает в `cleanup_errors`, сохраняет OPEN summary
+и ненулевой exit. Regression `test_locked_executable_preserves_summary_error_path`
+PASS. Новый подтверждённый code defect в текущем review не найден.
+
+Actual run40194159508 уже подтвердил PID-resolved/loss-free warmed windows и оба
+heap steps. Zero-operation controls содержат10HeapAlloc events/7697Size bytes;
+их не вычитают как точный noise. Capture10000ops:50010events/30127697Size bytes.
+FC03 10000ops:70010events/5077697Size bytes и60000HeapRealloc/5040000NewSize bytes.
+Это inclusive native event window averages, не доказанное число вызовов Rust
+GlobalAlloc и не net live bytes. Числа/source/PID/hashes сохранены в
+[evidence checkpoint](evidence/nplus1-r4-run40194159508.json).
+
+Эти границы и отдельно записанный control noise достаточны для scoped software
+allocation measurement плана; требование идеального нулевого control не вводится.
+Web/network heap attribution, exact Rust allocator counts и универсальный
+Host-wide Arc bound остаются явными ограничениями evidence. Они не превращаются
+в новые обязательные условия закрытия текущего software scope.
+
+## Матрица evidence и окончательное решение
+
+| Gate | Проверенное evidence | Статус окончательного дерева |
 |---|---|---|
-| Actual Windows Release evidence | Первый latency job121159818060 SUCCESS на предшествующем tree5fabda19; heap там отсутствовал | Успешные actual artifacts, parser/toolkit compatibility и raw data окончательного дерева |
-| Capture/decode/publication, lock hold | Static650-word physical file-backed MMF, uncontended tight loop; upper-bound hold | Дополнить общей software нагрузкой 5Hz, а не объявлять microbenchmark полным end-to-end |
-| Modbus/Web p95/p99 | Три раунда, два persistent клиента, synthetic fixture Host | Live-reader software fixture, разные частоты клиентов, slow/disconnected client, LAN update при fixed COM; проверить ответы и clock/raw bits |
-| Allocations и allocated bytes на capture/request | WPR/xperf PID process-lifetime totals, KB precision; startup control без точного вычитания | Изолированная атрибуция capture/request либо явный OPEN; aggregate process delta не выдавать за точный результат |
-| CPU/time и память | Wall-clock raw samples; CPU identity | CPU-time и peak live snapshots/memory при описанной нагрузке; latest-cell bound не равен whole-process RSS bound |
-| Production hardware | CI VM, safe fixture | Live AddIn/стенд, реальная producer contention и поддерживаемое оборудование — отдельная внешняя приёмка |
+| Архитектура N+1 / source ownership / timestamps | Сверка acquisition, publication, composition и bounded lifecycle; новых нарушений не найдено | Review PASS |
+| Capture/decode/publication и mutex hold | run40250966619 attempt2: capture+publication p95=48.2µs,p99=92.5µs; hold upper p95=5.3µs,p99=6.4µs | Actual attempt2 PASS на validated tree7bfd; documentation-head CI далее |
+| Capture/request native allocations и bytes | run40250966619 attempt2 оба heap steps PASS; actual PID, original/merged loss=0, separate controls и Size/NewSize | Actual attempt2 PASS на validated tree7bfd; documentation-head CI далее |
+| 5Hz/multi-rate/slow clients, Modbus/Web latency, CPU/memory | run40250966619 attempt2 live PASS:60captures/peak4 в separate probe,17slow cycles,32CPU/memory samples; earlier live FAIL сохранён | Actual attempt2 live PASS, readiness подтверждён; documentation-head CI далее |
+| Rust debug/SDK/interop/scaffold | run40250966619: SDK37, sidecar11, STA4096/40reconnects, MTA, MQTT/UA, scaffold PASS | Actual attempt2 SUCCESS (включая carried-forward jobs) |
+| Legacy baseline/MSI packaging | run40250966619 PASS; исходники/gates не ослаблены | Actual attempt2 SUCCESS (включая carried-forward jobs) |
+| Hardware/AddIn/UI/distribution/cutover | Software writer, file-backed MMF и CI VM не доказывают эти свойства | Отдельные release gates, вне закрытия R4/R5 software PR |
 
-Первые пять строк имеют доступную software часть и не должны целиком переноситься
-в «hardware only». Для расширения fixture уже имеются `--bus-live`, `--bus-map`,
-`--bus-mutex`; safe writer может менять file под тем же `NamedMutex` без production
-instrumentation или новой unsafe boundary. Ручной SIMD не нужен для закрытия этих
-измерений: измерения могут обосновать сохранение простого scalar пути.
+Live fixture проверяет fixed COM, изменяющиеся coherent LAN/RAW, RAW−0/subnormal,
+частоты Modbus2/50Hz и Web1/20Hz, incomplete/disconnected clients. Она не доказывает
+outbound socket backpressure, physical AddIn contention или production SLA.
+Weak-handle probe измеряет максимум в своей явно ограниченной topology, а process
+sampler — cumulative CPU/working-set/private bytes. Они не заявляют universal
+Host-wide live Snapshot cardinality или allocator live-byte attribution.
 
-## CI и итоговые gates
+Локально на reviewed source:28perf Python tests и46CI Python tests PASS.
+`git diff --check` PASS. Cargo/rustfmt/PowerShell/.NET и Windows runtime в этой среде
+недоступны; их новые успешные исполнения не заявляются. Обязательный Release job
+не имеет continue-on-error; независимые runtime steps сохраняют доступные artifacts
+после ошибки другого шага, общий job при этом остаётся failed.
 
-`rust-migration.yml` вызывает reusable Release measurements обязательным job без
-`continue-on-error`; cold GPUI build имеет отдельный budget50min. Существующие
-scaffold, SDK37/37, sidecar11/11, Rust MTA, independent C++ STA4096/40 reconnects,
-Mosquitto/asyncua и packaging gates не удалены и не ослаблены.
-
-Локально: heap validation7/7, CI Python46/46 и `git diff --check` PASS. Rust/cargo, PowerShell
-и .NET в этой среде недоступны; новая Windows compilation/runtime не заявляется.
-R1–R3 evidence остаётся в tracker с exact source/run. Полный CI нужно привязать к
-окончательному опубликованному tree, а не только к предшествующим checkpoints.
-
-Legacy Modbus test ранее дважды падал на expected1111/actualBEEF; последующий run
-40190328583 прошёл те же legacy tests без изменения их исходников. Вариативность
-подтверждена, причина не установлена. Frozen .NET/AddIn/proto/assets не исправлялись,
-gate не отключался; окончательный статус всего run проверяется отдельно.
-
-Первый Release checkpoint (сообщён оркестратором): run40190328583,
-job121159818060 SUCCESS, source9dd0b2cfdf3e392f88871c4a09a6c317c29ce64f,
-CI merge b2cd8a98db7c2545a79bcc287a417b543985ba99,
-tree5fabda19fbefdb64ac27d9b8cda346e6b3e9f202. Artifact12596859538
-`windows-release-measurements`, digest
-3b5c0549eb6ee0c961a157e36a460f89084c822cc0a3658a4220e423720dd5f7.
-Это предшествует исправлению timed-region checks и heap follow-up;
-`reader_publication_total` старого harness включает correctness checks.
-Heap/per-capture allocations и окончательный R4/R5 им не закрываются.
-
-PR остаётся draft до R4/R5. Рекомендуемый title:
-`Rust N+1 v1.7: shared acquisition and MQTT/OPC consumers; Windows validation`.
-Body должен описывать один acquisition200ms, typed shared snapshots, adapter
-lifecycle, R1–R3 actual Windows fixture evidence и R4 measured/OPEN scope с точным
-финальным CI head. Не объявлять production replacement, hardware/distribution
-acceptance или точные per-request allocations по process heap totals.
+Итог независимой сверки: code review PASS, confirmed unresolved software defect
+не найден; **R4/R5 software closure PASS** на validated tree7bfd
+по actual attempt2 SUCCESS всех обязательных jobs. Actual run/source/tree/artifact и live summary привязаны
+к tracker/report; final documentation-head CI остаётся обязательным перед
+завершением PR. Успех предшествующего checkpoint не равен
+финальному CI. Production replacement, hardware/UI/SDK-distribution acceptance
+или cutover не объявляются вследствие закрытия этого software PR.

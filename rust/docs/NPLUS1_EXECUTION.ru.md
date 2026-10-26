@@ -4,6 +4,32 @@
 исходная база `origin/docs/nplus1-acquisition-200ms-20261024`.
 Это журнал реализации, а не обещание полной production parity.
 
+## Окончательный software status — 26 октября 2026
+
+R4/R5 **закрыты для scoped N+1 v1.7 software checkpoint**: Windows
+[run40250966619, attempt2](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40250966619/attempts/2)
+SUCCESS, общий CI gate121348687621 и Release job121345765540 SUCCESS.
+Проверенный source `7d8af1d22be2d38573d7a06b96b54c0f5a654423`, CI merge
+`0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb`, tree
+`7bfd3d4de60e463269e814269eede1356fb15791`. Авторитетные raw-derived числа и
+hashes: [attempt2 evidence](evidence/nplus1-r4-run40250966619-attempt2.json).
+Attempt1 failed lifetime trace с4943lost events сохранён отдельно; loss check
+не ослаблялся, attempt2 на новом runner прошёл без изменения кода/gates.
+
+Ниже исторические OPEN/PENDING относятся к названным checkpoints. Current status
+имеет приоритет. Native window averages включают отдельно измеренный control
+noise; Size/NewSize не складываются в net live bytes. Exact Rust allocator calls,
+Web/network heap attribution и Host-wide Arc count не заявляются и не становятся
+новыми обязательными gates. Hardware/AddIn/UI/distribution/cutover остаются
+отдельными release gates.
+
+Этот отчёт привязан к validated code checkpoint. После публикации итогового
+documentation head обязательный CI должен пройти ещё раз; его успех здесь заранее
+не заявляется. PR готов к завершению после этого final-head CI; merge не заявлен.
+
+
+## Исходная поэтапная матрица (исторический checkpoint)
+
 | Этап | Фактический статус |
 |---|---|
 | 1. Типизированный MMF / identity / geometry | Реализован; проверки ниже |
