@@ -24,7 +24,7 @@ N+1: новый файл добавляется в существующий payl
 | Native Shortcut/RegistryValue | Сохранены, по умолчанию OFF | Target Shell и Run Host `--autostart` проверяются фактической установкой. Autostart принадлежит устанавливающему пользователю; эмулятор независим |
 | Удаление `StartupApproved` | Не переносится | Значение Task Manager не создавалось MSI; пользовательское отключение не сбрасывается установщиком |
 | Hidden ARP + глобальный `REINSTALLMODE=amus` | ARP виден; полный repair ограничен повторным `/i` установленного продукта | Для `Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE` задаются `REINSTALL=ALL` / `REINSTALLMODE=amus`. Восстанавливаются отсутствующие и испорченные MSI-owned файлы, не произвольные файлы каталога |
-| Разрешённые downgrade и same-version пересборки | Не переносится | Новый ProductCode для N+1, стабильный отдельный UpgradeCode, транзакционный `afterInstallInitialize`, downgrade запрещён. Версии и файлы не перезаписываются |
+| Downgrade и same-version пересборки | Same-version replacement разрешён, downgrade запрещён | `AllowSameVersionUpgrades=yes`, новый ProductCode, отдельный стабильный UpgradeCode и транзакционный `afterInstallInitialize`. Builder допускает только три numeric поля: скрытого четвёртого поля версии нет |
 | AppSearch поверх explicit ICEMDIR | Native сохранение и восстановление путей/опций | Собственный HKLM Installer state, отдельные SAVED properties и type-51 transfers: explicit CLI побеждает, UI choices не затираются execute sequence. Новые файлы не требуют изменения этого механизма |
 
 Зарегистрированный legacy MSI обнаруживается через `OnlyDetect` и блокирует
@@ -38,7 +38,8 @@ legacy и не production cutover. Legacy и Rust — отдельные MSI с 
 Нужно устранять блокирующие установку ресурсы с явным согласием и проверять результат.
 Новая опция на странице параметров разрешает Restart Manager принудительно закрыть
 не отвечающие процессы/службы после штатного запроса и native deadlines. Она не
-сохраняется на будущее. Cancel не вызывает отдельного завершения процессов.
+сохраняется на будущее. Cancel до execute sequence не завершает процессы; rollback после закрытия
+Restart Manager не восстанавливает состояние уже закрытых процессов.
 Windows связывает конфликт с затрагиваемым файлом, а не с именем процесса.
 
 Class: владельцы файлов, которые заменяет/удаляет MSI; процесс с тем же именем,
@@ -118,3 +119,36 @@ Release smoke передаёт owned temporary directory завершающем�
 `always()`. Он проверяет имя и temp-parent и удаляет распаковку после browser и
 evidence upload, в том числе при сбое; каталоги не накапливаются на SDK runner.
 Реальное выполнение SDK-backed release, включая этот cleanup, остаётся открытым.
+
+### Installer lifecycle regression (Windows execution pending)
+
+Class: независимая пересборка того же `x.y.z` относится к replacement, меньшая
+numeric версия — к запрещённому downgrade; Installed maintenance не является
+новым legacy cutover. Inv: одна регистрация, восстановленные предыдущие hashes,
+paths/options и operator config после сбоя. N+1: `Product.wxs`,
+`Test-WindowsPackaging.ps1` и `Test-WindowsMsiUpgrade.ps1` проверяют policy и
+реальный MSI; production deny guard для CustomAction/Binary сохранён.
+
+Fixture отдельно компилирует same-version MSI и обновляет active ProductCode.
+Только тестовая копия XML добавляет type-19 failure после `InstallExecute`,
+до `InstallFinalize`: выполняются removal и новый install script, затем проверяются
+rollback старых файлов/регистрации/options и сохранность operator file.
+UI Automation добавляет fresh custom AddIn path/Back/Cancel/install, Cancel с живым
+AddIn owner и включённым force (процесс должен остаться жив), успешный UI force
+repair и maintenance Remove. Runtime/AddIn blockers и foreign same-name owner
+проверяются независимо. Legacy gate тестируется маленьким registry-only MSI с legacy UpgradeCode:
+FindRelatedProducts обнаруживает fixture, incoming Rust блокируется, уже
+установленные repair/uninstall доступны. Это evidence native family detection,
+а не установки production legacy payload рядом с Rust.
+Эти новые Windows сценарии локально не запускались; Linux XML/Python checks
+не доказывают MSI/RM/UI поведение. Production acceptance выше остаётся открытой.
+
+
+Full-UI regression: run 40291633330 дошёл до `InstallValidate` с
+`MSIRMSHUTDOWN=1`, затем ждал подтверждения native Files in Use; прежний probe
+ожидал только Finish. Оба UI probe теперь после commit распознают пару штатных
+RM radio options в одном окне msiexec, выбирают закрытие приложений и однократно
+нажимают OK. Cancel-пути не дают такого согласия. Ignore/reboot не принимаются;
+180-second timeout, exit/hash/owner checks сохранены, failure logs включают controls.
+Checkbox force разрешает завершение зависших владельцев, но не пропускает
+стандартное full-UI подтверждение закрытия приложений.

@@ -76,10 +76,11 @@ function New-WindowsArchive {
         [Parameter(Mandatory)] [ValidatePattern('^[0-9a-f]{40}$')] [string] $Commit,
         [Parameter(Mandatory)] [string] $Compiler
     )
+    $RepositoryRoot = (Resolve-Path -LiteralPath $RepositoryRoot).Path
     $Plan = Read-WindowsPayloadPlan $RepositoryRoot
     $null = Test-LegacyAddinBundle $AddinDirectory $RepositoryRoot
+    $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)
     [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
-    $OutputDirectory = (Resolve-Path -LiteralPath $OutputDirectory).Path
     $Name = "iCemDataMonitor-rust-dev-$Version-windows-x64.zip"
     $Archive = Join-Path $OutputDirectory $Name
     $Checksum = "$Archive.sha256"

@@ -19,6 +19,9 @@ pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 настоящий iCem SDK либо проверенный AddIn bundle. SDK workflow выпускает bundle;
 hosted release связывает успешный run/source hashes с текущими AddIn inputs.
 Synthetic installer fixtures подтверждают mechanics, а не release payload.
+Итоговые MSI/SHA256 находятся в `dist/rust/` от корня репозитория; ZIP рядом —
+проверенный промежуточный пакет. Относительный `-OutputDirectory` также
+отсчитывается от корня; абсолютный путь сохраняется.
 
 Manual release выбирает `next` либо возрастающий `X.Y.Z` в пространстве
 `rust-vX.Y.Z`, отдельном от legacy `vX.Y.Z`. После install/repair/upgrade/uninstall
@@ -39,5 +42,11 @@ retirement; manifest/ledger сохраняют настоящую provenance.
 
 Корневые `installer/build-msi.ps1`, `VERSION`, `.github/workflows/release.yml`
 и legacy `v*` сохранены как отдельный reference/build path. Версия старого builder
-читается из `VERSION`, override — `-MsiVersion X.Y.Z`. Автоматический ProductCode,
-legacy downgrade/wipe/runtime policy не переносятся на Rust MSI.
+читается из `VERSION`, override — `-MsiVersion X.Y.Z`. Итоговый MSI, build log
+и имеющиеся установщики runtime собираются в `dist/legacy/`; `-OutputDir`
+задаёт другой каталог (относительный путь — от корня репозитория). Каталог
+выдачи сохраняется при cleanup, в том числе внутри `bin/obj`; `installer/stage`
+зарезервирован для staging. Legacy сохраняет разрешённый downgrade, скрытую
+ARP-регистрацию и отдельную передачу runtime; автоматический ProductCode есть
+у обоих семейств. Uninstall удаляет только принадлежащие MSI файлы, сохраняя
+пользовательские данные.

@@ -97,7 +97,9 @@ cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixture
 pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
-Результат: `rust/dist/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` и SHA256.
+Результат: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` и SHA256.
+Все итоговые пакеты находятся в корневом `dist/`: Rust — `dist/rust/`,
+legacy MSI и доступные установщики runtime — `dist/legacy/`.
 Отсутствие обязательного AddIn/SDK — ошибка; synthetic CI DLL не заменяет release DLL.
 [Prerequisites, AddIn bundle, launcher paths и MSI](rust/installer/README.md).
 

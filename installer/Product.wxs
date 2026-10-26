@@ -1,277 +1,73 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<!--
-  ============================================================================
-  iCemDataMonitor MSI — production installer skeleton.
-
-  OWNER LAW (2026-08-24, amended 2026-08-26): "dumb extractor" — this MSI
-  ONLY extracts files. PROHIBITED here (do not add later):
-    * shortcuts (no Icon/Shortcut/ProgId),
-    * Windows services / SCM entries,
-    * environment variables,
-    * registry keys of our components (no Registry/Run-keys/autostart),
-    * HKCU Run-keys, scheduled tasks, autorun tricks.
-
-  2026-08-26 AMENDMENT (owner request): the installer still writes nothing
-  itself, but the wizard now OFFERS desktop-shortcut and autostart options
-  as opt-in checkboxes (OptionsDlg). A checked box only schedules a
-  deferred CA that runs a plain script installed under
-  iCemMonitor\scripts\ (host project scripts\ folder). The scripts do the
-  work; each is intentionally one trivial action (see header comments in
-  the scripts).
-
-  2026-08-28 AMENDMENT (owner request — LLM improvement points #11/#12/#14):
-  the checkbox wiring moved from script CAs to NATIVE MSI elements —
-  deterministic, transactional, cleanly removed at uninstall:
-    * desktop shortcut = <Shortcut> in a DesktopFolder component gated by
-      CREATEDESKTOPSHORTCUT=1 (was create-desktop-shortcut.ps1 CA);
-    * autostart = <RegistryValue> HKCU Run value iCemDataMonitorHost =
-      "<host exe>" + the autostart flag, gated by ADDAUTOSTART=1 (was
-      add-autostart.ps1 CA). NOTE: the target is the HOST (not the emulator —
-      the emulator is an independent app and never autostarts); the value
-      name/shape matches Host\Tray\AutostartManager + the SetAutostart RPC,
-      so the WinUI «Автозагрузка host'а» checkbox and the installer toggle
-      the SAME key;
-    * <Icon> + ARPPRODUCTICON added so the product entry (when not hidden —
-      see ARPSYSTEMCOMPONENT below, which stays per the 2026-08-24 owner
-      law) carries the real app icon instead of a blank one.
-  The scripts stay shipped under iCemMonitor\scripts\ for manual ops use;
-  the MSI no longer invokes them.
-
-  ARPSYSTEMCOMPONENT=1 -> the product is NOT listed in "Programs and
-  Features"; upgrade/repair UI is suppressed. Owner decision: uninstall ==
-  delete folders (C:\ProgramData\Halliburton\iCem\DataMonitoring and the
-  Bin\Modules dll under the iCem install dir; runtime-created user data —
-  config.ini, logs, Data.dat — survives where it is not MSI-owned).
-
-  2026-08-28 AMENDMENT #2 (owner request — «миграция программы на
-  C:\ProgramData\Halliburton\iCem\DataMonitoring»): the monitor payload moves
-  OUT of Program Files into the writable data folder that ALREADY hosts
-  Data.dat (and, after this build, the program binaries + config.ini —
-  «рядом с бинарником»). MONITORROOT is now
-  [CommonAppDataFolder]\Halliburton\iCem\DataMonitoring. Consequences:
-    * version bumped 1.0.0 -> 1.0.1 AND ProductCode CHANGED (MajorUpgrade can
-      only remove a DIFFERENT ProductCode; the 2026-08-27 «stable ProductCode»
-      law is preserved WITHIN a version line — same-version reinstalls still
-      get Burn Present -> REINSTALL amus). The old 1.0.0 product (Program
-      Files) is removed by MajorUpgrade before files are laid down.
-    * station.ini is NO LONGER SHIPPED: the host creates/migrates its config
-      itself at first run (IniConfig 2026-08-28 law: canonical
-      ProgramData\Halliburton\iCem\DataMonitoring\config.ini; legacy
-      station.ini loaded + best-effort migrated, never fatal; web_on=1
-      by default).
-    * no new ACL work needed: the MSI creates only DIRECTORIES here (Users
-      inherit create-file rights under ProgramData); every file the host
-      writes (config.ini, logs) is created by the RUNNING user -> user-owned
-      -> writable. The AddIn keeps feeding Data.dat in the same folder.
-    * [MONITORROOT]-formatted values (desktop shortcut target, autostart Run
-      value) resolve to the new path automatically.
-
-  2026-09-01 PM AUTOPSY (owner report «баг в установке — в реестре остались
-  прошлые версии») — the stable-ProductCode-within-version law is REPEALED;
-  ProductCode="*" (auto per build) is the law now. Two live failures forced it:
-    * Error 1731 (repair/reconfigure «source package out of sync»): a rebuilt
-      MSI keeps the ProductCode but gets a NEW PackageCode (unavoidable — the
-      package changed), so Windows Installer maintenance from the rebuilt
-      source refuses: the cached client package ≠ the clicked file. Every
-      same-version rebuild was a repair-bomb on installed machines.
-    * Error 10005 («A newer version is already installed»): the owner clicked
-      an OLDER dist MSI over the installed newer one; MajorUpgrade blocked the
-      downgrade by design.
-  With ProductCode="*" every build is a NEW product and MajorUpgrade
-  (AllowSameVersionUpgrades=yes + AllowDowngrades=yes, UpgradeCode stable
-  forever) removes whatever was there — ANY clicked MSI installs cleanly, in
-  either version direction, and the old product's uninstall runs with
-  UPGRADINGPRODUCTCODE so config.ini/Data.dat survive. The Burn-era
-  XamlParseException rationale below (mixed old dlls + new xbf/pri) is moot:
-  RemoveExistingProducts (afterInstallValidate) deletes the old payload BEFORE
-  files are laid down, so no mixed-version folder can occur.
-
-  HISTORICAL (superseded): ProductCode was stable within a version
-  (2026-08-27…2026-09-01 AM) to make Burn treat rebuilds as Present and run
-  REINSTALLMODE=amus over them; Burn was retired 2026-08-31, and the scheme
-  died on the 1731/10005 autopsy above. Version history: 1.4.3
-  {EB19620A-01E8-4B3D-8122-C12CC57B6CE6} · 1.4.4
-  {925CBE5D-2387-4740-A330-15353F40DDD8} · 1.4.5
-  {764BDC6F-FA4E-4F76-8FD3-2CBF222F9E8B} (last hand-rotated code; payload:
-  config.ini default lansniffer_on=1 + H.NotifyIcon tray + trimmed host +
-  package train 10.0.0).
-
-  REINSTALLMODE=amus -> 'a' = reinstall ALL files regardless of versions or
-  missing status; 'm' = rewrite machine hives; 'u' = reinstall all
-  user-registry entries; 's' = reinstall shortcuts. This is the extractor
-  semantics: every install-over-install rewrites the full payload.
-
-  UAC is ON at the stand, so Scope="perMachine" (since 2026-08-28 AMENDMENT
-  #2 the monitor payload lives under CommonAppDataFolder; ICEMDIR for the
-  AddIn is still under Program Files).
-
-  2026-08-31 AMENDMENT (owner decree «делаем self-contained!»): the host
-  and cli now publish SELF-CONTAINED single-file — the .NET 10 runtime is
-  INSIDE the payload, the target machine needs nothing preinstalled. The
-  Burn bootstrapper (Bundle.wxs, the runtime chain, the RegistrySearch
-  detection) is RETIRED and archived to installer\_archive\burn\: its last
-  standing bug (searches authored inside a <Fragment> are silently dropped
-  by the linker, so the runtime status line could never go green) died
-  with the layer. THIS MSI IS THE ONLY INSTALLER ARTIFACT — end users run
-  the .msi directly (optionally via the handoff zip). History: BUG 1722
-  (2026-08-26) had pushed runtime install OUT of this MSI into Burn
-  (deferred runtime bundles deadlock on the _MSIExecute mutex); with
-  self-contained there is no runtime install at all.
-
-  util:CloseApplication x4: the extractor must never fail with "file in use".
-  CloseMessage sends WM_CLOSE first, TerminateProcess=1 is the fallback,
-  RebootPrompt=no (never force a reboot). iCem.exe (the main Halliburton
-  app) is NOT in this list — it is closed ONLY by an explicit user choice
-  on the conflict gate (IcemRunningCheckDlg "Закрыть всё" -> WMI Terminate,
-  owner decision 2026-08-26); the gate detects a running iCem plus any
-  already-installed monitor processes and offers "Закрыть всё" (installer
-  kills them) or "Обновить" (re-check after the operator closed them
-  manually).
-
-  ICEMDIR resolution: default C:\Program Files\Halliburton\iCem; the
-  DirectorySearch (Depth=0, AppSearch) detects the existing iCem install
-  folder; if not found the WixUI_InstallDir dialog asks the user and the
-  answer is bound to the ICEMDIR property. The AddIn dll is installed into
-  [ICEMDIR]\Bin\Modules\Burservis.iCem.DataMonitor.dll.
-
-  UpgradeCode {34A0FD7C-EBD5-4E28-BA96-AE6575896F32} is STABLE across all
-  versions — MajorUpgrade (Schedule=afterInstallValidate) removes whatever is
-  installed (older, same, or NEWER — 2026-09-01 PM: downgrades ALLOWED, the
-  owner clicks any dist MSI and it must just install) before files are laid
-  down.
-
-  Build-time defines:
-    MsiVersion   - product version, e.g. 1.0.0 (maps to WiX x.y.z)
-    AssetsDir    - absolute path to installer\assets
-  ============================================================================
--->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
-     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
-
-  <!-- ARPSYSTEMCOMPONENT=1: hidden from ARP (see owner law above).
-       Codepage=1251: the IcemRunningCheckDlg strings are Russian; the stock
-       WixUI strings are plain ASCII, so they survive 1251 unchanged. -->
-  <Package Name="iCem Data Monitor"
-           Manufacturer="Burservis"
-           Version="$(var.MsiVersion)"
-           UpgradeCode="{34A0FD7C-EBD5-4E28-BA96-AE6575896F32}"
-            ProductCode="*"
-           Scope="perMachine"
-           Compressed="yes"
-           InstallerVersion="500"
-           Codepage="1251">
-
-    <SummaryInformation Description="iCem Data Monitor — file extraction MSI (host+cli-in-one + shell + emulator + iCem AddIn). Uninstall == delete folders + wipe runtime data." />
-
-    <!-- 2026-09-01 PM (owner report «баг в установке»): AllowDowngrades="yes"
-         ALONE — WiX forbids combining it with AllowSameVersionUpgrades
-         (WIX0035), and it SUBSUMES it: the Upgrade row loses the upper
-         VersionMax bound, so the installed product is detected and removed in
-         EVERY direction — older, same-version rebuild (new ProductCode via
-         ProductCode="*"), and newer (the 10005 «A newer version is already
-         installed» gate the owner hit three times today is gone). The POC
-         workflow clicks ANY dist MSI and it must just install. -->
-    <MajorUpgrade AllowDowngrades="yes" />
-    <MediaTemplate EmbedCab="yes" />
-
-    <!-- Dumb-extractor properties (see header). -->
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <!-- Legacy package lifecycle: native Restart Manager closes only actual file owners.
+       Unowned station configuration and data survive every operation, including removal. -->
+  <Package Name="iCem Data Monitor" Manufacturer="Burservis" Version="$(var.MsiVersion)"
+           UpgradeCode="{34A0FD7C-EBD5-4E28-BA96-AE6575896F32}" ProductCode="*"
+           Scope="perMachine" Compressed="yes" InstallerVersion="500" Codepage="1251">
+    <SummaryInformation Description="iCem Data Monitor: Host, Shell, independent emulator and iCem AddIn." />
+    <!-- Preserve the historical hidden-ARP policy; msiexec /x remains available. -->
     <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
-    <Property Id="REINSTALLMODE" Value="amus" />
-
-    <!--
-      2026-08-28 (owner request #14): real app icon for the Add/Remove
-      Programs entry + the non-advertised desktop shortcut. ARPSYSTEMCOMPONENT
-      (above) keeps the entry hidden per the 2026-08-24 owner law — the icon
-      is wired so any future un-hiding shows the proper asset, not a blank.
-    -->
+    <!-- Historical policy permits older/same/newer packages. Removal participates in rollback. -->
+    <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
+    <MediaTemplate EmbedCab="yes" />
+    <Upgrade Id="7DDC9268-182F-432C-AD9A-E61BBC967F1A">
+      <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" OnlyDetect="yes" Property="RUST_MONITOR_PRESENT" />
+    </Upgrade>
+    <Launch Condition="Installed OR NOT RUST_MONITOR_PRESENT" Message="Rust development MSI is installed. Remove it before installing the legacy package." />
+    <!-- 0 = graceful shutdown; 1 = force unresponsive file owners after native
+         RM deadlines (30 s/application, 20 s/service). Never persist this consent. -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="0" />
+    <Property Id="MSIRMSHUTDOWN" Secure="yes" />
+    <Launch Condition='NOT MSIRMSHUTDOWN OR MSIRMSHUTDOWN="0" OR MSIRMSHUTDOWN="1"' Message="Invalid shutdown choice. Use the installer checkbox." />
     <Icon Id="MonitorIco" SourceFile="$(var.AssetsDir)\app-icon.ico" />
     <Property Id="ARPPRODUCTICON" Value="MonitorIco" />
-
-    <!--
-      2026-08-31 (owner: «не нравится подход [статичной таблички в Burn] —
-      полностью переехать на большой GUI как было ... логотип надо
-      перенести»): the WIZARD is branded with the Burservis logo. These
-      WixVariables feed every stock WixUI page (banner strip on top of each
-      dialog + the big Welcome picture); the two custom dialogs below carry
-      an explicit BannerBitmap control referencing WixUI_Bmp_Banner.
-      The bitmaps are REGENERATED from the source PNG by gen-ui-bmps.ps1
-      (invoked from build-msi.ps1 step 9.5) — never edit them by hand.
-    -->
     <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)\ui-banner.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)\ui-dialog.bmp" />
-
-    <!--
-      ICEMDIR: iCem install folder (default below). DetectIcemDefault finds an
-      existing C:\Program Files\Halliburton\iCem; when absent, the (skippable)
-      InstallDirDlg asks the user and binds the answer to this property.
-      2026-08-29 (owner request — «установщик предлагает C:\Program Files\...
-      \iCem\ хотя мы переехали»): the two paths are SEPARATE — the monitor
-      payload (MONITORROOT, ProgramData, migrated) vs. the AddIn target
-      (ICEMDIR\Bin\Modules, the iCem app folder). When ICEMDIR is already
-      resolved (iCem present — the normal stand case) the directory dialog is
-      USELESS and is SKIPPED; it shows only when iCem was NOT found (rare
-      stand). ICEMDIR_FOUND drives that skip (set alongside ICEMDIR by the
-      search; the literal-default fallback leaves it empty → dialog shows).
-    -->
-    <Property Id="ICEMDIR" Secure="yes" Value="C:\Program Files\Halliburton\iCem">
-      <DirectorySearch Id="DetectIcemDefault"
-                       Path="C:\Program Files\Halliburton\iCem"
-                       Depth="0"
-                       AssignToProperty="yes" />
-    </Property>
-    <Property Id="ICEMDIR_FOUND" Secure="yes">
-      <DirectorySearch Id="DetectIcemFound"
-                       Path="C:\Program Files\Halliburton\iCem"
-                       Depth="0"
-                       AssignToProperty="yes" />
-    </Property>
-
-    <!--
-      ICEM_RUNNING=1 while any conflicting process is alive (iCem or the
-      installed monitor stack; set by the CheckIcemRunning JScript CA from
-      assets\CheckConflicts.js; used by the IcemRunningCheckDlg gate).
-    -->
-    <Property Id="ICEM_RUNNING" Secure="yes" />
-
-    <!--
-      OptionsDlg checkboxes (owner request 2026-08-26). Public + Secure so
-      the deferred script CAs can read them in the server phase. Unset by
-      default = opt-in (unchecked).
-    -->
+    <!-- This is the AddIn destination, not the ProgramData runtime directory.
+         No AppSearch may overwrite an explicit CLI/wizard ICEMDIR. -->
+    <Property Id="ICEMDIR" Secure="yes" />
+    <Property Id="MONITORROOT" Secure="yes" />
+    <Property Id="PREFERENCES_INITIALIZED" Secure="yes" />
     <Property Id="CREATEDESKTOPSHORTCUT" Secure="yes" />
     <Property Id="ADDAUTOSTART" Secure="yes" />
-
-    <!--
-      Directory layout (2026-08-28 AMENDMENT #2 — ProgramData migration;
-      2026-08-31 AMENDMENT «1+2» — flat merge):
-        [CommonAppDataFolder]\Halliburton\iCem\DataMonitoring <- monitor payload
-                                                        (host/shell/emulator
-                                                         FLAT at the root —
-                                                         one shared WinUI/.NET
-                                                         runtime set, exes stay
-                                                         independent processes;
-                                                         Data.dat + the
-                                                         runtime-created
-                                                         config.ini live here)
-        [ICEMDIR]\Bin\Modules                                <- the iCem AddIn dll
-      TARGETDIR-anchored ICEMDIR is property-rooted: when ICEMDIR carries a
-      value (default, AppSearch hit or WixUI_InstallDir answer), MSI resolves
-      this element to that full path; Name is only a fallback.
-    -->
+    <!-- Native property recovery before costing. CLI properties win. The secure
+         marker prevents execute-sequence AppSearch from overwriting UI edits. -->
+    <Property Id="SAVED_MONITORROOT" Secure="yes">
+      <RegistrySearch Id="FindRuntimeDirectory" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="RuntimeDirectory" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SAVED_ICEMDIR" Secure="yes">
+      <RegistrySearch Id="FindIcemDirectory" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="IcemDirectory" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SAVED_CREATEDESKTOPSHORTCUT" Secure="yes">
+      <RegistrySearch Id="FindDesktopChoice" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="DesktopChoice" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SAVED_ADDAUTOSTART" Secure="yes">
+      <RegistrySearch Id="FindAutostartChoice" Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="AutostartChoice" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Id="MONITORROOT" Action="RestoreMONITORROOT" Value="[SAVED_MONITORROOT]" After="AppSearch" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT MONITORROOT AND SAVED_MONITORROOT" />
+    <SetProperty Id="ICEMDIR" Action="RestoreICEMDIR" Value="[SAVED_ICEMDIR]" After="RestoreMONITORROOT" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT ICEMDIR AND SAVED_ICEMDIR" />
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="RestoreCREATEDESKTOPSHORTCUT" Value="[SAVED_CREATEDESKTOPSHORTCUT]" After="RestoreICEMDIR" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT CREATEDESKTOPSHORTCUT AND SAVED_CREATEDESKTOPSHORTCUT" />
+    <SetProperty Id="ADDAUTOSTART" Action="RestoreADDAUTOSTART" Value="[SAVED_ADDAUTOSTART]" After="RestoreCREATEDESKTOPSHORTCUT" Sequence="both" Condition="NOT PREFERENCES_INITIALIZED AND NOT ADDAUTOSTART AND SAVED_ADDAUTOSTART" />
+    <SetProperty Id="ICEMDIR" Action="DefaultIcemDirectory" Value="C:\Program Files\Halliburton\iCem" After="RestoreADDAUTOSTART" Sequence="both" Condition="NOT ICEMDIR" />
+    <SetProperty Id="PREFERENCES_INITIALIZED" Value="1" After="DefaultIcemDirectory" Sequence="both" />
+    <!-- Native checkboxes use null, not the nonempty string "0", for Off.
+         Recover CLI/saved zero as null before UI; serialize null as zero only
+         in the execute sequence, after UI choices are transferred securely. -->
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="ClearCREATEDESKTOPSHORTCUT" Value="" After="SetPREFERENCES_INITIALIZED" Sequence="both" Condition='CREATEDESKTOPSHORTCUT="0"' />
+    <SetProperty Id="ADDAUTOSTART" Action="ClearADDAUTOSTART" Value="" After="ClearCREATEDESKTOPSHORTCUT" Sequence="both" Condition='ADDAUTOSTART="0"' />
+    <SetProperty Id="MSIRMSHUTDOWN" Action="ClearMSIRMSHUTDOWN" Value="" After="ClearADDAUTOSTART" Sequence="both" Condition='MSIRMSHUTDOWN="0"' />
+    <SetProperty Id="CREATEDESKTOPSHORTCUT" Action="NormalizeCREATEDESKTOPSHORTCUT" Value="0" After="ClearMSIRMSHUTDOWN" Sequence="execute" Condition="NOT CREATEDESKTOPSHORTCUT" />
+    <SetProperty Id="ADDAUTOSTART" Action="NormalizeADDAUTOSTART" Value="0" After="NormalizeCREATEDESKTOPSHORTCUT" Sequence="execute" Condition="NOT ADDAUTOSTART" />
+    <SetProperty Id="MSIRMSHUTDOWN" Action="NormalizeMSIRMSHUTDOWN" Value="0" After="NormalizeADDAUTOSTART" Sequence="execute" Condition="NOT MSIRMSHUTDOWN" />
+    <SetProperty Id="REINSTALL" Value="ALL" After="NormalizeMSIRMSHUTDOWN" Sequence="execute" Condition="Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+    <SetProperty Id="REINSTALLMODE" Value="amus" After="SetREINSTALL" Sequence="execute" Condition="Installed AND NOT REMOVE AND NOT UPGRADINGPRODUCTCODE" />
     <StandardDirectory Id="CommonAppDataFolder">
       <Directory Id="HalliburtonDataDir" Name="Halliburton">
         <Directory Id="IcemDataDir" Name="iCem">
-          <Directory Id="MONITORROOT" Name="DataMonitoring">
-            <!-- 2026-08-31 (owner decree «пункт 3»): the CLIDIR subfolder is
-                 RETIRED — the cli merged INTO the host exe (argv mode:
-                 iCemDataMonitor.Host.exe snapshot|get|header). Host + Shell +
-                 Emulator are flat siblings at the root (HostProcessLauncher
-                 resolution). The standalone EMULATORDIR is RETIRED too
-                 (owner decree «1+2»); the emulator's sim registry ships
-                 renamed (variable_registry.emulator.json) so the host's
-                 production registry keeps the canonical name. -->
-          </Directory>
+          <Directory Id="MONITORROOT" Name="DataMonitoring" />
+          <!-- Canonical station settings stay here even when MONITORROOT is relocated. -->
+          <Directory Id="STATIONDATAROOT" Name="DataMonitoring" />
         </Directory>
       </Directory>
     </StandardDirectory>
@@ -282,401 +78,68 @@
         </Directory>
       </Directory>
     </StandardDirectory>
-
-    <!--
-      2026-08-28 (owner request #11/#12): native opt-in elements behind the
-      OptionsDlg checkboxes — no script CAs, deterministic, removed at
-      uninstall. perMachine scope ⇒ DesktopFolder = the ALL-USERS desktop.
-      Both components are keyed by HKCU registry values (the standard WiX
-      pattern for non-advertised shortcuts / HKCU autostart values inside a
-      per-machine install — written to the INSTALLING user's hive, same
-      caveat the script approach had).
-    -->
     <StandardDirectory Id="DesktopFolder">
-      <Component Id="Cmp.DesktopShortcut" Guid="{7F3C9A64-2E81-4B5D-9C36-A10D54F8B721}"
-                 Condition="CREATEDESKTOPSHORTCUT=1">
-        <Shortcut Id="DesktopMonitorShortcut"
-                  Name="iCem Data Monitor"
-                  Description="iCem Data Monitor"
-                  Target="[MONITORROOT]iCemDataMonitor.WinUI.exe"
-                  WorkingDirectory="MONITORROOT"
-                  Icon="MonitorIco" IconIndex="0" />
-        <RegistryValue Root="HKCU"
-                       Key="Software\Burservis\iCemDataMonitor"
-                       Name="DesktopShortcut"
-                       Type="integer" Value="1" KeyPath="yes" />
+      <Component Id="Cmp.DesktopShortcut" Guid="{7F3C9A64-2E81-4B5D-9C36-A10D54F8B721}" Condition="CREATEDESKTOPSHORTCUT=1" Transitive="yes">
+        <CreateFolder />
+        <Shortcut Id="DesktopMonitorShortcut" Name="iCem Data Monitor" Description="iCem Data Monitor"
+                  Target="[MONITORROOT]iCemDataMonitor.WinUI.exe" WorkingDirectory="MONITORROOT" Icon="MonitorIco" IconIndex="0" />
+        <RegistryValue Root="HKCU" Key="Software\Burservis\iCemDataMonitor"
+                       Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
-
     <ComponentGroup Id="Setup.Options">
-      <ComponentRef Id="Cmp.DesktopShortcut" />
-      <!-- Autostart target = the HOST with the autostart flag (NOT the
-           emulator: the emulator is an independent app, owner decree
-           2026-08-27). Value name iCemDataMonitorHost == AutostartManager +
-           the SetAutostart RPC — one key, one truth. -->
-      <Component Id="Cmp.AutostartReg" Directory="MONITORROOT" Guid="{4A8E1D52-93B7-4F0C-8E2A-6D41C9B5F308}"
-                 Condition="ADDAUTOSTART=1">
-        <RegistryValue Root="HKCU"
-                       Key="Software\Microsoft\Windows\CurrentVersion\Run"
-                       Name="iCemDataMonitorHost"
-                       Type="string"
-                       Value="&quot;[MONITORROOT]iCemDataMonitor.Host.exe&quot; --autostart"
-                       KeyPath="yes" />
-        <!--
-          Uninstall-correctness (owner request 2026-08-28): a Task Manager
-          "disabled" flag outlives the Run value it refers to. If the MSI only
-          removed the Run value, a later reinstall with the checkbox checked
-          would write the Run value back while the stale flag kept it silently
-          OFF. Clearing the flag at uninstall makes every reinstall start
-          clean (the host's own SetEnabled(true) does the same for the RPC path
-          — AutostartManager TASK MANAGER LAW).
-        -->
-        <RemoveRegistryValue Root="HKCU"
-                             Key="Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
-                             Name="iCemDataMonitorHost" />
+      <Component Id="Cmp.StationDirectory" Directory="STATIONDATAROOT" Guid="{581C26D6-3A41-468C-85F8-309927981950}">
+        <CreateFolder>
+          <util:PermissionEx User="Users" Inheritable="yes"
+                             Read="yes" CreateFile="yes" CreateChild="yes" Traverse="yes" Delete="yes"
+                             ReadAttributes="yes" WriteAttributes="yes" ReadExtendedAttributes="yes"
+                             WriteExtendedAttributes="yes" ReadPermission="yes" Synchronize="yes" />
+        </CreateFolder>
       </Component>
-
-      <!--
-        2026-08-31 (owner decree: «после деинсталяции — надо за собой удалять
-        файлы C:\ProgramData\Halliburton\iCem\DataMonitoring»): MSI removes only
-        files IT installed; runtime-created data (config.ini, Data.dat, Logs\,
-        emule_config.xml, startup.log, WebView2 cache, the pre-1.2.0 iCemEmulator\
-        subfolder) would linger forever. The wipe is a DEFERRED JScript CA
-        (WipeMonitorRoot in assets\CheckConflicts.js) fed by CustomActionData.
-
-        WHY NOT util:RemoveFolderEx (two proven failures 2026-08-31, logs
-        uninstall121/uninstall122): (1) the WixRemoveFoldersEx action runs
-        BEFORE CostFinalize, so a Directory-id property is 0x80070057
-        «Missing folder property»; (2) even with the path composed early its
-        junction guard misfired («Path is a junction; skipping») on a plain
-        directory and wiped nothing. A direct FSO delete has no such guards.
-
-        CONDITION LAW: REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE — a real
-        uninstall wipes the folder; a MajorUpgrade (whose old-product
-        uninstall sets UPGRADINGPRODUCTCODE) keeps config.ini/Data.dat alive
-        across the upgrade. The old util:RemoveFolderEx component and the
-        MONITORROOTWIPE property are retired.
-      -->
+      <ComponentRef Id="Cmp.DesktopShortcut" />
+      <Component Id="Cmp.InstallState" Directory="MONITORROOT" Guid="{EF080583-F8D8-4CCA-B13E-829E064432CB}">
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="RuntimeDirectory" Type="string" Value="[MONITORROOT]" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="IcemDirectory" Type="string" Value="[ICEMDIR]" />
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="DesktopChoice" Type="string" Value="[CREATEDESKTOPSHORTCUT]" />
+        <RegistryValue Root="HKLM" Key="Software\Burservis\iCemDataMonitor\Installer" Name="AutostartChoice" Type="string" Value="[ADDAUTOSTART]" />
+      </Component>
+      <Component Id="Cmp.AutostartReg" Directory="MONITORROOT" Guid="{4A8E1D52-93B7-4F0C-8E2A-6D41C9B5F308}" Condition="ADDAUTOSTART=1" Transitive="yes">
+        <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                       Name="iCemDataMonitorHost" Type="string" Value="&quot;[MONITORROOT]iCemDataMonitor.Host.exe&quot; --autostart" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
-
-    <!--
-      Conflict gate CAs (owner request 2026-08-26, rewrite after the owner
-      hit a silent pass-through with iCem running; SECOND rewrite 2026-09-01
-      PM — bug report «проверка конфликтов не обновляется» on 1.4.3).
-      The logic lives in a Binary-keyed JScript file (assets\CheckConflicts.js)
-      — no attribute escaping. DETECTION LAW (2026-09-01 PM): the substring
-      rule «name contains icem» is RETIRED (it false-positived on
-      Halliburton.iCem.* service-hosted leftovers — LogUpload/SyncService/Web
-      — that the SCM kept resurrecting; the gate could never go clean).
-      Processes now conflict by EXACT image name (icem.exe + our host/shell/
-      emulator/cli); services conflict when Name/DisplayName starts with
-      'icem' AND the service is in a RUNNING state (Stopped services never
-      block). CheckIcemRunning REWRITES ICEM_RUNNING on every call — that is
-      what makes «Обновить» a real re-check; Return="check" (was "ignore"):
-      a dead JScript engine must ABORT the install, not silently open the
-      gate (the 2026-08-26 «silent pass-through» class).
-      CloseConflictingProcesses ("Закрыть всё") stops conflicting services
-      FIRST (StopService; SCM owns their processes), settles 3 s, then
-      terminates the exact-name processes — iCem.exe included, explicit
-      owner decision 2026-08-26.
-      CancelAfterUserConfirm (2026-09-01 PM): fires on CancelDlg/Yes and on
-      UserExit — the cancel path applies the SAME close logic, so nothing the
-      wizard saw survives its death (the report's «had to kill msiexec» class).
-    -->
-    <CustomAction Id="CheckIcemRunning"
-                  BinaryRef="CheckConflictsJs"
-                  JScriptCall="CheckConflicts"
-                  Execute="immediate"
-                  Return="check" />
-    <CustomAction Id="CloseConflictingProcesses"
-                  BinaryRef="CheckConflictsJs"
-                  JScriptCall="CloseConflicts"
-                  Execute="immediate"
-                  Return="ignore" />
-    <CustomAction Id="CancelAfterUserConfirm"
-                  BinaryRef="CheckConflictsJs"
-                  JScriptCall="CancelAfterUserConfirm"
-                  Execute="immediate"
-                  Return="ignore" />
-
-    <!--
-      2026-08-31 (owner decree «после деинсталяции — удалять за собой
-      файлы»): the full-uninstall wipe of DataMonitoring. Deferred +
-      Impersonate="no" (elevated, can delete anything); the JScript reads
-      ONLY CustomActionData, so the matching SetProperty below carries the
-      same Id and is scheduled right before it. Condition (REMOVE="ALL" AND
-      NOT UPGRADINGPRODUCTCODE): real uninstall wipes; MajorUpgrade keeps
-      config.ini/Data.dat across the upgrade. Return="ignore" — cleanup
-      must never roll back an uninstall over a locked file.
-    -->
-    <CustomAction Id="WipeMonitorRoot"
-                  BinaryRef="CheckConflictsJs"
-                  JScriptCall="WipeMonitorRoot"
-                  Execute="deferred"
-                  Impersonate="no"
-                  Return="ignore" />
-    <SetProperty Id="WipeMonitorRoot"
-                 Value="[CommonAppDataFolder]Halliburton\iCem\DataMonitoring"
-                 Before="WipeMonitorRoot"
-                 Sequence="execute" />
-
-    <!--
-      2026-08-28: the script CAs (RunCreateShortcutScript/RunAddAutostart-
-      Script) are REMOVED — the OptionsDlg checkboxes now drive NATIVE
-      components (Cmp.DesktopShortcut / Cmp.AutostartReg, see the directory
-      section). The scripts themselves stay shipped under iCemMonitor\scripts\
-      for manual ops use only.
-    -->
-
-    <!--
-      Sequencing: the iCem process gate runs after AppSearch.
-      2026-09-01 PM: the wipe CA moved from Before="RemoveFolders" to
-      Before="InstallFinalize" — AFTER RemoveFiles emptied the directory
-      table, so no reinstall window can resurrect files under the wipe; the
-      chain-gone/parents-survive reasoning is unchanged (condition still
-      excludes MajorUpgrade).
-      The cancel CA is NOT sequenced here — UserExit fires on SUCCESS too,
-      so an After="UserExit" kill-CA would terminate iCem after every good
-      install (caught in review). It runs ONLY as a CancelDlg/Yes publish.
-    -->
-    <InstallExecuteSequence>
-      <Custom Action="CheckIcemRunning" After="AppSearch" />
-      <Custom Action="WipeMonitorRoot" Before="InstallFinalize" Condition='(REMOVE="ALL") AND NOT UPGRADINGPRODUCTCODE' />
-    </InstallExecuteSequence>
-    <InstallUISequence>
-      <Custom Action="CheckIcemRunning" After="AppSearch" />
-    </InstallUISequence>
-
-    <!-- 2026-09-01 PM (bug report «проверка конфликтов не обновляется»):
-         Cancel wiring on the STOCK CancelDlg. Yes = the operator chose to
-         abort: run the same close logic (services first, then processes) so
-         nothing the wizard touched outlives it — then the stock EndDialog
-         proceeds (Order=1 runs first). No = cancel dismissed: refresh the
-         gate property so the dialog behind reflects the CURRENT machine.
-         WiX v4: package-level Publish rows must sit inside a UI container. -->
-    <UI>
-      <Publish Dialog="CancelDlg" Control="Yes" Event="DoAction"
-               Value="CancelAfterUserConfirm" Order="1" />
-      <Publish Dialog="CancelDlg" Control="No" Event="DoAction"
-               Value="CheckIcemRunning" Order="1" />
-    </UI>
-
-    <!--
-      Close running instances before InstallFiles so the extractor never
-      hits "file in use". CloseMessage first, TerminateProcess=1 fallback,
-      RebootPrompt=no.
-    -->
-    <util:CloseApplication Id="CloseHostExe"
-                           Target="iCemDataMonitor.Host.exe"
-                           CloseMessage="yes"
-                           TerminateProcess="1"
-                           RebootPrompt="no" />
-    <util:CloseApplication Id="CloseShellExe"
-                           Target="iCemDataMonitor.WinUI.exe"
-                           CloseMessage="yes"
-                           TerminateProcess="1"
-                           RebootPrompt="no" />
-    <!-- 2026-08-31: icemdatamonitor-cli.exe is RETIRED (merged into the host
-         exe as argv mode, decree «пункт 3») — this entry stays so upgrades
-         from <= 1.3.x still close a running legacy cli before its files are
-         removed. -->
-    <util:CloseApplication Id="CloseCliExe"
-                           Target="icemdatamonitor-cli.exe"
-                           CloseMessage="yes"
-                           TerminateProcess="1"
-                           RebootPrompt="no" />
-    <!-- 2026-08-27: the standalone emulator app (was iCemEmule.exe +
-         iCemEmule.WinUI.exe — both retired with the merged app). -->
-    <util:CloseApplication Id="CloseEmulatorExe"
-                           Target="iCemEmulator.exe"
-                           CloseMessage="yes"
-                           TerminateProcess="1"
-                           RebootPrompt="no" />
-
-    <!--
-      WixUI_InstallDir: shows the install dir edit page bound to ICEMDIR
-      (the AddIn target). MONITORROOT is fixed and never asked.
-    -->
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="ICEMDIR" />
-
-    <!--
-      NO red banner / NO red logo strip on the wizard dialogs (owner
-      decision 2026-08-26): the solid Burservis red read as an ERROR
-      state, not as branding. Dialogs stay stock-looking; Burservis
-      branding lives in the BA window (custom theme) and the exe icon.
-    -->
-
-    <!--
-      Gate dialog (owner request 2026-08-26, reworked after the owner hit a
-      silent pass-through with iCem running): detects iCem AND any already
-      installed monitor processes (host/shell/cli/emulator — their files stay
-      locked). Two ways out when conflicts are found:
-        * "Закрыть всё" — the INSTALLER terminates every conflicting
-          process (iCem included, explicit owner decision), re-checks and
-          advances when clean;
-        * "Обновить" — the operator closes the processes manually, then
-          re-runs the check.
-      "Далее" is enabled only once the check is clean; "Отмена" aborts.
-      The gate shows on EVERY scenario (fresh install, upgrade, repair,
-      uninstall) — an upgrade with the old host still running is exactly
-      the conflict case the owner called out.
-    -->
-    <!--
-      Bare <UI> (no Id): WiX5 merges these rows into the WixUI_InstallDir
-      dialog set referenced above — an Id would clash with the wixlib's
-      WixUI symbol (WIX0091). The same applies to the WelcomeDlg publish
-      override: Order=4 executes after the stock Order=2/3 publishes.
-    -->
     <UI>
-      <!--
-        2026-08-31 (owner amendments, Welcome/Finish pages, paint-mock
-        reviewed) — IMPLEMENTED POST-BUILD, not here: WiX v5 REFUSES authored
-        overrides of stock WixUI dialogs (WIX0091 duplicate Dialog/Control —
-        proven on the 1.4.1 builds). The stock WelcomeDlg/ExitDialog stay
-        as authored; installer\patch-welcome-page.ps1 (step 11.5) rewrites
-        their Control-table rows inside the BUILT MSI:
-          * WelcomeDlg/Title: full width, single line, top, from the left
-            edge (25,15,443x16) — no more 220px wrapping box;
-          * WelcomeDlg/Description: lower-left above the buttons
-            (25,222,443x30);
-          * ExitDialog/Title + Description: same lower-left pattern;
-          * bitmap (gen-ui-bmps.ps1): subtitle removed, red rule = logo
-            width, lower third kept empty for the text controls.
-      -->
-      <Dialog Id="IcemRunningCheckDlg" Width="370" Height="270"
-              Title="[ProductName] — проверка конфликтов" NoMinimize="yes">
-        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
-                 TabSkip="no" Property="WixUI_Bmp_Banner" />
-        <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15"
-                 Transparent="yes" NoPrefix="yes"
-                 Text="{\WixUI_Font_Title}Проверка конфликтов" />
-        <Control Id="Description" Type="Text" X="25" Y="52" Width="320" Height="28"
-                 Text="{\WixUI_Font_Normal}Перед установкой нужно закрыть iCem, службы iCem и компоненты iCem Data Monitor — их файлы будут заняты." />
-
-        <Control Id="RunningText" Type="Text" X="25" Y="94" Width="320" Height="52"
-                 Text="{\WixUI_Font_Normal}Обнаружены запущенные процессы или службы iCem / iCem Data Monitor. Нажмите «Закрыть всё», и установщик остановит их сам, либо остановите их вручную и нажмите «Обновить»."
-                 ShowCondition="ICEM_RUNNING=1" HideCondition="NOT ICEM_RUNNING" />
-        <Control Id="OkText" Type="Text" X="25" Y="94" Width="320" Height="28"
-                 Text="{\WixUI_Font_Normal}Конфликтов не обнаружено — можно продолжать."
-                 ShowCondition="NOT ICEM_RUNNING" HideCondition="ICEM_RUNNING=1" />
-
-        <Control Id="Back" Type="PushButton" X="11" Y="243" Width="54" Height="17"
-                 Text="{\WixUI_Font_Normal}Назад">
-          <Publish Event="NewDialog" Value="WelcomeDlg" />
+      <Dialog Id="OptionsDlg" Width="370" Height="270" Title="[ProductName] — параметры установки" NoMinimize="yes">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Property="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Дополнительные параметры" />
+        <Control Id="Description" Type="Text" X="25" Y="52" Width="320" Height="28" Text="{\WixUI_Font_Normal}Проверьте параметры выбранной операции:" />
+        <Control Id="DesktopShortcutCheck" Type="CheckBox" X="25" Y="92" Width="300" Height="17" Property="CREATEDESKTOPSHORTCUT" CheckBoxValue="1" DisableCondition='WixUI_InstallMode="Remove"' EnableCondition='NOT WixUI_InstallMode="Remove"' Text="{\WixUI_Font_Normal}Создать ярлык на рабочем столе" />
+        <Control Id="AutostartCheck" Type="CheckBox" X="25" Y="116" Width="300" Height="17" Property="ADDAUTOSTART" CheckBoxValue="1" DisableCondition='WixUI_InstallMode="Remove"' EnableCondition='NOT WixUI_InstallMode="Remove"' Text="{\WixUI_Font_Normal}Добавить Host в автозагрузку текущего пользователя" />
+        <Control Id="ForceCloseCheck" Type="CheckBox" X="25" Y="144" Width="320" Height="28" Property="MSIRMSHUTDOWN" CheckBoxValue="1" Text="{\WixUI_Font_Normal}Принудительно закрыть зависшие приложения и службы, мешающие установке" />
+        <Control Id="ForceCloseNotice" Type="Text" X="25" Y="180" Width="320" Height="36" Text="{\WixUI_Font_Normal}Сохраните работу в iCem. Эта опция действует только сейчас. Установщик сначала запрашивает штатное закрытие." />
+        <Control Id="Back" Type="PushButton" X="124" Y="243" Width="56" Height="17" Text="{\WixUI_Font_Normal}Назад">
+          <Publish Event="NewDialog" Value="InstallDirDlg" Condition="NOT Installed" />
+          <Publish Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed" />
         </Control>
-        <Control Id="CloseApps" Type="PushButton" X="92" Y="243" Width="72" Height="17"
-                 Text="{\WixUI_Font_Normal}Закрыть всё"
-                 EnableCondition="ICEM_RUNNING=1" DisableCondition="NOT ICEM_RUNNING">
-          <Publish Event="DoAction" Value="CloseConflictingProcesses" Order="1" />
-          <Publish Event="DoAction" Value="CheckIcemRunning" Order="2" />
-          <!-- BUGFIX 2026-08-27 (owner crash, MSI log Error 2856): the OLD
-               Order=3 published NewDialog IcemRunningCheckDlg WHILE that same
-               dialog was already displayed -> "Creating a second copy of the
-               dialog" -> FatalError -> 1603 on every «Закрыть всё»/«Обновить»
-               click. A self-refreshing gate must NEVER NewDialog to itself:
-               the open dialog re-evaluates its control conditions (texts,
-               button enable/disable) as soon as the ICEM_RUNNING property
-               changes. Only the CLEAN state navigates forward. -->
-          <!-- 2026-08-29: skip the directory dialog when ICEMDIR is already
-               resolved (iCem found on the stand) — jump straight to
-               OptionsDlg; fall back to InstallDirDlg only when iCem is NOT
-               found (ICEMDIR_FOUND empty). See the ICEMDIR property comment. -->
-          <Publish Event="NewDialog" Value="OptionsDlg" Order="4" Condition="NOT ICEM_RUNNING AND ICEMDIR_FOUND" />
-          <Publish Event="NewDialog" Value="InstallDirDlg" Order="5" Condition="NOT ICEM_RUNNING AND NOT ICEMDIR_FOUND" />
-        </Control>
-        <Control Id="Refresh" Type="PushButton" X="169" Y="243" Width="70" Height="17"
-                 Text="{\WixUI_Font_Normal}Обновить"
-                 EnableCondition="ICEM_RUNNING=1" DisableCondition="NOT ICEM_RUNNING">
-          <Publish Event="DoAction" Value="CheckIcemRunning" Order="1" />
-          <Publish Event="NewDialog" Value="OptionsDlg" Order="3" Condition="NOT ICEM_RUNNING AND ICEMDIR_FOUND" />
-          <Publish Event="NewDialog" Value="InstallDirDlg" Order="4" Condition="NOT ICEM_RUNNING AND NOT ICEMDIR_FOUND" />
-        </Control>
-        <Control Id="Next" Type="PushButton" X="243" Y="243" Width="56" Height="17"
-                 Text="{\WixUI_Font_Normal}Далее" Default="yes"
-                 EnableCondition="NOT ICEM_RUNNING" DisableCondition="ICEM_RUNNING=1">
-          <Publish Event="NewDialog" Value="OptionsDlg" Order="1" Condition="ICEMDIR_FOUND" />
-          <Publish Event="NewDialog" Value="InstallDirDlg" Order="2" Condition="NOT ICEMDIR_FOUND" />
-        </Control>
-        <Control Id="Cancel" Type="PushButton" X="303" Y="243" Width="56" Height="17"
-                 Cancel="yes" Text="{\WixUI_Font_Normal}Отмена">
-          <Publish Event="SpawnDialog" Value="CancelDlg" />
-        </Control>
-      </Dialog>
-
-      <!--
-        OptionsDlg (owner request 2026-08-26, native since 2026-08-28):
-        post-install options as opt-in checkboxes. A checked box turns on the
-        matching NATIVE component (Cmp.DesktopShortcut — real <Shortcut> on
-        the all-users desktop; Cmp.AutostartReg — HKCU Run value
-        iCemDataMonitorHost = "<host exe>" + the autostart flag). Unchecked by
-        default.
-      -->
-      <Dialog Id="OptionsDlg" Width="370" Height="270"
-              Title="[ProductName] — параметры установки" NoMinimize="yes">
-        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
-                 TabSkip="no" Property="WixUI_Bmp_Banner" />
-        <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15"
-                 Transparent="yes" NoPrefix="yes"
-                 Text="{\WixUI_Font_Title}Дополнительные параметры" />
-        <Control Id="Description" Type="Text" X="25" Y="52" Width="320" Height="28"
-                 Text="{\WixUI_Font_Normal}Выберите, что создать при установке:" />
-
-        <Control Id="DesktopShortcutCheck" Type="CheckBox" X="25" Y="92" Width="300" Height="17"
-                 Property="CREATEDESKTOPSHORTCUT" CheckBoxValue="1"
-                 Text="{\WixUI_Font_Normal}Создать ярлык на рабочем столе" />
-        <Control Id="AutostartCheck" Type="CheckBox" X="25" Y="116" Width="300" Height="17"
-                 Property="ADDAUTOSTART" CheckBoxValue="1"
-                 Text="{\WixUI_Font_Normal}Добавить iCem Data Monitor в автозагрузку" />
-
-        <Control Id="Back" Type="PushButton" X="124" Y="243" Width="56" Height="17"
-                 Text="{\WixUI_Font_Normal}Назад">
-          <Publish Event="NewDialog" Value="InstallDirDlg" />
-        </Control>
-        <Control Id="Next" Type="PushButton" X="244" Y="243" Width="56" Height="17"
-                 Default="yes" Text="{\WixUI_Font_Normal}Далее">
+        <Control Id="Next" Type="PushButton" X="244" Y="243" Width="56" Height="17" Default="yes" Text="{\WixUI_Font_Normal}Далее">
           <Publish Event="NewDialog" Value="VerifyReadyDlg" />
         </Control>
-        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17"
-                 Cancel="yes" Text="{\WixUI_Font_Normal}Отмена">
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="{\WixUI_Font_Normal}Отмена">
           <Publish Event="SpawnDialog" Value="CancelDlg" />
         </Control>
       </Dialog>
-
-      <!-- The gate is UNCONDITIONAL now: fresh install, upgrade, repair and
-           uninstall all pass through it (Order=4 executes AFTER the stock
-           WixUI publishes, so this navigation wins). -->
-      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog"
-               Value="IcemRunningCheckDlg" Order="4" />
-
-      <!-- Fresh-install wizard: InstallDirDlg [Далее] -> OptionsDlg
-           (checkbox page) before VerifyReadyDlg. Order=5 executes AFTER the
-           stock WixUI publishes (Order=1..4: SetTargetPath / validate /
-           SpawnDialog InvalidDirDlg / NewDialog VerifyReadyDlg), so on a
-           valid path this navigation wins; maintenance flows are untouched. -->
-      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog"
-               Value="OptionsDlg" Order="5" Condition="NOT Installed" />
+      <!-- Fresh and maintenance operations share options; Cancel before execute leaves file owners untouched. -->
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="4" Condition="NOT Installed" />
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="4" Condition="NOT Installed" />
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="OptionsDlg" Order="5" Condition="NOT Installed AND (WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID=&quot;1&quot;)" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="OptionsDlg" Order="4" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="OptionsDlg" Order="4" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="OptionsDlg" Order="4" />
     </UI>
-
-    <!--
-      Single feature = single uninstallable unit. Payload.All is generated
-      by gen-payload.ps1 (ComponentGroupRefs to Payload.Root under
-      MONITORROOT and Payload.Addin under ICEMMODULES).
-    -->
     <Feature Id="Main" Level="1">
       <ComponentGroupRef Id="Payload.All" />
       <ComponentGroupRef Id="Setup.Options" />
     </Feature>
-
   </Package>
-
-  <!--
-    CheckConflicts.js as an MSI Binary — the JScript source for the
-    conflict-gate custom actions (CheckIcemRunning / CloseConflicting-
-    Processes). The Burservis dialog branding was removed (owner decision
-    2026-08-26: the red fill read as an error state); the logo lives only
-    in the BA theme and the exe icon now.
-  -->
-  <Fragment>
-    <Binary Id="CheckConflictsJs" SourceFile="$(var.AssetsDir)\CheckConflicts.js" />
-  </Fragment>
 </Wix>

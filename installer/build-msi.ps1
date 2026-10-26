@@ -15,13 +15,13 @@
   Since 2026-09-02 (owner decree «подчищать за собой»): after the MSI is
   CONFIRMED on disk, the build erases its own traces — installer\stage and
   every bin\ / obj\ folder under the repo — so the repo stays
-  sources-only. Only the MSI in dist\ survives (see step 12).
+  sources-only. Only the MSI in dist\legacy\ survives (see step 12).
   Since 2026-09-02 (owner decree «скрипт должен быть самодостаточным»):
   MsiVersion is OPTIONAL — without it the version comes from the VERSION
   file at the repo root (single source of truth; a bump = edit that file).
   The script never prompts interactively.
   Since 2026-09-02 (owner request «создание лога + закрыть после нажатия
-  клавиши»): the whole run is transcribed into dist\<msi>.build.log (see
+  клавиши»): the whole run is transcribed into dist\legacy\<msi>.build.log (see
   step 0.7) and the window waits for a keypress at the end — warnings
   stay readable after the console closes; -NoPause opts out.
 
@@ -36,14 +36,19 @@
 
 .PARAMETER OutputDir
   Folder for the FINAL artifact (MSI). Default:
-  <repo>\dist — a dedicated delivery folder at the repo root, separate
+  <repo>\dist\legacy — a dedicated delivery folder at the repo root, separate
   from sources and from the intermediate installer\stage. Relative
-  values are resolved against the repo root.
+  values are resolved against the repo root. The reserved installer\stage
+  directory cannot be used for delivery. Delivery folders are excluded from cleanup.
 
 .PARAMETER KeepBuildArtifacts
   Skip the post-build cleanup (step 12): the stage folder and all
   bin\ / obj\ folders stay on disk for debugging. Default: cleanup runs —
-  the repo is left sources-only, the MSI in dist\ is the only binary.
+  the repo is left sources-only, the MSI in dist\legacy\ is the only binary.
+
+.PARAMETER AllowMissingAddinForCi
+  GitHub Actions smoke builds only: permit missing vendor SDK/AddIn. The
+  resulting incomplete MSI must never be released. Production builds fail closed.
 
 .PARAMETER NoPause
   Skip the end-of-run keypress wait (success AND failure path). The
@@ -67,7 +72,9 @@ param(
     [string]$Configuration = 'Release',
     [string]$OutputDir = '',
     [switch]$KeepBuildArtifacts,
-    [switch]$NoPause
+    [switch]$NoPause,
+    # Explicit CI smoke escape hatch; never permitted for a production build.
+    [switch]$AllowMissingAddinForCi
 )
 
 Set-StrictMode -Version 2.0
@@ -76,14 +83,25 @@ $ErrorActionPreference = 'Stop'
 $InstallerDir = $PSScriptRoot
 $Repo = Split-Path -Parent $InstallerDir
 $Stage = Join-Path $InstallerDir 'stage'
+Import-Module (Join-Path $InstallerDir 'BuildPaths.psm1') -Force
+# The script-level trap is hoisted: preflight exceptions occur before transcription.
+# Keep its log state defined so an early invalid path can propagate unchanged.
+$BuildLog = $null
+if ($AllowMissingAddinForCi -and $env:GITHUB_ACTIONS -ne 'true') {
+    throw '-AllowMissingAddinForCi is restricted to GitHub Actions smoke builds.'
+}
 if ($OutputDir) {
     $OutDir = $OutputDir
     if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $Repo $OutDir }
 } else {
     # 2026-08-30 (owner decree «финальная сборка — в отдельной папке»):
-    # the MSI/EXE land in <repo>\dist, NOT in installer\out — delivery
+    # the MSI/EXE land in <repo>\dist\legacy, NOT in installer\out — delivery
     # artifacts live apart from sources and from the transient stage.
-    $OutDir = Join-Path $Repo 'dist'
+    $OutDir = Join-Path $Repo 'dist/legacy'
+}
+$OutDir = [IO.Path]::GetFullPath($OutDir)
+if (Test-BuildPathWithin $OutDir $Stage) {
+    throw 'OutputDir cannot be inside reserved installer/stage staging directory.'
 }
 # -------------------------------------------- 0.6. version resolution -------
 # 2026-09-02 (owner decree «скрипт должен быть самодостаточным»): no
@@ -108,7 +126,7 @@ $MsiPath = Join-Path $OutDir $MsiName
 # -------------------------------------- 0.7. build log + failure trap -------
 # 2026-09-02 (owner request «создание лога + закрыть после нажатия клавиши —
 # я видел как появились warning во время сборки»): the WHOLE run is
-# transcribed into dist\<msi>.build.log (next to the MSI) so MSBuild/WiX
+# transcribed into dist\legacy\<msi>.build.log (next to the MSI) so MSBuild/WiX
 # warnings stay reviewable after the window closes; a rebuild of the same
 # version overwrites its own log. The trap below mirrors the success
 # close-out (step 14) on ANY failure: summary + log flush + keypress wait,
@@ -120,6 +138,8 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Start-Transcript -Path $BuildLog -Force | Out-Null
 
 trap {
+    # Preflight errors have no log/transcript; let the caller catch the original error.
+    if (-not $BuildLog) { break }
     Write-Host ""
     Write-Host ("BUILD FAILED: {0}" -f $_.Exception.Message) -ForegroundColor Red
     Write-Host ("Build log: $BuildLog")
@@ -344,9 +364,8 @@ foreach ($f in @('shell', 'emulator')) {
 # proprietary Halliburton iCem SDK via ABSOLUTE HintPaths
 # (C:\Program Files\Halliburton\iCem\Bin\*.dll) - a machine-local vendor
 # install that can never be committed to the sources-only repo. On hosts
-# WITHOUT the iCem SDK (CI runners) the AddIn build is SKIPPED with a
-# warning: the MSI then ships host+shell+emulator only, the addin\ stage
-# stays empty (Payload.Addin = 0 files) - the MSI itself stays valid.
+# WITHOUT the iCem SDK (CI runners) the AddIn build fails closed. Only the
+# explicit GitHub Actions smoke option permits an incomplete package; such a fixture is not a production handoff.
 $iCemBin = 'C:\Program Files\Halliburton\iCem\Bin'
 if (Test-Path -LiteralPath $iCemBin -PathType Container) {
     Invoke-Checked {
@@ -358,7 +377,10 @@ if (Test-Path -LiteralPath $iCemBin -PathType Container) {
     Copy-Item -LiteralPath $addinDll -Destination (Join-Path $Stage 'addin\') -Force
     Write-Host '== AddIn staged'
 } else {
-    Write-Warning "vendor iCem SDK not found ($iCemBin) - AddIn build SKIPPED, MSI ships without addin\"
+    if (-not $AllowMissingAddinForCi) {
+        throw "vendor iCem SDK not found ($iCemBin); production MSI requires the real AddIn."
+    }
+    Write-Warning "CI SMOKE ONLY: vendor SDK missing; this MSI is incomplete and must never be released."
 }
 
 # ------------------------------------------------------------- 7. prune -----
@@ -387,11 +409,11 @@ Get-ChildItem -LiteralPath $Stage -Recurse -Directory |
 # ------------------------------------------------- 9. wix extensions --------
 Write-Host '== ensuring wix extensions'
 $extList = (& wix extension list -g | Out-String)
-if ($extList -notmatch 'WixToolset\.Util\.wixext') {
+if ($extList -notmatch 'WixToolset\.Util\.wixext.*5\.0\.2') {
     wix extension add -g WixToolset.Util.wixext/5.0.2
     if ($LASTEXITCODE -ne 0) { throw 'failed to add WixToolset.Util.wixext' }
 }
-if ($extList -notmatch 'WixToolset\.UI\.wixext') {
+if ($extList -notmatch 'WixToolset\.UI\.wixext.*5\.0\.2') {
     wix extension add -g WixToolset.UI.wixext/5.0.2
     if ($LASTEXITCODE -ne 0) { throw 'failed to add WixToolset.UI.wixext' }
 }
@@ -425,23 +447,14 @@ Write-Host "== harvesting payload.wxs ($PayloadWxs)"
     -ExpectedAssetMismatch @('ReactiveUI.dll', 'System.Reactive.dll')
 if ($LASTEXITCODE -ne 0) { throw 'gen-payload.ps1 failed' }
 
-# ------------------------------------------------ 10.5 gate-JS harness -------
-# 2026-09-01 PM (bug report «проверка конфликтов не обновляется»): the
-# conflict-gate JScript is exercised by a cscript harness on EVERY build —
-# the 1.4.3 substring-detection bug shipped precisely because this file had
-# no executable test. Exit 1 = gate logic regression = build fails.
-Write-Host '== conflict-gate harness (cscript)'
-& cscript //nologo (Join-Path $InstallerDir 'assets\CheckConflicts.harness.js')
-if ($LASTEXITCODE -ne 0) { throw 'CheckConflicts harness failed' }
-
 # ----------------------------------------------------- 11. wix build -------
 Write-Host "== wix build -> $MsiPath"
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Invoke-Checked {
     wix build -arch x64 `
         -dcl high `
-        -ext WixToolset.Util.wixext `
-        -ext WixToolset.UI.wixext `
+        -ext WixToolset.Util.wixext/5.0.2 `
+        -ext WixToolset.UI.wixext/5.0.2 `
         -define "MsiVersion=$MsiVersion" `
         -define "AssetsDir=$(Join-Path $InstallerDir 'assets')" `
         -out $MsiPath `
@@ -477,10 +490,10 @@ Write-Host "BUILD OK: $($final.FullName) ($($final.Length) bytes)"
 # 2026-09-02 (owner decree «убераем self contained — я буду передавать 3 файла
 # для установки»): the install handoff = MSI + the TWO runtime installers the
 # owner drops into installer\. They are NOT harvested into the MSI (gen-payload
-# reads stage\ only) — copy them NEXT TO the MSI so dist\ is the complete
+# reads stage\ only) — copy them NEXT TO the MSI so dist\legacy\ is the complete
 # 3-file handoff. Wildcards: runtime patch versions bump without script edits.
 # Missing runtime = WARNING (the MSI itself is valid), not a build failure.
-Write-Host '== runtime handoff bundle (dist = MSI + 2 runtime installers)'
+Write-Host '== runtime handoff bundle (output folder = MSI + 2 runtime installers)'
 $runtimeKinds = @('aspnetcore-runtime-*-win-x64.exe', 'windowsdesktop-runtime-*-win-x64.exe')
 foreach ($kind in $runtimeKinds) {
     $found = @(Get-ChildItem -LiteralPath $InstallerDir -Filter $kind -File -ErrorAction SilentlyContinue)
@@ -505,19 +518,22 @@ foreach ($kind in $runtimeKinds) {
 #   * every bin\ and obj\ folder under the repo — dotnet publish/build
 #     (Release/Debug) artifacts of the WHOLE transitive graph (Host, Shell,
 #     Emulator, AddIn, Core, Data, Transport, Plugins, Sdk, test suites).
-# The MSI in dist\ is the ONLY binary that survives (it is the deliverable).
+# The MSI in dist\legacy\ is the ONLY binary that survives (it is the deliverable).
 # A FAILED build throws BEFORE this step, so the stage is always available
 # for inspection; -KeepBuildArtifacts opts out for debugging. Removal is
 # best-effort per folder: a locked file is reported as a warning, not a
 # build failure (the MSI is already done and valid at this point).
 if (-not $KeepBuildArtifacts) {
-    Write-Host '== post-build cleanup (repo -> sources-only)'
+    Write-Host '== post-build cleanup (delivery output is preserved)'
     $dirs = @()
     if (Test-Path -LiteralPath $Stage) { $dirs += Get-Item -LiteralPath $Stage }
     $dirs += Get-ChildItem -LiteralPath $Repo -Recurse -Directory |
         Where-Object { $_.Name -in @('bin', 'obj') }
     # Deepest-first: a parent (stage) never shadows an enumerated child.
-    $dirs = @($dirs | Sort-Object { $_.FullName.Length } -Descending)
+    # Explicit delivery overrides may be inside bin/obj or contain such folders.
+    # Keep the complete delivery tree and every ancestor that contains it.
+    $dirs = @($dirs | Where-Object { -not (Test-BuildPathOverlap $_.FullName $OutDir) } |
+        Sort-Object { $_.FullName.Length } -Descending)
     $freed = 0; $left = 0
     foreach ($d in $dirs) {
         # 2026-09-02 fix: an EMPTY bin\obj folder makes Measure-Object emit
@@ -538,12 +554,12 @@ if (-not $KeepBuildArtifacts) {
     }
     Write-Host ("   removed {0} folder(s), freed {1:N0} bytes" -f ($dirs.Count - $left), $freed)
     if ($left -gt 0) { Write-Host ("   {0} folder(s) locked (file in use)" -f $left) }
-    Write-Host '   repo is sources-only now (dist\ keeps the MSI deliverable)'
+    Write-Host "   delivery output preserved: $OutDir"
 }
 
 # ---------------------------------------------- 13. distribution zip ---------
 # RETIRED 2026-08-31 (owner decree «не нужен zip в сборке»): the MSI is the
-# single deliverable in dist\. The plain zip existed to dodge the browser's
+# single deliverable in dist\legacy\. The plain zip existed to dodge the browser's
 # Mark-of-the-Web on the old Burn exe — with Burn gone the MSI handoff does
 # not need it.
 

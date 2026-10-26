@@ -155,9 +155,58 @@ class RoutingTests(unittest.TestCase):
             '            ${{ runner.temp }}/legacy-ci-diagnostics/*.log',
             '            **/TestResults/**/*.trx',
             '            **/TestResults/**/*Sequence.xml',
-            '            **/TestResults/**/*.log'])
+            '            **/TestResults/**/*.log',
+            '            installer/artifacts/*.log'])
+        lifecycle = steps['Verify legacy MSI lifecycle with disposable payload']
+        self.assertIn('        run: installer/tests/Test-LegacyInstaller.ps1\n', lifecycle)
+        self.assertIn('        timeout-minutes: 15\n', lifecycle)
+        self.assertNotIn('continue-on-error:', lifecycle)
+        self.assertIn('-NoPause -AllowMissingAddinForCi', steps['Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)'])
         self.assertIn('          if-no-files-found: warn\n', upload)
         self.assertIn('          retention-days: 7\n', upload)
+
+    def test_final_delivery_paths(self):
+        # Build defaults, direct packaging and CI upload/download consumers must
+        # agree; installed payload and compiler intermediates have other owners.
+        expected = {
+            'installer/build-msi.ps1': (
+                "$OutDir = Join-Path $Repo 'dist/legacy'",
+                'if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $Repo $OutDir }',
+                'if (Test-BuildPathWithin $OutDir $Stage)',
+                'Where-Object { -not (Test-BuildPathOverlap $_.FullName $OutDir) }'),
+            'scripts/make-release.ps1': ('dist\\legacy\\iCemDataMonitor-',),
+            'rust/tools/Build-WindowsRelease.ps1': (
+                "if (-not $OutputDirectory) { $OutputDirectory = 'dist/rust' }",
+                '$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)'),
+            'rust/tools/Build-WindowsMsi.ps1': (
+                'if (-not $OutputDirectory) { $OutputDirectory = Split-Path $Archive -Parent }',
+                '$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)'),
+            'rust/installer/WindowsPayload.psm1': (
+                '$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)',),
+            '.github/workflows/legacy-build.yml': ('path: dist/legacy/*.msi',),
+            '.github/workflows/release.yml': (
+                'Get-Item -LiteralPath "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"',
+                'Set-Content -LiteralPath dist/legacy/SHA256SUMS.txt',
+                'gh release create "$env:GITHUB_REF_NAME" $msi dist/legacy/SHA256SUMS.txt'),
+            '.github/workflows/rust-windows-release.yml': (
+                'Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"',
+                'Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"',
+                'dist/rust/*.msi', 'dist/rust/*.msi.sha256',
+                'path: dist/rust', 'Join-Path $PWD "dist/rust/$Name"'),
+        }
+        for path, fragments in expected.items():
+            source = (ROOT / path).read_text(encoding='utf-8-sig')
+            for fragment in fragments:
+                with self.subTest(path=path, fragment=fragment):
+                    self.assertIn(fragment, source)
+            self.assertNotIn('rust/dist/', source)
+        builder = (ROOT / 'installer/build-msi.ps1').read_text(encoding='utf-8-sig')
+        self.assertLess(builder.index('if (Test-BuildPathWithin $OutDir $Stage)'), builder.index('Start-Transcript'))
+        fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text()
+        self.assertIn('    Test-BuildOutputPaths\n', fixture)
+        for path in ('README.md', 'rust/README.md', 'docs/install.md', 'rust/installer/README.md'):
+            self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
+        self.assertIn('dist/legacy/', (ROOT / 'docs/release.md').read_text(encoding='utf-8-sig'))
 
     def test_workflow_wiring(self):
         workflows = ROOT / '.github/workflows'

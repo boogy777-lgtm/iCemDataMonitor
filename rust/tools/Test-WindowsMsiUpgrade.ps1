@@ -24,10 +24,11 @@ $MarkerText = 'operator-owned configuration must survive'
 [IO.Directory]::CreateDirectory($Work) | Out-Null
 $ProductCodes = [Collections.Generic.List[string]]::new()
 $FileOwners = [Collections.Generic.List[object]]::new()
-function Installed-Products {
+$LegacyFixture = $null
+function Installed-Products([switch] $IncludeLegacy) {
     @(Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' | ForEach-Object {
         $Entry = Get-ItemProperty -LiteralPath $_.PSPath
-        if ($Entry.PSObject.Properties['DisplayName'] -and $Entry.DisplayName -eq $Policy.product_name) { $Entry }
+        if ($Entry.PSObject.Properties['DisplayName'] -and ($Entry.DisplayName -eq $Policy.product_name -or ($IncludeLegacy -and $Entry.DisplayName -eq 'iCem Data Monitor'))) { $Entry }
     })
 }
 function Read-MsiProperty([string] $Path, [string] $Name) {
@@ -135,10 +136,75 @@ function Assert-Installed([string] $Version, [string] $ProductCode) {
     } finally { Remove-Item -LiteralPath $View -Recurse -Force }
 
 }
-function Invoke-InstallerUi([string] $Path, [string] $Label, [string] $Expected, [switch] $ExplicitZero, [switch] $ApplyOptOut) {
+function New-LegacyFamilyFixture {
+    $Build = Join-Path $Work 'legacy-family'; [IO.Directory]::CreateDirectory($Build) | Out-Null
+    $Source = Join-Path $Build 'foreign.wxs'
+    # Only the UpgradeCode models the other family. No legacy application/components are installed.
+    [IO.File]::WriteAllText($Source, @'
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="iCem Data Monitor" Manufacturer="Installer contract fixture" Version="0.0.1" UpgradeCode="34A0FD7C-EBD5-4E28-BA96-AE6575896F32" Scope="perMachine">
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Component Id="ForeignFamily" Guid="{F0930FD9-BA15-4B63-8DC3-F109BC386A63}">
+        <RegistryValue Root="HKLM" Key="Software\Burservis\InstallerContractFixture" Name="ForeignFamily" Value="1" Type="integer" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+    <Feature Id="Main"><ComponentRef Id="ForeignFamily" /></Feature>
+  </Package>
+</Wix>
+'@)
+    $Msi = Join-Path $Build 'foreign.msi'
+    Push-Location (Join-Path $Root 'installer')
+    try {
+        & dotnet tool run wix -- build -arch x64 -wx -o $Msi $Source | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Legacy family fixture compilation failed' }
+    } finally { Pop-Location }
+    $Code = Read-MsiProperty $Msi 'ProductCode'
+    return [pscustomobject]@{ msi=$Msi; code=$Code }
+}
+function New-FailingUpgrade([string] $ArchivePath, [string] $Version) {
+    # Test-only authoring copy. No failure hook is added to production package policy.
+    $Fixture = Join-Path $Work 'rollback-fixture'
+    $Payload = Join-Path $Fixture 'payload'
+    [IO.Directory]::CreateDirectory($Fixture) | Out-Null
+    [IO.Compression.ZipFile]::ExtractToDirectory($ArchivePath, $Payload)
+    $Source = Join-Path $Fixture 'Package.wxs'
+    $null = Write-WindowsInstallerSource $Payload $Version $Source
+    $Xml = [xml](Get-Content -Raw -LiteralPath $Source)
+    $Namespace = 'http://wixtoolset.org/schemas/v4/wxs'
+    $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable)
+    $Ns.AddNamespace('w', $Namespace)
+    $Package = $Xml.SelectSingleNode('/w:Wix/w:Package', $Ns)
+    $Failure = $Xml.CreateElement('CustomAction', $Namespace)
+    $Failure.SetAttribute('Id', 'FixtureFailAfterInstallExecute')
+    $Failure.SetAttribute('Error', 'Intentional disposable upgrade rollback fixture')
+    $null = $Package.AppendChild($Failure)
+    $Sequence = $Xml.CreateElement('InstallExecuteSequence', $Namespace)
+    $Execute = $Xml.CreateElement('InstallExecute', $Namespace)
+    $Execute.SetAttribute('Before', 'InstallFinalize')
+    $null = $Sequence.AppendChild($Execute)
+    $Action = $Xml.CreateElement('Custom', $Namespace)
+    $Action.SetAttribute('Action', 'FixtureFailAfterInstallExecute')
+    $Action.SetAttribute('After', 'InstallExecute')
+    $Action.SetAttribute('Condition', 'NOT Installed')
+    $null = $Sequence.AppendChild($Action)
+    $null = $Package.AppendChild($Sequence)
+    $Xml.Save($Source)
+    $PayloadSource = Write-WindowsInstallerPayload $Payload $RepositoryRoot $Fixture
+    $Branding = New-WindowsInstallerAssets $RepositoryRoot $Fixture
+    & (Join-Path $Branding 'gen-ui-bmps.ps1')
+    $Result = Join-Path $Fixture 'rollback.msi'
+    Push-Location (Join-Path $Root 'installer')
+    try {
+        $WixVersion = (Get-Content -Raw .config/dotnet-tools.json | ConvertFrom-Json).tools.wix.version
+        & dotnet tool run wix -- build $Source $PayloadSource -arch x64 -wx -dcl high -ext "WixToolset.UI.wixext/$WixVersion" -ext "WixToolset.Util.wixext/$WixVersion" -define "AssetsDir=$(Join-Path $Branding 'assets')" -intermediateFolder (Join-Path $Fixture 'obj') -o $Result | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Rollback fixture MSI compilation failed' }
+    } finally { Pop-Location }
+    return $Result
+}
+function Invoke-InstallerUi([string] $Path, [string] $Label, [string] $Expected, [switch] $ExplicitZero, [switch] $ApplyOptOut, [string] $Mode = 'repair-cancel') {
     $Info = [Diagnostics.ProcessStartInfo]::new($UiProbe)
     $Info.UseShellExecute = $false
-    foreach ($Argument in @($Path, (Join-Path $Work "$Label.log"), $Expected, ([int][bool]$ExplicitZero).ToString(), ([int][bool]$ApplyOptOut).ToString())) { $Info.ArgumentList.Add($Argument) }
+    foreach ($Argument in @($Path, (Join-Path $Work "$Label.log"), $Expected, ([int][bool]$ExplicitZero).ToString(), ([int][bool]$ApplyOptOut).ToString(), $Mode, $IcemRoot, $Install)) { $Info.ArgumentList.Add($Argument) }
     $Process = [Diagnostics.Process]::Start($Info)
     try {
         if (-not $Process.WaitForExit(240000)) { $Process.Kill($true); $null = $Process.WaitForExit(5000); throw 'MSI UI probe exceeded 240 seconds; no retry' }
@@ -153,7 +219,7 @@ try {
     try {
         if (-not [Security.Principal.WindowsPrincipal]::new($Identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'MSI tests require an elevated disposable Windows runner' }
     } finally { $Identity.Dispose() }
-    if (@(Installed-Products).Count) { throw 'A Rust development MSI is already installed; refusing to touch it.' }
+    if (@(Installed-Products -IncludeLegacy).Count) { throw 'An existing legacy/Rust MSI is installed; refusing to touch it.' }
     $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
     $Shortcut = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'iCem Data Monitor.lnk'
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Existing monitor shortcut/autostart found; refusing to touch them' }
@@ -168,20 +234,32 @@ try {
     $Source = Join-Path $Work 'source'
     [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $Source)
     $SourceManifest = Test-WindowsPayload $Source
+    # Recompile the very same archive: ProductCode=* must produce a new identity.
+    $SameMsi = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $Archive -OutputDirectory (Join-Path $Work 'same-version')
+    $SameCode = Read-MsiProperty $SameMsi.msi 'ProductCode'
+    if ($SameCode -eq $FirstCode -or (Read-MsiProperty $SameMsi.msi 'ProductVersion') -ne $Version) { throw 'Same-version rebuild must have an independent ProductCode and unchanged version' }
+    $ProductCodes.Add($SameCode)
     $NextArchive = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $BinaryDirectory -AddinDirectory (Join-Path $Source 'addin') -OutputDirectory $Work -Version $Next -Commit $SourceManifest.source_commit -Compiler $SourceManifest.compiler
     $NextMsi = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $NextArchive.archive -OutputDirectory $Work
     $NextCode = Read-MsiProperty $NextMsi.msi 'ProductCode'
     if ($NextCode -eq $FirstCode) { throw 'N+1 must have a new ProductCode' }
     $ProductCodes.Add($NextCode)
     $ExpectedUpgrade = [guid]$Policy.upgrade_code
-    foreach ($Path in @($Msi, $NextMsi.msi)) {
+    foreach ($Path in @($Msi, $SameMsi.msi, $NextMsi.msi)) {
         if ([guid](Read-MsiProperty $Path 'UpgradeCode') -ne $ExpectedUpgrade) { throw 'UpgradeCode changed between N and N+1' }
     }
     $Framework = Join-Path $env:SystemRoot 'Microsoft.NET/Framework64/v4.0.30319'
     $UiProbe = Join-Path $Work 'InstallerUiProbe.exe'
     & (Join-Path $Framework 'csc.exe') /nologo /target:exe "/out:$UiProbe" "/reference:$Framework/WPF/UIAutomationClient.dll" "/reference:$Framework/WPF/UIAutomationTypes.dll" "/reference:$Framework/WPF/WindowsBase.dll" (Join-Path $Root 'installer/tests/InstallerUiProbe.cs')
     if ($LASTEXITCODE -ne 0) { throw 'UI Automation fixture compilation failed' }
-    Invoke-Msi @('/i', $Msi) 'install-default-opt-out' -InitialPaths
+    $LegacyFixture = New-LegacyFamilyFixture
+    Invoke-Msi @('/i', $LegacyFixture.msi) 'legacy-family-install'
+    Invoke-Msi @('/i', $Msi) 'incoming-legacy-gate' 1603 -InitialPaths
+    if ((Get-Content -Raw -LiteralPath (Join-Path $Work 'incoming-legacy-gate.log')) -notmatch ('LEGACY_MONITOR_PRESENT.*' + [regex]::Escape($LegacyFixture.code))) { throw 'Native legacy UpgradeCode detection did not report fixture identity' }
+    Invoke-Msi @('/x', $LegacyFixture.code) 'legacy-family-remove'
+    Invoke-InstallerUi $Msi 'ui-fresh-custom-path-cancel' '0' -Mode 'fresh-cancel'
+    if (@(Installed-Products).Count -or (Test-Path -LiteralPath $Modules) -or (Test-Path -LiteralPath $Install)) { throw 'Fresh Cancel mutated installation' }
+    Invoke-InstallerUi $Msi 'ui-fresh-custom-path-install' '0' -Mode 'fresh-install'
     Assert-Installed $Version $FirstCode
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Default install enabled opt-in options' }
     Invoke-Msi @('/x', $FirstCode) 'uninstall-default-opt-out'
@@ -224,6 +302,18 @@ try {
         (Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Repeat install did not restore options' }
     Invoke-Msi @('/i', $Msi) 'repeat-again-is-idempotent'
     Assert-Installed $Version $FirstCode
+    Invoke-Msi @('/i', $SameMsi.msi) 'independent-same-version-replacement'
+    Assert-Installed $Version $SameCode
+    if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText -or
+        -not (Test-Path -LiteralPath $Shortcut) -or
+        -not (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Same-version replacement lost user data/options' }
+    # All following maintenance must target the newly registered identity.
+    $Msi = $SameMsi.msi
+    $FirstCode = $SameCode
+    Invoke-Msi @('/i', $LegacyFixture.msi) 'legacy-family-maintenance-setup'
+    Invoke-Msi @('/i', $Msi) 'maintenance-with-legacy-present'
+    Invoke-Msi @('/x', $LegacyFixture.code) 'legacy-family-after-maintenance'
+    Assert-Installed $Version $FirstCode
     # Real RM integration: same executable image name, distinct resource owners.
     # Compile using the Windows .NET Framework compiler; fixtures never publish.
     $Locks = Join-Path $Work 'lock-fixtures'
@@ -239,11 +329,21 @@ try {
     [IO.File]::WriteAllText($ForeignFile, 'foreign resource')
     $Foreign = Start-FileOwner $ForeignExe $ForeignFile 'foreign' 'stubborn'
     $AddinPath = Join-Path $Modules 'Burservis.iCem.DataMonitor.dll'
+    $RuntimeOwner = Start-FileOwner $OwnerExe (Join-Path $Install 'icem-shell-dev.exe') 'runtime-graceful' 'graceful'
     $Graceful = Start-FileOwner $OwnerExe $AddinPath 'graceful' 'graceful'
     Invoke-Msi @('/i', $Msi) 'repair-graceful-file-owner'
     Assert-OwnerStopped $Graceful $true
+    Assert-OwnerStopped $RuntimeOwner $true
     Assert-Installed $Version $FirstCode
     if ($Foreign.process.HasExited) { throw 'Installer stopped an unrelated same-name process' }
+    $CancelOwner = Start-FileOwner $OwnerExe $AddinPath 'cancel-live-owner' 'stubborn'
+    Invoke-InstallerUi $Msi 'ui-cancel-does-not-stop-file-owner' '1' -Mode 'cancel-live'
+    if ($CancelOwner.process.HasExited -or $Foreign.process.HasExited) { throw 'Cancel stopped a file owner or foreign process' }
+    Assert-Installed $Version $FirstCode
+    Invoke-InstallerUi $Msi 'ui-force-consent-stops-file-owner' '1' -Mode 'force-repair'
+    Assert-OwnerStopped $CancelOwner $false
+    Assert-Installed $Version $FirstCode
+    if ($Foreign.process.HasExited) { throw 'UI force consent stopped unrelated owner' }
     $Stubborn = Start-FileOwner $OwnerExe $AddinPath 'stubborn' 'stubborn'
     $ShutdownClock = [Diagnostics.Stopwatch]::StartNew()
     Invoke-Msi @('/i', $Msi, 'MSIRMSHUTDOWN=1') 'repair-force-unresponsive-owner'
@@ -254,6 +354,38 @@ try {
     Invoke-Msi @('/i', $Msi) 'force-consent-is-not-persistent'
     $ConsentLog = Get-Content -Raw -LiteralPath (Join-Path $Work 'force-consent-is-not-persistent.log')
     if ($ConsentLog -notmatch '(?m)Property\(S\): MSIRMSHUTDOWN = 0\r?$') { throw 'Force consent persisted into another operation' }
+    $FailedMsi = New-FailingUpgrade $NextArchive.archive $Next
+    $FailedCode = Read-MsiProperty $FailedMsi 'ProductCode'
+    $ProductCodes.Add($FailedCode)
+    $StationPath = Join-Path $env:ProgramData 'Halliburton/iCem/DataMonitoring'
+    $BeforeAcl = (Get-Acl -LiteralPath $StationPath).GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)
+    $BeforeState = Get-ItemProperty -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer'
+    Invoke-Msi @('/i', $FailedMsi, 'CREATEDESKTOPSHORTCUT=0', 'ADDAUTOSTART=0') 'upgrade-transaction-rollback' 1603
+    $RollbackLog = Get-Content -Raw -LiteralPath (Join-Path $Work 'upgrade-transaction-rollback.log')
+    foreach ($Action in @('RemoveExistingProducts', 'InstallFiles', 'InstallExecute', 'FixtureFailAfterInstallExecute')) {
+        if ($RollbackLog -notmatch ('Action start .*: ' + $Action + '\.')) { throw "Rollback did not reach $Action" }
+    }
+    # /qn logs native script operations, not the full-UI "Rollback:" progress text.
+    # Restrict evidence to AFTER this fixture's failed action; normal execution
+    # also emits RollbackInfo and must never satisfy the rollback proof.
+    $FailureEnd = [regex]::Match($RollbackLog, '(?m)^Action ended [^\r\n]*: FixtureFailAfterInstallExecute\. Return value 3\.\r?$')
+    if (-not $FailureEnd.Success) { throw 'Injected failure did not return failure status' }
+    $RollbackScript = $RollbackLog.Substring($FailureEnd.Index + $FailureEnd.Length)
+    foreach ($Operation in @('Executing op: Header\([^\r\n]*ScriptType=2,',
+        'Executing op: RollbackInfo\([^\r\n]*RollbackAction=Rollback,',
+        'Executing op: RegRemoveValue\(', 'Executing op: FileCopy\(SourceName=[^\r\n]*\.rbf,',
+        'Executing op: RegAddValue\(Name=RuntimeDirectory,')) {
+        if ($RollbackScript -notmatch $Operation) { throw "Missing executed rollback operation: $Operation" }
+    }
+    Assert-Installed $Version $FirstCode
+    $AfterAcl = (Get-Acl -LiteralPath $StationPath).GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)
+    if ($AfterAcl -cne $BeforeAcl) { throw 'Rollback changed station directory access permissions' }
+    $AfterState = Get-ItemProperty -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer'
+    foreach ($Name in @('RuntimeDirectory', 'IcemDirectory', 'DesktopChoice', 'AutostartChoice')) {
+        if ($BeforeState.$Name -cne $AfterState.$Name) { throw "Rollback changed saved $Name" }
+    }
+    if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText -or -not (Test-Path -LiteralPath $Shortcut) -or
+        (Get-ItemPropertyValue -LiteralPath $RunKey -Name iCemDataMonitorHost) -cne ('"' + (Join-Path $Install 'icem-host-dev.exe') + '" --autostart')) { throw 'Rollback lost configuration/shortcut/autostart' }
     Invoke-Msi @('/i', $NextMsi.msi) 'upgrade-N-plus-one'
     Assert-Installed $Next $NextCode
     if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText) { throw 'Upgrade modified user data' }
@@ -268,14 +400,30 @@ try {
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Explicit opt-out did not remove options' }
     Invoke-Msi @('/i', $NextMsi.msi) 'repeat-preserves-options-off'
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Repeat resurrected disabled options' }
-    $UninstallOwner = Start-FileOwner $OwnerExe $AddinPath 'uninstall-stubborn' 'stubborn'
-    Invoke-Msi @('/x', $NextCode, 'MSIRMSHUTDOWN=1') 'uninstall'
-    Assert-OwnerStopped $UninstallOwner $false
+    $UninstallOwner = Start-FileOwner $OwnerExe $AddinPath 'uninstall-graceful' 'graceful'
+    # Actual native legacy-family detection must not block existing uninstall.
+    Invoke-Msi @('/i', $LegacyFixture.msi) 'legacy-family-before-uninstall'
+    Invoke-InstallerUi $NextMsi.msi 'ui-maintenance-remove' '0' -Mode 'remove'
+    Assert-OwnerStopped $UninstallOwner $true
     if ($Foreign.process.HasExited) { throw 'Uninstall stopped an unrelated process' }
     if (@(Installed-Products).Count -or (Test-Path -LiteralPath (Join-Path $Modules 'Burservis.iCem.DataMonitor.dll')) -or (Test-Path -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer')) { throw 'Uninstall left AddIn/registration/saved installer state' }
     if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText -or @(Get-ChildItem -LiteralPath $Install -Recurse -File).Count -ne 1) { throw 'Uninstall changed user data or left MSI-owned files' }
     if ((Test-Path -LiteralPath $Shortcut) -or (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Uninstall left shortcut/autostart' }
-    Write-Host "PASS Windows MSI: install $Version -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and upgrade preserves unowned data; RM graceful/explicit force shutdown targets only actual file owners; plain repeat repairs deleted/corrupt files and restores paths/options; explicit option changes persist; uninstall preserves unowned data and removes all owned files/options."
+    Invoke-Msi @('/i', $NextMsi.msi) 'incoming-blocked-after-native-legacy-detection' 1603 -InitialPaths
+    Invoke-Msi @('/x', $LegacyFixture.code) 'legacy-family-after-uninstall'
+    # Retain the independent silent force-uninstall contract as well as UI Remove.
+    Invoke-Msi @('/i', $NextMsi.msi, 'CREATEDESKTOPSHORTCUT=0', 'ADDAUTOSTART=0') 'reinstall-for-silent-force-remove' -InitialPaths
+    Assert-Installed $Next $NextCode
+    $ForceRemoveOwner = Start-FileOwner $OwnerExe $AddinPath 'uninstall-stubborn' 'stubborn'
+    Invoke-Msi @('/x', $NextCode, 'MSIRMSHUTDOWN=1') 'silent-force-uninstall'
+    Assert-OwnerStopped $ForceRemoveOwner $false
+    if ($Foreign.process.HasExited) { throw 'Silent force uninstall stopped an unrelated process' }
+    if (@(Installed-Products).Count -or (Test-Path -LiteralPath $AddinPath) -or
+        (Test-Path -LiteralPath 'HKLM:\Software\Burservis\iCemDataMonitor\RustDevelopment\Installer') -or
+        (Test-Path -LiteralPath $Shortcut) -or
+        (Get-ItemProperty -LiteralPath $RunKey -Name iCemDataMonitorHost -ErrorAction SilentlyContinue)) { throw 'Silent force uninstall left owned resources' }
+    if ((Get-Content -Raw -LiteralPath $Marker) -cne $MarkerText -or @(Get-ChildItem -LiteralPath $Install -Recurse -File).Count -ne 1) { throw 'Silent force uninstall changed user data or left files' }
+    Write-Host "PASS Windows MSI: fresh UI/custom path/Cancel -> install $Version -> independently rebuilt same-version replacement -> injected upgrade rollback -> upgrade $Next -> blocked downgrade -> uninstall; hashes, one registration and upgrade preserves unowned data; RM graceful/explicit force shutdown targets only actual file owners; plain repeat repairs deleted/corrupt files and restores paths/options; explicit option changes persist; uninstall preserves unowned data and removes all owned files/options."
 } finally {
     foreach ($Owner in $FileOwners) {
         try {
@@ -284,6 +432,10 @@ try {
     }
     foreach ($Code in $ProductCodes) {
         if (@(Installed-Products | Where-Object { $_.PSChildName -eq $Code }).Count) { Invoke-Msi @('/x', $Code) ('cleanup-' + $Code.Trim('{}')) }
+    }
+    # The foreign fixture is intentionally excluded from Installed-Products.
+    if ($LegacyFixture -and (Test-Path -LiteralPath ('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\' + $LegacyFixture.code))) {
+        Invoke-Msi @('/x', $LegacyFixture.code) 'cleanup-legacy-family'
     }
     if ($env:GITHUB_ACTIONS -eq 'true') {
         $Logs = Join-Path $Root 'artifacts/msi'

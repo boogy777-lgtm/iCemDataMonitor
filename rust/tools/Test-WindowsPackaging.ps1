@@ -25,6 +25,19 @@ function Package([string] $Version) {
 }
 try {
     $Fixture = New-WindowsPackagingFixture $Temp
+    # Delivery overrides must survive invocation from outside the checkout.
+    Push-Location $Temp
+    try {
+        foreach ($Case in @(
+            @{ repository = 'repo'; output = 'delivery space'; expected = (Join-Path $Repo 'delivery space'); version = '0.2.0-relative' },
+            @{ repository = $Repo; output = (Join-Path $Temp 'absolute delivery'); expected = (Join-Path $Temp 'absolute delivery'); version = '0.2.0-absolute' }
+        )) {
+            $Delivered = New-WindowsArchive -RepositoryRoot $Case.repository -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Case.output -Version $Case.version -Commit ('1' * 40) -Compiler 'synthetic output-path fixture'
+            if ((Split-Path $Delivered.archive -Parent) -cne $Case.expected -or
+                -not (Test-Path -LiteralPath $Delivered.checksum)) { throw 'Delivery output override depends on caller working directory' }
+        }
+        if (Test-Path -LiteralPath (Join-Path $Temp 'delivery space')) { throw 'Relative delivery output escaped repository root' }
+    } finally { Pop-Location }
     $Pe = $Fixture.pe
     $ExpectedCount = $Fixture.plan.files.Count + $Fixture.plan.binaries.Count + 2
     foreach ($Folder in $Fixture.plan.directories) { $ExpectedCount += @(Get-ChildItem -LiteralPath (Join-Path $Repo $Folder.source) -Filter $Folder.pattern -File).Count }
@@ -60,7 +73,9 @@ try {
         $Xml.SelectNodes('//w:Component[@Id="Cmp.DesktopShortcut"]/w:CreateFolder', $Ns).Count -ne 1 -or
         $Xml.SelectSingleNode('//w:RegistryValue[@Name="iCemDataMonitorHost"]', $Ns).Value -cne '"[MONITORROOT]icem-host-dev.exe" --autostart' -or
         $Xml.SelectSingleNode('//w:UpgradeVersion[@Property="LEGACY_MONITOR_PRESENT"]', $Ns).OnlyDetect -ne 'yes') { throw 'Native MSI UI/paths/options/ownership failed' }
-    if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
+    if ($Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).AllowSameVersionUpgrades -ne 'yes' -or
+        $Xml.SelectNodes('//w:Launch[@Condition="Installed OR NOT LEGACY_MONITOR_PRESENT"]', $Ns).Count -ne 1 -or
+        $Xml.SelectSingleNode('//w:MajorUpgrade', $Ns).Schedule -ne 'afterInstallInitialize' -or
         $Xml.SelectSingleNode('//w:Package', $Ns).Scope -ne 'perMachine') { throw 'MSI transaction policy failed' }
     # Guard the reviewed package boundary, not implementation layout: payload,
     # native shortcut/Run value, stock UI and the exact additive station ACL.

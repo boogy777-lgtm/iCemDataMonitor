@@ -6,12 +6,14 @@
            UpgradeCode="00000000-0000-0000-0000-000000000000" ProductCode="*"
            Scope="perMachine" Compressed="yes" InstallerVersion="500" Codepage="1251">
     <SummaryInformation Description="Rust development candidate with original net48 AddIn; production cutover is not approved." />
-    <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer Rust candidate is already installed." />
+    <!-- Only canonical x.y.z is accepted by the builder: same-version rebuilds
+         replace the previous ProductCode; any lower numeric version stays blocked. -->
+    <MajorUpgrade Schedule="afterInstallInitialize" AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer Rust candidate is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <Upgrade Id="34A0FD7C-EBD5-4E28-BA96-AE6575896F32">
       <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" OnlyDetect="yes" Property="LEGACY_MONITOR_PRESENT" />
     </Upgrade>
-    <Launch Condition="NOT LEGACY_MONITOR_PRESENT" Message="Legacy .NET MSI is installed. Automatic production cutover is not supported." />
+    <Launch Condition="Installed OR NOT LEGACY_MONITOR_PRESENT" Message="Legacy .NET MSI is installed. Automatic production cutover is not supported." />
     <!-- 0 = graceful shutdown; 1 = force unresponsive file owners after native
          RM deadlines (30 s/application, 20 s/service). Never persist this consent. -->
     <Property Id="MSIRESTARTMANAGERCONTROL" Value="0" />
