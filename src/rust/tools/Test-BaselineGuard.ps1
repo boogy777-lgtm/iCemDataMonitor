@@ -4,13 +4,18 @@ $ErrorActionPreference = 'Stop'
 $Guard = Join-Path $PSScriptRoot 'Verify-Baseline.ps1'
 $Temp = Join-Path ([IO.Path]::GetTempPath()) ('icem-baseline-tests-' + [guid]::NewGuid().ToString('N'))
 $Fixture = Join-Path $Temp 'repo'
+function Convert-FixturePath([string] $HistoricalPath) {
+    if ($HistoricalPath.StartsWith('rust/')) { return 'src/' + $HistoricalPath }
+    if ($HistoricalPath -cmatch '^(?:Burservis\.iCem\.DataMonitor(?:\.Tests)?|iCemDataMonitor\.[^/]+|iCemEmulator|iCemEmule\.[^/]+)/') { return 'src/net/' + $HistoricalPath }
+    return $HistoricalPath
+}
 function Write-Fixture([string] $Path, [string] $Text) {
-    $Target = Join-Path $Fixture $Path
+    $Target = Join-Path $Fixture (Convert-FixturePath $Path)
     [IO.Directory]::CreateDirectory((Split-Path $Target -Parent)) | Out-Null
     [IO.File]::WriteAllText($Target, $Text)
 }
 function Hash-Fixture([string] $Path) {
-    $Result = & git hash-object --no-filters -- (Join-Path $Fixture $Path)
+    $Result = & git hash-object --no-filters -- (Join-Path $Fixture (Convert-FixturePath $Path))
     if ($LASTEXITCODE -ne 0) { throw "Cannot hash fixture $Path" }
     return $Result.Trim()
 }
@@ -42,7 +47,7 @@ function New-Fixture {
     $Files = @('.gitattributes', 'legacy.cs', 'legacy.ps1', 'iCemDataMonitor.Contracts/Protos/telemetry.proto',
         'assets/iCemDataMonitor.ico', 'assets/iCemEmule.ico', 'iCemDataMonitor.Host/wwwroot/index.html',
         'iCemDataMonitor.Host/wwwroot/main.css') | ForEach-Object {
-            @{ path = $_; git_blob_sha1 = Hash-Fixture $_; size = (Get-Item -Force (Join-Path $Fixture $_)).Length }
+            @{ path = $_; git_blob_sha1 = Hash-Fixture $_; size = (Get-Item -Force (Join-Path $Fixture (Convert-FixturePath $_))).Length }
         }
     $Commit = '1' * 40
     Write-Fixture 'rust/migration/source-manifest.json' (@{
@@ -58,14 +63,14 @@ function New-Fixture {
         })
     }
     Save-Ledger
-    [IO.Directory]::CreateDirectory((Join-Path $Fixture 'rust/tools')) | Out-Null
-    Copy-Item -LiteralPath $Guard -Destination (Join-Path $Fixture 'rust/tools/Verify-Baseline.ps1')
+    [IO.Directory]::CreateDirectory((Join-Path $Fixture 'src/rust/tools')) | Out-Null
+    Copy-Item -LiteralPath $Guard -Destination (Join-Path $Fixture 'src/rust/tools/Verify-Baseline.ps1')
 }
 function Check-Case([string] $Name, [scriptblock] $Mutate, [string] $ExpectedError = '') {
     New-Fixture
     & $Mutate
     $Failure = $null
-    try { & (Join-Path $Fixture 'rust/tools/Verify-Baseline.ps1') -RequireComplete }
+    try { & (Join-Path $Fixture 'src/rust/tools/Verify-Baseline.ps1') -RequireComplete }
     catch { $Failure = $_.Exception.Message }
     if ($ExpectedError) {
         if (-not $Failure -or -not $Failure.Contains($ExpectedError)) { throw "$Name expected '$ExpectedError', got '$Failure'" }
@@ -104,7 +109,7 @@ try {
     Check-Case 'unknown entry field' { $script:Ledger.changes[0].extra = 'bad'; Save-Ledger } 'Unknown or missing ledger fields'
     Check-Case 'unknown provenance field' { $script:Ledger.changes[0].provenance.extra = 'bad'; Save-Ledger } 'Unknown or missing ledger fields'
     Check-Case 'duplicate JSON key' {
-        $Path = Join-Path $Fixture 'rust/migration/legacy-divergences.json'
+        $Path = Join-Path $Fixture 'src/rust/migration/legacy-divergences.json'
         [IO.File]::WriteAllText($Path, ([IO.File]::ReadAllText($Path).Replace('"schema_version": 2', '"schema_version": 2, "schema_version": 2')))
     } 'Duplicate ledger JSON key'
     foreach ($Path in @('/legacy.cs', 'folder//legacy.cs', 'folder/./legacy.cs', 'folder/../legacy.cs', 'folder\legacy.cs', 'C:legacy.cs')) {
@@ -131,7 +136,7 @@ try {
     }
     Check-Case 'deleted path with redirected parent' {
         # Add an exact nested baseline identity; a link parent must never prove absence.
-        $ManifestPath = Join-Path $Fixture 'rust/migration/source-manifest.json'
+        $ManifestPath = Join-Path $Fixture 'src/rust/migration/source-manifest.json'
         $Document = Get-Content -Raw $ManifestPath | ConvertFrom-Json -AsHashtable
         $Document.files += @{path = 'nested/gone.cs'; git_blob_sha1 = '4' * 40; size = 0}
         [IO.File]::WriteAllText($ManifestPath, ($Document | ConvertTo-Json -Depth 8))
@@ -142,7 +147,7 @@ try {
     Check-Case 'absence probe errors fail closed' {
         Approve-Deletion
         # Inject a provider read error, independent of OS privileges (CI may run as root).
-        $GuardPath = Join-Path $Fixture 'rust/tools/Verify-Baseline.ps1'
+        $GuardPath = Join-Path $Fixture 'src/rust/tools/Verify-Baseline.ps1'
         $Text = [IO.File]::ReadAllText($GuardPath).Replace(
             'try { $Entry = Get-Item -Force -LiteralPath $Current -ErrorAction Stop }',
             "try { throw [IO.IOException]::new('synthetic absence probe I/O failure') }")

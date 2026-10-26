@@ -2,7 +2,15 @@
 param([switch] $RequireComplete)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
-$SourceRoot = Split-Path $Root -Parent
+$SourceRoot = Split-Path (Split-Path $Root -Parent) -Parent
+# Immutable upstream identities stay in original relative paths. Resolve only
+# the physical location for the consolidated repository source layout.
+function Convert-LayoutPath([string] $HistoricalPath) {
+    if ($HistoricalPath -cmatch '^(?:Burservis\.iCem\.DataMonitor(?:\.Tests)?|iCemDataMonitor\.[^/]+|iCemEmulator|iCemEmule\.[^/]+)/') {
+        return 'src/net/' + $HistoricalPath
+    }
+    return $HistoricalPath
+}
 $Manifest = Get-Content -Raw (Join-Path $Root 'migration/source-manifest.json') | ConvertFrom-Json
 # Keep the upstream manifest immutable. Approved legacy maintenance has a separate,
 # exact-path ledger; it cannot override frozen protocol, icon or SPA checks.
@@ -99,12 +107,13 @@ $Verified = 0
 $Deleted = 0
 foreach ($Item in $Manifest.files) {
     if ($Approved.ContainsKey($Item.path) -and $Approved[$Item.path].operation -ceq 'delete') {
-        Assert-DeletedPathAbsent $Item.path
+        Assert-DeletedPathAbsent (Convert-LayoutPath $Item.path)
+        if ((Convert-LayoutPath $Item.path) -cne $Item.path) { Assert-DeletedPathAbsent $Item.path }
         $Deleted++
         continue
     }
     $ExpectedHash = if ($Approved.ContainsKey($Item.path)) { $Approved[$Item.path].approved_blob_sha1 } else { $Item.git_blob_sha1 }
-    $Path = Join-Path $SourceRoot $Item.path
+    $Path = Join-Path $SourceRoot (Convert-LayoutPath $Item.path)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { $Missing += $Item.path; continue }
     $Hash = & git hash-object --no-filters -- $Path
     if ($LASTEXITCODE -ne 0) { throw "git hash-object failed: $($Item.path)" }
@@ -122,7 +131,7 @@ foreach ($Item in $Manifest.files) {
     $Verified++
 }
 $OriginalRelative = 'iCemDataMonitor.Contracts/Protos/telemetry.proto'
-$Original = Join-Path $SourceRoot $OriginalRelative
+$Original = Join-Path $SourceRoot (Convert-LayoutPath $OriginalRelative)
 $ProtoRecord = @($Manifest.files | Where-Object path -eq $OriginalRelative)
 if ($ProtoRecord.Count -ne 1 -or (Get-CanonicalHash $Original $OriginalRelative) -ne $ProtoRecord[0].git_blob_sha1) {
     throw 'Canonical frozen proto changed'
@@ -138,10 +147,10 @@ foreach ($Asset in @('iCemDataMonitor.ico', 'iCemEmule.ico')) {
 $Dashboard = Join-Path $Root 'web/dashboard'
 Get-ChildItem -File -Recurse $Dashboard | ForEach-Object {
     $Relative = [IO.Path]::GetRelativePath($Dashboard, $_.FullName)
-    $Source = Join-Path $SourceRoot ('iCemDataMonitor.Host/wwwroot/' + $Relative)
+    $Source = Join-Path $SourceRoot (Convert-LayoutPath ('iCemDataMonitor.Host/wwwroot/' + $Relative))
     # The original tree uses text=auto, while the frozen Rust SPA uses -text.
     # Compare canonical Git bytes; Windows checkout newline conversion is not a source change.
-    $RustRelative = 'rust/web/dashboard/' + $Relative.Replace('\', '/')
+    $RustRelative = 'src/rust/web/dashboard/' + $Relative.Replace('\', '/')
     $SourceRelative = 'iCemDataMonitor.Host/wwwroot/' + $Relative.Replace('\', '/')
     if ($Relative -eq 'index.html') {
         # D16: the only allowed SPA edits are the D16 bool and D17 valid trailer spacing.
