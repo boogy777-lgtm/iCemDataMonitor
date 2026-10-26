@@ -4,6 +4,32 @@
 исходная база `origin/docs/nplus1-acquisition-200ms-20261024`.
 Это журнал реализации, а не обещание полной production parity.
 
+## Окончательный software status — 26 октября 2026
+
+R4/R5 **закрыты для scoped N+1 v1.7 software checkpoint**: Windows
+[run40250966619, attempt2](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40250966619/attempts/2)
+SUCCESS, общий CI gate121348687621 и Release job121345765540 SUCCESS.
+Проверенный source `7d8af1d22be2d38573d7a06b96b54c0f5a654423`, CI merge
+`0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb`, tree
+`7bfd3d4de60e463269e814269eede1356fb15791`. Авторитетные raw-derived числа и
+hashes: [attempt2 evidence](evidence/nplus1-r4-run40250966619-attempt2.json).
+Attempt1 failed lifetime trace с4943lost events сохранён отдельно; loss check
+не ослаблялся, attempt2 на новом runner прошёл без изменения кода/gates.
+
+Ниже исторические OPEN/PENDING относятся к названным checkpoints. Current status
+имеет приоритет. Native window averages включают отдельно измеренный control
+noise; Size/NewSize не складываются в net live bytes. Exact Rust allocator calls,
+Web/network heap attribution и Host-wide Arc count не заявляются и не становятся
+новыми обязательными gates. Hardware/AddIn/UI/distribution/cutover остаются
+отдельными release gates.
+
+Этот отчёт привязан к validated code checkpoint. После публикации итогового
+documentation head обязательный CI должен пройти ещё раз; его успех здесь заранее
+не заявляется. PR готов к завершению после этого final-head CI; merge не заявлен.
+
+
+## Исходная поэтапная матрица (исторический checkpoint)
+
 | Этап | Фактический статус |
 |---|---|
 | 1. Типизированный MMF / identity / geometry | Реализован; проверки ниже |
@@ -590,3 +616,137 @@ application code: dependency `ring0.17.14` требует отсутствующ
 `live_modbus.rs` вместе с его std-only Windows support на target
 `x86_64-pc-windows-msvc` PASS. Это проверка типов/lints fixture, без linking,
 запуска Host/.NET/MMF или замены полного Windows CI runtime gate.
+
+## P7c1 — dynamic coherent DA group state, 2026-10-24
+
+Class: SDK committed owned group-state → sidecar synchronous Read; callbacks,
+core/acquisition и IPC clocks вне класса. Inv: один coherent tuple на Read,
+CACHE учитывает group+item active, DEVICE сохраняет producer quality; Windows
+SDK/client tests плюс compile-time mandatory trait argument. N+1: P7c2 callbacks
+используют тот же committed state; безопасные service implementations не могут
+молча пропустить новое состояние. Полный P7 остаётся PARTIAL.
+
+Вместо повторного doc-only поиска реализован минимальный local reviewed SDK
+extension на прежнем pin `da44a99265f9706618bbe506c98f714f2aa46f0b`:
+`third-party/rust_opc`, пять dependency crates вне application workspace,
+42 exact upstream inputs/415895 bytes, LICENSE/NOTICE/winmd сохранены.
+MSRV upstream1.97 отделён от selected patch exact1.99.1; features/registry
+versions unchanged. Cargo.lock меняет только пять git source identities на
+local reviewed inputs. Exact SHA256 manifest и reversible patch verifier
+проверяют полный closure без cache edits/CARGO_HOME substitution. Build
+генерирует bindings/module wrappers в OUT_DIR; tracked files immutable.
+
+Обязательный owned GroupState передаётся в `DaGroupService::read` через новый
+`forbid(unsafe_code)` helper с clone-under-lock/release-before-service.
+Read linearizes при clone; existing SetState commit/error/output ordering
+и ABI/unsafe operations не меняются. Service CACHE теперь учитывает active
+group+item, DEVICE сохраняет source quality; rate/client handle coherent и
+не управляют producer200ms. Новых unsafe операций/ABI/exception нет;
+application forbid/native ADR0001 unchanged. Подробности: [P7c1](OPCDA_P7B.ru.md).
+
+Новые safe SDK tests вызывают existing SetState implementation entrypoint,
+затем настоящий safe COM client Read/GetState: active false→true→false,
+revised rate/client handle, failure-before-commit и 2000 concurrent read/state
+tuples. Это **не** внешние COM SetState calls; safe upstream wrapper отсутствует,
+и новая unsafe операция ради теста не добавлялась. Sidecar COM test покрывает
+AddGroup(false), CACHE bad, DEVICE good/retained producer quality; существующие
+item capacity/activity/lease checks сохранены. NEXT P7c2: callbacks/owned sinks,
+async/advise/unadvise/cancel/marshalling и Windows cross-process acceptance.
+
+Exact Rust1.99.1: fetch locked; затем Linux Host26/26+codec5/5, sidecar build,
+scoped Linux all-target clippy `-D warnings`, Windows x64 sidecar+codec+SDK
+all-target check/clippy, fmt-all/check и diff-check PASS, locked/offline.
+Windows runtime здесь не запускался; root CI должен явно запускать dependency
+SDK tests вместе с sidecar tests (они не application workspace members).
+Provenance verifier, exact pin git-object SHA256 сверка и metadata nonmember
+guard PASS; SHA256 всех vendor files неизменны после forced bindings regeneration
+и actual Windows compile. Legacy/.NET/AddIn/proto/assets и другие adapters
+не изменены; cross-process/client/MMF/hardware/release gates остаются OPEN.
+
+## P7 SDK provenance: Windows newline follow-up
+
+Class: temporary upstream reconstruction (`third-party/rust_opc/verify.py`),
+не SDK runtime. Inv: exact upstream hashes/patch и mutation rejection сохраняются
+при Windows Git newline settings; `tools/ci/test_vendor.py` исполняет проверки.
+N+1: новые SDK deltas проходят тот же verifier и existing CI unittest discovery.
+
+Run `40098148886` падает до debug restore с SHA256 mismatch `Cargo.toml`.
+Исходный verifier на Linux воспроизвёл тот же отказ при `core.autocrlf=true`:
+внешняя temporary reconstruction теряет checkout `* -text`, reverse apply
+вставляет CRLF. Исправление задаёт command-scoped autocrlf=false/eol=lf и
+vendor attributes для обеих apply commands. Manifest/patch, SDK Rust sources,
+lockfile и application unsafe/lint policy неизменны. Причина, fixture и границы:
+[P7_SDK_CI](P7_SDK_CI.ru.md). Actual Windows CI/runtime остаются pending.
+
+Linux: CI unittest discovery44/44, verifier default и autocrlf=true/eol=crlf,
+cache command contract, exact1.99.1 fmt-all/check и diff-check PASS. Новых
+dependencies/unsafe, изменений frozen .NET/AddIn/proto или SDK patch/hashes нет.
+
+
+### P7c2 R6 early SDK admission — 2026-10-24
+
+Class: heavy AsyncIO2 Read/Refresh2 SDK-owned preparation; periodic/readonly Write
+outside this fix. Inv: preparation+retained/canceled <=32/group, fixed all-sink
+credits before decode/service/output; RAII rollback and no service/COM under locks.
+N+1: callback_queue Members/Preparation, both entrypoints and deterministic pure
+regressions; reversible patch/42-original SHA256 remain mandatory completeness guard.
+Production checkpoint `ea91101`; final local evidence: pure queue12/12, health3/3,
+codec5/5, Python CI44/44, exact Rust1.99.1 Windows x64 SDK+sidecar all-target clippy `-D warnings`, fmt
+and full reversible original42 provenance PASS. Three new safe COM service-counter/
+rollback fixtures compiled; sidecar cancellation-capacity assertion compiled.
+Root verified production checkpoint `ea91101` / remote `62cea77db6d219c630fac156b43678363b55259f`
+FULL CI SUCCESS (run40129798356). Runtime of the three new final-checkpoint COM
+fixtures remains pending; that full green does not cover this final WIP. Root also
+verified prior pre-R6 `4710c676` SDK27/27 +
+sidecar11/11 runtime PASS (including five review regressions); cancelled run is not
+full CI green and does not prove R6. See P7_CALLBACK_REVIEW for exact run/job.
+This bounds SDK-owned preparation only, not pre-entrypoint COM/RPC unmarshalling
+or whole-process RSS. Existing P7 Windows/proxy/operator gates remain OPEN.
+
+
+## R2: matching OPC RPC proxy + independent STA, 2026-10-25
+
+Class/Inv/N+1 and new CI-only native boundary were recorded in ADR0019 before
+implementation. Byte-exact pinned upstream DA/Common IDLs/notices are separate
+from42 runtime SDK inputs. Windows SDK MIDL x64 /robust /Oicf + MSVC build only
+under RUNNER_TEMP, with a private proxy CLSID and owned/refuse-existing HKCU64
+mappings. Production COM/unsafe boundaries and other adapters are unchanged.
+
+Actual Windows SDK gate SUCCESS on remote75a19342905c270efd431e77519badbaeff7ee0c
+(treecef5a5f18e1e2ee90f73ddee37ee0289ff7490bf, local692dee3),
+[run40171770730/job121104122819](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40171770730/job/121104122819),
+07:14:26–07:15:19UTC. Exact mandatory command contract includes proxy build,
+explicit ignored Rust MTA process test, independent C++ owner-STA callbacks with
+4096 native items/two sinks, activity/rate/handles/read/refresh/cancel/read-only
+writes/reentrant teardown,40 reconnects and finally cleanup. Synthetic200ms IPC
+keeps capture fresh without changing writer FILETIME or the acquisition contract.
+Full job was still running later checks; no full-head CI claim. R2 closed for this
+profile; remaining R3/R4/R5 plus distinct operator/hardware/distribution gates.
+See P7_SDK_CI for exact source/local checks and evidence limits.
+
+
+## R3: Windows independent counterparts — подготовка (25 октября 2026)
+
+Добавлен mandatory post-Scaffold gate без повторной сборки Host/GPUI: pinned
+Mosquitto2.0.22 official source + MSVC/CMake и isolated CPython3.12 asyncua2.1.0
+с complete13-wheel SHA256 closure. Dev-only roles/licenses/build hook описаны
+в tools/acceptance/COUNTERPARTS.md. Cache contract требует точную команду/order
+и always evidence; negative tests запрещают skip/reorder. Source/quality/raw-bit
+assertions сохранены; probe durations выведены из startup/test budgets.
+Windows execution ожидается: Linux verification не закрывает R3, MMF/hardware
+и full final CI не заявляются. R1/R2 mandatory gates сохранены.
+
+
+## R3 actual Windows evidence / R4 measurement preparation
+
+R3 is now closed for the loopback fixtures: run40172775150/job121107195362 SUCCESS,
+counterparts PASS2026-10-25T07:46:55Z. Mosquitto2.0.22 and asyncua2.1.0 actual
+Windows client evidence, source/tree and artifact digest are recorded in
+NPLUS1_TRACKER.ru.md. Earlier R3 awaiting-execution text is historical.
+R4 adds a separate mandatory Windows Release job and benchmark-only safe MMF
+example, with raw distributions, actual WindowsBusReader path and checked bits/Arc.
+Followup adds a separate built-in WPR/xperf heap profile (actual PID ETL/totals,
+zero-capture startup control, trace-loss check and fail-closed OPEN diagnostics).
+Native totals include harness/startup and report sizes in KB; exact isolated
+capture/request byte attribution remains OPEN. No production instrumentation,
+dependency or unsafe exception was introduced; actual Windows run remains required.

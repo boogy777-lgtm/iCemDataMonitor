@@ -1,0 +1,24 @@
+[package]
+name = "opc_comn_bindings"
+version = "0.4.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "OPC Common bindings"
+readme = "README.md"
+repository = "https://github.com/Ronbb/rust_opc"
+license = "MIT"
+keywords = ["bindings", "comn", "opc", "opccomn"]
+exclude = [".metadata/*", ".windows/*", "build.rs"]
+
+[package.metadata.docs.rs]
+default-target = "x86_64-pc-windows-msvc"
+targets = []
+
+[dependencies]
+opc_classic_types = { workspace = true }
+opc_classic_utils = { workspace = true }
+windows = { workspace = true }
+windows-core = { workspace = true }
+
+[build-dependencies]
+windows-bindgen = { workspace = true }

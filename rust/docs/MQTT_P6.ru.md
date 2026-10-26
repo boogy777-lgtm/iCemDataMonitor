@@ -75,3 +75,9 @@ python rust/tools/acceptance/nplus1_mqtt_broker.py --host rust/target/debug/icem
 ```
 
 Gate создаёт собственный temporary anonymous/nonpersistent broker на loopback ephemeral port, завершает только свои processes. Windows exact-head compilation/runtime, real MMF/source outage + broker, production broker security/configuration и hardware остаются OPEN. Этот инкремент не объявляет полный production replacement.
+
+
+R3 Windows independent gate подготовлен: [pins, licenses, isolated build и scope](../tools/acceptance/COUNTERPARTS.md).
+CI после полного Scaffold запускает real Mosquitto 2.0.22 broker/CLI и asyncua2.1.0
+с hash-locked Windows wheels; JSON и bounded logs сохраняются always.
+Actual Windows результат этого gate ещё не получен; R3 остаётся OPEN.

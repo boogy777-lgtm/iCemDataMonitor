@@ -19,8 +19,21 @@ COMMON_SCAFFOLD_INPUTS = (
     'rust/tools/Verify-Baseline.ps1',
     'rust/tools/Test-DesktopMappingGuard.ps1',
     'rust/tools/Verify-DesktopMapping.ps1',
+    'rust/tools/Test-OpcDaInterop.ps1',
+    'rust/tools/acceptance/windows_counterparts.py',
+    'rust/tools/acceptance/windows-counterparts.json',
+    'rust/tools/acceptance/windows-asyncua.requirements.txt',
+    'rust/tools/acceptance/mosquitto-no-tls.cmake',
+    'rust/tools/acceptance/nplus1_mqtt_broker.py',
+    'rust/tools/acceptance/nplus1_opcua_client.py',
+    'rust/tests/opc-da-interop/upstream.json',
+    'rust/tests/opc-da-interop/sta_client.cpp',
+    'rust/tests/opc-da-interop/opcda.idl',
+    'rust/tests/opc-da-interop/opccomn.idl',
     'rust/tools/ci/cache_identity.py',
     'rust/tools/ci/cache_contract.py',
+    'rust/third-party/rust_opc/verify.py',
+    'rust/third-party/rust_opc/upstream-files.sha256.json',
 )
 DOWNLOAD_PATHS = ('registry/index', 'registry/cache', 'registry/src', 'git/db', 'git/checkouts')
 BUILD_PATH = 'rust/target/debug'

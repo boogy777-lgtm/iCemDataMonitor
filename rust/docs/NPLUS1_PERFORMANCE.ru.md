@@ -1,5 +1,31 @@
 # N+1 P4: локальные Release-измерения
 
+## Окончательный software status — 26 октября 2026
+
+R4/R5 **закрыты для scoped N+1 v1.7 software checkpoint**: Windows
+[run40250966619, attempt2](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40250966619/attempts/2)
+SUCCESS, общий CI gate121348687621 и Release job121345765540 SUCCESS.
+Проверенный source `7d8af1d22be2d38573d7a06b96b54c0f5a654423`, CI merge
+`0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb`, tree
+`7bfd3d4de60e463269e814269eede1356fb15791`. Авторитетные raw-derived числа и
+hashes: [attempt2 evidence](evidence/nplus1-r4-run40250966619-attempt2.json).
+Attempt1 failed lifetime trace с4943lost events сохранён отдельно; loss check
+не ослаблялся, attempt2 на новом runner прошёл без изменения кода/gates.
+
+Ниже исторические OPEN/PENDING относятся к названным checkpoints. Current status
+имеет приоритет. Native window averages включают отдельно измеренный control
+noise; Size/NewSize не складываются в net live bytes. Exact Rust allocator calls,
+Web/network heap attribution и Host-wide Arc count не заявляются и не становятся
+новыми обязательными gates. Hardware/AddIn/UI/distribution/cutover остаются
+отдельными release gates.
+
+Этот отчёт привязан к validated code checkpoint. После публикации итогового
+documentation head обязательный CI должен пройти ещё раз; его успех здесь заранее
+не заявляется. PR готов к завершению после этого final-head CI; merge не заявлен.
+
+
+## Исторический P4 Linux baseline
+
 Class: повторяемые измерения synthetic-fixture Host и decoder/publication; production MMF и Windows clients вне этого Linux harness.
 Inv: сравниваются одни и те же fixture, pinned toolchain/profile, запросы и warm-up; сохраняются исходные результаты, ограничения и проверка ответов.
 N+1: новая нагрузка добавляет сценарий в tools/perf/nplus1_network.py и отдельный result; production decoder/consumers ради benchmark не меняются.
@@ -49,4 +75,85 @@ Inspected generated assembly from `cargo rustc -p icem-bus --release --locked --
 
 No substantial numerical hot spot or end-to-end win from manual SIMD was established. The project retains the safe scalar/compiler path, generic CPU compatibility, current Release profile and unsafe policy. No SIMD dependency/intrinsics, extra array or CPU dispatcher is added. Safe loop reformulation can be evaluated later against a measured bottleneck with scalar/raw-bit/NaN/tail equivalence.
 
-Windows Release MMF copy/lock-hold, allocations and latency distributions on supported hardware remain OPEN. Linux measurements do not close those acceptance items. Reproducible local P4 measurements are complete; production performance is not declared proven.
+На момент этого Linux checkpoint Windows Release MMF copy/lock-hold, allocations
+и latency distributions оставались OPEN. Более поздние software evidence и
+окончательный PENDING status указаны в текущем статусе выше; Linux measurements
+сами по себе Windows acceptance не закрывают. Production performance не объявляется доказанной.
+
+## R4 Windows Release: воспроизводимый CI fixture
+
+Class: benchmark-only Windows MMF copy/decode/publication и synthetic Host latency;
+живой AddIn, producer contention и hardware workload не входят в этот fixture.
+Inv: safe native boundary и unmodified WindowsBusReader, immutable shared payload,
+полные raw CSV/network samples, pinned Release profile; проверяются bytes и Arc identity.
+N+1: новый размер/нагрузка меняет только example `windows_release_measure` и
+`tools/perf/windows_release.py`; production reader/consumer не получает timers/branches.
+
+`rust-nplus1-measurements.yml` — отдельный обязательный Windows job, вызываемый из
+основного Rust workflow. Он собирает настоящий Host и example в workspace Release,
+не заменяя существующие debug/SDK/STA/counterpart/scaffold gates. Повтор локально из `rust/`:
+
+```powershell
+cargo fetch --locked
+cargo build --release --locked --offline -p icem-host-app --bin icem-host-dev
+cargo build --release --locked --offline -p icem-platform-windows --example windows_release_measure
+python tools/perf/windows_release.py --output target/windows-release-evidence
+```
+
+MMF workload: static650-register fixture, уникальный Local mutex, неназванная file-backed
+mapping через существующий native API; WindowsBusReader использует свой настоящий
+unnamed fallback.100 warm-up +1000 recorded tight-loop iterations. CSV отдельно
+хранит wait, upper-bound hold (включая release syscall/Instant), decode+Arc,
+publication, boundary total, unmodified reader capture и reader+publication total.
+Correctness и CSV formatting вынесены за timed region. Исходные bytes и все decoded
+words сравниваются; shared handle проверяется через Arc::ptr_eq, старый frame удерживается.
+Это uncontended kernel/boundary microbenchmark, не200ms production acquisition schedule.
+
+Network: три запуска;100 warm-up +1000 measured requests на каждый из двух одновременных
+persistent clients (Modbus FC03/100words, gRPC-Web GetRegisters/all). Все latency samples
+хранятся в JSON; p95/p99 используют sorted samples с индексом `min(n-1, floor(n*p))`.
+Host synthetic fixture и MMF microbenchmark — отдельные нагрузки; их нельзя складывать
+в producer-to-client latency. Summary сохраняет git source/tree, CPU, OS, compiler,
+profile и SHA256 raw files. Таймеры — Instant/perf_counter_ns; CI VM не изолирована.
+
+Отдельный `tools/perf/windows_heap.py` запускается **после** unprofiled latency,
+используя установленный Windows Performance Toolkit (`wpr.exe`/`xperf.exe`).
+[Microsoft WPR method](https://learn.microsoft.com/en-us/windows-hardware/test/wpt/recording-for-heap-analysis):
+уникальная копия benchmark EXE → owned IFEO key → `-HeapTracingConfig enable` →
+`-start Heap -filemode` → workload → `-stop trace.etl` → finally disable/delete empty owned key.
+Чужие IFEO key и известные WPR/HeapSession recordings не изменяются; неизвестный
+`wpr -status` отвергается. Никаких downloads/dependencies/unsafe allocator hooks.
+
+Два отдельных процесса/trace: `--heap 0` (startup/fixture/setup/checks/teardown control)
+и `--heap 10000` (те же границы плюс physical WindowsBusReader capture/publication,
+latest read и correctness check). Нет timing CSV/vector в heap workload.
+Actual PID берётся из Popen; `xperf -i trace.etl -o totals.txt -a heap -pid PID -totals`
+сохраняет native allocation/reallocation counts и allocated size в KB.
+[Формат xperf](https://learn.microsoft.com/en-us/windows-hardware/test/wpt/heap)
+не обещает точности отдельного byte в печатном KB report: raw ETL сохранён для
+повторного анализа. Summary включает исходную totals table, source/tree/compiler,
+SHA256 EXE/ETL, commands, exits и PID; parser принимает только явные allocation
+count/number + KB size columns и требует положительный capture count. Неизвестные
+headers дают OPEN, числа из них не угадываются.
+
+Это **aggregate process totals**, не изолированные allocations на capture. Startup
+control не вычитается как точное измерение: разные процессы имеют runtime noise.
+В эту нагрузку не входят network requests. Их heap attribution остаётся OPEN.
+`xperf -a tracestats -detail` сохраняет raw provider statistics; actual loss
+counters читаются из dumper trace header. Parser требует реальные нулевые
+event/buffer loss counters; provider-count table их не подменяет. Неизвестный формат, потеря событий, занятый
+recorder, отсутствие toolkit/privileges или ошибка cleanup дают `OPEN` + actual error
+и ненулевой exit, сохраняя доступные raw files. `RECORDED_RAW_HEAP_TOTALS` означает
+собранные native tables, не production performance acceptance.
+
+Воспроизведение отдельного heap profile из elevated terminal после Release build:
+
+```powershell
+python tools/perf/windows_heap.py --output target/windows-release-evidence/heap
+```
+
+Этот первоначальный harness не измерял5Hz live acquisition, LAN updates при
+frozen COM и slow/disconnected clients. Они добавлены отдельным software fixture
+в R4 live-load report; текущий follow-up verdict остаётся PENDING. Live AddIn,
+настоящая producer mutex contention и supported hardware остаются отдельной
+production performance acceptance. Software R4/R5 не закрыты до финального CI.

@@ -72,6 +72,18 @@ jobs:
         run: |
           cargo test --locked --offline -p icem-logging
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify reviewed OPC SDK and sidecar on Windows
+        shell: pwsh
+        run: |
+          cargo test --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clippy --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/Test-OpcDaInterop.ps1
+          python third-party/rust_opc/verify.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code -- third-party/rust_opc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows emulator integration before desktop build
         shell: pwsh
         run: |
@@ -83,6 +95,21 @@ jobs:
       - name: Verify source and skeleton
         shell: pwsh
         run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
+      - name: Verify independent MQTT and OPC UA counterparts on Windows
+        shell: pwsh
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python tools/acceptance/windows_counterparts.py --host target/debug/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload independent counterpart evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-independent-counterparts
+          path: ${{ runner.temp }}/icem-counterparts/evidence
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Check preserved dashboard in Chrome
         shell: pwsh
         env:
@@ -157,3 +184,5 @@ jobs:
           path: ${{ runner.temp }}/icem-cache-evidence.json
           if-no-files-found: ignore
           retention-days: 7
+  release-measurements:
+    uses: ./.github/workflows/rust-nplus1-measurements.yml

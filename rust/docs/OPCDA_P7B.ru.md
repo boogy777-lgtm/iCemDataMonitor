@@ -1,5 +1,9 @@
 # P7b — read-only OPC DA sidecar
 
+Текущий P7c1 снимает только coherent dynamic group-state blocker через локальное
+reviewed safe SDK extension (последний раздел). Исторические feasibility findings
+ниже описывают неизменённый upstream pin; callbacks остаются NEXT P7c2, P7 PARTIAL.
+
 Class: новый Windows COM local-server synchronous read profile; Host `opc_da_consumer`,
 shared `icem-opc-da-codec` и отдельный process `icem-opc-da-sidecar`. Legacy OPC toggle,
 MMF source и остальные adapters вне класса.
@@ -112,7 +116,7 @@ Sample quality: acquisition captured + capture/completion age<5s + produceractiv
 + validwriterclock →GOOD0xc0; inactive zone→BAD_OUT_OF_SERVICE0x1c;
 retained/failed/expired/unknownwriter→UNCERTAIN_LAST_USABLE0x44;
 service/reserve→UNCERTAIN0x40. CACHE item inactive→out-of-service; DEVICE ignores item-active, preserving
-source producer-active/age quality. Group-active limitations are listed below.
+source producer-active/age quality. P7c1 also gates CACHE by coherent current group-active; see below.
 Age = Host age + elapsed от sidecar Instant перед READY/предыдущим ACK.
 Этот credit выдан до Host sample; возраст консервативно включает idle, pipe
 write, decode и model-lock wait. После приёма возраст продолжает расти; Read
@@ -188,7 +192,7 @@ pre1601/overflow dates remain unknown/UNCERTAIN, with codec boundary tests.
 N+1: another timestamp field requires its own provenance/range conversion tests;
 canonical raw writer metadata is never repaired or normalized.
 
-### Findings and remaining safe SDK blockers
+### Findings and remaining safe SDK blockers (historical P7b, superseded by P7c1 below)
 
 P1 fixed: a blocked Host pipe write followed by receipt-after-decode could hide
 1..5s of transit and rejuvenate stale data. READY/the previous ACK now grants a
@@ -260,7 +264,7 @@ Routing/cache42/42 and `git diff --check` PASS. PowerShell is unavailable locall
 changed packaging contract must run in Windows CI. These checks do not close the
 remaining group-state/callback/COM client/MMF/hardware/release gates.
 
-## Повторная upstream feasibility-проверка (2026-10-24)
+## Повторная upstream feasibility-проверка (2026-10-24, до P7c1)
 
 Class: готовая safe DA server capability для coherent group state и owned COM
 callbacks; client callback receivers и ABI-only interface declarations вне класса.
@@ -362,3 +366,144 @@ application COM ABI или добавление unsafe в native crate не яв
 оно отсутствует. Нельзя объявить blocker снятым обновлением pin, polling private
 state, имитацией callback или уменьшением требований плана. Эта проверка doc-only;
 нового Windows runtime PASS или compile evidence она не добавляет.
+
+## P7c1 — coherent owned group state, 2026-10-24
+
+Class: синхронный group-state snapshot в SDK `DaGroupAdapter::read_current_state`
+и sidecar `Group::read`; callbacks и producer acquisition вне класса.
+Inv: один owned `GroupState` из существующего mutex на весь Read; CACHE требует
+active group+item, DEVICE сохраняет producer quality. SDK/client tests охраняют
+state tuples, failed SetState, CACHE/DEVICE и сохранение существующих limits.
+N+1: обязательный trait argument заставляет обновить каждый service implementation;
+P7c2 использует committed state, не протягивая OPC в core/reader/IPC.
+
+Dependency review до реализации: тот же exact upstream commit
+`da44a99265f9706618bbe506c98f714f2aa46f0b`, теперь deterministic external workspace
+`third-party/rust_opc`, явно excluded из application members. Выбраны только пять
+crates нужного DA closure: 42 upstream files, 415895 bytes, включая LICENSE,
+NOTICE и оба build-input winmd. MIT/отдельные OPC metadata terms, edition2024,
+features и registry dependency versions не меняются. Upstream MSRV1.97 сохранён
+в provenance; selected patch declares/tested exact1.99.1, без обещания older MSRV.
+Cargo.lock
+меняет только пять git source identities на reviewed local dependencies.
+`README.icem.md`, exact SHA256 manifest, reversible `icem.patch` и `verify.py`
+делают всю delta проверяемой без cache surgery, замены CARGO_HOME или upstream
+checkout. Build scripts пишут bindings/module wrapper только в OUT_DIR;
+tracked upstream bindings не изменяются build. Три deprecated atomic calls
+заменены на equivalent stable `try_update`, без подавления warnings.
+
+`DaGroupService::read` теперь обязательно получает owned `GroupState`. Новый
+helper `forbid(unsafe_code)` клонирует существующий mutex state и освобождает
+lock до application service. Это единственная linearization point group state
+для Read: concurrent SetState может завершиться до возврата Read, но не смешать
+old active с new rate/client handle. Existing SetState ABI/unsafe operations
+не изменены: revised output проверяется/обнуляется до lock, весь state меняется
+под одним lock, revised rate записывается до unlock; invalid output не commit.
+Read error не откатывает уже committed group state. В AddGroup используется
+тот же initial state. Item handles/client handles и resource leases не меняются.
+
+Sidecar CACHE теперь выдаёт BAD_OUT_OF_SERVICE при inactive group **или** item.
+DEVICE игнорирует оба subscription flags и сохраняет producer activity,
+retained/age/writer-clock quality. Update rate/client handle сохраняются SDK
+и видимы service в одном snapshot; rate не меняет acquisition200ms и не создаёт
+ещё не реализованные notifications. Codec, IPC clocks и MMF ownership неизменны.
+Новых unsafe operations, ABI definitions или native exception нет;
+application/shared `forbid` и ADR0001 не ослабляются.
+
+Windows tests: настоящий safe COM client AddGroup(false)/Read/GetState проверяет
+inactive CACHE, GOOD DEVICE и retained producer UNCERTAIN. Существующий item
+activity/capacity test остаётся. Новые SDK tests с `forbid(unsafe_code)` вызывают
+**existing generated SetState implementation entrypoint** с owned аргументами,
+затем настоящий safe COM client Read/GetState: false→true→false, revised rate,
+client handle, invalid revised-output без commit и 2000 concurrent SetState/Read
+с цельными допустимыми tuples. Это честно отличается от внешнего COM SetState:
+safe upstream client wrapper для него отсутствует. Новая unsafe COM операция
+ради теста не добавлена; actual external SetState runtime gate остаётся OPEN.
+
+Runtime Windows gate из application workspace:
+`cargo test -p opc_da_bindings -p icem-opc-da-sidecar --locked --offline`.
+Linux/cross-target compile не являются Windows runtime PASS. Callbacks,
+advise/unadvise, async completion/cancel, cross-apartment/process marshalled
+sinks и hung/reentrant callback handling остаются NEXT P7c2. Полный P7 не закрыт.
+
+Локальная проверка exact Rust1.99.1: `cargo fetch --locked`, затем locked/offline
+Linux Host26/26, codec5/5 и sidecar build PASS; Linux all-target clippy этих трёх
+packages с `-D warnings`, fmt-all/check и diff-check PASS. Windows x64 all-target
+check/clippy sidecar+codec+SDK с `-D warnings` PASS, включая новые SDK/client tests
+и прежний ignored process harness compilation. Runtime Windows здесь не запущен.
+Все 42 upstream SHA256 сверены непосредственно с exact git objects pin;
+reverse-patch verifier и metadata nonmember guard PASS. Принудительная повторная
+генерация обоих bindings через touched build scripts и actual Windows check
+сохранила SHA256 **каждого** vendor file, включая bindings и provenance.
+
+## P7c2 current draft — real callbacks implemented, review/runtime gates OPEN
+
+Class: read-only DA2 callback/async SDK boundary on existing group identity; source
+MMF/core/acquisition and full DA3/browse outside scope. Inv: owned bounded snapshots,
+GIT ownership, callbacks outside locks, pure queue/health and actual Windows COM
+client tests. N+1: mandatory service notification, exhaustive event kind, explicit
+four-file SDK provenance allowlist. ADR0019 records accepted implementation design;
+native independent review is still required before adoption. P7c1 limitations above
+are historical; P7 remains PARTIAL.
+
+Group now implements CPC/CP/AsyncIO2 on the same COM identity. Real native
+OnDataChange/OnReadComplete/OnCancelComplete use current owned sidecar model, no MMF
+read on callback. F32/F64 comparison uses bits; timestamp-only change is not an
+exception, delivered writer FILETIME and monotonic source age are preserved. Activity,
+client handles and revised rate are committed snapshots; revision read before state
+snapshot plus dispatch generation gate prevents stale periodic delivery. Acquisition
+stays200ms. Rate minimum10ms returns OPC_S_UNSUPPORTEDRATE for smaller requests,
+bypassing generic Error's deliberate rejection of arbitrary positive status codes.
+
+Advise registers in caller GIT, worker initializes MTA and retrieves its own proxy;
+only cookies/owned state cross threads. CP/container identity is tested. Unadvise/
+RemoveGroup close delivery without waiting for in-flight; refs and global worker
+charge survive until actual exit. Foreign invoke/Release/revoke outside all locks,
+health includes retired hung workers. Safe client subscription has explicit close;
+reentrant borrowed commands cannot export native group/object references.
+
+Bounds:32groups/process,4096items/batch,4sinks/group,128workers including retired,
+32async/group,1latest slot+32reserved completions/sink,1in-flight. Arc frames<=512KiB
+fan out without per-sink deep copy. Requests retain frames until ALL live sinks dequeue
+completion; pending worst case512MiB across32groups, with bounded additional baseline/
+in-flight/native buffers and256KiB stacks. Atomic fanout reservation rolls back before
+failure. Close ends connection delivery; in-flight may finish. Failed COM sink retires.
+
+Read DEVICE ignores activity; early failed items excluded, all-failed no completion.
+Refresh2 inactive group/all inactive=>E_FAIL, refresh invalidates stale periodic frames
+without moving timer. Set/GetEnable without sink=>CONNECT_E_NOCONNECTION; enable only
+affects transaction0. Late/repeated cancel=>E_FAIL, successful queued cancel produces
+real native OnCancelComplete. Async Write early BADRIGHTS, no fake completion.
+Locale0/deadband0 only; unsupported settings reject before commit. Enumerators
+E_NOTIMPL, arrays/byte arrays, browse/full DA3 outside profile. Primary spec sections
+and native operations are listed in ADR0019.
+
+Independent safe application watchdog checks every25ms; busy callback/foreign teardown
+>=2s or failed SDK health terminates own sidecar with exit70 even at Host interval60000
+or idle IPC. Generic SDK never exits process or joins foreign callback. Existing parent
+own-child kill/reap boundary isolates the rest of Host.
+
+Prepared runtime checks: two sinks native U16/I32/F32 NaN/exact FILETIME/retained10s
+quality, inactive/reactivation, item/client handles, rate/profile rollback/reconnect,
+AsyncRead/Write/Refresh/cancel,32-request two-blocked-sink capacity, fifth-sink cap and
+4096-item real callback, reentrant COM Unadvise+RemoveGroup, real hung callback child
+then Unadvise+60s idle requiring exit70<=6s. Pure queue race/health execute on Linux.
+Opt-in process harness now includes actual callbacks/refresh, remains ignored until
+matching proxy/stub gate. Neither compiled tests nor in-process tests prove external
+cross-apartment/process acceptance. Root separately owns proxy/stub CI investigation.
+
+
+## Current R2 RPC acceptance, 2026-10-25
+
+The earlier OPEN/ignored proxy-gate entries above describe historical checkpoints.
+Matching pinned MIDL proxy generation/build, real Rust MTA and independent C++ STA
+cross-process callbacks now pass the mandatory Windows SDK step on remote75a1934,
+[run40171770730/job121104122819](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40171770730/job/121104122819).
+The nonagile generated-header STA client asserts owner-thread delivery,4096-item
+native values/NaN/writer FILETIME/quality, activity/rate/handles, read-only writes,
+Read/Refresh/cancel/reentrant teardown and40 full reconnect loops. Registration is
+owned ephemeral HKCU64 only, with refusal of existing vendor keys and finally
+cleanup. Details/exact-head/evidence limits: P7_SDK_CI R2 actual Windows RPC gate.
+This closes tracker R2's software gate; full final-head CI, industrial client,
+actual MMF/AddIn/hardware, x86/DCOM/operator/deployment and license/distribution
+acceptance remain separate. No full DA3 or general native-memory guarantee.

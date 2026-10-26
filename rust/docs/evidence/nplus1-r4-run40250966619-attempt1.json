@@ -1,0 +1,393 @@
+{
+  "schema": 1,
+  "run": 40250966619,
+  "attempt": 1,
+  "release_job": 121342608736,
+  "artifact": 12620647768,
+  "artifact_zip_sha256": "1b406339ad874650216238fc171666e3df45dbb787c4cfe7c3d9f43e0cf6a992",
+  "source": "0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb",
+  "tree": "7bfd3d4de60e463269e814269eede1356fb15791",
+  "status": "PENDING_FINAL_CI_PROCESS_LIFETIME_HEAP_LOSS",
+  "platform": "Windows-2025Server-10.0.26100-SP0",
+  "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "cpu_count": 4,
+  "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "profile": "workspace Release: opt-level=s, thin LTO, codegen-units=1; no target-cpu override",
+  "mmf": {
+    "lock_wait_ns": {
+      "samples": 1000,
+      "p50_ns": 300,
+      "p95_ns": 300,
+      "p99_ns": 400
+    },
+    "lock_hold_upper_ns": {
+      "samples": 1000,
+      "p50_ns": 3900,
+      "p95_ns": 4400,
+      "p99_ns": 5900
+    },
+    "decode_arc_ns": {
+      "samples": 1000,
+      "p50_ns": 400,
+      "p95_ns": 600,
+      "p99_ns": 1200
+    },
+    "publication_ns": {
+      "samples": 1000,
+      "p50_ns": 100,
+      "p95_ns": 100,
+      "p99_ns": 100
+    },
+    "boundary_total_ns": {
+      "samples": 1000,
+      "p50_ns": 4800,
+      "p95_ns": 5400,
+      "p99_ns": 7100
+    },
+    "reader_capture_ns": {
+      "samples": 1000,
+      "p50_ns": 20100,
+      "p95_ns": 24300,
+      "p99_ns": 47000
+    },
+    "reader_publication_total_ns": {
+      "samples": 1000,
+      "p50_ns": 20200,
+      "p95_ns": 24400,
+      "p99_ns": 47100
+    }
+  },
+  "raw_sha256": {
+    "mmf.csv": "4e8d420e56fe6a9abd42f8a31a7ab8bcda1874dce5cc6b71e739c84204503828",
+    "network.json": "c1addcfe24e71e4916f85e3847ac3461af79600b937ba639e7dfbbb088bf2068"
+  },
+  "live": {
+    "status": "PASS_LIVE_SOFTWARE_LOAD",
+    "acquisition_period_ms": 200,
+    "writer_period_ms": 50,
+    "limitations": [
+      "software file-backed MMF; no AddIn/hardware acceptance",
+      "Host acquisition count is not inferred from request/update count",
+      "retention probe is a separate sequential phase/process; its Arc count is not Host-wide",
+      "CPU samples are cumulative process user+kernel time; peak working set is process lifetime, not heap live bytes",
+      "slow clients hold incomplete requests, not an unbounded subscription backlog"
+    ],
+    "initial_mirror": {
+      "attempts": 16,
+      "initial_zero_reads": 15,
+      "com_bits": 1700000000,
+      "elapsed_s": 0.7809999999999491
+    },
+    "consumers": [
+      {
+        "kind": "modbus",
+        "rate_hz": 2,
+        "roundtrip_scope": "three FC03 requests",
+        "latency": {
+          "samples": 24,
+          "p50_us": 6372.9,
+          "p95_us": 8135.4,
+          "p99_us": 8135.6,
+          "mean_us": 6521.23
+        }
+      },
+      {
+        "kind": "modbus",
+        "rate_hz": 50,
+        "roundtrip_scope": "three FC03 requests",
+        "latency": {
+          "samples": 600,
+          "p50_us": 6852.8,
+          "p95_us": 7900.0,
+          "p99_us": 8391.6,
+          "mean_us": 6877.55
+        }
+      },
+      {
+        "kind": "web",
+        "rate_hz": 1,
+        "roundtrip_scope": "one GetRegisters all",
+        "latency": {
+          "samples": 12,
+          "p50_us": 1562.3,
+          "p95_us": 3595.5,
+          "p99_us": 3595.5,
+          "mean_us": 1806.08
+        }
+      },
+      {
+        "kind": "web",
+        "rate_hz": 20,
+        "roundtrip_scope": "one GetRegisters all",
+        "latency": {
+          "samples": 240,
+          "p50_us": 1587.1,
+          "p95_us": 2442.1,
+          "p99_us": 2740.3,
+          "mean_us": 1740.2
+        }
+      }
+    ],
+    "slow_client": {
+      "partial_request_disconnect_cycles": 17,
+      "hold_s": 0.7
+    },
+    "workload_wall_s": 12.302775999999994,
+    "process": {
+      "pid": 5920,
+      "cpu_s_first": 0.125,
+      "cpu_s_last": 0.453125,
+      "cpu_s_delta_during_sampling": 0.328125,
+      "peak_working_set_bytes": 14249984,
+      "max_sampled_private_bytes": 3452928,
+      "samples": 32,
+      "sample_period_ms": 500
+    },
+    "retention_probe": {
+      "captures": 60,
+      "peak_live_snapshot_payloads": 4,
+      "capture_publication": {
+        "samples": 60,
+        "p50_us": 247.8,
+        "p95_us": 313.1,
+        "p99_us": 342.6,
+        "mean_us": 250.74
+      },
+      "consumer_rates_hz": [
+        100,
+        20,
+        5,
+        1
+      ],
+      "pinned_old_snapshot": true,
+      "cadence": {
+        "intervals": 59,
+        "min_ms": 198.6273,
+        "p50_ms": 200.0767,
+        "p95_ms": 200.9196,
+        "max_ms": 201.1135,
+        "span_ms": 11801.2773,
+        "scope": "separate probe, not actual Host acquisition count"
+      }
+    }
+  },
+  "warmed_heap": {
+    "status": "RECORDED_WINDOWS_OVERHEAD_OPEN",
+    "runs": [
+      {
+        "kind": "capture",
+        "operations": 0,
+        "label": "capture-0",
+        "pid": 4420,
+        "events_sha256": "fad53cc2b29d5577fe8c4b4b99fe8fbdf4eae105375c78077ca83a5f66f9a956",
+        "events_file": "capture-0-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 10,
+          "allocated_bytes": 7697,
+          "reallocation_calls": 0,
+          "reallocated_new_bytes": 0
+        }
+      },
+      {
+        "kind": "capture",
+        "operations": 10000,
+        "label": "capture-10000",
+        "pid": 4444,
+        "events_sha256": "6790c8d1a080cc550eb86c75c771d7959d052ef16767e88f7bbaf6d799ce536b",
+        "events_file": "capture-10000-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 50010,
+          "allocated_bytes": 30127697,
+          "reallocation_calls": 0,
+          "reallocated_new_bytes": 0
+        },
+        "control_zero_events": false,
+        "recorded_window_per_operation_including_overhead": {
+          "allocation_calls": 5.001,
+          "allocated_bytes": 3012.7697,
+          "reallocation_calls": 0.0,
+          "reallocated_new_bytes": 0.0
+        }
+      },
+      {
+        "kind": "modbus",
+        "operations": 0,
+        "label": "modbus-0",
+        "pid": 1504,
+        "events_sha256": "2556056a515cd3398d33a1e78073cc44e30b802f0ae7d8aa03aec0bf2c97c07d",
+        "events_file": "modbus-0-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 10,
+          "allocated_bytes": 7697,
+          "reallocation_calls": 0,
+          "reallocated_new_bytes": 0
+        }
+      },
+      {
+        "kind": "modbus",
+        "operations": 10000,
+        "label": "modbus-10000",
+        "pid": 5788,
+        "events_sha256": "ba6ba9535ca2068ba616272665fd3f2af7f7cd109f4d11ff2308e3b39f476e73",
+        "events_file": "modbus-10000-events.csv",
+        "loss": {
+          "heap": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "process": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          },
+          "merged": {
+            "events lost": [
+              0
+            ],
+            "buffers lost": [
+              0
+            ]
+          }
+        },
+        "recorded_window": {
+          "allocation_calls": 70010,
+          "allocated_bytes": 5077697,
+          "reallocation_calls": 60000,
+          "reallocated_new_bytes": 5040000
+        },
+        "control_zero_events": false,
+        "recorded_window_per_operation_including_overhead": {
+          "allocation_calls": 7.001,
+          "allocated_bytes": 507.7697,
+          "reallocation_calls": 6.0,
+          "reallocated_new_bytes": 504.0
+        }
+      }
+    ],
+    "scope": "warmed capture+publication+latest OR prebuilt FC03 100-word codec requests; one single-thread workload, no Web or network I/O attribution",
+    "units": "ETW HeapAlloc Size bytes and HeapRealloc NewSize bytes; not live heap size",
+    "limitations": [
+      "window includes START read and DONE write; zero-operation control separately recorded",
+      "no exact operation attribution unless zero-operation control has zero events",
+      "schema and ETW loss validation mandatory; no rounded-KB conversion"
+    ],
+    "source": "0593bb01c60b5b9ad9204d7223a9fd70c2bad1eb",
+    "tree": "7bfd3d4de60e463269e814269eede1356fb15791",
+    "cleanup_errors": []
+  },
+  "process_lifetime_heap": {
+    "status": "OPEN",
+    "runs": [
+      {
+        "label": "startup-control",
+        "iterations": 0,
+        "pid": 9012,
+        "exit": 0
+      }
+    ],
+    "error": "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\xperf.exe exited 2147943792: \t\t4943 Events were lost in this trace.  Data may be unreliable.\n\t\tThis is usually caused by insufficient disk bandwidth for ETW logging.\n\t\tPlease try increasing the minimum and maximum number of buffers and/or\n\t\tthe buffer size.  Doubling these values would be a good first attempt.\n\t\tPlease note, though, that this action increases the amount of memory\n\t\treserved for ETW buffers, increasing memory pressure on your scenario.\n\t\tSee \"xperf -help start\" for the associated command line options.\n",
+    "events_lost": 4943,
+    "stop_reported_dropped_events": 4943,
+    "xperf_exit": 2147943792,
+    "cleanup_disable_exit": 0,
+    "accepted_allocation_totals": false
+  },
+  "verification": [
+    "artifact ZIP SHA256 verified",
+    "all summary raw SHA256 verified",
+    "four warmed event CSV SHA256 and PID event totals recomputed",
+    "original heap/process/merged zero-loss counters recomputed",
+    "live raw samples and quantile indices recomputed"
+  ],
+  "limitations": [
+    "attempt1 Release job FAILED because process-lifetime startup-control trace lost events; no suppression",
+    "native HeapAlloc Size and HeapRealloc NewSize remain separate, inclusive control noise not subtracted",
+    "not exact Rust GlobalAlloc calls or net live bytes; Web/network heap and Host-wide Arc count not claimed",
+    "CI VM/software file-backed MMF; hardware/AddIn/UI/distribution/cutover acceptance separate"
+  ]
+}

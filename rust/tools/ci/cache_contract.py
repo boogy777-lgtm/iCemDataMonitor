@@ -12,6 +12,8 @@ def require(condition, message):
 
 def verify(workflow, scaffold, inputs):
     require('continue-on-error:' not in workflow, 'Failures must propagate')
+    require(workflow.endswith('  release-measurements:\n    uses: ./.github/workflows/rust-nplus1-measurements.yml\n'),
+            'Release measurements must remain mandatory and unconditional')
     steps = re.split(r'(?m)^      - ', workflow)[1:]
     names = [step.splitlines()[0].removeprefix('name: ') for step in steps]
     require(workflow.count('runs-on: windows-latest') == 1 and workflow.count('\n  verify:') == 1,
@@ -24,8 +26,11 @@ def verify(workflow, scaffold, inputs):
              'Verify all scaffold inputs before debug restore', 'Restore Cargo debug build',
              'Verify owned Host diagnostic window on Windows',
              'Verify Windows file logger boundary before desktop build',
+             'Verify reviewed OPC SDK and sidecar on Windows',
              'Verify Windows emulator integration before desktop build',
-             'Verify source and skeleton', 'Check preserved dashboard in Chrome')
+             'Verify source and skeleton',
+             'Verify independent MQTT and OPC UA counterparts on Windows',
+             'Check preserved dashboard in Chrome')
     positions = [names.index(name) if name in names else -1 for name in order]
     require(-1 not in positions and positions == sorted(positions), 'Cache/check ordering drift')
     python_step = step('Set up Python for cache contracts')
@@ -39,10 +44,16 @@ def verify(workflow, scaffold, inputs):
         order[4]: ('./tools/Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline',),
         order[6]: ('cargo test --locked --offline -p icem-windows-native',),
         order[7]: ('cargo test --locked --offline -p icem-logging',),
-        order[8]: ('cargo test --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows',
+        order[8]: ('cargo test --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar',
+                   'cargo clippy --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings',
+                   './tools/Test-OpcDaInterop.ps1',
+                   'python third-party/rust_opc/verify.py',
+                   'git diff --exit-code -- third-party/rust_opc'),
+        order[9]: ('cargo test --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows',
                    'cargo clippy --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings'),
-        order[9]: ('./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline',),
-        order[10]: ('npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund',
+        order[10]: ('./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline',),
+        order[11]: ('python tools/acceptance/windows_counterparts.py --host target/debug/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"',),
+        order[12]: ('npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund',
                     'node tools/browser/theme-contract.cjs', 'node tools/browser/dashboard.cjs'),
     }
     for name, expected in commands.items():
@@ -50,7 +61,7 @@ def verify(workflow, scaffold, inputs):
         require(not re.search(r'(?m)^        (if|continue-on-error):', block), 'Checks must execute regardless of cache hit')
         lines = [line.strip().removeprefix('run: ') for line in block.splitlines()]
         actual = tuple(line for line in lines
-                       if line.startswith(('cargo ', 'rustup ', 'rustc ', 'python ', './tools/', 'npm ', 'node ')))
+                       if line.startswith(('cargo ', 'rustup ', 'rustc ', 'python ', './tools/', 'npm ', 'node ', 'git ')))
         require(actual == expected, f'Command contract drift: {name}')
         for command in expected:
             if not command.startswith('./tools/'):
@@ -107,9 +118,12 @@ def verify(workflow, scaffold, inputs):
             'Metadata failures must fail the guards')
     require("    if ($LASTEXITCODE -ne 0) { throw 'rustfmt failed' }" in inputs,
             'Formatting failures must fail the guards')
+    require("& python (Join-Path $Root 'third-party/rust_opc/verify.py')\n"
+            "    if ($LASTEXITCODE -ne 0) { throw 'OPC SDK provenance failed' }\n" in inputs,
+            'SDK provenance must run and propagate immediate failure')
     for text in (scaffold, inputs):
         require(not re.search(r'(?im)^\s*if\s*\([^\n]*(cache|hit)', text), 'No conditional checks')
-    for name in ('Upload dashboard evidence', 'Upload emulator differential evidence', 'Record bounded cache evidence', 'Upload Cargo cache evidence'):
+    for name in ('Upload independent counterpart evidence', 'Upload dashboard evidence', 'Upload emulator differential evidence', 'Record bounded cache evidence', 'Upload Cargo cache evidence'):
         require('        if: always()\n' in step(name), 'Evidence must survive failure')
     for owner in re.findall(r"Join-Path \$PSScriptRoot '([^']+)'", scaffold + inputs):
         require('rust/tools/' + owner in COMMON_SCAFFOLD_INPUTS,
