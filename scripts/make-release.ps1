@@ -85,7 +85,7 @@ if ($wxsText -match 'ProductCode="\*"') {
 }
 
 # --------------------------------------------------- (c) build MSI ----------
-$msiPath = Join-Path $Repo ('dist\iCemDataMonitor-{0}-x64.msi' -f $Version)
+$msiPath = Join-Path $Repo ('dist\legacy\iCemDataMonitor-{0}-x64.msi' -f $Version)
 if (-not $SkipBuild) {
     $buildScript = Join-Path $Repo 'installer\build-msi.ps1'
     Write-Host "== building MSI $Version"

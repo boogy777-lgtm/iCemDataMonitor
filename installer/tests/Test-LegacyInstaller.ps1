@@ -8,6 +8,7 @@ if (-not $IsWindows -or ($env:GITHUB_ACTIONS -ne 'true' -and -not $AllowMachineC
 }
 $Root = Split-Path $PSScriptRoot -Parent
 $Repository = Split-Path $Root -Parent
+Import-Module (Join-Path $Root 'BuildPaths.psm1') -Force
 $Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-legacy-contract-' + [guid]::NewGuid().ToString('N'))
 $Install = Join-Path $Work "installed $([char]0x0442) files"
 $IcemRoot = Join-Path $Work 'iCem target'
@@ -17,6 +18,53 @@ $MarkerText = 'operator data must survive'
 $ProductCodes = [Collections.Generic.List[string]]::new()
 $FileOwners = [Collections.Generic.List[object]]::new()
 [IO.Directory]::CreateDirectory($Work) | Out-Null
+function Test-BuildOutputPaths {
+    $Tree = Join-Path $Work 'build output boundaries'
+    $Delivery = Join-Path $Tree 'src/bin/delivery'
+    foreach ($Case in @(
+        @{ path = $Delivery; directory = $Delivery; inside = $true },
+        @{ path = (Join-Path $Delivery 'obj'); directory = $Delivery; inside = $true },
+        @{ path = $Delivery.ToUpperInvariant(); directory = ($Delivery + '\'); inside = $true },
+        @{ path = (Join-Path $Tree 'src/bin/delivery-other'); directory = $Delivery; inside = $false },
+        @{ path = (Join-Path $Tree 'src/bin'); directory = $Delivery; inside = $false }
+    )) {
+        if ((Test-BuildPathWithin $Case.path $Case.directory) -ne $Case.inside) { throw 'Build directory containment boundary failed' }
+    }
+    $Sentinel = Join-Path $Delivery 'monitor.msi'
+    $Nested = Join-Path $Delivery 'obj/required-payload.dat'
+    $Unrelated = Join-Path $Tree 'src/obj'
+    $Sibling = Join-Path $Tree 'src/bin/delivery-other/obj'
+    foreach ($Directory in @((Split-Path $Nested -Parent), $Unrelated, $Sibling)) {
+        [IO.Directory]::CreateDirectory($Directory) | Out-Null
+    }
+    [IO.File]::WriteAllText($Sentinel, 'final MSI')
+    [IO.File]::WriteAllText($Nested, 'delivery resource')
+    $Candidates = @(Get-ChildItem -LiteralPath $Tree -Recurse -Directory | Where-Object { $_.Name -in @('bin', 'obj') })
+    foreach ($Directory in @($Candidates | Where-Object { -not (Test-BuildPathOverlap $_.FullName $Delivery) } | Sort-Object { $_.FullName.Length } -Descending)) {
+        Remove-Item -LiteralPath $Directory.FullName -Recurse -Force
+    }
+    if ((Get-Content -Raw -LiteralPath $Sentinel) -cne 'final MSI' -or
+        (Get-Content -Raw -LiteralPath $Nested) -cne 'delivery resource' -or
+        (Test-Path -LiteralPath $Unrelated) -or (Test-Path -LiteralPath $Sibling)) { throw 'Cleanup removed delivery artifacts or retained unrelated intermediates' }
+    # Invoke the real builder's early guard in a disposable checkout layout.
+    $Builder = Join-Path $Tree 'installer'
+    $Reserved = Join-Path $Builder 'stage'
+    [IO.Directory]::CreateDirectory($Reserved) | Out-Null
+    $StageMarker = Join-Path $Reserved 'must-survive.txt'
+    [IO.File]::WriteAllText($StageMarker, 'existing stage')
+    foreach ($Name in @('build-msi.ps1', 'BuildPaths.psm1')) {
+        Copy-Item -LiteralPath (Join-Path $Root $Name) -Destination (Join-Path $Builder $Name)
+    }
+    foreach ($Output in @($Reserved, (Join-Path $Reserved 'delivery'))) {
+        $Rejected = $false
+        try { & (Join-Path $Builder 'build-msi.ps1') -OutputDir $Output -NoPause }
+        catch {
+            if (-not $_.Exception.Message.Contains('OutputDir cannot be inside reserved installer/stage')) { throw }
+            $Rejected = $true
+        }
+        if (-not $Rejected -or (Get-Content -Raw -LiteralPath $StageMarker) -cne 'existing stage') { throw 'Reserved stage guard ran after destructive staging/build work' }
+    }
+}
 function Installed-Products {
     @(Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' | ForEach-Object {
         $Entry = Get-ItemProperty -LiteralPath $_.PSPath
@@ -180,6 +228,7 @@ function Invoke-InstallerUi($Fixture,[string] $Label,[string] $Mode = 'repair',[
     } finally { $Process.Dispose() }
 }
 try {
+    Test-BuildOutputPaths
     $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     try { if (-not [Security.Principal.WindowsPrincipal]::new($Identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run elevated on a disposable VM' } } finally { $Identity.Dispose() }
     if (@(Installed-Products).Count) { throw 'Existing legacy/Rust MSI found; refusing to touch it' }

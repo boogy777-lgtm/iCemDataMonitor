@@ -82,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: msi-ci
-          path: dist/*.msi
+          path: dist/legacy/*.msi
           retention-days: 7
 
       - name: Upload test diagnostics

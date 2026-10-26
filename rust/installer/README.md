@@ -11,10 +11,14 @@ From the repository root:
 pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
-Deliverables: `rust/dist/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` and
+Deliverables: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` and
 `.msi.sha256`. A ZIP/checksum remains an internal verified build intermediate.
 Only the MSI/checksum is uploaded for a real release. `-OutputDirectory` selects
-another output folder. Existing files/versions are not overwritten.
+another output folder: relative paths are resolved from the repository root,
+absolute paths are honored. The standalone `Build-WindowsMsi.ps1` defaults to
+the supplied archive's directory and uses the same override rule. Existing
+files/versions are not overwritten. Cargo `rust/target/` and .NET `bin/obj`
+are build intermediates, not delivery folders.
 
 ## AddIn is mandatory
 

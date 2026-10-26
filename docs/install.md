@@ -20,7 +20,7 @@ pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 
 Без реального iCem SDK либо verified SDK-built AddIn bundle сборка завершается
 ошибкой. Порядок подготовки bundle и проверки provenance описаны в runbook.
-Артефакт: `rust/dist/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` + SHA256.
+Артефакт: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` + SHA256.
 ZIP — промежуточный build artifact. Synthetic CI DLL не является release AddIn.
 
 ## Пути и запуск

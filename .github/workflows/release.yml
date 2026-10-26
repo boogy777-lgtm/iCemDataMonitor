@@ -50,11 +50,10 @@ jobs:
 
       - name: Compute SHA256 checksums
         run: |
-          $msi = Get-ChildItem -Path dist/*.msi | Select-Object -First 1
-          if (-not $msi) { Write-Host 'No MSI found in dist/'; exit 1 }
+          $msi = Get-Item -LiteralPath "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
           $hash = (Get-FileHash -Path $msi.FullName -Algorithm SHA256).Hash
           $line = '{0}  {1}' -f $hash, $msi.Name
-          Set-Content -LiteralPath dist/SHA256SUMS.txt -Value $line -Encoding ascii
+          Set-Content -LiteralPath dist/legacy/SHA256SUMS.txt -Value $line -Encoding ascii
           Write-Host $line
         shell: pwsh
 
@@ -62,8 +61,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $msi = "dist/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
+          $msi = "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
           if (-not (Test-Path -LiteralPath $msi)) { Write-Host "Missing artifact: $msi"; exit 1 }
-          gh release create "$env:GITHUB_REF_NAME" $msi dist/SHA256SUMS.txt `
+          gh release create "$env:GITHUB_REF_NAME" $msi dist/legacy/SHA256SUMS.txt `
             --title "iCem Data Monitor $env:GITHUB_REF_NAME" --generate-notes
         shell: pwsh

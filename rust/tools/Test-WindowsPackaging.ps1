@@ -25,6 +25,19 @@ function Package([string] $Version) {
 }
 try {
     $Fixture = New-WindowsPackagingFixture $Temp
+    # Delivery overrides must survive invocation from outside the checkout.
+    Push-Location $Temp
+    try {
+        foreach ($Case in @(
+            @{ repository = 'repo'; output = 'delivery space'; expected = (Join-Path $Repo 'delivery space'); version = '0.2.0-relative' },
+            @{ repository = $Repo; output = (Join-Path $Temp 'absolute delivery'); expected = (Join-Path $Temp 'absolute delivery'); version = '0.2.0-absolute' }
+        )) {
+            $Delivered = New-WindowsArchive -RepositoryRoot $Case.repository -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Case.output -Version $Case.version -Commit ('1' * 40) -Compiler 'synthetic output-path fixture'
+            if ((Split-Path $Delivered.archive -Parent) -cne $Case.expected -or
+                -not (Test-Path -LiteralPath $Delivered.checksum)) { throw 'Delivery output override depends on caller working directory' }
+        }
+        if (Test-Path -LiteralPath (Join-Path $Temp 'delivery space')) { throw 'Relative delivery output escaped repository root' }
+    } finally { Pop-Location }
     $Pe = $Fixture.pe
     $ExpectedCount = $Fixture.plan.files.Count + $Fixture.plan.binaries.Count + 2
     foreach ($Folder in $Fixture.plan.directories) { $ExpectedCount += @(Get-ChildItem -LiteralPath (Join-Path $Repo $Folder.source) -Filter $Folder.pattern -File).Count }

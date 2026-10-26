@@ -57,7 +57,7 @@ pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 
 Дополнительно нужны .NET SDK, WiX5.0.2 и реальный iCem SDK либо verified SDK-built
 AddIn bundle. Полный пакет обязательно содержит исходный net48 AddIn; отсутствие
-DLL фатально. MSI/checksum: `rust/dist/`. ZIP — build intermediate.
+DLL фатально. MSI/checksum: `dist/rust/`. ZIP — build intermediate.
 [Runbook, SDK runner и отличие synthetic installer contracts](installer/README.md).
 
 ## Документы и статус

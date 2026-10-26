@@ -5,12 +5,13 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'MSI compilation requires Windows.' }
 $Root = Split-Path $PSScriptRoot -Parent
+$RepositoryRoot = Split-Path $Root -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 if ((Get-Content -Raw -LiteralPath "$Archive.sha256").Split(' ')[0] -ine (Get-FileHash -LiteralPath $Archive).Hash) { throw 'Archive SHA256 mismatch' }
 if (-not $OutputDirectory) { $OutputDirectory = Split-Path $Archive -Parent }
-$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
+$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)
 [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
 $Work = Join-Path $OutputDirectory ('.msi-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($Work) | Out-Null
@@ -25,7 +26,6 @@ try {
     if ((Test-Path -LiteralPath $Msi) -or (Test-Path -LiteralPath "$Msi.sha256")) { throw "Release already exists: $Msi" }
     $Source = Join-Path $Work 'Package.wxs'
     $Count = Write-WindowsInstallerSource $Payload $Version $Source
-    $RepositoryRoot = Split-Path $Root -Parent
     $PayloadSource = Write-WindowsInstallerPayload $Payload $RepositoryRoot $Work
     $Branding = New-WindowsInstallerAssets $RepositoryRoot $Work
     & (Join-Path $Branding 'gen-ui-bmps.ps1')

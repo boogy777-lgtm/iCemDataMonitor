@@ -16,8 +16,8 @@ Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
 Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force
 Assert-WindowsMsiVersion $Version
-if (-not $OutputDirectory) { $OutputDirectory = Join-Path $Root 'dist' }
-$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
+if (-not $OutputDirectory) { $OutputDirectory = 'dist/rust' }
+$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)
 $Plan = Read-WindowsPayloadPlan $RepositoryRoot
 $SavedFlags = [Environment]::GetEnvironmentVariable('CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS')
 $AddinWork = $null
