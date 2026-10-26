@@ -550,6 +550,17 @@
       "operation": "modify"
     },
     {
+      "path": "iCemDataMonitor.Host.Tests/D2GuardTests.cs",
+      "operation": "modify",
+      "baseline_blob_sha1": "4b5a96102ed7b15f8ddc1699129c500ad6985c57",
+      "approved_blob_sha1": "1ca0de24edaf609acf7261ad180afc438f0fd0b8",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/47",
+        "commit": "4e37a6c00154969fd181475e57601e4972a667ad",
+        "reason": "Reviewed source-directory relocation: Host D2 architecture guards scan .NET projects under src/net while the root solution and immutable proto hashes stay unchanged. Windows CI must validate all guarded invariants."
+      }
+    },
+    {
       "path": "iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs",
       "baseline_blob_sha1": "86e60a66a6e2af8f8d11c13a3cb21714c957dafa",
       "approved_blob_sha1": "9f5faafc10485abf8f890ac69a4a31c04a2a73ae",
