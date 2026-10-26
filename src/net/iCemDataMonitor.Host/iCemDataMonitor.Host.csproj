@@ -45,7 +45,7 @@
     side-by-side file resolution needed). NO new artwork.
   -->
   <ItemGroup>
-    <EmbeddedResource Include="..\assets\iCemDataMonitor.ico" LogicalName="iCemDataMonitor.Host.tray.ico" />
+    <EmbeddedResource Include="..\..\..\assets\iCemDataMonitor.ico" LogicalName="iCemDataMonitor.Host.tray.ico" />
   </ItemGroup>
 
   <!-- Kestrel + hosting come from the shared framework (no package drift).

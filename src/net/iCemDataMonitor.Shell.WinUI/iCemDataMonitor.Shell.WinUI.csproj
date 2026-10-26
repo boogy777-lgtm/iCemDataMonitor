@@ -29,7 +29,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>..\assets\iCemDataMonitor.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\..\assets\iCemDataMonitor.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -64,7 +64,7 @@
 
   <!-- App icon file for AppWindow.SetIcon at runtime -->
   <ItemGroup>
-    <Content Include="..\assets\iCemDataMonitor.ico" Link="iCemDataMonitor.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\assets\iCemDataMonitor.ico" Link="iCemDataMonitor.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- TOMBSTONE (2026-08-27): DeployEmuleEngine target REMOVED — the emulator

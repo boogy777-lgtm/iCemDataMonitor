@@ -32,7 +32,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>..\assets\iCemEmule.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\..\assets\iCemEmule.ico</ApplicationIcon>
     <!-- Custom Main: CLI / selftest / landiag dispatch BEFORE WinUI bootstraps. -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
@@ -61,7 +61,7 @@
        engine icon for the window caption -->
   <ItemGroup>
     <Page Include="..\iCemDataMonitor.Emulator.WinUI\ThemeResources.xaml" Link="ThemeResources.xaml" />
-    <Content Include="..\assets\iCemEmule.ico" Link="iCemEmule.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\assets\iCemEmule.ico" Link="iCemEmule.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
