@@ -8,7 +8,7 @@ Build on Windows x64 in PowerShell 7.4+, with Git, rustup, MSVC x64/Windows SDK,
 From the repository root:
 
 ```powershell
-pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
+pwsh -NoProfile -File .\src\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
 Deliverables: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` and
@@ -17,7 +17,7 @@ Only the MSI/checksum is uploaded for a real release. `-OutputDirectory` selects
 another output folder: relative paths are resolved from the repository root,
 absolute paths are honored. The standalone `Build-WindowsMsi.ps1` defaults to
 the supplied archive's directory and uses the same override rule. Existing
-files/versions are not overwritten. Cargo `rust/target/` and .NET `bin/obj`
+files/versions are not overwritten. Cargo `src/rust/target/` and .NET `bin/obj`
 are build intermediates, not delivery folders.
 
 ## AddIn is mandatory
@@ -34,8 +34,8 @@ and original build script are not rewritten.
 An SDK machine can prepare a bundle separately:
 
 ```powershell
-.\rust\tools\Build-LegacyAddin.ps1 -OutputDirectory D:\Builds\net48-addin
-.\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0 -AddinDirectory D:\Builds\net48-addin
+.\src\rust\tools\Build-LegacyAddin.ps1 -OutputDirectory D:\Builds\net48-addin
+.\src\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0 -AddinDirectory D:\Builds\net48-addin
 ```
 
 The directory contains exactly `Burservis.iCem.DataMonitor.dll` and
@@ -51,7 +51,7 @@ trusted SDK machine; final iCem load/behavior acceptance remains open.
 
 ## Audited MSI ownership (architecture v3.1)
 
-See [the mechanism audit](../docs/INSTALLER_AUDIT.ru.md). Rust owns a small
+See [the mechanism audit](../../docs/INSTALLER_AUDIT.ru.md). Rust owns a small
 `Product.wxs`; it no longer projects the entire legacy wizard/policy. The original
 `gen-payload.ps1`, `gen-ui-bmps.ps1`, Burservis PNG and icon remain reused unchanged.
 There is one inventory, not a second manually maintained MSI file list.
@@ -84,7 +84,7 @@ No config or Data.dat is shipped/created by packaging. Legacy .NET MSI is separa
 and unchanged.
 
 This remains a **Rust development candidate**, retaining `*-dev.exe` names.
-Production cutover is not enabled merely by adding an installer. [Host E11](../docs/HOST_E11.ru.md) implements automatic Shell ensure, bounded startup,
+Production cutover is not enabled merely by adding an installer. [Host E11](../../docs/HOST_E11.ru.md) implements automatic Shell ensure, bounded startup,
 CLI and copy-only configuration discovery/default creation. Invalid existing settings
 remain intact and block startup with diagnostics. The MSI grants inherited
 Users Modify on the canonical station directory, including relocated runtime installs, matching legacy. Supplied PowerShell
@@ -162,4 +162,4 @@ The bundled `icem-opc-da-sidecar.exe` remains opt-in through Host
 `--opc-da-config`; installation does not start it or register COM classes,
 proxy/stubs, OPCEnum or DCOM permissions. The synchronous DA development profile
 and its open client/registration acceptance gates are documented in
-[OPCDA_P7B](../docs/OPCDA_P7B.ru.md).
+[OPCDA_P7B](../../docs/OPCDA_P7B.ru.md).

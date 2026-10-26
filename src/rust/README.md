@@ -6,7 +6,7 @@ real SDK/AddIn, hardware/operator/visual acceptance и production cutover —
 отдельные gates. Имена `icem-host-dev.exe`, `icem-shell-dev.exe`,
 `icem-emulator-engine-dev.exe` сохранены.
 `icem-emulator-dev` — только template-based FLECS preview без COM/LAN/UI;
-он не является штатным standalone приложением. [Общий README](../README.md).
+он не является штатным standalone приложением. [Общий README](../../README.md).
 
 ## Архитектура
 
@@ -14,18 +14,18 @@ Vendor iCem.exe + net48 AddIn остаются: AddIn — единственны
 Физическая станция либо самостоятельный emulator подают COM FLECS/LAN ACE в iCem.
 Для COM emulator используется внешняя пара драйвера com0com; для LAN — Npcap.
 Serial Tee/Com0ComMonitor и 21 dormant REST route retired в
-[C11](../docs/LEGACY_REFACTORING_C11.ru.md); драйвер com0com KEEP.
+[C11](../../docs/LEGACY_REFACTORING_C11.ru.md); драйвер com0com KEEP.
 Пассивный Host sniffer обслуживает диагностику и MMF не пишет.
 
 Единственный acquisition 200 мс публикует immutable typed `Arc<Snapshot>` для
 Modbus, Web, MQTT, OPC UA и OPC DA sidecar. Запросы потребителей не читают MMF.
 Host не запускает и не завершает emulator. Legacy .NET assemblies сохранены для
-reference/build compatibility. [Подробная архитектура](../docs/architecture.md).
+reference/build compatibility. [Подробная архитектура](../../docs/architecture.md).
 
 ## Сборка
 
 Windows x64, PowerShell7.4+, Rust1.99.1 (rust-toolchain.toml), MSVC/Windows SDK.
-Из `rust/`:
+Из `src/rust/`:
 
 ```powershell
 cargo fetch --locked
@@ -52,7 +52,7 @@ Linux tests не являются Windows runtime/UI acceptance.
 Из корня репозитория:
 
 ```powershell
-pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
+pwsh -NoProfile -File .\src\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
 Дополнительно нужны .NET SDK, WiX5.0.2 и реальный iCem SDK либо verified SDK-built
@@ -69,7 +69,7 @@ DLL фатально. MSI/checksum: `dist/rust/`. ZIP — build intermediate.
 - [MMF, Modbus, gRPC, REST, CLI и Windows IPC](docs/API_SPEC.ru.md)
 - [MQTT](docs/MQTT_P6.ru.md), [OPC UA](docs/OPCUA_P7A.ru.md), [OPC DA](docs/OPCDA_P7B.ru.md)
 - [GPUI desktop history](docs/DESKTOP_STATUS.ru.md), [hardware acceptance](docs/HARDWARE_ACCEPTANCE.ru.md)
-- [Конфиг](../docs/config.md), [разработка](../docs/development.md), [релиз](../docs/release.md)
+- [Конфиг](../../docs/config.md), [разработка](../../docs/development.md), [релиз](../../docs/release.md)
 - [CI routing/gates](docs/CI_CD.ru.md), [validation history](docs/VALIDATION.ru.md)
 - [Source audit history](docs/SOURCE_AUDIT.ru.md), [manifest](migration/source-manifest.json), [legacy ledger](migration/legacy-divergences.json)
 - [Current OpenAPI](contracts/http/openapi.json), [pinned route inventory](contracts/http/route-inventory.json)

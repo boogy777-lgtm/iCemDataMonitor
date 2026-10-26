@@ -10,66 +10,66 @@ from unittest.mock import patch
 
 import routing
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 class RoutingTests(unittest.TestCase):
     def test_component_matrix(self):
         cases = {
-            'rust/apps/host/src/main.rs': ('rust', 'packaging'),
-            'rust/crates/icem-bus/src/lib.rs': routing.COMPONENTS,
-            'rust/Cargo.lock': ('rust', 'packaging'),
-            'rust/rust-toolchain.toml': ('rust', 'packaging'),
-            'rust/tools/browser/dashboard.cjs': ('rust', 'packaging'),
-            'iCemDataMonitor.Shell.WinUI/MainWindow.xaml': ('legacy',),
-            'iCemDataMonitor.Core/New.cs': ('legacy',),
-            'iCemDataMonitor.Sdk/Bus/BusLayout.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Data/Bus/BusReader.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Transport/ModbusTcpPublisher.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Contracts/Protos/telemetry.proto': routing.COMPONENTS,
-            'iCemEmule.Core/Control/NewOracleInput.cs': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/NewSdkInput.cs': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/future.targets': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/future.resx': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/future.unknown': routing.COMPONENTS,
+            'src/rust/apps/host/src/main.rs': ('rust', 'packaging'),
+            'src/rust/crates/icem-bus/src/lib.rs': routing.COMPONENTS,
+            'src/rust/Cargo.lock': ('rust', 'packaging'),
+            'src/rust/rust-toolchain.toml': ('rust', 'packaging'),
+            'src/rust/tools/browser/dashboard.cjs': ('rust', 'packaging'),
+            'src/net/iCemDataMonitor.Shell.WinUI/MainWindow.xaml': ('legacy',),
+            'src/net/iCemDataMonitor.Core/New.cs': ('legacy',),
+            'src/net/iCemDataMonitor.Sdk/Bus/BusLayout.cs': routing.COMPONENTS,
+            'src/net/iCemDataMonitor.Data/Bus/BusReader.cs': routing.COMPONENTS,
+            'src/net/iCemDataMonitor.Transport/ModbusTcpPublisher.cs': routing.COMPONENTS,
+            'src/net/iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs': routing.COMPONENTS,
+            'src/net/iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs': routing.COMPONENTS,
+            'src/net/iCemDataMonitor.Contracts/Protos/telemetry.proto': routing.COMPONENTS,
+            'src/net/iCemEmule.Core/Control/NewOracleInput.cs': routing.COMPONENTS,
+            'src/net/Burservis.iCem.DataMonitor/NewSdkInput.cs': routing.COMPONENTS,
+            'src/net/Burservis.iCem.DataMonitor/future.targets': routing.COMPONENTS,
+            'src/net/Burservis.iCem.DataMonitor/future.resx': routing.COMPONENTS,
+            'src/net/Burservis.iCem.DataMonitor/future.unknown': routing.COMPONENTS,
             'installer/gen-payload.ps1': routing.COMPONENTS,
             'installer/future.psm1': routing.COMPONENTS,
             'installer/future.unknown': routing.COMPONENTS,
-            'rust/installer/windows-payload.json': ('rust', 'packaging'),
+            'src/rust/installer/windows-payload.json': ('rust', 'packaging'),
             '.github/workflows/new-workflow.yml': routing.COMPONENTS,
-            'rust/tools/ci/routing.py': routing.COMPONENTS,
-            'rust/migration/legacy-divergences.json': routing.COMPONENTS,
+            'src/rust/tools/ci/routing.py': routing.COMPONENTS,
+            'src/rust/migration/legacy-divergences.json': routing.COMPONENTS,
             'docs/Wireshark/iCemCrio.pcapng.bin': routing.COMPONENTS,
             'docs/Wireshark/notes.md': routing.COMPONENTS,
             'specs/dotnet-server/Э5_config.csv': routing.COMPONENTS,
-            'iCemDataMonitor.Host/wwwroot/main.css': routing.COMPONENTS,
+            'src/net/iCemDataMonitor.Host/wwwroot/main.css': routing.COMPONENTS,
             'Directory.Build.targets': routing.COMPONENTS,
-            'README.md': (), 'rust/docs/CI_CD.ru.md': (), 'docs/development.md': (),
+            'README.md': (), 'src/rust/docs/CI_CD.ru.md': (), 'docs/development.md': (),
             'docs/images/software-architecture.svg': (),
             'docs/images/next-architecture.svg': (),
             'docs/images/new.binary': routing.COMPONENTS,
             'docs/images/new.ps1': routing.COMPONENTS,
             'docs/runtime/new.svg': routing.COMPONENTS,
             'assets/new.svg': routing.COMPONENTS,
-            'rust/assets/new.svg': ('rust', 'packaging'),
-            'rust/docs/new.binary': ('rust', 'packaging'),
+            'src/rust/assets/new.svg': ('rust', 'packaging'),
+            'src/rust/docs/new.binary': ('rust', 'packaging'),
             'docs/new.binary': routing.COMPONENTS,
             'NewProject/New.csproj': routing.COMPONENTS,
             'future.config': routing.COMPONENTS,
-            'iCemDataMonitor.Core/future.unknown': routing.COMPONENTS,
+            'src/net/iCemDataMonitor.Core/future.unknown': routing.COMPONENTS,
             '../README.md': routing.COMPONENTS,
         }
         for path, selected in cases.items():
             with self.subTest(path=path):
                 self.assertEqual(routing.classify([path]), {c: str(c in selected).lower() for c in routing.COMPONENTS})
-        self.assertEqual(routing.classify(['rust/README.md', 'iCemDataMonitor.Core/New.cs', 'rust/apps/new.rs']), dict.fromkeys(routing.COMPONENTS, 'true'))
+        self.assertEqual(routing.classify(['src/rust/README.md', 'src/net/iCemDataMonitor.Core/New.cs', 'src/rust/apps/new.rs']), dict.fromkeys(routing.COMPONENTS, 'true'))
         self.assertEqual(routing.categories('docs/images/software-architecture.svg'), {'documentation'})
         self.assertEqual(routing.categories('docs/images/next-architecture.svg'), {'documentation'})
-        self.assertEqual(routing.categories('rust/crates/icem-bus/src/lib.rs'), {'rust', 'shared-contracts'})
+        self.assertEqual(routing.categories('src/rust/crates/icem-bus/src/lib.rs'), {'rust', 'shared-contracts'})
         self.assertEqual(routing.categories('installer/Product.wxs'), {'legacy', 'packaging'})
-        self.assertEqual(routing.categories('rust/migration/source-manifest.json'), {'rust', 'shared-contracts', 'infrastructure'})
+        self.assertEqual(routing.categories('src/rust/migration/source-manifest.json'), {'rust', 'shared-contracts', 'infrastructure'})
         self.assertEqual(routing.classify([]), dict.fromkeys(routing.COMPONENTS, 'false'))
 
     def test_rule_schema(self):
@@ -87,7 +87,7 @@ class RoutingTests(unittest.TestCase):
         # Newly added project/root/extension cannot silently enter the optimized set.
         # Known infrastructure and intentionally unknown root config always select full.
         paths = routing.git(ROOT, 'ls-files', '-z').decode().split('\0')[:-1]
-        full_roots = ('.github/', 'rust/migration/', 'rust/tools/ci/', '.vscode/')
+        full_roots = ('.github/', 'src/rust/migration/', 'src/rust/tools/ci/', '.vscode/')
         full_files = {'.editorconfig', '.gitattributes', '.gitignore'}
         uncovered = [p for p in paths if routing.categories(p) == {'infrastructure'} and p not in full_files and not p.startswith(full_roots)]
         self.assertEqual(uncovered, [], 'Review new tracked paths and routing dependencies')
@@ -95,28 +95,28 @@ class RoutingTests(unittest.TestCase):
     def test_consumer_dependencies(self):
         # Derive root file dependencies from actual consumers, not a second path list.
         found = set()
-        for source in (ROOT / 'rust').rglob('*.rs'):
+        for source in (ROOT / 'src/rust').rglob('*.rs'):
             if 'target' in source.parts:
                 continue
             text = source.read_text(encoding='utf-8')
             for relative in re.findall(r'include_(?:str|bytes)!\(\s*"([^"]+)"', text):
                 target = (source.parent / relative).resolve()
-                if target.is_relative_to(ROOT) and not target.is_relative_to(ROOT / 'rust'):
+                if target.is_relative_to(ROOT) and not target.is_relative_to(ROOT / 'src/rust'):
                     found.add(target.relative_to(ROOT).as_posix())
-        for source in (ROOT / 'rust/tests/support').glob('*.cs'):
+        for source in (ROOT / 'src/rust/tests/support').glob('*.cs'):
             for relative in re.findall(r'Path.Combine\(root,\s*"([^"]+)"', source.read_text()):
                 found.add(relative)
         self.assertTrue(found, 'No oracle/source dependencies discovered')
         for path in found:
             self.assertEqual(routing.classify([path]), dict.fromkeys(routing.COMPONENTS, 'true'), path)
-        payload = json.loads((ROOT / 'rust/installer/windows-payload.json').read_text())
+        payload = json.loads((ROOT / 'src/rust/installer/windows-payload.json').read_text())
         for item in payload['files'] + payload['directories']:
             path = item['source'] + ('/future.json' if item in payload['directories'] else '')
             outputs = routing.classify([path])
             self.assertEqual((outputs['rust'], outputs['packaging']), ('true', 'true'), path)
         # New files in any C# oracle source family inherit the shared closure.
         for family in ('Core', 'Control', 'Dfb', 'Emitters'):
-            self.assertEqual(routing.categories(f'iCemEmule.Core/{family}/Future.cs'), {'legacy', 'shared-contracts'})
+            self.assertEqual(routing.categories(f'src/net/iCemEmule.Core/{family}/Future.cs'), {'legacy', 'shared-contracts'})
 
     def test_legacy_diagnostics_contract(self):
         legacy = (ROOT / '.github/workflows/legacy-build.yml').read_text()
@@ -175,13 +175,13 @@ class RoutingTests(unittest.TestCase):
                 'if (Test-BuildPathWithin $OutDir $Stage)',
                 'Where-Object { -not (Test-BuildPathOverlap $_.FullName $OutDir) }'),
             'scripts/make-release.ps1': ('dist\\legacy\\iCemDataMonitor-',),
-            'rust/tools/Build-WindowsRelease.ps1': (
+            'src/rust/tools/Build-WindowsRelease.ps1': (
                 "if (-not $OutputDirectory) { $OutputDirectory = 'dist/rust' }",
                 '$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)'),
-            'rust/tools/Build-WindowsMsi.ps1': (
+            'src/rust/tools/Build-WindowsMsi.ps1': (
                 'if (-not $OutputDirectory) { $OutputDirectory = Split-Path $Archive -Parent }',
                 '$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)'),
-            'rust/installer/WindowsPayload.psm1': (
+            'src/rust/installer/WindowsPayload.psm1': (
                 '$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)',),
             '.github/workflows/legacy-build.yml': ('path: dist/legacy/*.msi',),
             '.github/workflows/release.yml': (
@@ -189,8 +189,8 @@ class RoutingTests(unittest.TestCase):
                 'Set-Content -LiteralPath dist/legacy/SHA256SUMS.txt',
                 'gh release create "$env:GITHUB_REF_NAME" $msi dist/legacy/SHA256SUMS.txt'),
             '.github/workflows/rust-windows-release.yml': (
-                'Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"',
-                'Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"',
+                'Join-Path (Split-Path (Split-Path $PWD -Parent) -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"',
+                'Join-Path (Split-Path (Split-Path $PWD -Parent) -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"',
                 'dist/rust/*.msi', 'dist/rust/*.msi.sha256',
                 'path: dist/rust', 'Join-Path $PWD "dist/rust/$Name"'),
         }
@@ -199,12 +199,12 @@ class RoutingTests(unittest.TestCase):
             for fragment in fragments:
                 with self.subTest(path=path, fragment=fragment):
                     self.assertIn(fragment, source)
-            self.assertNotIn('rust/dist/', source)
+            self.assertNotIn('src/rust/dist/', source)
         builder = (ROOT / 'installer/build-msi.ps1').read_text(encoding='utf-8-sig')
         self.assertLess(builder.index('if (Test-BuildPathWithin $OutDir $Stage)'), builder.index('Start-Transcript'))
         fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text()
         self.assertIn('    Test-BuildOutputPaths\n', fixture)
-        for path in ('README.md', 'rust/README.md', 'docs/install.md', 'rust/installer/README.md'):
+        for path in ('README.md', 'src/rust/README.md', 'docs/install.md', 'src/rust/installer/README.md'):
             self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
         self.assertIn('dist/legacy/', (ROOT / 'docs/release.md').read_text(encoding='utf-8-sig'))
 
@@ -297,23 +297,23 @@ class GitDiffTests(GitFixture):
 
     def test_nul_names_with_tabs_newlines(self):
         # Windows prohibits these filenames; still test byte parsing there using Git output.
-        raw = b'rust/apps/name\tpart.rs\0specs/name\npart.yaml\0'
+        raw = b'src/rust/apps/name\tpart.rs\0specs/name\npart.yaml\0'
         with patch.object(routing, 'git', side_effect=[b'', b'', raw]):
-            self.assertEqual(self.paths('1' * 40), ['rust/apps/name\tpart.rs', 'specs/name\npart.yaml'])
+            self.assertEqual(self.paths('1' * 40), ['src/rust/apps/name\tpart.rs', 'specs/name\npart.yaml'])
         if __import__('os').name != 'nt':
-            self.write('rust/apps/name\tpart.rs')
+            self.write('src/rust/apps/name\tpart.rs')
             self.write('specs/name\npart.yaml')
             paths = self.paths(self.commit())
-            self.assertEqual(set(paths), {'rust/apps/name\tpart.rs', 'specs/name\npart.yaml'})
+            self.assertEqual(set(paths), {'src/rust/apps/name\tpart.rs', 'specs/name\npart.yaml'})
 
     def test_pr_uses_merge_base(self):
         self.run_git('checkout', '-qb', 'topic')
-        self.write('rust/apps/change.rs')
+        self.write('src/rust/apps/change.rs')
         head = self.commit()
         self.run_git('checkout', '-q', '--detach', self.base)
         self.write('iCemDataMonitor.Core/main.cs')
         base_tip = self.commit()
-        self.assertEqual(self.paths(head, base_tip, 'pull_request'), ['rust/apps/change.rs'])
+        self.assertEqual(self.paths(head, base_tip, 'pull_request'), ['src/rust/apps/change.rs'])
 
     def test_missing_malformed_failed_and_incomplete_diff(self):
         for event, data in [('push', {}), ('push', {'before': '0' * 40, 'after': self.base}), ('push', {'before': 'bad', 'after': self.base}), ('push', {'before': 'f' * 40, 'after': self.base}), ('pull_request', {'pull_request': []}), ('unknown', {})]:
@@ -351,7 +351,7 @@ class LedgerRoutingTests(GitFixture):
         self.manifest = {
             'source_repository': 'fixture/repository', 'source_commit': 'a' * 40,
             'source_tree': 'b' * 40, 'retrieved_on': '2026-10-21',
-            'source_location': 'repository root (parent of rust/)', 'files': []}
+            'source_location': 'repository root (parent of src/rust/)', 'files': []}
         for path in (self.A, self.B, self.SHARED, self.FROZEN):
             self.write(path)
             self.manifest['files'].append({'path': path, 'git_blob_sha1': self.hash(path),
@@ -407,7 +407,7 @@ class LedgerRoutingTests(GitFixture):
     def test_updated_and_added_approvals_keep_component_closures(self):
         for paths, extra in (((self.A,), None), ((self.B,), None), ((self.A, self.B), None),
                              ((self.SHARED,), None), ((self.FROZEN,), None),
-                             ((self.A,), 'rust/apps/host/src/main.rs'),
+                             ((self.A,), 'src/rust/apps/host/src/main.rs'),
                              ((self.A,), 'Future/unknown.input')):
             with self.subTest(paths=paths, extra=extra):
                 self.run_git('reset', '--hard', '-q', self.base)

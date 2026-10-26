@@ -58,12 +58,12 @@ def reject_overrides(env):
 def digest_inputs(root, cargo_home):
     paths = set(COMMON_SCAFFOLD_INPUTS)
     paths.update(('src/rust/Cargo.toml', 'src/rust/Cargo.lock', 'src/rust/rust-toolchain.toml'))
-    for directory, children, files in os.walk(root / 'rust'):
+    for directory, children, files in os.walk(root / 'src/rust'):
         children[:] = sorted(name for name in children if name not in ('target', 'node_modules', '.git', 'dist'))
         if 'Cargo.toml' in files:
             paths.add((Path(directory) / 'Cargo.toml').relative_to(root).as_posix())
     # Cargo discovers config in the invocation directory and every ancestor.
-    configs = [parent / '.cargo' / name for parent in (root / 'rust', root, *root.parents)
+    configs = [parent / '.cargo' / name for parent in (root / 'src/rust', root, *root.parents)
                for name in ('config', 'config.toml')]
     configs.extend(cargo_home / name for name in ('config', 'config.toml'))
     for path in configs:
@@ -120,7 +120,7 @@ def main():
     root = Path(__file__).resolve().parents[4]
     cargo_home = Path(os.environ.get('CARGO_HOME', str(Path.home() / '.cargo'))).resolve()
     def version(command):
-        return subprocess.check_output(command, cwd=root / 'rust', text=True).strip()
+        return subprocess.check_output(command, cwd=root / 'src/rust', text=True).strip()
     result = identity(root, cargo_home, os.environ, version(['rustc', '--version', '--verbose']),
                       version(['cargo', '--version']), os.environ.get('GITHUB_SHA', ''))
     Path(args.output).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
