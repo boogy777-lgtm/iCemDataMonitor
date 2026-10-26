@@ -43,7 +43,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          Import-Module ./rust/installer/WindowsInstaller.psm1 -Force
+          Import-Module ./src/rust/installer/WindowsInstaller.psm1 -Force
           $Tags = @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/git/matching-refs/tags/rust-v" --jq '.[].ref')
           if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate Rust tags' }
           $Tags += @(& gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases" --jq '.[].tag_name')
@@ -61,7 +61,7 @@ jobs:
       ICEM_RELEASE_VERSION: ${{ needs.resolve-version.outputs.version || '0.1.0' }}
     defaults:
       run:
-        working-directory: rust
+        working-directory: src/rust
         shell: pwsh
     steps:
       - uses: actions/checkout@v5
@@ -101,11 +101,11 @@ jobs:
           }
       - name: Smoke test extracted release outside checkout
         run: |
-          $Archive = Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
+          $Archive = Join-Path (Split-Path $PWD -Parent) "dist/src/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"
           ./tools/Test-WindowsRelease.ps1 -Archive $Archive
       - name: Install N, upgrade N+1, reject downgrade and uninstall MSI
         run: |
-          $Msi = Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"
+          $Msi = Join-Path (Split-Path $PWD -Parent) "dist/src/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"
           ./tools/Test-WindowsMsiUpgrade.ps1 -Msi $Msi
       - name: Browser contracts against the extracted release EXE
         env:
@@ -122,8 +122,8 @@ jobs:
         with:
           name: windows-x64-release
           path: |
-            dist/rust/*.msi
-            dist/rust/*.msi.sha256
+            dist/src/rust/*.msi
+            dist/src/rust/*.msi.sha256
           if-no-files-found: error
       - name: Upload release evidence
         if: always()
@@ -132,7 +132,7 @@ jobs:
           name: windows-release-evidence
           path: |
             ${{ runner.temp }}/icem-release-ui
-            rust/artifacts/msi/*.log
+            src/rust/artifacts/msi/*.log
           if-no-files-found: ignore
       - name: Remove owned smoke extraction on persistent runners
         if: always()
@@ -165,7 +165,7 @@ jobs:
           $Private = & gh repo view $env:GITHUB_REPOSITORY --json isPrivate --jq .isPrivate
           if ($LASTEXITCODE -ne 0 -or $Private -ne 'true') { throw 'This workflow publishes only inside the existing private repository.' }
           $Name = "iCemDataMonitor-rust-dev-$env:RELEASE_VERSION-windows-x64.msi"
-          $Msi = Join-Path $PWD "dist/rust/$Name"
+          $Msi = Join-Path $PWD "dist/src/rust/$Name"
           $Checksum = "$Msi.sha256"
           if ((Get-Content -Raw -LiteralPath $Checksum).Split(' ')[0] -ine (Get-FileHash -LiteralPath $Msi).Hash) { throw 'Downloaded MSI checksum mismatch' }
           $Notes = "Windows x64 Rust development installer. Source: $env:GITHUB_SHA. Installation, N to N+1 upgrade, downgrade rejection, uninstall, executable smoke and browser contracts passed in Actions run $env:GITHUB_RUN_ID. Hardware/UI equivalence and production cutover remain open. Unsigned development candidate with verified net48 AddIn. Legacy .NET MSI cutover is blocked."
