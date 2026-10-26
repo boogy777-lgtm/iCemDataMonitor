@@ -1103,11 +1103,11 @@
     {
       "path": "specs/INDEX.yaml",
       "baseline_blob_sha1": "ecc760a0add9d67f1ccc3d7e7a47355d5212d74b",
-      "approved_blob_sha1": "d4ff94f0b2de8bb87883846abb5e6f969e7be696",
+      "approved_blob_sha1": "3f9265721bf5cf8b6ce96b9f40cb3f083171db2e",
       "provenance": {
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
-        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+        "commit": "2f610180f6426b096251ae85f02e05d21ba46faf",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent independent C11 review: replace obsolete machine-local OpenCode and absent LiveGateGui instructions with a repository-relative current documentation router; distinguish historical contracts and optional AddIn plans. Actual source commit 2f610180 and PR44 provide provenance; active wire contracts are unchanged."
       },
       "operation": "modify"
     },
