@@ -2,7 +2,7 @@
 
 Монитор станции iCem (Halliburton/Burservis): Rust Host и нативная GPUI Shell,
 независимый Rust emulator, сохранённый net48 AddIn внутри vendor iCem.exe.
-Согласованный программный объём и N+1 v1.7 реализованы; [трекер и evidence](rust/docs/NPLUS1_TRACKER.ru.md)
+Согласованный программный объём и N+1 v1.7 реализованы; [трекер и evidence](src/rust/docs/NPLUS1_TRACKER.ru.md)
 отделяют завершение software от production cutover, аппаратной, операторской,
 визуальной и реальной SDK/MSI-приёмки. Имена исполняемых файлов пока содержат `-dev`.
 Это не свидетельство прохождения перечисленных release gates.
@@ -38,8 +38,8 @@ Legacy .NET assemblies остаются reference/build compatibility surface;
 - Windows MSI candidate: Rust приложения, обязательный оригинальный net48 AddIn,
   Burservis branding, repair/upgrade/uninstall и сохранение пользовательских данных.
 
-Приёмочные ограничения и точные Windows checkpoints: [N+1](rust/docs/NPLUS1_TRACKER.ru.md),
-[parity](rust/docs/PARITY_MATRIX.ru.md), [hardware](rust/docs/HARDWARE_ACCEPTANCE.ru.md).
+Приёмочные ограничения и точные Windows checkpoints: [N+1](src/rust/docs/NPLUS1_TRACKER.ru.md),
+[parity](src/rust/docs/PARITY_MATRIX.ru.md), [hardware](src/rust/docs/HARDWARE_ACCEPTANCE.ru.md).
 Слияние C11 допускается после полного Windows CI на exact head;
 актуальный verdict — в [PR44](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44).
 Успешный предыдущий N+1 run [40253303600](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/40253303600)
@@ -48,8 +48,8 @@ Legacy .NET assemblies остаются reference/build compatibility surface;
 ## Сборка и запуск Rust
 
 Windows x64, PowerShell 7.4+, Git, rustup, MSVC C++ Build Tools и Windows SDK.
-Toolchain закреплён в `rust/rust-toolchain.toml`: Rust **1.99.1**, Edition 2024.
-Из `rust/`:
+Toolchain закреплён в `src/rust/rust-toolchain.toml`: Rust **1.99.1**, Edition 2024.
+Из `src/rust/`:
 
 ```powershell
 cargo fetch --locked
@@ -101,7 +101,7 @@ pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 Все итоговые пакеты находятся в корневом `dist/`: Rust — `dist/rust/`,
 legacy MSI и доступные установщики runtime — `dist/legacy/`.
 Отсутствие обязательного AddIn/SDK — ошибка; synthetic CI DLL не заменяет release DLL.
-[Prerequisites, AddIn bundle, launcher paths и MSI](rust/installer/README.md).
+[Prerequisites, AddIn bundle, launcher paths и MSI](src/rust/installer/README.md).
 
 ## Конфигурация и стенд
 
@@ -121,19 +121,23 @@ COM/LAN по умолчанию выключены. Npcap нужен для LAN 
 
 | Путь | Назначение |
 |---|---|
-| `rust/apps/`, `rust/crates/` | Текущие Host, Shell, independent emulator, общие данные и adapters |
-| `rust/installer/`, `rust/tools/` | Windows candidate MSI, verification и release tooling |
-| `Burservis.iCem.DataMonitor/` | Сохранённый net48 AddIn внутри vendor iCem |
+| `src/rust/apps/`, `src/rust/crates/` | Текущие Host, Shell, independent emulator, общие данные и adapters |
+| `src/rust/installer/`, `src/rust/tools/` | Windows candidate MSI, verification и release tooling |
+| `src/net/Burservis.iCem.DataMonitor/` | Сохранённый net48 AddIn внутри vendor iCem |
 | Корневые `.NET` проекты, `installer/` | Legacy reference/build compatibility и исходный MSI |
-| `rust/contracts/` | Действующий OpenAPI и исторический pinned route inventory |
-| `rust/migration/` | Неизменный source manifest и exact-hash legacy divergence ledger |
+| `src/rust/contracts/` | Действующий OpenAPI и исторический pinned route inventory |
+| `src/rust/migration/` | Неизменный source manifest и exact-hash legacy divergence ledger |
 | `specs/` | Wire/config contracts и legacy спецификации с явным current-status override |
-| `docs/`, `rust/docs/` | Текущие runbooks и исторические отчёты этапов |
+| `docs/`, `src/rust/docs/` | Текущие runbooks и исторические отчёты этапов |
 
-- [Rust workspace и карта документов](rust/README.md)
-- [Архитектура](docs/architecture.md), [API](rust/docs/API_SPEC.ru.md), [ACE wire](PROTOCOL.md)
-- [Релизный процесс](docs/release.md), [план/критерии миграции](rust/docs/MIGRATION_PLAN.ru.md)
+- [Rust workspace и карта документов](src/rust/README.md)
+- [Архитектура](docs/architecture.md), [API](src/rust/docs/API_SPEC.ru.md), [ACE wire](PROTOCOL.md)
+- [Релизный процесс](docs/release.md), [план/критерии миграции](src/rust/docs/MIGRATION_PLAN.ru.md)
 - [C1–C10 history и C11 retirement](docs/LEGACY_REFACTORING_C11.ru.md)
-- [Source audit](rust/docs/SOURCE_AUDIT.ru.md), [спецификации](specs/INDEX.yaml)
+- [Source audit](src/rust/docs/SOURCE_AUDIT.ru.md), [спецификации](specs/INDEX.yaml)
 
 Лицензия: TBD; distribution terms требуют отдельного release решения.
+
+## Repository source layout
+
+The repository separates implementation by technology. All .NET/C# projects, including tests, the Legacy Host, AddIn and emulator, are in [`src/net/`](src/net/). The Rust Cargo workspace, native Host and Shell, protocol adapters and Rust tests are in [`src/rust/`](src/rust/). Root-level `iCemDataMonitor.sln`, `CI.slnf`, `Directory.Build.props`, `global.json`, `VERSION` and `build.ps1` remain stable build entry points. GitHub workflows, `installer/`, `scripts/`, `assets/`, `templates/`, `specs/` and `docs/` remain shared infrastructure. The immutable upstream source manifest records original historical paths; baseline validation maps them to the new physical source tree without rewriting provenance.

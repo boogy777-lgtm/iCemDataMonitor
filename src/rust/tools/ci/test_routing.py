@@ -189,10 +189,10 @@ class RoutingTests(unittest.TestCase):
                 'Set-Content -LiteralPath dist/legacy/SHA256SUMS.txt',
                 'gh release create "$env:GITHUB_REF_NAME" $msi dist/legacy/SHA256SUMS.txt'),
             '.github/workflows/rust-windows-release.yml': (
-                'Join-Path (Split-Path $PWD -Parent) "dist/src/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"',
-                'Join-Path (Split-Path $PWD -Parent) "dist/src/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"',
-                'dist/src/rust/*.msi', 'dist/src/rust/*.msi.sha256',
-                'path: dist/rust', 'Join-Path $PWD "dist/src/rust/$Name"'),
+                'Join-Path $env:GITHUB_WORKSPACE "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"',
+                'Join-Path $env:GITHUB_WORKSPACE "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"',
+                'dist/rust/*.msi', 'dist/rust/*.msi.sha256',
+                'path: dist/rust', 'Join-Path $PWD "dist/rust/$Name"'),
         }
         for path, fragments in expected.items():
             source = (ROOT / path).read_text(encoding='utf-8-sig')
@@ -205,7 +205,7 @@ class RoutingTests(unittest.TestCase):
         fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text()
         self.assertIn('    Test-BuildOutputPaths\n', fixture)
         for path in ('README.md', 'src/rust/README.md', 'docs/install.md', 'src/rust/installer/README.md'):
-            self.assertIn('dist/src/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
+            self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
         self.assertIn('dist/legacy/', (ROOT / 'docs/release.md').read_text(encoding='utf-8-sig'))
 
     def test_workflow_wiring(self):

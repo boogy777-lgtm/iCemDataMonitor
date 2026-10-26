@@ -1,7 +1,7 @@
 # Установка Windows candidate
 
 Текущий пакет — Rust applications + оригинальный net48 AddIn.
-Полный и поддерживаемый runbook: [rust/installer/README.md](../rust/installer/README.md).
+Полный и поддерживаемый runbook: [src/rust/installer/README.md](../src/rust/installer/README.md).
 Это development candidate с именами `*-dev.exe`; наличие MSI не закрывает
 production cutover, реальные SDK/iCem/hardware/UI/operator gates.
 

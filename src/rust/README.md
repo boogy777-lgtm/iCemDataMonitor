@@ -25,7 +25,7 @@ reference/build compatibility. [Подробная архитектура](../do
 ## Сборка
 
 Windows x64, PowerShell7.4+, Rust1.99.1 (rust-toolchain.toml), MSVC/Windows SDK.
-Из `rust/`:
+Из `src/rust/`:
 
 ```powershell
 cargo fetch --locked
