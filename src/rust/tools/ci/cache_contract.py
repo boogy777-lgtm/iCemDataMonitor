@@ -126,15 +126,15 @@ def verify(workflow, scaffold, inputs):
     for name in ('Upload independent counterpart evidence', 'Upload dashboard evidence', 'Upload emulator differential evidence', 'Record bounded cache evidence', 'Upload Cargo cache evidence'):
         require('        if: always()\n' in step(name), 'Evidence must survive failure')
     for owner in re.findall(r"Join-Path \$PSScriptRoot '([^']+)'", scaffold + inputs):
-        require('rust/tools/' + owner in COMMON_SCAFFOLD_INPUTS,
+        require('src/rust/tools/' + owner in COMMON_SCAFFOLD_INPUTS,
                 'Every common scaffold command owner must affect cache identity')
 
 
 def main():
-    root = Path(__file__).resolve().parents[3]
+    root = Path(__file__).resolve().parents[4]
     verify((root / '.github/workflows/rust-migration.yml').read_text(),
-           (root / 'rust/tools/Verify-Scaffold.ps1').read_text(),
-           (root / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text())
+           (root / 'src/rust/tools/Verify-Scaffold.ps1').read_text(),
+           (root / 'src/rust/tools/Verify-ScaffoldInputs.ps1').read_text())
     print('CI-3 cache paths, commands, guards and ordering: PASS')
 
 

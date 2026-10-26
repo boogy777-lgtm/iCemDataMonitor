@@ -9,7 +9,7 @@ import unittest
 import cache_contract
 import cache_identity as cache
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 class IdentityTests(unittest.TestCase):
@@ -20,11 +20,11 @@ class IdentityTests(unittest.TestCase):
         self.home = Path(self.temp.name) / 'cargo'
         self.home.mkdir()
         self.env = dict(RUNNER_OS='Windows', RUNNER_ARCH='X64', ImageOS='win25', ImageVersion='20261001.1')
-        for name in (*cache.COMMON_SCAFFOLD_INPUTS, 'rust/rust-toolchain.toml', 'rust/Cargo.lock', 'rust/Cargo.toml'):
+        for name in (*cache.COMMON_SCAFFOLD_INPUTS, 'src/rust/rust-toolchain.toml', 'src/rust/Cargo.lock', 'src/rust/Cargo.toml'):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, path)
-        self.pin = tomllib.loads((self.root / 'rust/rust-toolchain.toml').read_text())['toolchain']['channel']
+        self.pin = tomllib.loads((self.root / 'src/rust/rust-toolchain.toml').read_text())['toolchain']['channel']
         self.compiler = f'rustc {self.pin} (fixture 2026-09-01)\nhost: x86_64-pc-windows-msvc\nLLVM version: 23.1'
 
     def identity(self, **kwargs):
@@ -43,7 +43,7 @@ class IdentityTests(unittest.TestCase):
                 path.write_bytes(original + b'\n# changed input\n')
                 self.assertNotEqual(baseline['build_prefix'], self.identity()['build_prefix'])
                 path.write_bytes(original)
-        manifest = self.root / 'rust/crates/next/Cargo.toml'
+        manifest = self.root / 'src/rust/crates/next/Cargo.toml'
         manifest.parent.mkdir(parents=True)
         manifest.write_text('[package]\nname="next"\n')
         self.assertNotEqual(baseline['build_prefix'], self.identity()['build_prefix'])
@@ -75,7 +75,7 @@ class IdentityTests(unittest.TestCase):
 
     def test_absent_config_identity_and_unsupported_config(self):
         baseline = self.identity()['build_prefix']
-        for name in ('rust/.cargo/config', 'rust/.cargo/config.toml', '.cargo/config', '.cargo/config.toml'):
+        for name in ('src/rust/.cargo/config', 'src/rust/.cargo/config.toml', '.cargo/config', '.cargo/config.toml'):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('# Explicitly empty config\n')
@@ -90,7 +90,7 @@ class IdentityTests(unittest.TestCase):
             self.identity()
 
     def test_required_inputs_must_exist(self):
-        for name in (*cache.COMMON_SCAFFOLD_INPUTS, 'rust/Cargo.toml', 'rust/Cargo.lock', 'rust/rust-toolchain.toml'):
+        for name in (*cache.COMMON_SCAFFOLD_INPUTS, 'src/rust/Cargo.toml', 'src/rust/Cargo.lock', 'src/rust/rust-toolchain.toml'):
             path = self.root / name
             data = path.read_bytes()
             path.unlink()
@@ -100,8 +100,8 @@ class IdentityTests(unittest.TestCase):
 
     def test_documentation_is_not_a_compatibility_input(self):
         baseline = self.identity()['build_prefix']
-        (self.root / 'rust/docs').mkdir()
-        (self.root / 'rust/docs/CI_CD.ru.md').write_text('Measured evidence update\n')
+        (self.root / 'src/rust/docs').mkdir()
+        (self.root / 'src/rust/docs/CI_CD.ru.md').write_text('Measured evidence update\n')
         self.assertEqual(baseline, self.identity()['build_prefix'])
 
     def test_fail_closed_overrides(self):
@@ -140,8 +140,8 @@ class IdentityTests(unittest.TestCase):
 class ContractTests(unittest.TestCase):
     def setUp(self):
         self.workflow = (ROOT / '.github/workflows/rust-migration.yml').read_text()
-        self.scaffold = (ROOT / 'rust/tools/Verify-Scaffold.ps1').read_text()
-        self.inputs = (ROOT / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text()
+        self.scaffold = (ROOT / 'src/rust/tools/Verify-Scaffold.ps1').read_text()
+        self.inputs = (ROOT / 'src/rust/tools/Verify-ScaffoldInputs.ps1').read_text()
 
     def verify(self, workflow=None, scaffold=None, inputs=None):
         cache_contract.verify(workflow or self.workflow, scaffold or self.scaffold, inputs or self.inputs)
@@ -151,8 +151,8 @@ class ContractTests(unittest.TestCase):
 
     def test_negative_cache_path_fallback_and_condition_mutations(self):
         for before, after in (
-                ('path: rust/target/debug', 'path: rust/target'),
-                ('path: rust/target/debug', 'path: rust/target/release'),
+                ('path: src/rust/target/debug', 'path: src/rust/target'),
+                ('path: src/rust/target/debug', 'path: src/rust/target/release'),
                 ('/registry/src', ''),
                 ('restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}', 'restore-keys: ci3-debug-'),
                 ('restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}', 'restore-keys: |\n            ${{ steps.cache-identity.outputs.build_prefix }}\n            ci3-debug-'),
@@ -160,7 +160,7 @@ class ContractTests(unittest.TestCase):
                 ('name: Verify source and skeleton\n', "name: Verify source and skeleton\n        if: steps.cargo-debug.outputs.cache-hit != 'true'\n"),
                 ('name: Verify owned Host diagnostic window on Windows\n', 'name: Verify owned Host diagnostic window on Windows\n        continue-on-error: true\n'),
                 ('actions/cache/restore@v5', 'actions/cache/restore@v4'),
-                ('path: rust/target/debug', 'path: rust/target/debug\n          lookup-only: true'),
+                ('path: src/rust/target/debug', 'path: src/rust/target/debug\n          lookup-only: true'),
                 ('if: success() && steps.cargo-debug', 'if: always() && steps.cargo-debug')):
             self.assertIn(before, self.workflow)
             with self.subTest(mutation=before), self.assertRaises(ValueError):
