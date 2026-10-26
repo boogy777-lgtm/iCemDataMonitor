@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'MSI compilation requires Windows.' }
 $Root = Split-Path $PSScriptRoot -Parent
-$RepositoryRoot = Split-Path $Root -Parent
+$RepositoryRoot = Split-Path (Split-Path $Root -Parent) -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
 $Archive = (Resolve-Path -LiteralPath $Archive).Path

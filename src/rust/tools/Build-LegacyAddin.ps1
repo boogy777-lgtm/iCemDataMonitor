@@ -4,9 +4,9 @@ param([Parameter(Mandatory)] [string] $OutputDirectory)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'Build the original net48 AddIn on Windows with the installed Halliburton iCem SDK.' }
-$RepositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-Import-Module (Join-Path $RepositoryRoot 'rust/installer/LegacyAddin.psm1') -Force
-$ProjectPath = Join-Path $RepositoryRoot 'Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj'
+$RepositoryRoot = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
+Import-Module (Join-Path $RepositoryRoot 'src/rust/installer/LegacyAddin.psm1') -Force
+$ProjectPath = Join-Path $RepositoryRoot 'src/net/Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj'
 $References = @(Get-LegacyAddinSdkReferences $RepositoryRoot)
 $Sdk = @()
 foreach ($Reference in $References) {

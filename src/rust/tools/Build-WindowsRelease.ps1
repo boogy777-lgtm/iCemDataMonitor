@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows -or -not [Environment]::Is64BitOperatingSystem) { throw 'Run with PowerShell 7 on Windows x64 and MSVC Build Tools.' }
 $Root = Split-Path $PSScriptRoot -Parent
-$RepositoryRoot = Split-Path $Root -Parent
+$RepositoryRoot = Split-Path (Split-Path $Root -Parent) -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
 Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force
