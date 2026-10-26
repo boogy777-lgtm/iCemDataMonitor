@@ -70,8 +70,13 @@ jobs:
         # build, cold cache). Cap it so a hang fails fast and leaves a full log
         # for diagnosis instead of burning the 6 h job limit.
         timeout-minutes: 30
-        run: installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause
+        run: installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause -AllowMissingAddinForCi
         shell: pwsh
+
+      - name: Verify legacy MSI lifecycle with disposable payload
+        timeout-minutes: 15
+        shell: pwsh
+        run: installer/tests/Test-LegacyInstaller.ps1
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v5
@@ -91,5 +96,6 @@ jobs:
             **/TestResults/**/*.trx
             **/TestResults/**/*Sequence.xml
             **/TestResults/**/*.log
+            installer/artifacts/*.log
           if-no-files-found: warn
           retention-days: 7

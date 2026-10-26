@@ -50,5 +50,38 @@ Restart Manager сначала просит graceful shutdown; force — явн�
 Rust MSI: автоматического production cutover нет.
 
 Отдельный legacy builder `installer/build-msi.ps1` и workflow `release.yml`
-сохранены для reference compatibility; их GUID, runtime handoff и wipe policy
+сохранены для reference compatibility; их GUID и runtime handoff
 не являются политикой Rust MSI. [Релиз](release.md), [конфигурация](config.md).
+
+
+## Legacy MSI: исправленный цикл установки
+
+`installer/build-msi.ps1` сохраняет прежний UpgradeCode, ProgramData layout,
+скрытую ARP-запись и разрешённый downgrade. Замена версии теперь выполняется
+внутри MSI transaction: ошибка нового пакета откатывает удаление старого.
+Повторный запуск того же MSI ремонтирует owned files; новый build той же версии
+заменяет предыдущую регистрацию. Удаление через `msiexec /x <ProductCode>`
+сохраняет пользовательские config/data/logs. Рекурсивного wipe больше нет.
+
+Restart Manager закрывает только владельцев затронутых файлов, сначала штатно.
+Принудительное закрытие зависших владельцев требует checkbox либо
+`MSIRMSHUTDOWN=1` для текущей операции. Отмена не останавливает процессы/службы.
+Опции ярлыка и HKCU autostart по умолчанию выключены; последующие repair/upgrade
+сохраняют выбранные paths/options. CLI overrides имеют приоритет; явный `0`
+выключает опцию. Выбор относится к пользователю, выполняющему установку.
+Новые сохранённые настройки доступны начиная с этого исправления; старый MSI
+не записывал custom ICEMDIR/options, поэтому при первом переходе их следует
+передать явно. Для уже установленного старого пакета его cached uninstall
+остаётся прежним: новый MSI не может переписать код старого cached пакета.
+
+Incoming legacy MSI блокируется при установленном Rust MSI; maintenance уже
+установленного legacy продукта остаётся доступным. Автоматического cutover нет.
+Production legacy build требует реальный vendor SDK/AddIn. Исключение
+`-AllowMissingAddinForCi` разрешено только в GitHub Actions для непубликуемого
+smoke-пакета; synthetic lifecycle fixtures не доказывают SDK/runtime parity.
+
+`installer/tests/Test-LegacyInstaller.ps1` выполняет на disposable elevated
+Windows VM установку, repeat/repair, same-version rebuild, upgrade/rollback,
+разрешённый downgrade, сохранение paths/options/data, owner isolation,
+UI Back/Cancel/Remove и проверку разделения семейств MSI. Локально вне CI
+требуется явный `-AllowMachineChanges`. Тестовые MSI не входят в release.

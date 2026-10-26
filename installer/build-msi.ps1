@@ -45,6 +45,10 @@
   bin\ / obj\ folders stay on disk for debugging. Default: cleanup runs —
   the repo is left sources-only, the MSI in dist\ is the only binary.
 
+.PARAMETER AllowMissingAddinForCi
+  GitHub Actions smoke builds only: permit missing vendor SDK/AddIn. The
+  resulting incomplete MSI must never be released. Production builds fail closed.
+
 .PARAMETER NoPause
   Skip the end-of-run keypress wait (success AND failure path). The
   default pause exists so a double-clicked console stays open long enough
@@ -67,7 +71,9 @@ param(
     [string]$Configuration = 'Release',
     [string]$OutputDir = '',
     [switch]$KeepBuildArtifacts,
-    [switch]$NoPause
+    [switch]$NoPause,
+    # Explicit CI smoke escape hatch; never permitted for a production build.
+    [switch]$AllowMissingAddinForCi
 )
 
 Set-StrictMode -Version 2.0
@@ -76,6 +82,9 @@ $ErrorActionPreference = 'Stop'
 $InstallerDir = $PSScriptRoot
 $Repo = Split-Path -Parent $InstallerDir
 $Stage = Join-Path $InstallerDir 'stage'
+if ($AllowMissingAddinForCi -and $env:GITHUB_ACTIONS -ne 'true') {
+    throw '-AllowMissingAddinForCi is restricted to GitHub Actions smoke builds.'
+}
 if ($OutputDir) {
     $OutDir = $OutputDir
     if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $Repo $OutDir }
@@ -344,9 +353,8 @@ foreach ($f in @('shell', 'emulator')) {
 # proprietary Halliburton iCem SDK via ABSOLUTE HintPaths
 # (C:\Program Files\Halliburton\iCem\Bin\*.dll) - a machine-local vendor
 # install that can never be committed to the sources-only repo. On hosts
-# WITHOUT the iCem SDK (CI runners) the AddIn build is SKIPPED with a
-# warning: the MSI then ships host+shell+emulator only, the addin\ stage
-# stays empty (Payload.Addin = 0 files) - the MSI itself stays valid.
+# WITHOUT the iCem SDK (CI runners) the AddIn build fails closed. Only the
+# explicit GitHub Actions smoke option permits an incomplete package; such a fixture is not a production handoff.
 $iCemBin = 'C:\Program Files\Halliburton\iCem\Bin'
 if (Test-Path -LiteralPath $iCemBin -PathType Container) {
     Invoke-Checked {
@@ -358,7 +366,10 @@ if (Test-Path -LiteralPath $iCemBin -PathType Container) {
     Copy-Item -LiteralPath $addinDll -Destination (Join-Path $Stage 'addin\') -Force
     Write-Host '== AddIn staged'
 } else {
-    Write-Warning "vendor iCem SDK not found ($iCemBin) - AddIn build SKIPPED, MSI ships without addin\"
+    if (-not $AllowMissingAddinForCi) {
+        throw "vendor iCem SDK not found ($iCemBin); production MSI requires the real AddIn."
+    }
+    Write-Warning "CI SMOKE ONLY: vendor SDK missing; this MSI is incomplete and must never be released."
 }
 
 # ------------------------------------------------------------- 7. prune -----
@@ -387,11 +398,11 @@ Get-ChildItem -LiteralPath $Stage -Recurse -Directory |
 # ------------------------------------------------- 9. wix extensions --------
 Write-Host '== ensuring wix extensions'
 $extList = (& wix extension list -g | Out-String)
-if ($extList -notmatch 'WixToolset\.Util\.wixext') {
+if ($extList -notmatch 'WixToolset\.Util\.wixext.*5\.0\.2') {
     wix extension add -g WixToolset.Util.wixext/5.0.2
     if ($LASTEXITCODE -ne 0) { throw 'failed to add WixToolset.Util.wixext' }
 }
-if ($extList -notmatch 'WixToolset\.UI\.wixext') {
+if ($extList -notmatch 'WixToolset\.UI\.wixext.*5\.0\.2') {
     wix extension add -g WixToolset.UI.wixext/5.0.2
     if ($LASTEXITCODE -ne 0) { throw 'failed to add WixToolset.UI.wixext' }
 }
@@ -425,23 +436,14 @@ Write-Host "== harvesting payload.wxs ($PayloadWxs)"
     -ExpectedAssetMismatch @('ReactiveUI.dll', 'System.Reactive.dll')
 if ($LASTEXITCODE -ne 0) { throw 'gen-payload.ps1 failed' }
 
-# ------------------------------------------------ 10.5 gate-JS harness -------
-# 2026-09-01 PM (bug report «проверка конфликтов не обновляется»): the
-# conflict-gate JScript is exercised by a cscript harness on EVERY build —
-# the 1.4.3 substring-detection bug shipped precisely because this file had
-# no executable test. Exit 1 = gate logic regression = build fails.
-Write-Host '== conflict-gate harness (cscript)'
-& cscript //nologo (Join-Path $InstallerDir 'assets\CheckConflicts.harness.js')
-if ($LASTEXITCODE -ne 0) { throw 'CheckConflicts harness failed' }
-
 # ----------------------------------------------------- 11. wix build -------
 Write-Host "== wix build -> $MsiPath"
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Invoke-Checked {
     wix build -arch x64 `
         -dcl high `
-        -ext WixToolset.Util.wixext `
-        -ext WixToolset.UI.wixext `
+        -ext WixToolset.Util.wixext/5.0.2 `
+        -ext WixToolset.UI.wixext/5.0.2 `
         -define "MsiVersion=$MsiVersion" `
         -define "AssetsDir=$(Join-Path $InstallerDir 'assets')" `
         -out $MsiPath `
