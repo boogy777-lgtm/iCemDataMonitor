@@ -28,7 +28,7 @@ jobs:
       - name: Classify verified changed paths (unknown input selects all)
         id: route
         shell: pwsh
-        run: python rust/tools/ci/routing.py classify
+        run: python src/rust/tools/ci/routing.py classify
   baseline:
     timeout-minutes: 10
     runs-on: windows-latest
@@ -36,10 +36,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Test immutable baseline guard
         shell: pwsh
-        run: ./rust/tools/Test-BaselineGuard.ps1
+        run: ./src/rust/tools/Test-BaselineGuard.ps1
       - name: Verify complete legacy baseline and approvals
         shell: pwsh
-        run: ./rust/tools/Verify-Baseline.ps1 -RequireComplete
+        run: ./src/rust/tools/Verify-Baseline.ps1 -RequireComplete
   routing-tests:
     timeout-minutes: 5
     runs-on: windows-latest
@@ -50,7 +50,7 @@ jobs:
           python-version: '3.12'
       - name: Routing, diff, dependency and gate contracts
         shell: pwsh
-        run: python -m unittest discover -s rust/tools/ci -p "test_*.py" -v
+        run: python -m unittest discover -s src/rust/tools/ci -p "test_*.py" -v
   legacy:
     needs: classify
     if: needs.classify.outputs.legacy == 'true'
@@ -78,4 +78,4 @@ jobs:
         shell: pwsh
         env:
           CI_NEEDS_JSON: ${{ toJSON(needs) }}
-        run: python rust/tools/ci/routing.py gate
+        run: python src/rust/tools/ci/routing.py gate

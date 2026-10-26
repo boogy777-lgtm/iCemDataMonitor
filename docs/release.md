@@ -1,18 +1,18 @@
 # Релизный процесс
 
-Software implementation и [N+1 v1.7](../rust/docs/NPLUS1_TRACKER.ru.md) завершены.
+Software implementation и [N+1 v1.7](../src/rust/docs/NPLUS1_TRACKER.ru.md) завершены.
 Release acceptance — отдельная проверка: exact-head Windows CI, реальный SDK-built
 AddIn, загрузка в iCem, hardware/operator/visual walkthrough и distribution terms.
 Текущий Rust MSI остаётся development candidate; `*-dev.exe` не переименованы.
 
 ## Rust Windows release
 
-[Полный runbook](../rust/installer/README.md), workflow
+[Полный runbook](../src/rust/installer/README.md), workflow
 `.github/workflows/rust-windows-release.yml` (фактический файл workflow — источник
 параметров). Сборка из корня:
 
 ```powershell
-pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
+pwsh -NoProfile -File .\src\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
 Требуются Windows x64/PowerShell7.4+, Rust pin/MSVC/SDK, .NET SDK/WiX5.0.2 и

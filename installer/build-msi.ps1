@@ -209,9 +209,9 @@ foreach ($p in @(@('iCemDataMonitor.Host', $false),
     $proj = $p[0]; $x64 = $p[1]
     Write-Host "== clean $proj (Configuration=$Configuration)"
     if ($x64) {
-        dotnet clean (Join-Path $Repo $proj) -c $Configuration -p:Platform=x64 -v minimal
+        dotnet clean (Join-Path (Join-Path $Repo 'src/net') $proj) -c $Configuration -p:Platform=x64 -v minimal
     } else {
-        dotnet clean (Join-Path $Repo $proj) -c $Configuration -v minimal
+        dotnet clean (Join-Path (Join-Path $Repo 'src/net') $proj) -c $Configuration -v minimal
     }
     if ($LASTEXITCODE -ne 0) { throw "clean failed: $proj (exit $LASTEXITCODE)" }
 }
@@ -240,7 +240,7 @@ foreach ($p in @(@('iCemDataMonitor.Host', $false),
 # payload dedupe reported 7 keep-first mismatches on iCemDataMonitor.*.dll
 # (same sources, different MVID/platform flags). One platform = one binary.
 Invoke-Checked {
-    dotnet publish (Join-Path $Repo 'iCemDataMonitor.Host') `
+    dotnet publish (Join-Path $Repo 'src/net/iCemDataMonitor.Host') `
         -c $Configuration -r win-x64 -p:Platform=x64 `
         "-p:SatelliteResourceLanguages=en%3Bru" `
         -o (Join-Path $Stage 'host')
@@ -251,7 +251,7 @@ Invoke-Checked {
 # crash hit the SHELL publish on the 1.4.1 build (it is no longer exclusive
 # to the emulator's graph; both WinUI publishes are equally large).
 Invoke-CheckedWithRetry {
-    dotnet publish (Join-Path $Repo 'iCemDataMonitor.Shell.WinUI') `
+    dotnet publish (Join-Path $Repo 'src/net/iCemDataMonitor.Shell.WinUI') `
         -c $Configuration -p:Platform=x64 "-p:SatelliteLanguages=en%3Bru" `
         -o (Join-Path $Stage 'shell')
 } "publish Shell.WinUI ($Configuration, Platform=x64, SatelliteLanguages=en;ru)"
@@ -272,7 +272,7 @@ Invoke-CheckedWithRetry {
 # the dev-loop output pin (bin\x64\<Config>\net10.0-windows10.0.19041.0\
 # iCemEmulator.exe, no \win-x64 folder) is untouched; publish uses -o anyway.
 Invoke-CheckedWithRetry {
-    dotnet publish (Join-Path $Repo 'iCemEmulator\iCemEmulator.csproj') `
+    dotnet publish (Join-Path $Repo 'src/net/iCemEmulator\iCemEmulator.csproj') `
         -c $Configuration -p:Platform=x64 -r win-x64 "-p:SatelliteLanguages=en%3Bru" `
         -o (Join-Path $Stage 'emulator')
 } "publish iCemEmulator ($Configuration, Platform=x64, RID=win-x64, SatelliteLanguages=en;ru)"
@@ -369,10 +369,10 @@ foreach ($f in @('shell', 'emulator')) {
 $iCemBin = 'C:\Program Files\Halliburton\iCem\Bin'
 if (Test-Path -LiteralPath $iCemBin -PathType Container) {
     Invoke-Checked {
-        dotnet build (Join-Path $Repo 'Burservis.iCem.DataMonitor\Burservis.iCem.DataMonitor.csproj') `
+        dotnet build (Join-Path $Repo 'src/net/Burservis.iCem.DataMonitor\Burservis.iCem.DataMonitor.csproj') `
             -c $Configuration
     } "build Burservis.iCem.DataMonitor ($Configuration)"
-    $addinDll = Join-Path $Repo "Burservis.iCem.DataMonitor\bin\$Configuration\Burservis.iCem.DataMonitor.dll"
+    $addinDll = Join-Path $Repo "src/net/Burservis.iCem.DataMonitor\bin\$Configuration\Burservis.iCem.DataMonitor.dll"
     if (-not (Test-Path -LiteralPath $addinDll)) { throw "AddIn dll not found: $addinDll" }
     Copy-Item -LiteralPath $addinDll -Destination (Join-Path $Stage 'addin\') -Force
     Write-Host '== AddIn staged'

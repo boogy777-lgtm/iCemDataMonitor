@@ -14,7 +14,7 @@ jobs:
           dotnet-version: 10.0.x
       - name: Build unchanged net48 project with the installed proprietary SDK
         shell: pwsh
-        run: ./rust/tools/Build-LegacyAddin.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'net48-addin')
+        run: ./src/rust/tools/Build-LegacyAddin.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'net48-addin')
       - name: Upload verified AddIn only (no vendor SDK redistribution)
         uses: actions/upload-artifact@v4
         with:

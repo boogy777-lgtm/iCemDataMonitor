@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 50
     defaults:
       run:
-        working-directory: rust
+        working-directory: src/rust
     steps:
       - uses: actions/checkout@v5
       - name: Install pinned toolchain
@@ -58,8 +58,27 @@ jobs:
         if: ${{ !cancelled() && steps.release-build.outcome == 'success' }}
         shell: pwsh
         run: |
-          python tools/perf/windows_heap.py --output "$env:RUNNER_TEMP/icem-release-measurements/heap"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $HeapPath = "$env:RUNNER_TEMP/icem-release-measurements/heap"
+          python tools/perf/windows_heap.py --output $HeapPath
+          if ($LASTEXITCODE -ne 0) {
+            $SummaryPath = Join-Path $HeapPath 'heap-summary.json'
+            if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) { throw 'Heap profile failed without evidence' }
+            $Summary = Get-Content -Raw -LiteralPath $SummaryPath | ConvertFrom-Json
+            # Only an intact cleanup and a recognized ETW recording loss can trigger a new capture.
+            if ($Summary.status -ne 'OPEN' -or @($Summary.cleanup_errors).Count -ne 0 -or
+                $Summary.error -notmatch 'Events were lost in this trace|ETW lost events/buffers') {
+              throw "Heap profile failure is not recoverable ETW loss: $($Summary.error)"
+            }
+            Write-Warning 'Heap trace lost ETW events; preserving first evidence and attempting one new independent capture.'
+            $RetryPath = "$env:RUNNER_TEMP/icem-release-measurements/heap-retry"
+            python tools/perf/windows_heap.py --output $RetryPath
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $RetrySummary = Get-Content -Raw -LiteralPath (Join-Path $RetryPath 'heap-summary.json') | ConvertFrom-Json
+            if ($RetrySummary.status -ne 'RECORDED_RAW_HEAP_TOTALS' -or @($RetrySummary.cleanup_errors).Count -ne 0) {
+              throw 'Repeated heap capture did not produce clean evidence'
+            }
+            'Heap capture: first attempt rejected due to ETW event loss; independent verified retry accepted. Both captures archived.' >> $env:GITHUB_STEP_SUMMARY
+          }
       - name: Upload raw Release measurements
         if: always()
         uses: actions/upload-artifact@v4

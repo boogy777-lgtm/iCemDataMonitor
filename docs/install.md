@@ -1,7 +1,7 @@
 # Установка Windows candidate
 
 Текущий пакет — Rust applications + оригинальный net48 AddIn.
-Полный и поддерживаемый runbook: [rust/installer/README.md](../rust/installer/README.md).
+Полный и поддерживаемый runbook: [src/rust/installer/README.md](../src/rust/installer/README.md).
 Это development candidate с именами `*-dev.exe`; наличие MSI не закрывает
 production cutover, реальные SDK/iCem/hardware/UI/operator gates.
 
@@ -15,7 +15,7 @@ Legacy .NET 10/WinAppSDK/WebView2 prerequisites относятся к отдел
 Windows x64, PowerShell 7.4+, MSVC/Windows SDK, Rust pin, .NET SDK и WiX 5.0.2:
 
 ```powershell
-pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
+pwsh -NoProfile -File .\src\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
 Без реального iCem SDK либо verified SDK-built AddIn bundle сборка завершается

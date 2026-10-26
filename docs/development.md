@@ -1,15 +1,15 @@
 # Разработка
 
-Текущий application workspace — `rust/`; [README](../README.md) содержит
-проверенные entry points, [Rust README](../rust/README.md) — подробные ссылки.
+Текущий application workspace — `src/rust/`; [README](../README.md) содержит
+проверенные entry points, [Rust README](../src/rust/README.md) — подробные ссылки.
 Software implementation и N+1 v1.7 завершены; обязательные exact-head Windows CI,
 реальные SDK/AddIn, hardware/operator/visual и production-release gates различаются.
 
 ## Rust
 
 Windows x64, PowerShell 7.4+, Git, rustup, MSVC Build Tools + Windows SDK.
-Toolchain 1.99.1/Edition 2024 задан в `rust/rust-toolchain.toml`.
-Из `rust/`:
+Toolchain 1.99.1/Edition 2024 задан в `src/rust/rust-toolchain.toml`.
+Из `src/rust/`:
 
 ```powershell
 cargo fetch --locked
@@ -23,7 +23,7 @@ pwsh -NoProfile -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
 
 Первый fetch требует сети; последующие Rust checks работают offline.
 Browser checks используют npm lockfile. Pure/Linux checks не доказывают Windows
-MMF/COM/UI. Следовать [CI workflow/gates](../rust/docs/CI_CD.ru.md).
+MMF/COM/UI. Следовать [CI workflow/gates](../src/rust/docs/CI_CD.ru.md).
 
 Для fixture smoke:
 
@@ -36,11 +36,11 @@ cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixture
 Для штатного запуска использовать `icem-shell-dev.exe`; emulator запускается
 отдельно (`icem-emulator-engine-dev.exe`). Host: `--ini PATH`, `snapshot`, `get main`,
 `header`, `stop|restart`; `--start` обеспечивает отсутствующий Host для CLI.
-См. [HOST_E11](../rust/docs/HOST_E11.ru.md) и [emulator CLI](../rust/docs/EMULATOR_E24.ru.md).
+См. [HOST_E11](../src/rust/docs/HOST_E11.ru.md) и [emulator CLI](../src/rust/docs/EMULATOR_E24.ru.md).
 
 ## Legacy reference/build compatibility
 
-Корневая `iCemDataMonitor.sln`, `.NET` assemblies и `installer/` сохранены.
+Корневая `iCemDataMonitor.sln`, исходники `src/net/` и `installer/` сохранены.
 Их сборка не переключает приложение на production Rust. Для reference build
 нужен Windows x64, .NET SDK из `global.json` (10.0.302), WinUI tooling;
 net48 AddIn требует настоящие vendor references из установки iCem.
@@ -52,7 +52,7 @@ dotnet test CI.slnf --filter "Category!=Live" -p:Platform=x64
 
 Полный legacy Windows gate задаётся `.github/workflows/ci.yml`, а не успехом
 изолированного Linux-теста. Никаких SDK stubs для release AddIn.
-[MSI build и prerequisites](../rust/installer/README.md).
+[MSI build и prerequisites](../src/rust/installer/README.md).
 
 ## Стенд и обслуживание
 
@@ -64,7 +64,7 @@ Sniffer Host — пассивная диагностика. Tee/Com0ComMonitor/a
 тесты этих исключительно удалённых wrappers не входят в текущий suite.
 [Точный retirement и проверки](LEGACY_REFACTORING_C11.ru.md).
 
-[Managed logging](../rust/docs/HOST_E12.ru.md), [конфиг](config.md),
-[аппаратная приёмка](../rust/docs/HARDWARE_ACCEPTANCE.ru.md).
+[Managed logging](../src/rust/docs/HOST_E12.ru.md), [конфиг](config.md),
+[аппаратная приёмка](../src/rust/docs/HARDWARE_ACCEPTANCE.ru.md).
 Исторические C1–C10 и инкрементальные Rust отчёты сохраняют факты своих commits;
 их прежние NEXT/TODO не являются новым согласованным coding backlog.
