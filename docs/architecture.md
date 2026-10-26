@@ -1,7 +1,7 @@
 # Архитектура программного проекта
 
 Текущее software-состояние: Rust Host/Shell + независимый Rust emulator,
-сохранённый vendor iCem и net48 AddIn. [Реализация N+1 v1.7](../rust/docs/NPLUS1_TRACKER.ru.md)
+сохранённый vendor iCem и net48 AddIn. [Реализация N+1 v1.7](../src/rust/docs/NPLUS1_TRACKER.ru.md)
 завершена; hardware/operator/visual acceptance и production cutover проверяются отдельно.
 
 ![Единственный AddIn writer, общий acquisition и независимые потребители](images/software-architecture.svg)
@@ -48,7 +48,7 @@ Magic STNB, protocol 1, header 64 bytes, `N` BE u16 registers; размер `64+
 `0..3` — state/heartbeat; `4..199` — COM (4–5 int32 Unix time);
 `200..399` — LAN/cRIO; `400..599` — raw COM positional values;
 `600..10000` — резерв ace_full, writer отсутствует. Старые layouts мигрирует AddIn.
-[Точный byte/IPC/API контракт](../rust/docs/API_SPEC.ru.md).
+[Точный byte/IPC/API контракт](../src/rust/docs/API_SPEC.ru.md).
 
 ## Границы текущего проекта
 
@@ -58,10 +58,10 @@ Runtime Rust: `icem-host-dev.exe`, `icem-shell-dev.exe`, `icem-emulator-engine-d
 Неизменность frozen proto/SPA/assets, pinned source manifest и desktop inventory
 проверяется отдельно от согласованных legacy divergences.
 
-[Модули Rust и безопасные границы](../rust/docs/ARCHITECTURE.ru.md),
-[конфиг](config.md), [MSI](../rust/installer/README.md),
-[активный OpenAPI](../rust/contracts/http/openapi.json).
-Pinned [route inventory](../rust/contracts/http/route-inventory.json) описывает
+[Модули Rust и безопасные границы](../src/rust/docs/ARCHITECTURE.ru.md),
+[конфиг](config.md), [MSI](../src/rust/installer/README.md),
+[активный OpenAPI](../src/rust/contracts/http/openapi.json).
+Pinned [route inventory](../src/rust/contracts/http/route-inventory.json) описывает
 базу `96e2206`, а не current source tree: 21 бывший dormant route retired C11;
 четыре активных GET не изменены. Capture-to-file internals legacy
 AceSnifferService не удалялись автоматически вместе с REST wrappers.
