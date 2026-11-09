@@ -1,9 +1,11 @@
 # Windows installer: Rust applications + original net48 AddIn
 
-Build on Windows x64 in PowerShell 7.4+, with Git, rustup, MSVC x64/Windows SDK,
+Build on Windows x64 in PowerShell 7.6 (.NET 10), with Git, rustup, MSVC x64/Windows SDK,
 .NET SDK 10 and the installed Halliburton iCem SDK. Rust is pinned by
 `rust-toolchain.toml`; WiX/extensions use the existing 5.0.2 pin in
 `installer/.config/dotnet-tools.json`. No Linux application build is required.
+Put this PowerShell executable first on PATH: differential tests launch `pwsh`
+to run original net10 code; PowerShell 7.4/.NET 8 has incompatible BCL semantics.
 
 From the repository root:
 

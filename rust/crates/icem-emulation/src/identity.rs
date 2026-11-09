@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn complete_scalar_domain_has_sorted_minimal_idempotent_classes() {
-        assert_eq!(table::MAPPINGS.len(), 1440);
+        assert_eq!(table::MAPPINGS.len(), 1462);
         assert!(table::MAPPINGS.windows(2).all(|pair| pair[0].0 < pair[1].0));
         // Fixed ASCII protocol/DFB names may retain ASCII-only comparison:
         // this baseline has no ordinal class crossing the ASCII boundary.

@@ -2,6 +2,12 @@
 param([switch] $RequireCompleteBaseline)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
+# The external pwsh hosts original net10 code in BCL differential tests.
+# Older runtimes differ in float-to-integer conversion and Unicode behavior.
+$OracleRuntime = & pwsh -NoProfile -Command '[Environment]::Version.Major'
+if ($LASTEXITCODE -ne 0 -or "$OracleRuntime".Trim() -ne '10') {
+    throw 'BCL differential tests require pwsh on .NET 10 (PowerShell 7.6); put that executable first on PATH.'
+}
 Push-Location $Root
 try {
     & (Join-Path $PSScriptRoot 'Test-BaselineGuard.ps1')
