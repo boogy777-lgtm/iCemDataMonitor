@@ -141,10 +141,13 @@ impl View {
             return;
         }
         let logs = command.local;
+        let log_command = command.command;
         match self.bridge.send_logs(command) {
             Ok(()) => {
                 if logs {
-                    self.model.local_logs.pending = true;
+                    self.model.local_logs.submitted(log_command);
+                } else {
+                    self.model.host_logs.submitted(log_command);
                 }
             }
             Err(error) => self.model.note = format!("⚠ {error}"),
@@ -156,7 +159,7 @@ impl View {
         }
     }
     fn poll(&mut self) {
-        if !self.model.local_logs.pending {
+        if self.model.local_logs.can_submit(icem_logging::Command::Get) {
             self.send_logs(crate::logs::Request {
                 local: true,
                 command: icem_logging::Command::Get,

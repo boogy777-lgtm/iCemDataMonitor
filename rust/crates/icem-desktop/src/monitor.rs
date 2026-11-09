@@ -6,6 +6,7 @@ use gpui::{
     App, Application, Bounds, Context, Window, WindowBounds, WindowOptions, div, prelude::*, px,
     rgba, size,
 };
+use icem_web::protocol_control::Command as ProtocolCommand;
 use icem_web::shell::{Layer, LogCommand, Operation, Request, Selection};
 use std::{
     sync::Arc,
@@ -40,31 +41,56 @@ impl Monitor {
         )
     }
     fn send(&mut self, command: Request) {
-        let view = match &command {
-            Request::Logs(_) => Some(&self.model.host_logs),
-            Request::LocalLogs(_) => Some(&self.model.local_logs),
+        let protocol = match &command {
+            Request::Protocols(action) => Some(*action),
             _ => None,
         };
-        if let Some(view) = view {
-            let get = matches!(
-                command,
-                Request::Logs(LogCommand::Get) | Request::LocalLogs(LogCommand::Get)
-            );
-            if if get {
-                view.pending
-            } else {
-                !view.actionable()
-            } {
+        if let Some(action) = protocol {
+            if !self.model.protocols.can_submit(action)
+                || (matches!(action, ProtocolCommand::Set { .. })
+                    && (!self.model.connected || !self.model.protocols.fresh))
+            {
+                return;
+            }
+            if let ProtocolCommand::Set { protocol, enabled } = action
+                && !self
+                    .model
+                    .protocols
+                    .state(protocol)
+                    .is_some_and(|s| s.configured && s.enabled != enabled)
+            {
                 return;
             }
         }
-        let operation = command.operation();
+        let log = match &command {
+            Request::Logs(action) => Some((false, *action)),
+            Request::LocalLogs(action) => Some((true, *action)),
+            _ => None,
+        };
+        if let Some((local, action)) = log {
+            let view = if local {
+                &self.model.local_logs
+            } else {
+                &self.model.host_logs
+            };
+            if !view.can_submit(action) {
+                return;
+            }
+        }
         match self.bridge.send(command) {
-            Ok(()) => match operation {
-                Operation::Logs => self.model.host_logs.pending = true,
-                Operation::LocalLogs => self.model.local_logs.pending = true,
-                _ => {}
-            },
+            Ok(()) => {
+                if let Some(action) = protocol {
+                    self.model.protocols.submitted(action);
+                }
+                if let Some((local, action)) = log {
+                    let view = if local {
+                        &mut self.model.local_logs
+                    } else {
+                        &mut self.model.host_logs
+                    };
+                    view.submitted(action);
+                }
+            }
             Err(error) => self.model.note = format!("⚠ {error}"),
         }
     }
@@ -276,9 +302,31 @@ impl Render for Monitor {
                 Request::Layer(Layer::LanSniffer),
                 self.model.can_toggle_sniffer(),
                 cx,
-            ))
+            ));
+        for descriptor in crate::protocol_view::CONTROLS {
+            let state = self.model.protocols.state(descriptor.protocol);
+            let view = crate::protocol_view::display(
+                descriptor,
+                state,
+                self.model.connected && self.model.protocols.fresh,
+                self.model.protocols.mutation.is_some(),
+            );
+            facts = facts.child(self.toggle(
+                descriptor.id,
+                &format!("{} · {}", descriptor.label, view.detail),
+                view.on,
+                Request::Protocols(ProtocolCommand::Set {
+                    protocol: descriptor.protocol,
+                    enabled: !view.on,
+                }),
+                view.actionable,
+                cx,
+            ));
+        }
+        facts = facts
+            .child(self.model.protocols.note.clone())
             .child(format!(
-                "OPC DA: {}",
+                "OPC DA: legacy-флаг INI = {} (не состояние сервера)",
                 layers
                     .map(|s| s.opc_da.to_string())
                     .unwrap_or_else(|| "—".into())
@@ -563,6 +611,11 @@ pub fn run_monitor(port: Arc<dyn host::Port>) -> std::io::Result<()> {
                             }
                         }
                         if Instant::now() >= due {
+                            if v.model.connected
+                                && v.model.protocols.can_submit(ProtocolCommand::Get)
+                            {
+                                v.send(Request::Protocols(ProtocolCommand::Get));
+                            }
                             if !v.model.local_logs.pending {
                                 v.send(Request::LocalLogs(LogCommand::Get));
                             }

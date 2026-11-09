@@ -94,3 +94,53 @@ fn missing_http_reply_is_not_fresh_and_rejected_is_distinct_from_unknown() {
     assert!(!view.note.contains("неизвестен"));
     assert_eq!(view.enabled(), Some(false));
 }
+
+#[test]
+fn repeated_background_reads_preserve_controls_and_description() {
+    for enabled in [false, true] {
+        let mut view = LogView::default();
+        view.apply(Ok(reply(Some(enabled), Outcome::Completed)));
+        let description = view.description();
+        for _ in 0..100 {
+            assert!(view.can_submit(Command::Get));
+            view.submitted(Command::Get);
+            assert!(!view.can_submit(Command::Get));
+            assert!(view.actionable());
+            assert_eq!(view.description(), description);
+            view.apply(Ok(reply(Some(enabled), Outcome::Completed)));
+            assert!(view.actionable());
+            assert_eq!(view.description(), description);
+        }
+    }
+}
+
+#[test]
+fn read_before_mutation_cannot_acknowledge_mutation_and_failures_recover() {
+    for command in [Command::Clear, Command::SetEnabled(false)] {
+        let mut view = LogView::default();
+        view.apply(Ok(reply(Some(true), Outcome::Completed)));
+        view.submitted(Command::Get);
+        assert!(view.can_submit(command));
+        view.submitted(command);
+        assert!(!view.actionable());
+        assert!(!view.can_submit(Command::Get));
+        assert!(view.description().contains("выполняется"));
+        view.apply(Ok(reply(Some(true), Outcome::Completed)));
+        assert!(view.pending);
+        assert!(!view.actionable());
+        view.apply(Err(ControlError::unknown("lost")));
+        assert!(!view.pending);
+        assert!(!view.fresh);
+        assert!(view.note.contains("автоматического повтора нет"));
+        assert!(view.can_submit(Command::Get));
+        view.submitted(Command::Get);
+        view.apply(Err(ControlError::rejected("offline")));
+        assert!(!view.actionable());
+        assert!(view.note.contains("отклонена"));
+        view.submitted(Command::Get);
+        view.apply(Ok(reply(Some(false), Outcome::Completed)));
+        assert!(view.actionable());
+        assert_eq!(view.enabled(), Some(false));
+        assert!(view.note.is_empty());
+    }
+}

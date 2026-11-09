@@ -70,6 +70,8 @@ pub struct WebState {
     pub(crate) desktop_endpoint: crate::desktop_endpoint::EndpointSlot,
     pub(crate) console_requests: Option<mpsc::SyncSender<ConsoleRequest>>,
     pub(crate) log_requests: Option<mpsc::SyncSender<crate::log_control::LogRequest>>,
+    pub(crate) protocol_requests:
+        Option<mpsc::SyncSender<crate::protocol_control::ProtocolRequest>>,
     /// Read-once startup capability. Deferred Web toggles cannot change routes/history.
     pub(crate) web_enabled: bool,
     pub(crate) boot: crate::BootStages,
@@ -96,6 +98,7 @@ impl WebState {
                 desktop_endpoint: Arc::new(Mutex::new(None)),
                 console_requests: None,
                 log_requests: None,
+                protocol_requests: None,
                 web_enabled: layers.web,
                 boot: crate::BootStages::default(),
                 navigation: crate::navigation::Navigation::default(),

@@ -1,0 +1,15 @@
+{
+  "application_commit": "c7b0b45884f5af04e7ee969cdb15cd26ede0fb58",
+  "target": "Windows x64 Release",
+  "test": "optional_consumers::tests::real_da_sidecar_owned_start_and_stop",
+  "explicit_ignored_run": true,
+  "passed": 1,
+  "failed": 0,
+  "ignored": 0,
+  "start_stop_cycles": 2,
+  "persistent_registration_invoked": false,
+  "external_com_client_tested": false,
+  "application_data_isolated": true,
+  "transcript_captures_native_test_stdout": false,
+  "native_result_source": "Completed tool run sh_1c025086f001YxEkzQov8RSEJo"
+}

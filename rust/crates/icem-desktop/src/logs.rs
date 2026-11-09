@@ -10,6 +10,7 @@ pub struct LogView {
     pub data: Option<Status>,
     pub fresh: bool,
     pub pending: bool,
+    get_pending: bool,
     pub note: String,
 }
 impl LogView {
@@ -19,11 +20,29 @@ impl LogView {
     pub fn actionable(&self) -> bool {
         self.fresh && !self.pending && self.data.as_ref().is_some_and(|s| s.available)
     }
+    /// The worker processes accepted requests in order. A mutation may follow a
+    /// read, but a new read must not pass an outstanding mutation.
+    pub fn can_submit(&self, command: Command) -> bool {
+        match command {
+            Command::Get => !self.get_pending && !self.pending,
+            Command::SetEnabled(_) | Command::Clear => self.actionable(),
+        }
+    }
+    pub fn submitted(&mut self, command: Command) {
+        match command {
+            Command::Get => self.get_pending = true,
+            Command::SetEnabled(_) | Command::Clear => self.pending = true,
+        }
+    }
     pub fn command(&self, local: bool, command: Command) -> Request {
         Request { local, command }
     }
     pub fn apply(&mut self, result: Result<Reply, ControlError>) {
-        self.pending = false;
+        if self.get_pending {
+            self.get_pending = false;
+        } else {
+            self.pending = false;
+        }
         match result {
             Ok(reply) if reply.status.consistent() => {
                 self.fresh = true;

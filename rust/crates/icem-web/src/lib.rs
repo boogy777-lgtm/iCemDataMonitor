@@ -8,6 +8,7 @@ pub mod shell;
 pub use boot::BootStages;
 pub mod log_control;
 mod model;
+pub mod protocol_control;
 pub mod registry;
 mod rest;
 mod rpc;

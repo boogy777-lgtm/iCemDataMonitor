@@ -33,6 +33,7 @@ mod modbus_consumer;
 mod mqtt_consumer;
 mod opc_da_consumer;
 mod opcua_consumer;
+mod optional_consumers;
 mod web_consumer;
 #[cfg(windows)]
 mod windows;
@@ -355,23 +356,20 @@ fn run<D: icem_platform_windows::console::Device>(
     boot.complete("composition", None)?;
     boot.begin("layers", "слои")?;
     let mut consumers = consumers::Registry::new();
-    if let Some(config) = options.opc_da_config {
-        let server = opc_da_consumer::start(config, acquisition.snapshot_reader())?;
-        consumers
-            .register(consumers::ConsumerId("opc-da"), Box::new(server))
-            .map_err(|_| "duplicate or full consumer registration")?;
-    }
-    if let Some(config) = options.opcua {
-        let server = opcua_consumer::start(config, acquisition.snapshot_reader())?;
-        consumers
-            .register(consumers::ConsumerId("opcua"), Box::new(server))
-            .map_err(|_| "duplicate or full consumer registration")?;
-    }
-    if let Some(config) = options.mqtt {
-        let publisher = mqtt_consumer::start(config, acquisition.snapshot_reader())?;
-        consumers
-            .register(consumers::ConsumerId("mqtt"), Box::new(publisher))
-            .map_err(|_| "duplicate or full consumer registration")?;
+    let mut optional = optional_consumers::OptionalConsumers::new(
+        options.mqtt.take(),
+        options.opcua.take(),
+        options.opc_da_config.take(),
+        acquisition.snapshot_reader(),
+    );
+    for protocol in [
+        optional_consumers::Protocol::OpcDa,
+        optional_consumers::Protocol::OpcUa,
+        optional_consumers::Protocol::Mqtt,
+    ] {
+        if optional.state(&consumers, protocol).configured {
+            optional.set_enabled(&mut consumers, protocol, true)?;
+        }
     }
     let (server_slot, modbus_handle) = modbus_consumer::start(
         modbus_consumer::Config {
@@ -462,6 +460,7 @@ fn run<D: icem_platform_windows::console::Device>(
     web.attach_navigation(Arc::new(windows::ShellSignals));
     let console_requests = web.enable_console_control();
     let layer_requests = web.enable_layer_control();
+    let protocol_requests = web.enable_protocol_control();
     let log_requests = web.enable_log_control();
     layers::publish_sniffer(&sniffer, &web)?;
     web.observe(&first);
@@ -587,6 +586,13 @@ fn run<D: icem_platform_windows::console::Device>(
                 continue;
             }
             let reply = logs.request(request.command);
+            let _ = request.response.send(reply);
+        }
+        for request in protocol_requests.try_iter().take(16) {
+            if request.response.is_closed() {
+                continue;
+            }
+            let reply = optional.request(&mut consumers, request.command);
             let _ = request.response.send(reply);
         }
         while let Ok(request) = layer_requests.try_recv() {

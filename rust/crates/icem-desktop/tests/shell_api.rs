@@ -18,6 +18,60 @@ fn status() -> proto::HostStatus {
     }
 }
 #[test]
+fn reconnect_requires_new_protocol_get_and_ignores_old_fifo_replies() {
+    use icem_web::protocol_control::{Command, Protocol, Reply, Status};
+    let state = Status {
+        configured: true,
+        enabled: true,
+        running: false,
+        error: String::new(),
+    };
+    let reply = Reply {
+        ok: true,
+        mqtt: state.clone(),
+        opcua: state.clone(),
+        opcda: state,
+    };
+    let set = Command::Set {
+        protocol: Protocol::Mqtt,
+        enabled: false,
+    };
+    for failed in [Operation::Status, Operation::Console, Operation::Autostart] {
+        let mut model = Model::default();
+        model.apply_host(Operation::Status, Response::status(status()));
+        model.protocols.submitted(Command::Get);
+        model.apply_host(Operation::Protocols, Ok(Response::Protocols(reply.clone())));
+        assert!(model.protocols.can_submit(set));
+        model.protocols.submitted(Command::Get);
+        model.protocols.submitted(set);
+        model.apply_host(failed, Err("disconnect".into()));
+        model.apply_host(Operation::Status, Response::status(status()));
+        assert!(model.connected && !model.protocols.can_submit(set));
+        model.apply_host(Operation::Protocols, Ok(Response::Protocols(reply.clone())));
+        assert!(!model.protocols.fresh);
+        model.apply_host(Operation::Protocols, Ok(Response::Protocols(reply.clone())));
+        assert!(!model.protocols.can_submit(set));
+        model.protocols.submitted(Command::Get);
+        model.apply_host(Operation::Protocols, Ok(Response::Protocols(reply.clone())));
+        assert!(model.protocols.can_submit(set));
+        let display = icem_desktop::protocol_view::display(
+            icem_desktop::protocol_view::CONTROLS[1],
+            model.protocols.state(Protocol::Mqtt),
+            model.connected && model.protocols.fresh,
+            false,
+        );
+        assert!(display.on);
+        assert_eq!(display.detail, "Включён, не работает");
+        assert_eq!(
+            set,
+            Command::Set {
+                protocol: Protocol::Mqtt,
+                enabled: !display.on
+            }
+        );
+    }
+}
+#[test]
 fn malformed_status_cannot_confirm_connection_or_freshness() {
     let mut model = Model::default();
     model.apply_host(

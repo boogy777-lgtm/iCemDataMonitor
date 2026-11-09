@@ -81,6 +81,7 @@ impl LocalRpcServer {
                     );
                     let router = router
                         .merge(crate::desktop_endpoint::router(state.clone()))
+                        .merge(crate::protocol_control::router(state.clone()))
                         .merge(crate::log_control::router(state));
                     let serving = axum::serve(Listener { pending, path }, router).into_future();
                     tokio::pin!(serving);
