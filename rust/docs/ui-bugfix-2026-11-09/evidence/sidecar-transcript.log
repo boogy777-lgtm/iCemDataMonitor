@@ -1,0 +1,26 @@
+**********************
+PowerShell transcript start
+Start time: 20261109165017
+Username: DESKTOP-P6BTRAA\HALLIBURTON
+RunAs User: DESKTOP-P6BTRAA\HALLIBURTON
+Configuration Name: 
+Machine: DESKTOP-P6BTRAA (Microsoft Windows NT 10.0.19045.0)
+Host Application: C:\Users\HALLIBURTON\AppData\Local\Temp\opencode\pwsh-7.6.7\pwsh.dll -NoProfile -File C:\Users\HALLIBURTON\AppData\Local\Temp\opencode\Test-ICem-UiSidecar.ps1
+Process ID: 14144
+PSVersion: 7.6.7
+PSEdition: Core
+GitCommitId: 7.6.7
+OS: Microsoft Windows 10.0.19045
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is C:\Users\HALLIBURTON\AppData\Local\Temp\opencode\icem-ui-sidecar-3d77d7c5eade4dfb803bd1f59e94ecc8\transcript.log
+
+PASS real owned DA start/stop twice without registry installation; evidence: C:\Users\HALLIBURTON\AppData\Local\Temp\opencode\icem-ui-sidecar-3d77d7c5eade4dfb803bd1f59e94ecc8
+**********************
+PowerShell transcript end
+End time: 20261109165129
+**********************
