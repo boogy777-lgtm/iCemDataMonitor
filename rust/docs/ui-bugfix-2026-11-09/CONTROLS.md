@@ -16,4 +16,4 @@
 
 ## Проверки
 
-Прочитаны Rust AGENTS, README, API_SPEC, SOURCE_AUDIT, DESKTOP_STATUS, инвентарь и исходные XAML/тема. Первоначальный Windows Release focused test `cargo test --release --offline --locked -p icem-desktop --lib protocol_view::tests` прошёл 3/3 до review-исправлений; тест после review выполняется отдельно. Runtime, визуальная и аппаратная приёмка не проводились; реальные Host/оборудование/брокеры не запускались.
+Прочитаны Rust AGENTS, README, API_SPEC, SOURCE_AUDIT, DESKTOP_STATUS, инвентарь и исходные XAML/тема. Windows Release focused test `cargo test --release --offline --locked -p icem-desktop --lib protocol_view::tests` прошёл 4/4, включая положение switch и FIFO-опрос. `cargo test --release --offline --locked -p icem-desktop --test shell_api reconnect_requires_new_protocol_get_and_ignores_old_fifo_replies` прошёл 1/1: все три вида disconnect, reconnect и запоздалые FIFO-ответы. Runtime, визуальная и аппаратная приёмка не проводились; реальные Host/оборудование/брокеры не запускались.

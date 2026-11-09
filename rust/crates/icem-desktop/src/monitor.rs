@@ -52,15 +52,14 @@ impl Monitor {
             {
                 return;
             }
-            if let ProtocolCommand::Set { protocol, enabled } = action {
-                if !self
+            if let ProtocolCommand::Set { protocol, enabled } = action
+                && !self
                     .model
                     .protocols
                     .state(protocol)
                     .is_some_and(|s| s.configured && s.enabled != enabled)
-                {
-                    return;
-                }
+            {
+                return;
             }
         }
         let log = match &command {
