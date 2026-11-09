@@ -247,10 +247,12 @@ fn two_real_hosts_survive_launcher_exit_and_are_independently_stopped() -> TestR
         fs::copy(env!("CARGO_BIN_EXE_icem-host-dev"), dir.join("host.exe"))?;
         let pipe = format!("icem-real-lifetime-{}-{index}", std::process::id());
         let identity = icem_platform_windows::HostIpcIdentity::for_pipe(&pipe)?;
-        let mut config = icem_config::IniOptions::default();
-        config.mmf_path = dir.join("absent.dat").to_string_lossy().into_owned();
-        config.mmf_name = format!("Local\\{pipe}-map");
-        config.lansniffer_on = 0;
+        let config = icem_config::IniOptions {
+            mmf_path: dir.join("absent.dat").to_string_lossy().into_owned(),
+            mmf_name: format!("Local\\{pipe}-map"),
+            lansniffer_on: 0,
+            ..Default::default()
+        };
         fs::write(dir.join("config.ini"), config.render())?;
         fs::write(dir.join("pipe"), &pipe)?;
         cleanup.0.push(identity.shutdown);
