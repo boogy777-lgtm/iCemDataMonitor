@@ -49,6 +49,7 @@ impl Model {
             Ok(reply) => reply,
             Err(error) => {
                 match operation {
+                    Operation::Protocols => self.protocols.apply(Err(error)),
                     Operation::Boot => {
                         self.boot_stages.clear();
                         self.boot_ready = false;
@@ -57,6 +58,7 @@ impl Model {
                     Operation::Status | Operation::Console | Operation::Autostart => {
                         self.connected = false;
                         self.host_logs.fresh = false;
+                        self.protocols.invalidate();
                         self.boot_stages.clear();
                         self.boot_ready = false;
                         self.note = format!("⚠ {error}");
@@ -89,7 +91,11 @@ impl Model {
             }
         };
         match reply {
+            Response::Protocols(value) => self.protocols.apply(Ok(value)),
             Response::Status(status) | Response::Console(status) | Response::Autostart(status) => {
+                if !self.connected {
+                    self.protocols.invalidate();
+                }
                 self.host = Some(status);
                 self.connected = true;
             }

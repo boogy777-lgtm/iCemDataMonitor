@@ -85,6 +85,11 @@ mod windows {
             }
             let operation = command.operation();
             let result = runtime.block_on(async {
+                if let Request::Protocols(action) = &command {
+                    return icem_web::protocol_control::request(&self.pipe, *action)
+                        .await
+                        .map(Response::Protocols);
+                }
                 if let Request::Logs(action) = &command {
                     return Ok(Response::Logs(
                         icem_web::log_control::request(&self.pipe, *action).await,
@@ -217,7 +222,11 @@ mod windows {
                         .map_err(|e| e.to_string())
                         .and_then(|r| r.into_inner().try_into())
                         .map(Response::Autostart),
-                    Request::Boot | Request::Metrics | Request::Dashboard(_) | Request::Logs(_) => {
+                    Request::Boot
+                    | Request::Metrics
+                    | Request::Dashboard(_)
+                    | Request::Logs(_)
+                    | Request::Protocols(_) => {
                         Err("adapter request must use its existing owner".into())
                     }
                     Request::LocalLogs(_) => Err("Shell logs belong to the local worker".into()),

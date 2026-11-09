@@ -1649,6 +1649,29 @@
       "note": "Owner-acknowledged logging; model/transport/filesystem software checks do not prove visual parity."
     }
   ],
+  "protocol_extensions": [
+    {
+      "name": "OpcUaSwitch",
+      "protocol": "OpcUa",
+      "implementation": "crates/icem-desktop/src/protocol_view.rs",
+      "composition": "crates/icem-desktop/src/monitor.rs",
+      "acceptance": "NOT_RUN"
+    },
+    {
+      "name": "MqttSwitch",
+      "protocol": "Mqtt",
+      "implementation": "crates/icem-desktop/src/protocol_view.rs",
+      "composition": "crates/icem-desktop/src/monitor.rs",
+      "acceptance": "NOT_RUN"
+    },
+    {
+      "name": "OpcDaSwitch",
+      "protocol": "OpcDa",
+      "implementation": "crates/icem-desktop/src/protocol_view.rs",
+      "composition": "crates/icem-desktop/src/monitor.rs",
+      "acceptance": "NOT_RUN"
+    }
+  ],
   "host_console": [
     {
       "name": "HostDiagnosticWindow",

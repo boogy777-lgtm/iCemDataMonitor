@@ -47,6 +47,25 @@ foreach ($Control in $Extensions) {
 }
 Write-Host 'Native logging extensions: 6; visual acceptance NOT_RUN.'
 
+# Explicit protocol extensions do not rewrite the frozen XAML control inventory.
+# Compare both sides completely: an unmapped descriptor must fail just as a stale mapping does.
+$Protocols = @($Mapping.protocol_extensions)
+$ProtocolKeys = @($Protocols | ForEach-Object { "$($_.protocol)|$($_.name)" })
+if ($ProtocolKeys.Count -eq 0 -or @($ProtocolKeys | Sort-Object -Unique).Count -ne $ProtocolKeys.Count) { throw 'Duplicate or empty protocol extension identity' }
+$ProtocolSources = @($Protocols.implementation | Sort-Object -Unique)
+$RenderedProtocols = @()
+foreach ($Source in $ProtocolSources) {
+    $Implementation = Get-Content -Raw (Join-Path $Root $Source)
+    $Descriptors = [regex]::Matches($Implementation, '(?s)Descriptor\s*\{\s*protocol:\s*Protocol::(?<protocol>\w+),\s*id:\s*"(?<id>[^"]+)"')
+    foreach ($Descriptor in $Descriptors) { $RenderedProtocols += "$($Descriptor.Groups['protocol'].Value)|$($Descriptor.Groups['id'].Value)" }
+}
+if ((($ProtocolKeys | Sort-Object) -join "`n") -cne (($RenderedProtocols | Sort-Object) -join "`n")) { throw 'Protocol descriptor/mapping drift' }
+foreach ($Composition in @($Protocols.composition | Sort-Object -Unique)) {
+    $Text = Get-Content -Raw (Join-Path $Root $Composition)
+    if (-not $Text.Contains('protocol_view::CONTROLS') -or -not $Text.Contains('Request::Protocols')) { throw 'Protocol extension composition is not wired' }
+}
+Write-Host "Native protocol extensions: $($ProtocolKeys.Count); visual acceptance NOT_RUN."
+
 # E15 owns a separate diagnostic surface, not another GPUI/logging control.
 $Console = @($Mapping.host_console)
 if ($Console.Count -ne 2 -or ($Console.name -join ',') -cne 'HostDiagnosticWindow,HostDiagnosticTranscript') { throw 'Host console inventory drift' }

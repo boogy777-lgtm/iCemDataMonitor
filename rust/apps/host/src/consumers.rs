@@ -44,6 +44,14 @@ impl Registry {
     pub fn status(&self, id: ConsumerId) -> Option<Status> {
         self.entries.get(&id).map(|entry| entry.status())
     }
+    /// A failed stop keeps the owner registered for later cleanup.
+    pub fn stop_one(&mut self, id: ConsumerId, deadline: Instant) -> Result<(), String> {
+        if let Some(entry) = self.entries.get_mut(&id) {
+            entry.stop(deadline)?;
+            self.entries.remove(&id);
+        }
+        Ok(())
+    }
     /// Cancel every consumer first. One slow stop cannot delay another cancellation.
     /// A single shared deadline bounds the entire drain; failed handles stay registered.
     pub fn stop_all(&mut self, budget: Duration) -> Result<(), String> {
@@ -143,6 +151,63 @@ mod tests {
         net::{TcpListener, TcpStream},
     };
     type TestResult = Result<(), Box<dyn std::error::Error>>;
+    #[test]
+    fn stop_one_retains_failed_owner_and_does_not_touch_neighbor() -> TestResult {
+        struct Owner {
+            calls: Arc<std::sync::atomic::AtomicUsize>,
+            fail: bool,
+        }
+        impl Lifecycle for Owner {
+            fn status(&self) -> Status {
+                Status::Running
+            }
+            fn cancel(&mut self) -> Result<(), String> {
+                Ok(())
+            }
+            fn stop(&mut self, _: Instant) -> Result<(), String> {
+                self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                if std::mem::replace(&mut self.fail, false) {
+                    Err("deadline".into())
+                } else {
+                    Ok(())
+                }
+            }
+        }
+        let a = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let b = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let mut registry = Registry::new();
+        assert!(
+            registry
+                .register(
+                    ConsumerId("a"),
+                    Box::new(Owner {
+                        calls: a.clone(),
+                        fail: true
+                    })
+                )
+                .is_ok()
+        );
+        assert!(
+            registry
+                .register(
+                    ConsumerId("b"),
+                    Box::new(Owner {
+                        calls: b.clone(),
+                        fail: false
+                    })
+                )
+                .is_ok()
+        );
+        assert!(registry.stop_one(ConsumerId("a"), Instant::now()).is_err());
+        assert_eq!(registry.status(ConsumerId("a")), Some(Status::Running));
+        assert_eq!(b.load(std::sync::atomic::Ordering::SeqCst), 0);
+        registry.stop_one(ConsumerId("a"), Instant::now())?;
+        assert_eq!(registry.status(ConsumerId("a")), None);
+        assert_eq!(registry.status(ConsumerId("b")), Some(Status::Running));
+        assert_eq!(a.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert_eq!(b.load(std::sync::atomic::Ordering::SeqCst), 0);
+        Ok(())
+    }
     #[test]
     fn real_typed_adapters_start_fail_cancel_and_release_sockets() -> TestResult {
         let bank = Arc::new(Mutex::new(

@@ -49,6 +49,7 @@ impl Selection {
 pub use icem_logging::Command as LogCommand;
 #[derive(Clone, Debug)]
 pub enum Request {
+    Protocols(crate::protocol_control::Command),
     Status,
     Prefs,
     Theme(bool),
@@ -64,6 +65,7 @@ pub enum Request {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Operation {
+    Protocols,
     Status,
     Prefs,
     Theme,
@@ -80,6 +82,7 @@ pub enum Operation {
 impl Request {
     pub fn operation(&self) -> Operation {
         match self {
+            Self::Protocols(_) => Operation::Protocols,
             Self::Status => Operation::Status,
             Self::Prefs => Operation::Prefs,
             Self::Theme(_) => Operation::Theme,
@@ -144,6 +147,7 @@ pub struct BootBatch {
 }
 #[derive(Clone, Debug)]
 pub enum Response {
+    Protocols(crate::protocol_control::Reply),
     Status(Status),
     Prefs(proto::UiPrefs),
     Theme(proto::UiPrefs),
@@ -163,6 +167,7 @@ impl Response {
     }
     pub fn operation(&self) -> Operation {
         match self {
+            Self::Protocols(_) => Operation::Protocols,
             Self::Status(_) => Operation::Status,
             Self::Prefs(_) => Operation::Prefs,
             Self::Theme(_) => Operation::Theme,
