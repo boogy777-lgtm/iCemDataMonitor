@@ -73,12 +73,11 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
         };
         host_client::ensure(&pipe, Some(&missing), Duration::from_secs(2)).await?; // serving owner: no spawn
         let mut rpc = client::connect(&pipe).await?;
-        assert!(
-            !rpc.get_status(HostStatusRequest {})
-                .await?
-                .into_inner()
-                .bus_open
-        );
+        // Bootstrap must work both on SDK workstations with a live AddIn bus
+        // and on clean builders. External bus absence is not a lifecycle invariant.
+        let status = rpc.get_status(HostStatusRequest {}).await?.into_inner();
+        let layers = status.layers.ok_or("Host status omitted layer state")?;
+        assert!(layers.modbus && layers.modbus_bound);
         drop(rpc);
         // A direct duplicate cannot parse/repair even a deliberately corrupt input.
         let corrupt = station.0.join("corrupt.ini");
