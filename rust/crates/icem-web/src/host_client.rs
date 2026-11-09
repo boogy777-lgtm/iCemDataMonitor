@@ -185,6 +185,16 @@ mod tests {
             .build()
     }
     #[test]
+    fn installed_launch_is_persistent_autostart() -> Result<(), String> {
+        let launch = Launch::installed()?;
+        assert_eq!(
+            launch.executable.file_name().and_then(|name| name.to_str()),
+            Some("icem-host-dev.exe")
+        );
+        assert_eq!(launch.arguments, ["--autostart"]);
+        Ok(())
+    }
+    #[test]
     fn running_or_starting_owner_never_spawns_and_absence_spawns_once() -> Result<(), String> {
         let runtime = runtime().map_err(|e| e.to_string())?;
         for initial in [Presence::Absent, Presence::Starting, Presence::Ready] {

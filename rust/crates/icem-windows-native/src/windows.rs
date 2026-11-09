@@ -51,6 +51,19 @@ fn wide_name(name: &str) -> Result<Vec<u16>, NativeError> {
     }
     Ok(name.encode_utf16().chain(std::iter::once(0)).collect())
 }
+
+/// Apply the NT one-code-unit uppercase table used by case-insensitive object names.
+pub fn nt_upcase(name: &str) -> Result<String, std::string::FromUtf16Error> {
+    use windows_sys::Wdk::System::SystemServices::RtlUpcaseUnicodeChar;
+    let units: Vec<u16> = name
+        .encode_utf16()
+        .map(|unit| {
+            // SAFETY: RtlUpcaseUnicodeChar accepts every UTF-16 code unit and retains no pointers.
+            unsafe { RtlUpcaseUnicodeChar(unit) }
+        })
+        .collect();
+    String::from_utf16(&units)
+}
 struct OwnedHandle(HANDLE);
 impl Drop for OwnedHandle {
     fn drop(&mut self) {

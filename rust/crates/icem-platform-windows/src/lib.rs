@@ -12,6 +12,43 @@ pub const SHELL_SHOW: &str = r"Local\iCemDataMonitorTray_v1_ShowWindow";
 pub const SHELL_SHUTDOWN: &str = r"Local\iCemDataMonitorTray_v1_Shutdown";
 pub const THEME_CHANGED: &str = r"Local\iCemDataMonitorTray_v1_UiTheme";
 
+/// A Host's kernel objects follow its pipe identity. The installed endpoint retains
+/// the historical names; custom endpoints never own the installed Shell.
+#[cfg(windows)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HostIpcIdentity {
+    pub mutex: String,
+    pub restart: String,
+    pub shutdown: String,
+    pub owns_shell: bool,
+}
+
+#[cfg(windows)]
+impl HostIpcIdentity {
+    pub fn for_pipe(pipe: &str) -> Result<Self, String> {
+        if pipe.is_empty() || pipe.contains(['\\', '/', '\0']) {
+            return Err("invalid local pipe name".into());
+        }
+        let name = icem_windows_native::nt_upcase(pipe).map_err(|e| e.to_string())?;
+        let default =
+            icem_windows_native::nt_upcase("iCemDataMonitor.Host").map_err(|e| e.to_string())?;
+        if name == default {
+            return Ok(Self {
+                mutex: HOST_MUTEX.into(),
+                restart: HOST_RESTART.into(),
+                shutdown: HOST_SHUTDOWN.into(),
+                owns_shell: true,
+            });
+        }
+        Ok(Self {
+            mutex: format!(r"Global\~M{name}"),
+            restart: format!(r"Local\~R{name}"),
+            shutdown: format!(r"Local\~S{name}"),
+            owns_shell: false,
+        })
+    }
+}
+
 /// Application-owned sidecar assets live beside the EXE, independently of cwd.
 /// User settings and station data deliberately use their separate path policies.
 pub fn application_asset(name: &str) -> std::io::Result<std::path::PathBuf> {

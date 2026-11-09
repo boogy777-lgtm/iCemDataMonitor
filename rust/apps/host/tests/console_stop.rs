@@ -149,6 +149,7 @@ fn manual_restart_and_autostart_quit(
     std::fs::create_dir_all(&root)?;
     for autostart in [false, true] {
         let pipe = format!("icem-console-start-{}-{autostart}", std::process::id());
+        let identity = icem_platform_windows::HostIpcIdentity::for_pipe(&pipe)?;
         let mut command = Command::new(env!("CARGO_BIN_EXE_icem-host-dev"));
         if autostart {
             command
@@ -192,7 +193,7 @@ fn manual_restart_and_autostart_quit(
                 // One explicit mutation. Reconnect only observes this unique pipe;
                 // the original process exits and its own restart path launches the successor.
                 assert!(icem_windows_native::signal_existing_event(
-                    icem_platform_windows::HOST_RESTART
+                    &identity.restart
                 )?);
                 wait(
                     &mut child.0,
@@ -216,11 +217,10 @@ fn manual_restart_and_autostart_quit(
                 .set_console_visible(SetConsoleVisibleRequest { visible: autostart })
                 .await?;
             assert!(icem_windows_native::signal_existing_event(
-                icem_platform_windows::HOST_SHUTDOWN
+                &identity.shutdown
             )?);
             let deadline = Instant::now() + Duration::from_secs(5);
-            let mutex =
-                icem_windows_native::NamedMutex::open_or_create(icem_platform_windows::HOST_MUTEX)?;
+            let mutex = icem_windows_native::NamedMutex::open_or_create(&identity.mutex)?;
             loop {
                 if let Some(guard) = mutex.lock(Duration::ZERO)? {
                     drop(guard);

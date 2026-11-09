@@ -2,6 +2,7 @@
 //! Frozen dashboard, REST and gRPC-Web over the host's single-thread bus owner.
 mod boot;
 pub mod dashboard_client;
+pub mod desktop_endpoint;
 pub mod navigation;
 pub mod shell;
 pub use boot::BootStages;

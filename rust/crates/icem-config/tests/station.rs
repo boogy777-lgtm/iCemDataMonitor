@@ -118,6 +118,17 @@ fn directory_instead_of_canonical_file_is_an_error() -> Result {
 fn concurrent_creation_publishes_only_complete_valid_file() -> Result {
     let root = Directory::new()?;
     let paths = root.paths();
+    #[cfg(windows)]
+    let _pin = {
+        use std::os::windows::fs::OpenOptionsExt;
+        let parent = paths.canonical.parent().ok_or("parent")?;
+        fs::create_dir_all(parent)?;
+        fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .custom_flags(0x0200_0000 | 0x0020_0000)
+            .open(parent)?
+    };
     std::thread::scope(|scope| {
         let handles: Vec<_> = (0..8)
             .map(|_| {
@@ -137,5 +148,60 @@ fn concurrent_creation_publishes_only_complete_valid_file() -> Result {
         fs::read_dir(paths.canonical.parent().ok_or("parent")?)?.count(),
         1
     );
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn publication_with_read_only_pinned_parent() -> Result {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = Directory::new()?;
+    let paths = root.paths();
+    let parent = paths.canonical.parent().ok_or("parent")?;
+    fs::create_dir_all(parent)?;
+    let _pin = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1)
+        .custom_flags(0x0200_0000 | 0x0020_0000)
+        .open(parent)?;
+    let probe = parent.join("probe.tmp");
+    fs::write(&probe, b"probe")?;
+    assert_eq!(
+        fs::hard_link(&probe, parent.join("probe.link"))
+            .err()
+            .and_then(|error| error.raw_os_error()),
+        Some(32)
+    );
+    fs::remove_file(probe)?;
+    let loaded = paths.load()?;
+    assert_eq!(loaded.options, IniOptions::default());
+    assert_eq!(loaded.path, paths.canonical);
+    let bytes = fs::read(&paths.canonical)?;
+    assert_eq!(paths.load()?.options, loaded.options);
+    assert_eq!(fs::read(&paths.canonical)?, bytes);
+    assert_eq!(fs::read_dir(parent)?.count(), 1);
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn migration_with_read_only_pinned_parent_preserves_source() -> Result {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = Directory::new()?;
+    let paths = root.paths();
+    let parent = paths.canonical.parent().ok_or("parent")?;
+    fs::create_dir_all(parent)?;
+    let original = format!("; legacy\r\n{}", IniOptions::default().render());
+    fs::write(&paths.legacy[0], &original)?;
+    let _pin = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1)
+        .custom_flags(0x0200_0000 | 0x0020_0000)
+        .open(parent)?;
+    let loaded = paths.load()?;
+    assert_eq!(loaded.path, paths.canonical);
+    assert_eq!(fs::read(&paths.canonical)?, original.as_bytes());
+    assert_eq!(fs::read(&paths.legacy[0])?, original.as_bytes());
+    assert_eq!(fs::read_dir(parent)?.count(), 2);
     Ok(())
 }

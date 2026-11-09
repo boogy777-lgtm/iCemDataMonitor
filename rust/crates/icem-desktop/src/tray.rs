@@ -204,3 +204,17 @@ fn dispatch(sender: &mpsc::SyncSender<HostCommand>, command: HostCommand) {
         eprintln!("Host tray command: {error}");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn host_tray_owns_icon_until_explicit_stop() -> io::Result<()> {
+        let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        assert!(HostTray::start(assets.join("missing-tray-test.ico")).is_err());
+        let tray = HostTray::start(assets.join("iCemDataMonitor.ico"))?;
+        assert!(tray.poll()?.is_none());
+        tray.stop()
+    }
+}

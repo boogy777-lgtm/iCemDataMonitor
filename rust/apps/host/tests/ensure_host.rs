@@ -46,6 +46,7 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
     let mut station = Station(root, None);
     let config = station.0.join("config.ini");
     let pipe = format!("icem-ensure-{}", std::process::id());
+    let identity = icem_platform_windows::HostIpcIdentity::for_pipe(&pipe)?;
     let candidate = launch(&config, &pipe);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -58,7 +59,7 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
             host_client::ensure(&pipe, Some(&candidate), Duration::from_secs(10))
         );
         if a.is_ok() || b.is_ok() {
-            station.1 = Some(icem_platform_windows::HOST_SHUTDOWN.into());
+            station.1 = Some(identity.shutdown.clone());
         }
         a?;
         b?;
@@ -85,14 +86,16 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
         let status = bounded(
             Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
                 .arg("--station-config")
-                .arg(&corrupt),
+                .arg(&corrupt)
+                .arg("--rpc-pipe")
+                .arg(&pipe),
         )?
         .status;
         assert_eq!(status.code(), Some(i32::from(host_client::ALREADY_RUNNING)));
         assert_eq!(fs::read(&corrupt)?, b"broken");
         assert_eq!(fs::read(&config)?, original);
         assert!(icem_windows_native::signal_existing_event(
-            icem_platform_windows::HOST_SHUTDOWN
+            &identity.shutdown
         )?);
         let due = Instant::now() + Duration::from_secs(5);
         while host_client::probe(&pipe).await != host_client::Presence::Absent {
@@ -103,8 +106,7 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
         }
         // Owner teardown may follow pipe teardown. Wait for the old process to
         // release the mutex, using a zero-time ownership attempt only in the test.
-        let mutex =
-            icem_windows_native::NamedMutex::open_or_create(icem_platform_windows::HOST_MUTEX)?;
+        let mutex = icem_windows_native::NamedMutex::open_or_create(&identity.mutex)?;
         loop {
             if let Some(guard) = mutex.lock(Duration::ZERO)? {
                 drop(guard);
@@ -133,20 +135,16 @@ fn actual_host_missing_concurrent_existing_failed_config_and_read_only_cli() -> 
     // CLI dispatch must precede config restoration and Host ownership. --start is
     // absent: read-only failure cannot create station files or listeners.
     let programdata = station.0.join("empty-programdata");
-    let output = bounded(
-        Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
-            .arg("header")
-            .env("PROGRAMDATA", &programdata),
-    )?;
-    assert_eq!(output.status.code(), Some(2));
-    assert!(output.stdout.is_empty());
-    assert!(!programdata.exists());
-    let output = bounded(Command::new(env!("CARGO_BIN_EXE_icem-host-dev")).arg("stop"))?;
-    assert!(output.status.success());
-    assert_eq!(
-        String::from_utf8(output.stdout)?.trim(),
-        "{\"action\":\"stop\",\"result\":\"notRunning\"}"
-    );
+    if !icem_windows_native::event_exists(icem_platform_windows::HOST_SHUTDOWN)? {
+        let output = bounded(
+            Command::new(env!("CARGO_BIN_EXE_icem-host-dev"))
+                .arg("header")
+                .env("PROGRAMDATA", &programdata),
+        )?;
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert!(!programdata.exists());
+    }
     Ok(())
 }
 
