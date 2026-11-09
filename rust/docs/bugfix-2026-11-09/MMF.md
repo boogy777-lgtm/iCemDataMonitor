@@ -15,3 +15,13 @@
 Windows Release regression до исправления воспроизвёл error 32; после — `icem-config`: 27/27 PASS, включая creation, migration, concurrent winner, сохранение данных и hard-link error 32 под pin; `icem-windows-native --lib`: 5/5 PASS, включая logger rename; `icem-platform-windows --test bus_reader`: 7/7 PASS с явным PATH для `pwsh`. Исходные запуски bus_reader и полного icem-config имели failures из-за отсутствующего `pwsh` в PATH, не из-за проверки MMF; оба повторены с корректным PATH. Код MMF не менялся: причинную ошибку reader не удалось подтвердить. Продакшен-процессы и данные не изменялись. End-to-end acquisition с реальной AddIn и операторская приёмка остаются открыты.
 
 Focused `cargo clippy --release --locked --offline -p icem-config -p icem-windows-native --all-targets -- -D warnings`: PASS.
+
+## Дополнение: live AccessDenied после исправления конфигурации
+
+Родительская проверка fresh Release Host `c77d4e6` с собственным временным config и запущенным elevated iCem дошла до Web/tray, но показала `Bus state: AccessDenied` (`icem-live-bugfix-6777edb105844d0ba36cfc27962daabd/stderr.log`). Ранее описанная успешная публикация config **не означала**, что live MMF исправлена.
+
+Read-only probe существующего `Global\iCemDataMonitorBusMutex_v1` в текущем medium-контексте: `OpenMutexW(SYNCHRONIZE | MUTEX_MODIFY_STATE)` — успех; `CreateMutexW` — Win32 5; `CreateMutexExW` с теми же минимальными правами — успех. Ранее в том же контексте read-only файл и секция открывались успешно. `CreateMutexW` запрашивает ALL_ACCESS; `WindowsBusReader::open` вызывал его через `NamedMutex::open_or_create`, преобразуя ошибку в sticky `AccessDenied`. Это непосредственно объясняет отказ при данном DACL. Исходный .NET `BusReader.cs:386–387` открывает read-only mapping и именованный Mutex; `BusMapping.cs:60,139` открывает файл с Read и FileShare.ReadWrite.
+
+`windows.rs::NamedMutex` теперь использует `CreateMutexExW` с `SYNCHRONIZE | MUTEX_MODIFY_STATE`, без изменения DACL, имени, владения или timeout. Синтетический mutex с DACL только на эти права: старый `CreateMutexW` получает 5, новый конструктор lock/release успешно; DACL без права release по-прежнему даёт 5. Windows Release `icem-windows-native --test mutex_acl`: 2/2 PASS; `icem-platform-windows --test bus_reader`: 8/8 PASS, включая capture под ограниченным DACL, timeout и abandoned. Это изолированные тесты; повторный end-to-end Host с живым iCem после сборки исправления ещё необходим. Реальные объекты и их ACL не изменялись.
+
+Focused Release clippy `-p icem-windows-native -p icem-platform-windows --all-targets -- -D warnings` — PASS.
