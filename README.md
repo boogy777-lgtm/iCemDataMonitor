@@ -47,7 +47,7 @@ Legacy .NET assemblies остаются reference/build compatibility surface;
 
 ## Сборка и запуск Rust
 
-Windows x64, PowerShell 7.6 (.NET 10), Git, rustup, MSVC C++ Build Tools и Windows SDK.
+Windows x64, PowerShell 7.4+, Git, rustup, MSVC C++ Build Tools и Windows SDK.
 Toolchain закреплён в `rust/rust-toolchain.toml`: Rust **1.99.1**, Edition 2024.
 Из `rust/`:
 
