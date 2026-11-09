@@ -2566,6 +2566,7 @@ version = "0.1.0"
 name = "icem-config"
 version = "0.1.0"
 dependencies = [
+ "icem-windows-native",
  "roxmltree 0.21.1",
 ]
 

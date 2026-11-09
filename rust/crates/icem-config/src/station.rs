@@ -144,16 +144,24 @@ fn publish(path: &Path, bytes: &[u8]) -> io::Result<()> {
             let _ = fs::remove_file(&self.0);
         }
     }
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)?;
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    let mut file = options.open(&temporary)?;
     let _cleanup = Cleanup(temporary.clone());
     file.write_all(bytes)?;
     file.sync_all()?;
+    #[cfg(windows)]
+    let publication = icem_windows_native::publish_file_no_replace(
+        &temporary,
+        path.file_name().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "missing config filename")
+        })?,
+    );
+    #[cfg(not(windows))]
+    let publication = fs::hard_link(&temporary, path);
     drop(file);
-    // Hard-link publication is atomic and no-clobber on NTFS. Readers never see a prefix.
-    match fs::hard_link(&temporary, path) {
+    // Both operations publish atomically without replacing an existing winner.
+    match publication {
         Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
         result => result,
     }

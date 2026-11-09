@@ -58,6 +58,47 @@ fn named_dotnet_write_is_visible_and_previous_snapshot_remains_owned() -> TestRe
     assert!(reader.is_open());
     Ok(())
 }
+
+#[test]
+fn bus_reads_with_mutex_dacl_allowing_only_wait_and_release() -> TestResult {
+    use std::io::{BufRead, BufReader};
+    use std::process::{Child, Command, Stdio};
+    struct Fixture(Child);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+    let station = Station::new()?;
+    station.seed(650)?;
+    let mut fixture = Fixture(
+        Command::new("pwsh")
+            .args(["-NoProfile", "-File"])
+            .arg(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../icem-windows-native/tests/mutex_acl.ps1"
+            ))
+            .args(["-Name", &station.mutex, "-Rights", "0x00100001"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .spawn()?,
+    );
+    let stdout = fixture.0.stdout.take().ok_or("missing fixture stdout")?;
+    let (send, recv) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut line = String::new();
+        let result = BufReader::new(stdout).read_line(&mut line).map(|_| line);
+        let _ = send.send(result);
+    });
+    assert_eq!(recv.recv_timeout(Duration::from_secs(20))??.trim(), "READY");
+    let mut reader = make_reader(&station);
+    let snapshot = read(&mut reader)?;
+    assert_eq!(snapshot.origin, SnapshotOrigin::Captured);
+    assert_eq!(snapshot.snapshot.register_count(), 650);
+    Ok(())
+}
 #[test]
 fn host_first_unnamed_mapping_does_not_poison_producer_name() -> TestResult {
     let station = Station::new()?;

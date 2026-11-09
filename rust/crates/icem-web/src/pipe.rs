@@ -79,7 +79,9 @@ impl LocalRpcServer {
                         "/icemdatamonitor.v1.TelemetryService/{method}",
                         crate::rpc::service(state.clone()),
                     );
-                    let router = router.merge(crate::log_control::router(state));
+                    let router = router
+                        .merge(crate::desktop_endpoint::router(state.clone()))
+                        .merge(crate::log_control::router(state));
                     let serving = axum::serve(Listener { pending, path }, router).into_future();
                     tokio::pin!(serving);
                     let _ = ready.send(());

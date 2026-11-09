@@ -139,7 +139,7 @@ fn grpc_host_toggle_ignores_desired_state_and_stops_listener()
         Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     })?;
     assert!(icem_windows_native::signal_existing_event(
-        icem_platform_windows::HOST_SHUTDOWN
+        &icem_platform_windows::HostIpcIdentity::for_pipe(&pipe)?.shutdown
     )?);
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {

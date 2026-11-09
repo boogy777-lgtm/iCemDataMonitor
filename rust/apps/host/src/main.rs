@@ -326,6 +326,7 @@ fn run<D: icem_platform_windows::console::Device>(
     boot: icem_web::BootStages,
     logs: &mut icem_logging::Logs,
     console: &mut icem_platform_windows::console::Controller<D>,
+    #[cfg(windows)] identity: &icem_platform_windows::HostIpcIdentity,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     #[cfg(not(windows))]
     if options.tray_icon.is_some() {
@@ -495,7 +496,7 @@ fn run<D: icem_platform_windows::console::Device>(
     let mut lifecycle = options
         .rpc_pipe
         .as_ref()
-        .map(|_| windows::Lifecycle::new(options.tray_icon.clone()))
+        .map(|_| windows::Lifecycle::new(options.tray_icon.clone(), identity))
         .transpose()?;
     #[cfg(not(windows))]
     if options.rpc_pipe.is_some() {
@@ -550,11 +551,10 @@ fn run<D: icem_platform_windows::console::Device>(
         {
             use windows::Action;
             let result: Result<(), Box<dyn std::error::Error>> = match action {
-                Action::Panel => windows::open_panel(
-                    options.rpc_pipe.as_deref().unwrap_or(icem_web::HOST_PIPE),
-                    &web_url,
-                )
-                .map_err(Into::into),
+                Action::Panel => {
+                    windows::open_panel(options.rpc_pipe.as_deref().unwrap_or(icem_web::HOST_PIPE))
+                        .map_err(Into::into)
+                }
                 Action::Web => windows::open_web(&web_url).map_err(Into::into),
                 Action::Console(visible) => {
                     console.set_visible(visible).map(|_| ()).map_err(Into::into)
@@ -641,13 +641,58 @@ fn run<D: icem_platform_windows::console::Device>(
     #[cfg(windows)]
     if let Some(lifecycle) = &mut lifecycle {
         lifecycle.remove_tray()?;
-        windows::close_shell()?;
+        lifecycle.close_shell()?;
     }
     #[cfg(windows)]
     if let Some(server) = pipe_server {
         server.stop()?;
     }
     Ok(restart)
+}
+#[cfg(windows)]
+fn early_host_identity(
+    arguments: &[String],
+) -> Result<icem_platform_windows::HostIpcIdentity, String> {
+    let mut args = arguments.iter();
+    let mut pipe = icem_web::HOST_PIPE;
+    while let Some(key) = args.next() {
+        if key == "--autostart" {
+            continue;
+        }
+        let value = args.next().ok_or("each option requires a value")?;
+        if key == "--rpc-pipe" {
+            pipe = value;
+        }
+    }
+    icem_platform_windows::HostIpcIdentity::for_pipe(pipe)
+}
+#[cfg(all(test, windows))]
+mod identity_tests {
+    use super::*;
+
+    #[test]
+    fn early_identity_uses_option_pairs_and_last_pipe_without_config_io() -> Result<(), String> {
+        let args = [
+            "--station-config",
+            "--rpc-pipe",
+            "--rpc-pipe",
+            "first",
+            "--autostart",
+            "--rpc-pipe",
+            "Second",
+        ]
+        .map(str::to_owned);
+        assert_eq!(
+            early_host_identity(&args)?,
+            icem_platform_windows::HostIpcIdentity::for_pipe("second")?
+        );
+        assert_eq!(
+            early_host_identity(&[])?,
+            icem_platform_windows::HostIpcIdentity::for_pipe(icem_web::HOST_PIPE)?
+        );
+        assert!(early_host_identity(&["--rpc-pipe".into()]).is_err());
+        Ok(())
+    }
 }
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -667,7 +712,15 @@ fn main() -> ExitCode {
     // The existing Host mutex is acquired BEFORE any config create/copy or service I/O.
     // CLI dispatch never acquires this mutex. A losing launch cannot mutate station files.
     #[cfg(windows)]
-    let singleton = match windows::singleton() {
+    let identity = match early_host_identity(&arguments) {
+        Ok(value) => value,
+        Err(error) => {
+            diagnostic!("{error}");
+            return ExitCode::from(2);
+        }
+    };
+    #[cfg(windows)]
+    let singleton = match windows::singleton(&identity) {
         Ok(v) => v,
         Err(e) => {
             diagnostic!("{e}");
@@ -727,7 +780,14 @@ fn main() -> ExitCode {
         logs.record("Ctrl+C: Host stopped during startup");
         return ExitCode::SUCCESS;
     }
-    let result = run(options, boot, &mut logs, &mut console);
+    let result = run(
+        options,
+        boot,
+        &mut logs,
+        &mut console,
+        #[cfg(windows)]
+        &identity,
+    );
     let restart_console_visible = console.visible();
     #[cfg(windows)]
     if let Err(error) = console.device_mut().finish() {

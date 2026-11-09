@@ -30,10 +30,15 @@ impl WebServer {
                     .build()?;
                 runtime.block_on(async move {
                     let listener = tokio::net::TcpListener::from_std(listener)?;
+                    let publication_state = state.clone();
                     let router = crate::router(state);
-                    let _ = ready.send(());
                     let serving = axum::serve(listener, router).into_future();
                     tokio::pin!(serving);
+                    let _publication = crate::desktop_endpoint::PublishedEndpoint::new(
+                        &publication_state,
+                        address,
+                    )?;
+                    let _ = ready.send(());
                     tokio::select! {
                         result=&mut serving=>result,
                         _=stopping.changed()=>{

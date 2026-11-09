@@ -24,7 +24,7 @@ reference/build compatibility. [Подробная архитектура](../do
 
 ## Сборка
 
-Windows x64, PowerShell7.4+, Rust1.99.1 (rust-toolchain.toml), MSVC/Windows SDK.
+Windows x64, PowerShell7.6 (.NET 10), Rust1.99.1 (rust-toolchain.toml), MSVC/Windows SDK.
 Из `rust/`:
 
 ```powershell

@@ -67,6 +67,7 @@ pub(crate) struct Store {
 }
 #[derive(Clone)]
 pub struct WebState {
+    pub(crate) desktop_endpoint: crate::desktop_endpoint::EndpointSlot,
     pub(crate) console_requests: Option<mpsc::SyncSender<ConsoleRequest>>,
     pub(crate) log_requests: Option<mpsc::SyncSender<crate::log_control::LogRequest>>,
     /// Read-once startup capability. Deferred Web toggles cannot change routes/history.
@@ -92,6 +93,7 @@ impl WebState {
         let (shutdown, _) = tokio::sync::watch::channel(false);
         (
             Self {
+                desktop_endpoint: Arc::new(Mutex::new(None)),
                 console_requests: None,
                 log_requests: None,
                 web_enabled: layers.web,

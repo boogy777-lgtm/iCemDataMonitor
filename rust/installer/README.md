@@ -1,9 +1,11 @@
 # Windows installer: Rust applications + original net48 AddIn
 
-Build on Windows x64 in PowerShell 7.4+, with Git, rustup, MSVC x64/Windows SDK,
+Build on Windows x64 in PowerShell 7.6 (.NET 10), with Git, rustup, MSVC x64/Windows SDK,
 .NET SDK 10 and the installed Halliburton iCem SDK. Rust is pinned by
 `rust-toolchain.toml`; WiX/extensions use the existing 5.0.2 pin in
 `installer/.config/dotnet-tools.json`. No Linux application build is required.
+Put this PowerShell executable first on PATH: differential tests launch `pwsh`
+to run original net10 code; PowerShell 7.4/.NET 8 has incompatible BCL semantics.
 
 From the repository root:
 
@@ -11,9 +13,24 @@ From the repository root:
 pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 ```
 
-Deliverables: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` and
-`.msi.sha256`. A ZIP/checksum remains an internal verified build intermediate.
-Only the MSI/checksum is uploaded for a real release. `-OutputDirectory` selects
+Interactive entry point: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64-Setup.exe`
+and `.exe.sha256`. It embeds the MSI and lists both registered .NET and Rust MSI
+families. Select a product and explicitly confirm removal to invoke that product's
+own Windows Installer uninstaller; installation never removes another family silently.
+The launcher re-enumerates the selected ProductCode before removal, waits for MSI,
+reports failure/reboot results and refreshes the list. It does not erase user data
+or change the installed product's own uninstall policy. .NET Framework 4.8 is required
+by this small Windows launcher, not by the Rust applications.
+
+Direct MSI: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` and
+`.msi.sha256`. Direct MSI still blocks cross-family installation; use Setup.exe
+for cross-family removal. Previously issued MSI files cannot gain this UI retroactively.
+`Build-WindowsSetup.ps1 -Msi PATH` can wrap either family's MSI with the same launcher;
+the embedded payload family is read from the MSI UpgradeCode, not a caller flag.
+`Test-WindowsSetup.ps1` validates removal targets, payload hash and the UI inventory
+without uninstalling anything on the SDK workstation.
+
+A ZIP/checksum remains an internal verified build intermediate. `-OutputDirectory` selects
 another output folder: relative paths are resolved from the repository root,
 absolute paths are honored. The standalone `Build-WindowsMsi.ps1` defaults to
 the supplied archive's directory and uses the same override rule. Existing

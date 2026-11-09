@@ -4,7 +4,9 @@
 #[allow(unsafe_code)]
 mod windows;
 #[cfg(windows)]
-pub use windows::{Mapping, NamedMutex, NamedMutexGuard, NativeError, signal_existing_event};
+pub use windows::{
+    Mapping, NamedMutex, NamedMutexGuard, NativeError, nt_upcase, signal_existing_event,
+};
 
 #[cfg(windows)]
 #[allow(unsafe_code)]
@@ -39,7 +41,7 @@ pub use autostart::AutostartEntry;
 #[allow(unsafe_code)]
 mod log_directory;
 #[cfg(windows)]
-pub use log_directory::{LogDirectory, LogFile};
+pub use log_directory::{LogDirectory, LogFile, publish_file_no_replace};
 
 #[cfg(windows)]
 #[allow(unsafe_code)]

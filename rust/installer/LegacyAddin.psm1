@@ -13,6 +13,7 @@ function Get-LegacyAddinSdkReferences([string] $RepositoryRoot) {
     })
 }
 function Get-LegacyAddinInputs([string] $RepositoryRoot) {
+    $RepositoryRoot = [IO.Path]::GetFullPath($RepositoryRoot)
     $ProjectPath = "$AssemblyName/$AssemblyName.csproj"
     $Project = [xml](Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot $ProjectPath))
     $Compile = @($Project.SelectNodes('//*[local-name()="Compile"]'))
@@ -21,8 +22,15 @@ function Get-LegacyAddinInputs([string] $RepositoryRoot) {
     foreach ($File in @('Directory.Build.props', 'Directory.Build.targets', 'global.json')) {
         if (Test-Path -LiteralPath (Join-Path $RepositoryRoot $File)) { $Paths += $File }
     }
-    return @($Paths | Sort-Object -Unique | ForEach-Object {
-        if ($_ -match '(^|/)\.\.(/|$)' -or [IO.Path]::IsPathRooted($_)) { throw 'AddIn compile path escapes project' }
+    # Linked Compile inputs may leave the project, but never the repository.
+    $CanonicalPaths = @($Paths | ForEach-Object {
+        if ([IO.Path]::IsPathRooted($_)) { throw 'AddIn compile path escapes repository' }
+        $FullPath = [IO.Path]::GetFullPath($_, $RepositoryRoot)
+        $Relative = [IO.Path]::GetRelativePath($RepositoryRoot, $FullPath).Replace('\', '/')
+        if ($Relative -eq '..' -or $Relative.StartsWith('../') -or [IO.Path]::IsPathRooted($Relative)) { throw 'AddIn compile path escapes repository' }
+        $Relative
+    })
+    return @($CanonicalPaths | Sort-Object -Unique | ForEach-Object {
         # Hash canonical text, independent of Windows checkout CRLF conversion.
         $Text = [IO.File]::ReadAllText((Join-Path $RepositoryRoot $_)).Replace("`r`n", "`n")
         [pscustomobject]@{ path = $_; sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text))).ToLowerInvariant() }

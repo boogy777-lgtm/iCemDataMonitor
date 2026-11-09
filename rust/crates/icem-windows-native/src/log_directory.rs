@@ -40,6 +40,62 @@ fn regular(file: &File) -> io::Result<()> {
     }
     Ok(())
 }
+
+/// Atomically publish a same-directory file without replacing a winner.
+/// Opens its own synchronous DELETE handle; target must be one component.
+pub fn publish_file_no_replace(source: &Path, target: &std::ffi::OsStr) -> io::Result<()> {
+    let mut components = Path::new(target).components();
+    if !matches!(components.next(), Some(Component::Normal(_))) || components.next().is_some() {
+        return Err(denied("publication target must be one filename"));
+    }
+    let source = OpenOptions::new().access_mode(0x0001_0000).open(source)?;
+    rename_file(&source, target, false)
+}
+
+fn rename_file(source: &File, target: &std::ffi::OsStr, replace: bool) -> io::Result<()> {
+    #[repr(C)]
+    struct Rename {
+        flags: u32,
+        root: HANDLE,
+        length: u32,
+        name: [u16; 1024],
+    }
+    const _: () = assert!(
+        std::mem::offset_of!(Rename, name)
+            == std::mem::offset_of!(FILE_RENAME_INFORMATION, FileName)
+    );
+    let path: Vec<u16> = target.encode_wide().collect();
+    if path.is_empty() || path.len() >= 1024 || path.contains(&0) {
+        return Err(denied("invalid rename target"));
+    }
+    let mut info = Rename {
+        flags: u32::from(replace),
+        root: std::ptr::null_mut(),
+        length: (path.len() * 2) as u32,
+        name: [0; 1024],
+    };
+    info.name[..path.len()].copy_from_slice(&path);
+    let mut completed = IO_STATUS_BLOCK::default();
+    // SAFETY: SDK layout is checked above; source is a synchronous file handle
+    // with DELETE access. Root=NULL and a single component rename in its parent.
+    // All stack buffers remain alive until the synchronous operation completes.
+    let status = unsafe {
+        NtSetInformationFile(
+            source.as_raw_handle() as HANDLE,
+            &mut completed,
+            &info as *const _ as *const _,
+            std::mem::size_of::<Rename>() as u32,
+            FileRenameInformation,
+        )
+    };
+    if status < 0 {
+        // SAFETY: NTSTATUS conversion has no pointer preconditions.
+        return Err(io::Error::from_raw_os_error(
+            unsafe { RtlNtStatusToDosError(status) }.cast_signed(),
+        ));
+    }
+    Ok(())
+}
 /// Pins every ancestor against replacement and reparse mutation for its lifetime.
 /// Only local absolute disk paths and single-component filenames are accepted.
 pub struct LogDirectory {
@@ -226,50 +282,8 @@ impl LogDirectory {
             return Err(denied("log source belongs to another directory owner"));
         }
         regular(&source.file)?;
-        #[repr(C)]
-        struct Rename {
-            flags: u32,
-            root: HANDLE,
-            length: u32,
-            name: [u16; 1024],
-        }
-        const _: () = assert!(
-            std::mem::offset_of!(Rename, name)
-                == std::mem::offset_of!(FILE_RENAME_INFORMATION, FileName)
-        );
         self.path(target)?; // Single component only; NT rename keeps the source parent.
-        let path: Vec<u16> = std::ffi::OsStr::new(target).encode_wide().collect();
-        if path.len() >= 1024 {
-            return Err(denied("log path too long"));
-        }
-        let mut info = Rename {
-            flags: 1,
-            root: std::ptr::null_mut(),
-            length: (path.len() * 2) as u32,
-            name: [0; 1024],
-        };
-        info.name[..path.len()].copy_from_slice(&path);
-        let mut completed = IO_STATUS_BLOCK::default();
-        // SAFETY: repr(C) layout is checked against the SDK. The private LogFile
-        // is always synchronous (no OVERLAPPED flag), so NT completes before these
-        // stack buffers go out of scope. Root=NULL + one component is documented
-        // in-place rename: no CWD/full-path resolution or ancestor pin release.
-        let status = unsafe {
-            NtSetInformationFile(
-                source.file.as_raw_handle() as HANDLE,
-                &mut completed,
-                &info as *const _ as *const _,
-                std::mem::size_of::<Rename>() as u32,
-                FileRenameInformation,
-            )
-        };
-        if status < 0 {
-            // SAFETY: conversion of an NTSTATUS value, no pointers or effects.
-            return Err(io::Error::from_raw_os_error(
-                unsafe { RtlNtStatusToDosError(status) }.cast_signed(),
-            ));
-        }
-        Ok(())
+        rename_file(&source.file, std::ffi::OsStr::new(target), true)
     }
 }
 

@@ -3,8 +3,10 @@ use icem_core::HostCommand;
 use icem_desktop::HostTray;
 use icem_windows_native::{NamedMutex, NativeError, OwnedEvent};
 use std::{io, path::PathBuf, process::Command};
-pub fn singleton() -> Result<NamedMutex, NativeError> {
-    NamedMutex::open_or_create(icem_platform_windows::HOST_MUTEX)
+pub fn singleton(
+    identity: &icem_platform_windows::HostIpcIdentity,
+) -> Result<NamedMutex, NativeError> {
+    NamedMutex::open_or_create(&identity.mutex)
 }
 pub enum Action {
     Panel,
@@ -17,16 +19,21 @@ pub struct Lifecycle {
     tray: Option<HostTray>,
     restart: OwnedEvent,
     close: OwnedEvent,
+    owns_shell: bool,
 }
 impl Lifecycle {
-    pub fn new(icon: Option<PathBuf>) -> Result<Self, Box<dyn std::error::Error>> {
-        let restart = OwnedEvent::create_reset(icem_platform_windows::HOST_RESTART)?;
-        let close = OwnedEvent::create_reset(icem_platform_windows::HOST_SHUTDOWN)?;
+    pub fn new(
+        icon: Option<PathBuf>,
+        identity: &icem_platform_windows::HostIpcIdentity,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let restart = OwnedEvent::create_reset(&identity.restart)?;
+        let close = OwnedEvent::create_reset(&identity.shutdown)?;
         let tray = icon.map(HostTray::start).transpose()?;
         Ok(Self {
             tray,
             restart,
             close,
+            owns_shell: identity.owns_shell,
         })
     }
     pub fn poll(&self) -> Result<Option<Action>, Box<dyn std::error::Error>> {
@@ -57,12 +64,16 @@ impl Lifecycle {
         }
         Ok(())
     }
+    pub fn close_shell(&self) -> Result<(), NativeError> {
+        if self.owns_shell {
+            close_shell()?;
+        }
+        Ok(())
+    }
 }
-pub fn open_panel(pipe: &str, url: &str) -> io::Result<()> {
+pub fn open_panel(pipe: &str) -> io::Result<()> {
     let exe = std::env::current_exe()?.with_file_name("icem-shell-dev.exe");
-    Command::new(exe)
-        .args(["--pipe", pipe, "--web-url", url])
-        .spawn()?;
+    Command::new(exe).args(["--pipe", pipe]).spawn()?;
     Ok(())
 }
 pub fn open_web(url: &str) -> io::Result<()> {
@@ -79,7 +90,7 @@ impl Drop for Lifecycle {
         if let Err(error) = self.remove_tray() {
             diagnostic!("Host tray cleanup: {error}");
         }
-        if let Err(error) = close_shell() {
+        if let Err(error) = self.close_shell() {
             diagnostic!("Host shell cleanup: {error}");
         }
     }
