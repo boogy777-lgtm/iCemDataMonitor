@@ -370,3 +370,13 @@ hosted runner. Новая CI-матрица DCOM repair также требуе�
 и все contextual witnesses, а `cargo test --release -p icem-emulation --lib`
 прошёл 3/3 включая независимый BCL oracle. Это подтверждает baseline данной VM,
 но не опровергает FAIL Windows `10.0.26100` и не устанавливает единственную причину.
+
+Следующий общий [run 42825399396](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42825399396),
+PR head `12b94a88421438f9611f1d7476a36447a88dd3d4`, также завершился **FAIL**.
+Routing, baseline, installer contracts и Release measurements — PASS; Rust снова
+упал на независимом BCL oracle (`U+2C5F`). Legacy дополнительно получил
+`Assert.True` в `LatestBusConsumerTests.BlockingSource.Dispose`, строка 103,
+при `ContainerDisposal_JoinsInflightAcquisitionBeforeFactoryOwnedSource_EvenWithoutHostStop`:
+Host tests 265/266 PASS. Причина этого teardown failure не установлена; исходные
+.NET files ради установочного инкремента не меняются и тест не отключается.
+Общий gate FAIL; прохождение packaging не является полной Setup acceptance.

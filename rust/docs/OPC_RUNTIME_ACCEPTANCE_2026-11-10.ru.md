@@ -372,3 +372,92 @@ Production `LaunchCondition=Installed` сохранён. Результат ше
 Новый case не считается пройденным до отдельного Windows run; подтверждение
 реального доступа оператора, согласия пользователя и сохранности
 foreign/shared-owner состояния остаётся открытым.
+
+Run [42825399418](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42825399418),
+head `12b94a88421438f9611f1d7476a36447a88dd3d4`: прежние шесть cases PASS,
+`descriptor-repair` **FAIL** после успешного `/fomus`. Input MSI SHA-256
+`b2fbe425188d054184a74e8a6d304ff75c0c0bd7a887cfebd1664b6ae4a66713`,
+`product_commit` в evidence — PR merge SHA
+`b7ca9a8cba5ae3b4d09e278f8e19de12f622ea42`, не application commit.
+В `descriptor-customized.json` и `descriptor-repaired.json` одинаковы все 18 файлов,
+служба и DACL registry keys; различаются только `AccessPermission` и
+`LaunchPermission` обоих AppID в обеих отображаемых registry views. Все четыре
+значения вернулись к baseline из `descriptor-installed.json`: явно выданный
+тестовый SID потерян. Это подтверждённая потеря прав, а не ошибка comparator;
+проверка остаётся обязательной, production block не снимается.
+
+### Изолированные локальные MSI probes
+
+После уточнения пользователя «на этой VM всё тестовое» разрешены локальные
+проверки с отдельным per-user MSI и случайным `HKCU\Software\iCemMsiRawProbe\<GUID>`.
+Они не используют canonical OPC component GUID, COM/AppID keys, службы или
+runtime-файлы. Перед запуском проверяются реальные MSI tables, уникальная
+идентичность продукта и отсутствие тестового ключа. Это проверка механизма,
+а не установка Runtime поверх существующего OPC/Siemens.
+
+Первый probe (MSI SHA-256
+`4a796b2e9f8050760654e3c2b2d1de52f0dceec4095af3cb925b7d91f5f8955b`)
+подтвердил: raw `RegLocator` возвращает `#x<hex>`, а WiX `Type="binary"`
+создаёт `#x[PROPERTY]`. При repair получается `#x#x...`, ошибка 1406/1603.
+Вариант `Type="string" Value="[PROPERTY]"` передаёт raw type tag без удвоения.
+UI probe остановился на error dialog; после подтверждённых Cancel/Yes MSI
+завершился 1603, оба customized binary values совпали с исходным тестовым
+снимком. Удалён только этот уникальный тестовый продукт, его HKCU key отсутствует.
+Evidence: `rust/target/opc-reglocator-probe-65565d0ba0114719aab1429f0faa61f1/`.
+
+Следующий probe (MSI SHA-256
+`deb085206af5229c148c88997a16ff827c21b3c6d2b9977e42d401c7c21eca95`)
+прошёл fresh baseline и binary repair с command-line injection в silent/basic UI.
+Но reduced UI обнаружил sequencing defect: после UI фазы execute `AppSearch`
+сообщил `Skipping AppSearch action: already done on client side`, хотя UI row
+имел `Condition="0"`. Execute reset уже очистил property, поэтому type guard
+отказал до `InstallInitialize`. Условное отключение UI search **не принимается**
+как способ принудительного повторного поиска на server. После закрытия TEST ONLY
+warning подтверждены отказ до транзакции и сохранность customized value;
+уникальный продукт/key удалены. Отрицательные type/missing сценарии этого запуска
+не достигнуты и не считаются пройденными.
+Evidence: `rust/target/opc-reglocator-safe-94f0cd371590405ab102851aee952e9c/`.
+
+Production authoring пока не изменено. До выбора механизма обязательны реальные
+UI/execute и injection/invalid-type проверки; native Registry/Service ownership,
+rollback, foreign/shared-owner guards и production block должны сохраняться.
+
+`Sequence="first"` с Type 307 (`51 | FirstSequence`) вместо execute reset решил
+наблюдавшийся UI sequencing defect в отдельном probe. Сброс выполняется перед
+первым `AppSearch`, fresh-only baseline задаётся после него, найденное raw значение
+передаётся через public/secure property. Type 19 guard исполняется только в execute
+до начала транзакции. Ссылка на documented scheduling semantics:
+https://learn.microsoft.com/en-us/windows/win32/msi/custom-action-execution-scheduling-options.
+
+Первый first-sequence probe, SHA-256
+`382e9ff7e73d8ce3efc7faa27d3f1c69c43575d5746103e47a4e469ade94ffe6`,
+прошёл fresh/injected и silent/basic/reduced binary repair. Его generic binary
+fixture ошибочно ожидал успешный repair zero-length binary: AppSearch не вернул
+такой blob, и guard безопасно отказал 1603 без изменения значения. Этот FAIL
+не скрывается. Для DCOM пустой blob не является допустимым SECURITY_DESCRIPTOR;
+последующая transport-проверка явно требует отказ для него, как и для отсутствия
+значения, а не восстановления baseline поверх неопределённого operator intent.
+Первый first-sequence продукт/key удалены; report cleanup PASS.
+
+Итоговый transport probe, MSI SHA-256
+`0764c33c0284c47a997e1693872d964ce557b7123a8b5d6f9fb57c06e5db3a2b`,
+**14/14 PASS**, evidence
+`rust/target/opc-reglocator-first-d9a8c61052494b81b58e45805c813f1c/`:
+- fresh-install с injected property получил только authored baseline;
+- silent/basic/reduced repair сохранили тип и байты вопреки injected property;
+  журнал reduced режима подтверждает выполненную UI sequence, а не basic UI;
+- empty binary, REG_SZ (обычный, пустой и с forged `#x`), DWORD, QWORD,
+  expandable string, обычный/пустой multi-string и отсутствующее значение
+  отвергнуты 1603; для всех десяти проверены точный unchanged snapshot,
+  выполненный Type 19 и отсутствие `InstallInitialize` в журнале;
+- uninstall вернул 0; независимо проверены отсутствие MSI product registration
+  и уникального HKCU key. Никакие OPC registrations не использовались.
+
+Это synthetic короткие binary payloads, не реальные DCOM descriptors, не
+проверка четырёх Runtime values и не normal-operator/security acceptance.
+Public/secure property обеспечивает передачу, но не удостоверяет источник:
+https://learn.microsoft.com/en-us/windows/win32/msi/securecustomproperties.
+Перед adoption в elevated Runtime нужен независимый execute-side read-only
+контроль соответствия fixed AppID snapshot, а не доверие данным клиента/UI.
+Фактический `descriptor-repair` Runtime остаётся FAIL; нового seven-case run
+исправленной реализации пока нет. Production authoring и блок не изменены.
