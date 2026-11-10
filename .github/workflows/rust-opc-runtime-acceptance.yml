@@ -1,0 +1,110 @@
+name: rust-opc-runtime-acceptance
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - rust/installer/opc-core/**
+      - rust/tools/Test-SharedOpcRuntime.ps1
+      - rust/tools/Test-SharedOpcRuntimeSafety.ps1
+      - rust/tools/WindowsBuildSdk.psm1
+      - rust/tools/WindowsMsiDatabase.psm1
+      - .github/workflows/rust-opc-runtime-acceptance.yml
+permissions:
+  contents: read
+jobs:
+  build-blocked-runtime:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.423
+      - name: Verify test isolation and unchanged production block (no installation)
+        shell: pwsh
+        run: ./rust/tools/Test-SharedOpcRuntimeSafety.ps1
+      - id: matrix
+        shell: pwsh
+        run: |
+          $Cases = Get-Content rust/installer/opc-core/acceptance-cases.json -Raw | ConvertFrom-Json
+          if ($Cases.schema_version -ne 1) { throw 'Unsupported acceptance matrix' }
+          'value=' + (@{ case = @($Cases.cases) } | ConvertTo-Json -Compress) >> $env:GITHUB_OUTPUT
+      - name: Build source-pinned blocked runtime (no installation)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Root = $PWD.Path
+          $Work = Join-Path $env:RUNNER_TEMP ('opc-build-' + [guid]::NewGuid().ToString('N'))
+          $Context = Join-Path $Work 'sdk'
+          $Tools = Join-Path $Work 'tools'
+          $Source = Join-Path $Work 'upstream'
+          [IO.Directory]::CreateDirectory($Context) | Out-Null
+          Import-Module "$Root/rust/tools/WindowsBuildSdk.psm1" -Force
+          Initialize-WindowsBuildSdk $Context
+          Push-Location $Context
+          try {
+            $null = Assert-WindowsBuildSdk
+            $Pin = (Get-Content "$Root/rust/installer/.config/dotnet-tools.json" -Raw | ConvertFrom-Json).tools.wix.version
+            & dotnet tool install wix --version $Pin --tool-path $Tools
+            if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX install failed' }
+            $env:PATH = "$Tools;$env:PATH"
+            & git init $Source
+            & git -C $Source remote add origin https://github.com/OPCF-Members/OPC-Classic-CoreComponents.git
+            & git -C $Source fetch --depth 1 origin efe0d1d1ea86a8a727bf26a501a261765e836766
+            if ($LASTEXITCODE -ne 0) { throw 'Pinned OPC source fetch failed' }
+            $Core = Join-Path $Work 'core'
+            & "$Root/rust/installer/opc-core/Build-OpcCore.ps1" -SourceRepository $Source -OutputDirectory $Core -Toolchain VS2022v143
+            $Artifact = Join-Path $env:RUNNER_TEMP 'blocked-opc-runtime'
+            [IO.Directory]::CreateDirectory($Artifact) | Out-Null
+            & "$Root/rust/installer/opc-core/Build-SharedRuntime.ps1" -CoreBuildDirectory $Core -OutputFile "$Artifact/runtime.msi"
+            Copy-Item "$Core/build-metadata.json" $Artifact
+          } finally { Pop-Location }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blocked-opc-runtime
+          path: ${{ runner.temp }}/blocked-opc-runtime/*
+          if-no-files-found: error
+  disposable-installation:
+    needs: build-blocked-runtime
+    runs-on: windows-2022
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.build-blocked-runtime.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.423
+      - uses: actions/download-artifact@v4
+        with:
+          name: blocked-opc-runtime
+          path: ${{ runner.temp }}/blocked-opc-runtime
+      - name: Native install contracts on this disposable runner only
+        shell: pwsh
+        env:
+          ICEM_ACCEPTANCE_CASE: ${{ matrix.case }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Root = $PWD.Path
+          $Context = Join-Path $env:RUNNER_TEMP ('opc-test-sdk-' + [guid]::NewGuid().ToString('N'))
+          [IO.Directory]::CreateDirectory($Context) | Out-Null
+          Import-Module "$Root/rust/tools/WindowsBuildSdk.psm1" -Force
+          Initialize-WindowsBuildSdk $Context
+          Push-Location $Context
+          try {
+            $null = Assert-WindowsBuildSdk
+            $Pin = (Get-Content "$Root/rust/installer/.config/dotnet-tools.json" -Raw | ConvertFrom-Json).tools.wix.version
+            & dotnet tool install wix --version $Pin --tool-path "$Context/tools"
+            if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX install failed' }
+            $env:PATH = "$Context/tools;$env:PATH"
+          } finally { Pop-Location }
+          & "$Root/rust/tools/Test-SharedOpcRuntime.ps1" -Msi "$env:RUNNER_TEMP/blocked-opc-runtime/runtime.msi" -Case $env:ICEM_ACCEPTANCE_CASE -EvidenceDirectory "$Root/rust/artifacts/opc-runtime"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: opc-runtime-${{ matrix.case }}-evidence
+          path: rust/artifacts/opc-runtime/*
+          if-no-files-found: warn
