@@ -36,6 +36,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/ci/cache_identity.py --output "$env:RUNNER_TEMP/icem-cache-identity.json"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run Rust-specific stdlib CI tests
+        shell: pwsh
+        run: python -m unittest discover -s tools/ci -p "test_*.py" -v
       - name: Restore Cargo downloads
         id: cargo-downloads
         uses: actions/cache/restore@v5

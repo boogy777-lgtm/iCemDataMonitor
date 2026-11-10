@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import routing
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class RoutingTests(unittest.TestCase):
@@ -85,15 +85,18 @@ class RoutingTests(unittest.TestCase):
             'installer/future.psm1': routing.COMPONENTS,
             'installer/future.unknown': routing.COMPONENTS,
             'rust/installer/windows-payload.json': ('rust', 'packaging'),
-            'rust/installer/bootstrapper/Setup.cs': ('rust', 'packaging'),
+            'shared/installer/bootstrapper/Setup.cs': routing.COMPONENTS,
+            'shared/installer/tools/Build-WindowsSetup.ps1': routing.COMPONENTS,
+            'shared/installer/tools/Test-WindowsSetupBuild.ps1': routing.COMPONENTS,
             'shared/opc-runtime/installer/SharedRuntime.wxs': ('rust', 'packaging'),
             'shared/opc-runtime/tools/Test-SharedOpcRuntime.ps1': ('rust', 'packaging'),
-            'shared/installer/tools/WindowsMsiDatabase.psm1': ('rust', 'packaging'),
-            'shared/installer/.config/dotnet-tools.json': ('rust', 'packaging'),
+            'shared/installer/tools/WindowsMsiDatabase.psm1': routing.COMPONENTS,
+            'shared/installer/.config/dotnet-tools.json': routing.COMPONENTS,
             'shared/opc-runtime/README.md': (),
             'shared/installer/README.md': (),
             '.github/workflows/new-workflow.yml': routing.COMPONENTS,
-            'rust/tools/ci/routing.py': routing.COMPONENTS,
+            'tools/ci/routing.py': routing.COMPONENTS,
+            'rust/tools/ci/cache_identity.py': ('rust', 'packaging'),
             'rust/migration/legacy-divergences.json': routing.COMPONENTS,
             'docs/Wireshark/iCemCrio.pcapng.bin': routing.COMPONENTS,
             'docs/Wireshark/notes.md': routing.COMPONENTS,
@@ -141,7 +144,7 @@ class RoutingTests(unittest.TestCase):
         # Newly added project/root/extension cannot silently enter the optimized set.
         # Known infrastructure and intentionally unknown root config always select full.
         paths = routing.git(ROOT, 'ls-files', '-z').decode().split('\0')[:-1]
-        full_roots = ('.github/', 'rust/migration/', 'rust/tools/ci/', '.vscode/')
+        full_roots = ('.github/', 'rust/migration/', 'tools/ci/', '.vscode/')
         full_files = {'.editorconfig', '.gitattributes', '.gitignore'}
         uncovered = [p for p in paths if routing.categories(p) == {'infrastructure'} and p not in full_files and not p.startswith(full_roots)]
         self.assertEqual(uncovered, [], 'Review new tracked paths and routing dependencies')
@@ -241,7 +244,7 @@ class RoutingTests(unittest.TestCase):
             '.github/workflows/release.yml': (
                 'Get-Item -LiteralPath "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"',
                 'Set-Content -LiteralPath dist/legacy/SHA256SUMS.txt',
-                './rust/tools/Build-WindowsSetup.ps1 -Msi "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"',
+                './shared/installer/tools/Build-WindowsSetup.ps1 -Msi "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"',
                 'gh release create "$env:GITHUB_REF_NAME" $msi "$msi.sha256" $setup "$setup.sha256" dist/legacy/SHA256SUMS.txt'),
             '.github/workflows/rust-windows-release.yml': (
                 'Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"',
@@ -289,7 +292,7 @@ class RoutingTests(unittest.TestCase):
             self.assertIn('if: always()', gate)
             self.assertIn('needs: [' + ', '.join(('inputs', *members)) + ']', gate)
             self.assertIn('CI_NEEDS_JSON: ${{ toJSON(needs) }}', gate)
-            self.assertIn(f'run: python rust/tools/ci/routing.py gate --family {family}', gate)
+            self.assertIn(f'run: python tools/ci/routing.py gate --family {family}', gate)
             for job in members:
                 file = calls[job]
                 # Job body extends until next two-space job key (not four-space fields).
@@ -309,10 +312,10 @@ class RoutingTests(unittest.TestCase):
         self.assertNotIn('if:', shared)
         self.assertNotIn('continue-on-error:', shared)
         self.assertIn('fetch-depth: 0', shared)
-        self.assertIn('run: python rust/tools/ci/routing.py classify', shared)
+        self.assertIn('run: python tools/ci/routing.py classify', shared)
         self.assertIn('Test-BaselineGuard.ps1', shared)
         self.assertIn('Verify-Baseline.ps1 -RequireComplete', shared)
-        self.assertIn('python -m unittest discover -s rust/tools/ci -p "test_*.py" -v', shared)
+        self.assertIn('python -m unittest discover -s tools/ci -p "test_*.py" -v', shared)
         for component in routing.COMPONENTS:
             self.assertIn(f'value: ${{{{ jobs.classify.outputs.{component} }}}}', shared)
             self.assertIn(f'{component}: ${{{{ steps.route.outputs.{component} }}}}', shared)
@@ -345,10 +348,58 @@ class RoutingTests(unittest.TestCase):
             self.assertIn('.sha256").Split(\' \')[0] -ine (Get-FileHash -LiteralPath', workflow)
             self.assertIn('no mutation retry or overwrite.', workflow)
         builder = (ROOT / 'rust/tools/Build-WindowsRelease.ps1').read_text(encoding='utf-8')
-        self.assertIn("'Build-WindowsSetup.ps1'", builder)
+        self.assertIn("'shared/installer/tools/Build-WindowsSetup.ps1'", builder)
         self.assertNotIn('CI.slnf', builder)
         packaging = (workflows / 'rust-installer-contracts.yml').read_text(encoding='utf-8')
-        self.assertIn('run: ./tools/Test-WindowsSetupBuild.ps1', packaging)
+        self.assertIn('run: ../shared/installer/tools/Test-WindowsSetupBuild.ps1', packaging)
+
+    def test_shared_setup_has_one_owner_and_direct_consumers(self):
+        shared = ROOT / 'shared/installer'
+        for path in ('bootstrapper/Setup.cs', 'bootstrapper/Setup.csproj',
+                     'tools/Build-WindowsSetup.ps1', 'tools/Test-WindowsSetup.ps1',
+                     'tools/Test-WindowsSetupBuild.ps1'):
+            with self.subTest(path=path):
+                self.assertTrue((shared / path).is_file())
+        for path in ('rust/installer/bootstrapper', 'rust/tools/Build-WindowsSetup.ps1',
+                     'rust/tools/Test-WindowsSetup.ps1', 'rust/tools/Test-WindowsSetupBuild.ps1',
+                     'rust/tools/ci/routing.py', 'rust/tools/ci/routing-rules.json',
+                     'rust/tools/ci/test_routing.py'):
+            with self.subTest(retired=path):
+                self.assertFalse((ROOT / path).exists())
+        for path in ('rust/tools/ci/cache_identity.py', 'rust/tools/ci/cache_contract.py',
+                     'rust/tools/ci/test_cache.py', 'rust/tools/ci/test_vendor.py',
+                     'rust/tools/ci/test_encoding.py'):
+            with self.subTest(rust_specific=path):
+                self.assertTrue((ROOT / path).is_file())
+
+        builder = (shared / 'tools/Build-WindowsSetup.ps1').read_text(encoding='utf-8')
+        self.assertIn('shared/installer/bootstrapper/Setup.csproj', builder)
+        self.assertIn('Test-WindowsSetup.ps1', builder)
+        self.assertIn('rust/installer/windows-installer.json', builder)
+        consumers = {
+            '.github/workflows/release.yml': 'shared/installer/tools/Build-WindowsSetup.ps1',
+            '.github/workflows/rust-installer-contracts.yml': '../shared/installer/tools/Test-WindowsSetupBuild.ps1',
+            'rust/tools/Build-WindowsRelease.ps1': 'shared/installer/tools/Build-WindowsSetup.ps1',
+        }
+        for path, fragment in consumers.items():
+            with self.subTest(consumer=path):
+                self.assertIn(fragment, (ROOT / path).read_text(encoding='utf-8'))
+        tracked = routing.git(ROOT, 'ls-files', '-z').decode('utf-8').split('\0')[:-1]
+        inputs = [path for path in tracked if path.startswith('shared/installer/bootstrapper/')]
+        inputs += ['shared/installer/tools/Build-WindowsSetup.ps1',
+                   'shared/installer/tools/Test-WindowsSetup.ps1',
+                   'shared/installer/tools/Test-WindowsSetupBuild.ps1']
+        self.assertTrue(inputs)
+        for path in inputs:
+            with self.subTest(input=path):
+                self.assertEqual(routing.classify([path]), dict.fromkeys(routing.COMPONENTS, 'true'))
+
+    def test_rust_specific_ci_suite_stays_in_rust_gate(self):
+        migration = (ROOT / '.github/workflows/rust-migration.yml').read_text(encoding='utf-8')
+        self.assertIn('python -m unittest discover -s tools/ci -p "test_*.py" -v', migration)
+        inputs = (ROOT / '.github/workflows/ci-inputs.yml').read_text(encoding='utf-8')
+        self.assertIn('python -m unittest discover -s tools/ci -p "test_*.py" -v', inputs)
+        self.assertNotIn('rust/tools/ci', inputs)
 
 
 class GitFixture(unittest.TestCase):

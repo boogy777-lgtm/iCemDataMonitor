@@ -3,7 +3,7 @@
 param([Parameter(Mandatory)][string] $Msi, [string] $OutputDirectory)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$Repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$Repo = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if (-not $IsWindows) { throw 'Windows setup requires Windows x64.' }
 if (-not $OutputDirectory) { $OutputDirectory = Split-Path $Msi -Parent }
@@ -43,7 +43,7 @@ try {
     [IO.File]::WriteAllText($Inventory, ".NET|$([guid]$LegacyCode)`nRust|$([guid]$Rust.upgrade_code)`n")
     [IO.File]::WriteAllText($HashPath, $Hash)
     [IO.File]::WriteAllText($FamilyPath, $PayloadFamilies[0])
-    & dotnet build (Join-Path $Repo 'rust/installer/bootstrapper/Setup.csproj') -c Release "-p:PayloadPath=$Msi" "-p:InventoryPath=$Inventory" "-p:HashPath=$HashPath" "-p:FamilyPath=$FamilyPath" "-p:OutputPath=$Work/bin/" "-p:BaseIntermediateOutputPath=$Work/obj/" | Out-Host
+    & dotnet build (Join-Path $Repo 'shared/installer/bootstrapper/Setup.csproj') -c Release "-p:PayloadPath=$Msi" "-p:InventoryPath=$Inventory" "-p:HashPath=$HashPath" "-p:FamilyPath=$FamilyPath" "-p:OutputPath=$Work/bin/" "-p:BaseIntermediateOutputPath=$Work/obj/" | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Windows setup compilation failed' }
     $Built = Join-Path $Work 'bin/iCemDataMonitor-Setup.exe'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-WindowsSetup.ps1') -Setup $Built -ExpectedMsi $Msi -ExpectedFamily $PayloadFamilies[0] | Out-Host

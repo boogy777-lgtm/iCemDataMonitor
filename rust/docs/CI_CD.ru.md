@@ -169,9 +169,12 @@ release не отменяется новым PR или самостоятель�
 
 ## Проверка и границы доказательства
 
-Локально запускается Python stdlib suite:
+Common routing/family-gate tests живут в root `tools/ci`; Rust cache/vendor/toolchain
+tests остаются в `rust/tools/ci` и запускаются только внутри Rust family workflow.
+Локально запускаются обе Python stdlib suites:
 
 ```text
+python -m unittest discover -s tools/ci -p "test_*.py" -v
 python -m unittest discover -s rust/tools/ci -p "test_*.py" -v
 ```
 

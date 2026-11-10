@@ -25,9 +25,9 @@ by this small Windows launcher, not by the Rust applications.
 Direct MSI: `dist/rust/iCemDataMonitor-rust-dev-0.1.0-windows-x64.msi` and
 `.msi.sha256`. Direct MSI still blocks cross-family installation; use Setup.exe
 for cross-family removal. Previously issued MSI files cannot gain this UI retroactively.
-`Build-WindowsSetup.ps1 -Msi PATH` can wrap either family's MSI with the same launcher;
+`shared/installer/tools/Build-WindowsSetup.ps1 -Msi PATH` wraps either family's MSI with the same launcher;
 the embedded payload family is read from the MSI UpgradeCode, not a caller flag.
-`Test-WindowsSetup.ps1` validates removal targets, payload hash and the UI inventory
+`shared/installer/tools/Test-WindowsSetup.ps1` validates removal targets, payload hash and the UI inventory
 without uninstalling anything on the SDK workstation.
 
 The two delivery pipelines are independent: `legacy-release` (`vX.Y.Z`) emits
@@ -184,7 +184,7 @@ Windows Rust CI passed that same head. That lifecycle race is recorded in PR #4,
 not bypassed by packaging. SDK-backed release, visual wizard acceptance, iCem DLL
 loading and production/offline/failure/running-process acceptance remain open. The new lifecycle fixture cases require a Windows run; test-only injected rollback is not production rollback evidence.
 
-`Test-WindowsSetupBuild.ps1` separately compiles both family launchers around
+`shared/installer/tools/Test-WindowsSetupBuild.ps1` separately compiles both family launchers around
 small TEST ONLY MSIs without building legacy applications or executing MSI.
 It checks the exact embedded MSI/family, both removal policies, output/checksum,
 no-overwrite, tamper and unsupported-family refusal. These are build/read-only

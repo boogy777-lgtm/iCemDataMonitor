@@ -36,4 +36,4 @@ jobs:
         shell: pwsh
         env:
           CI_NEEDS_JSON: ${{ toJSON(needs) }}
-        run: python rust/tools/ci/routing.py gate --family rust
+        run: python tools/ci/routing.py gate --family rust

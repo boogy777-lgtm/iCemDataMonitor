@@ -5,11 +5,10 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'Windows Setup contracts require Windows.' }
-$Root = Split-Path $PSScriptRoot -Parent
-$Repo = Split-Path $Root -Parent
-$Work = Join-Path $Root ('target/setup-contract-' + [guid]::NewGuid().ToString('N'))
+$Repo = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
+$Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-setup-contract-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($Work) | Out-Null
-$Rust = Get-Content -Raw -LiteralPath (Join-Path $Root 'installer/windows-installer.json') | ConvertFrom-Json
+$Rust = Get-Content -Raw -LiteralPath (Join-Path $Repo 'rust/installer/windows-installer.json') | ConvertFrom-Json
 $Legacy = [xml](Get-Content -Raw -LiteralPath (Join-Path $Repo 'installer/Product.wxs'))
 $Families = [ordered]@{
     '.NET' = [guid]$Legacy.SelectSingleNode('/*[local-name()="Wix"]/*[local-name()="Package"]').GetAttribute('UpgradeCode')
