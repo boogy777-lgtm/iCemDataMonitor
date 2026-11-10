@@ -30,3 +30,29 @@ OPC component GUID. Снимки сравнивают типы/значения/
 Открыто: normal-operator grants только собственного runtime, x86/x64 независимые
 COM clients, upgrade и shared-owner removal, signing/distribution terms и полная
 Setup acceptance. До закрытия нужных gates production block не снимать.
+
+## MIDL build gate
+
+Первый run `42790763520` собрал x86/x64 Release, но остановился до создания MSI:
+старые хеши `_i.c` учитывали комментарии с версией/окружением MIDL. Установочные
+jobs не запускались. Все девять локальных baseline inputs повторно совпали со
+старыми pins; новые pins получены из тех же тел после нормализации только трёх
+metadata-комментариев и CRLF/LF. Активный код, GUID declarations и остальные байты
+остаются hash-pinned; missing/extra files теперь также отвергаются.
+`Test-OpcGuidInventory.ps1`: локально PASS 18 проверок; inventory содержит 70
+IID/LIBID/CLSID declarations. Проверяются metadata portability и мутации идентичностей,
+макроса и инъекции между/через комментарии. CI сохраняет generated inputs даже
+при ошибке; изменение тела не разрешается через автоматическое обновление pins.
+
+Compile-only локальная пересборка shared MSI из cached MSM прошла, Release guard:
+0 warnings/errors. В отдельном file fixture отсутствующие в старом cache license,
+RGS и IDL восстановлены из закреплённого `source-upstream.tar`; исходный cache
+не менялся. Первые попытки с неполным cache не прошли, а не были подавлены.
+Новый blocked MSI `rust/target/runtime-midl-portable-20261110.msi`, SHA-256
+`fb140ebe2009b1d625eddfb1c8b282654194d63c39f5e41dc418067869889418` — не поставка.
+Все 143 guard paths побайтово совпали с прежним secure-v3 inventory.
+Никакой установки на этом ПК не было; fresh CI build/installation ещё обязателен.
+
+Обычный CI `42790763716` также не прошёл: Scaffold/cache command contract drift,
+legacy tests и Windows heap profiling. Baseline и packaging contracts прошли.
+Эти результаты не подменяются отдельной OPC-матрицей и не означают release acceptance.

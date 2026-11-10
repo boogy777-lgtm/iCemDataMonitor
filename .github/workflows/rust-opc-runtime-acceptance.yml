@@ -40,6 +40,8 @@ jobs:
           $Context = Join-Path $Work 'sdk'
           $Tools = Join-Path $Work 'tools'
           $Source = Join-Path $Work 'upstream'
+          $Core = Join-Path $Work 'core'
+          $Diagnostics = Join-Path $Root 'rust/artifacts/opc-build'
           [IO.Directory]::CreateDirectory($Context) | Out-Null
           Import-Module "$Root/rust/tools/WindowsBuildSdk.psm1" -Force
           Initialize-WindowsBuildSdk $Context
@@ -54,13 +56,31 @@ jobs:
             & git -C $Source remote add origin https://github.com/OPCF-Members/OPC-Classic-CoreComponents.git
             & git -C $Source fetch --depth 1 origin efe0d1d1ea86a8a727bf26a501a261765e836766
             if ($LASTEXITCODE -ne 0) { throw 'Pinned OPC source fetch failed' }
-            $Core = Join-Path $Work 'core'
             & "$Root/rust/installer/opc-core/Build-OpcCore.ps1" -SourceRepository $Source -OutputDirectory $Core -Toolchain VS2022v143
+            & "$Root/rust/installer/opc-core/Test-OpcGuidInventory.ps1" -IncludeDirectory "$Core/stage-x86/include"
             $Artifact = Join-Path $env:RUNNER_TEMP 'blocked-opc-runtime'
             [IO.Directory]::CreateDirectory($Artifact) | Out-Null
             & "$Root/rust/installer/opc-core/Build-SharedRuntime.ps1" -CoreBuildDirectory $Core -OutputFile "$Artifact/runtime.msi"
             Copy-Item "$Core/build-metadata.json" $Artifact
-          } finally { Pop-Location }
+          } finally {
+            [IO.Directory]::CreateDirectory($Diagnostics) | Out-Null
+            foreach ($Arch in @('x86', 'x64')) {
+              $Include = Join-Path $Core "stage-$Arch/include"
+              if (Test-Path -LiteralPath $Include) {
+                $Destination = Join-Path $Diagnostics $Arch
+                [IO.Directory]::CreateDirectory($Destination) | Out-Null
+                Copy-Item -Path "$Include/*_i.c" -Destination $Destination
+              }
+            }
+            if (Test-Path "$Core/build-metadata.json") { Copy-Item "$Core/build-metadata.json" $Diagnostics }
+            Pop-Location
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: opc-build-diagnostics
+          path: rust/artifacts/opc-build/**
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: blocked-opc-runtime

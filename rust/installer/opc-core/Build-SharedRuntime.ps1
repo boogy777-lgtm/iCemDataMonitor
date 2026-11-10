@@ -6,6 +6,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot '../../tools/WindowsMsiDatabase.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'OpcGuidInventory.psm1') -Force
 $root = (Resolve-Path -LiteralPath $CoreBuildDirectory).Path
 $output = [IO.Path]::GetFullPath($OutputFile)
 if (Test-Path -LiteralPath $output) { throw 'Output file already exists.' }
@@ -48,17 +49,6 @@ foreach ($name in $names) {
 if ((Get-FileHash -LiteralPath (Join-Path $root 'LICENSE.md') -Algorithm SHA256).Hash -ine '4f9f1935014049ea941a6d93fbd0248d1aa905c44ed2520ea2815d48c3a51291') { throw 'License does not match pinned upstream bytes.' }
 $parent = Split-Path -Parent $output
 if (-not (Test-Path -LiteralPath $parent -PathType Container)) { throw 'Output parent must already exist.' }
-$iidHashes = @{
-    'opc_ae_i.c'='ec56d7a664df24f57af838459690f9ee7fe1b262920f5a398d452fb043f16bec'
-    'opcbc_i.c'='baeeb79cfe8f1e67bcf14038fa27330aff23f7ff304f5cc3c4eeea56f35fd5ab'
-    'OpcCmd_i.c'='35839294b37555d71975d9645216e4a7ef0e125ecb1cd686d047f9422b8ab524'
-    'opccomn_i.c'='859fd4476a9809f3ae410706b614c76b754c658d9486a24bc34dcc9a1d00c9de'
-    'opcda_i.c'='aa9506c2a2cf162eacb4fd6d2f71d3f3c37256fcf4133935fd962fb366448d20'
-    'OpcDx_i.c'='61203e6f010746b33e4171f4cd6ff3f33e12192c8dbdd51c8f73d5c967fd5634'
-    'OpcEnum_i.c'='f646cbb91344e73182b87eff68e2aa8e2fe2d0eb2a416d0e564cf55f434c5386'
-    'opchda_i.c'='6b41682d3b383b4e620a0b3feba6e006937941b93c3eddb326a83ffb64ea08e4'
-    'opcSec_i.c'='b5735b093bb9b695c7ec105dff3c25648ba463d12a827ad83c71c0d4741a9ce7'
-}
 $categoryIdl = Join-Path $root 'source/Source/Common/CategoryManager/CategoryManager.idl'
 if ((Get-FileHash -LiteralPath $categoryIdl -Algorithm SHA256).Hash -ine '724b429223ed5f81f2acf011f389cb776b7fa41d01c75e9562636918a397c73d') { throw 'Category Manager IDL differs from pinned source.' }
 $categoryCpp = Join-Path $root 'source/Source/Common/CategoryManager/CategoryManager.cpp'
@@ -68,28 +58,12 @@ if ((Get-FileHash -LiteralPath $enumRgs -Algorithm SHA256).Hash -ine '2277f802f6
 $serverListRgs = Join-Path $root 'source/Source/Common/ServerEnumerator/OpcServerList.rgs'
 if ((Get-FileHash -LiteralPath $serverListRgs -Algorithm SHA256).Hash -ine '2d67263159f6c60d67ab74b803eea42cb6b516cf276cfc80dad3ad29cffce823') { throw 'OpcServerList registration source differs from pinned source.' }
 $keys = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-$pattern = 'MIDL_DEFINE_GUID\(\s*(?:IID|CLSID)\s*,\s*(IID_|LIBID_|CLSID_)\w+\s*,\s*((?:0x[0-9a-fA-F]+\s*,\s*){10}0x[0-9a-fA-F]+)\s*\)'
-foreach ($fileName in ($iidHashes.Keys | Sort-Object)) {
-    $iidFile = Join-Path $root "stage-x86/include/$fileName"
-    $sourceText = Get-Content -LiteralPath $iidFile -Raw
-    $pathPattern = '(?m)^/\* Compiler settings for [^\r\n]+:'
-    if ([regex]::Matches($sourceText, $pathPattern).Count -ne 1) { throw "Unexpected MIDL source heading: $fileName" }
-    $canonical = [regex]::Replace($sourceText, $pathPattern, '/* Compiler settings for <source>:')
-    $sha = [Security.Cryptography.SHA256]::Create()
-    try { $canonicalHash = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($canonical))).Replace('-', '') }
-    finally { $sha.Dispose() }
-    if ($canonicalHash -ine $iidHashes[$fileName]) { throw "Unreviewed MIDL inventory: $fileName" }
-    $entries = [regex]::Matches($sourceText, $pattern)
-    $declarations = [regex]::Matches($sourceText, 'MIDL_DEFINE_GUID\(\s*(?:IID|CLSID)\s*,')
-    if ($entries.Count -eq 0 -or $entries.Count -ne $declarations.Count) { throw "Incomplete MIDL inventory: $fileName" }
-    foreach ($entry in $entries) {
-        $parts = @($entry.Groups[2].Value -split ',' | ForEach-Object { [Convert]::ToUInt32($_.Trim().Substring(2), 16) })
-        $guid = ('{{{0:X8}-{1:X4}-{2:X4}-{3:X2}{4:X2}-{5:X2}{6:X2}{7:X2}{8:X2}{9:X2}{10:X2}}}' -f $parts)
-        switch ($entry.Groups[1].Value) {
-            'IID_' { [void]$keys.Add("SOFTWARE\Classes\Interface\$guid"); [void]$keys.Add("SOFTWARE\Classes\CLSID\$guid") }
-            'LIBID_' { [void]$keys.Add("SOFTWARE\Classes\TypeLib\$guid") }
-            'CLSID_' { [void]$keys.Add("SOFTWARE\Classes\CLSID\$guid"); [void]$keys.Add("SOFTWARE\Classes\AppID\$guid") }
-        }
+foreach ($entry in (Read-OpcGuidInventory (Join-Path $root 'stage-x86/include'))) {
+    $guid = $entry.guid
+    switch -Regex -CaseSensitive ($entry.name) {
+        '^IID_' { [void]$keys.Add("SOFTWARE\Classes\Interface\$guid"); [void]$keys.Add("SOFTWARE\Classes\CLSID\$guid") }
+        '^LIBID_' { [void]$keys.Add("SOFTWARE\Classes\TypeLib\$guid") }
+        '^CLSID_' { [void]$keys.Add("SOFTWARE\Classes\CLSID\$guid"); [void]$keys.Add("SOFTWARE\Classes\AppID\$guid") }
     }
 }
 # Pinned CategoryManager.idl defines these two UUIDs; its MIDL file is not part of x86 stage.
