@@ -19,6 +19,7 @@ function New-Fixture {
         'migration/desktop-gpui-mapping.json', 'crates/icem-desktop/Cargo.toml')
     $Paths += @($script:Mapping.controls | ForEach-Object { $_.implementation })
     $Paths += @($script:Mapping.native_extensions | ForEach-Object { $_.implementation; $_.composition })
+    $Paths += @($script:Mapping.protocol_extensions | ForEach-Object { $_.implementation; $_.composition })
     $Paths += @($script:Mapping.host_console | ForEach-Object { $_.implementation })
     foreach ($Path in ($Paths | Sort-Object -Unique)) {
         Write-Fixture $Path ([IO.File]::ReadAllText((Join-Path $Root $Path)))
@@ -42,7 +43,7 @@ function Check-Case([string] $Name, [scriptblock] $Mutate, [string] $ExpectedErr
     Write-Host "PASS $Name"
 }
 try {
-    Check-Case 'actual 176+6 mapping and typed renderer' {}
+    Check-Case 'actual 176+6+3 mapping and typed renderer' {}
     Check-Case 'missing typed SetEnabled' { Change-Renderer 'Command::SetEnabled' 'Command::Get' } 'Invalid typed logging renderer action/index pairing'
     Check-Case 'missing typed Clear' { Change-Renderer 'Command::Clear' 'Command::Get' } 'Invalid typed logging renderer action/index pairing'
     Check-Case 'swapped renderer indices' {
@@ -67,7 +68,29 @@ try {
         $script:Mapping.native_extensions[1].index = 0
         Save-Mapping
     } 'Duplicate native extension identity'
-    Write-Host 'Desktop mapping guard regression suite passed (8 cases).'
+    Check-Case 'missing protocol mapping' {
+        $script:Mapping.protocol_extensions = @($script:Mapping.protocol_extensions | Select-Object -Skip 1)
+        Save-Mapping
+    } 'Protocol descriptor/mapping drift'
+    Check-Case 'wrong protocol identity' {
+        $script:Mapping.protocol_extensions[0].protocol = 'Mqtt'
+        Save-Mapping
+    } 'Protocol descriptor/mapping drift'
+    Check-Case 'duplicate protocol identity' {
+        $script:Mapping.protocol_extensions[1] = $script:Mapping.protocol_extensions[0]
+        Save-Mapping
+    } 'Duplicate or empty protocol extension identity'
+    Check-Case 'missing protocol descriptor' {
+        $Path = 'crates/icem-desktop/src/protocol_view.rs'
+        $Text = [IO.File]::ReadAllText((Join-Path $Fixture $Path))
+        Write-Fixture $Path ($Text.Replace('id: "MqttSwitch"', 'id: "MissingMqttSwitch"'))
+    } 'Protocol descriptor/mapping drift'
+    Check-Case 'missing protocol composition' {
+        $Path = 'crates/icem-desktop/src/monitor.rs'
+        $Text = [IO.File]::ReadAllText((Join-Path $Fixture $Path))
+        Write-Fixture $Path ($Text.Replace('protocol_view::CONTROLS', 'protocol_view::UNWIRED'))
+    } 'Protocol extension composition is not wired'
+    Write-Host 'Desktop mapping guard regression suite passed (13 cases).'
 } finally {
     if (Test-Path $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force }
 }

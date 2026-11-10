@@ -1,4 +1,4 @@
-"""Fail-closed component routing and the single required-check candidate (stdlib only)."""
+"""Fail-closed component routing and independent family gates (stdlib only)."""
 import argparse
 from dataclasses import dataclass
 import fnmatch
@@ -8,7 +8,8 @@ from pathlib import Path
 import re
 import subprocess
 
-COMPONENTS = ('legacy', 'rust', 'packaging')
+FAMILIES = {'legacy': ('legacy',), 'rust': ('rust', 'packaging')}
+COMPONENTS = tuple(component for members in FAMILIES.values() for component in members)
 RULES_PATH = Path(__file__).with_name('routing-rules.json')
 LEDGER_PATH = 'rust/migration/legacy-divergences.json'
 MANIFEST_PATH = 'rust/migration/source-manifest.json'
@@ -238,21 +239,25 @@ def classify_verified(repo, context):
     return classify(paths), delegated
 
 
-def validate_gate(needs):
-    expected = {'classify', 'baseline', 'routing-tests', *COMPONENTS}
+def validate_gate(needs, family):
+    if not isinstance(family, str) or family not in FAMILIES:
+        raise ValueError('Unknown build family')
+    components = FAMILIES[family]
+    expected = {'inputs', *components}
     if not isinstance(needs, dict) or set(needs) != expected:
         raise ValueError('Unexpected/missing dependency jobs')
     for name in expected:
         job = needs[name]
         if not isinstance(job, dict) or set(job) != {'result', 'outputs'} or not isinstance(job['outputs'], dict):
             raise ValueError('Malformed job: ' + name)
-    for name in ('classify', 'baseline', 'routing-tests'):
-        if needs[name]['result'] != 'success':
-            raise ValueError('Mandatory job did not succeed: ' + name)
-    outputs = needs['classify']['outputs']
+    # inputs succeeds only when classification, immutable baseline and routing
+    # selftests all succeed. Another family's build result is not a dependency.
+    if needs['inputs']['result'] != 'success':
+        raise ValueError('Mandatory inputs did not succeed')
+    outputs = needs['inputs']['outputs']
     if set(outputs) != set(COMPONENTS) or any(value not in ('true', 'false') or not isinstance(value, str) for value in outputs.values()):
         raise ValueError('Malformed classification outputs')
-    for name in COMPONENTS:
+    for name in components:
         expected_result = 'success' if outputs[name] == 'true' else 'skipped'
         if needs[name]['result'] != expected_result:
             raise ValueError(f'{name}: expected {expected_result}, got {needs[name]["result"]}')
@@ -260,12 +265,15 @@ def validate_gate(needs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('classify', 'gate'))
-    parser.add_argument('--repo', default='.')
+    commands = parser.add_subparsers(dest='command', required=True)
+    classifier = commands.add_parser('classify')
+    classifier.add_argument('--repo', default='.')
+    gate = commands.add_parser('gate')
+    gate.add_argument('--family', choices=tuple(FAMILIES), required=True)
     args = parser.parse_args()
     if args.command == 'gate':
-        validate_gate(json.loads(os.environ['CI_NEEDS_JSON']))
-        print('CI gate: all selected checks succeeded; unselected checks skipped')
+        validate_gate(json.loads(os.environ['CI_NEEDS_JSON']), args.family)
+        print(f'{args.family} CI gate: selected family checks succeeded; unselected checks skipped')
         return
     try:
         event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))

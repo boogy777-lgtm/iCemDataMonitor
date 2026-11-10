@@ -10,7 +10,7 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def verify(workflow, scaffold, inputs):
+def verify(workflow, scaffold, inputs, interop):
     require('continue-on-error:' not in workflow, 'Failures must propagate')
     require(workflow.endswith('  release-measurements:\n    uses: ./.github/workflows/rust-nplus1-measurements.yml\n'),
             'Release measurements must remain mandatory and unconditional')
@@ -23,7 +23,7 @@ def verify(workflow, scaffold, inputs):
         return steps[names.index(name)]
     order = ('Install pinned Rust toolchain', 'Verify cache contracts and derive identity',
              'Restore Cargo downloads', 'Fetch locked Rust dependencies',
-             'Verify all scaffold inputs before debug restore', 'Restore Cargo debug build',
+             'Verify all scaffold inputs before release restore', 'Restore Cargo release build',
              'Verify owned Host diagnostic window on Windows',
              'Verify Windows file logger boundary before desktop build',
              'Verify reviewed OPC SDK and sidecar on Windows',
@@ -42,17 +42,17 @@ def verify(workflow, scaffold, inputs):
         order[1]: ('python tools/ci/cache_contract.py', 'python tools/ci/cache_identity.py --output "$env:RUNNER_TEMP/icem-cache-identity.json"'),
         order[3]: ('cargo fetch --locked',),
         order[4]: ('./tools/Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline',),
-        order[6]: ('cargo test --locked --offline -p icem-windows-native',),
-        order[7]: ('cargo test --locked --offline -p icem-logging',),
-        order[8]: ('cargo test --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar',
-                   'cargo clippy --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings',
+        order[6]: ('cargo test --release --locked --offline -p icem-windows-native',),
+        order[7]: ('cargo test --release --locked --offline -p icem-logging',),
+        order[8]: ('cargo test --release --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar',
+                   'cargo clippy --release --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings',
                    './tools/Test-OpcDaInterop.ps1',
                    'python third-party/rust_opc/verify.py',
                    'git diff --exit-code -- third-party/rust_opc'),
-        order[9]: ('cargo test --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows',
-                   'cargo clippy --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings'),
+        order[9]: ('cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows',
+                   'cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings'),
         order[10]: ('./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline',),
-        order[11]: ('python tools/acceptance/windows_counterparts.py --host target/debug/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"',),
+        order[11]: ('python tools/acceptance/windows_counterparts.py --host target/release/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"',),
         order[12]: ('npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund',
                     'node tools/browser/theme-contract.cjs', 'node tools/browser/dashboard.cjs'),
     }
@@ -68,12 +68,18 @@ def verify(workflow, scaffold, inputs):
                 require(command + '\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n' in block,
                         f'Command must propagate its immediate exit code: {command}')
     require(workflow.count('cargo fetch ') == 1, 'Fetch exactly once')
+    require('          ICEM_HOST_EXE: ${{ github.workspace }}/rust/target/release/icem-host-dev.exe\n' in step(order[12]),
+            'Dashboard must exercise the built Release host')
+    expected_interop = ("Native 'cargo' @('test', '--release', '-p', 'icem-opc-da-sidecar', '--test', "
+                        "'windows_process', '--locked', '--offline', '--', '--ignored', '--nocapture')",)
+    require(tuple(line.strip() for line in interop.splitlines() if line.strip().startswith("Native 'cargo'")) == expected_interop,
+            'OPC interop must test Release with the same flags')
     require(workflow.count('uses: actions/cache/') == 4, 'Unexpected cache action')
     for name, kind, action in (
             ('Restore Cargo downloads', 'download', 'restore'),
-            ('Restore Cargo debug build', 'build', 'restore'),
+            ('Restore Cargo release build', 'build', 'restore'),
             ('Save Cargo downloads after all checks', 'download', 'save'),
-            ('Save Cargo debug build after all checks', 'build', 'save')):
+            ('Save Cargo release build after all checks', 'build', 'save')):
         block = step(name)
         require(f'uses: actions/cache/{action}@v5' in block, 'Expected cache v5 restore/save')
         with_block = block.split('        with:\n', 1)[1]
@@ -88,17 +94,17 @@ def verify(workflow, scaffold, inputs):
         require('          key: ${{ steps.cache-identity.outputs.' + kind + '_key }}\n' in block, 'Cache key drift')
         fallback = re.findall(r'(?m)^          restore-keys: (.+)$', block)
         require(fallback == (['${{ steps.cache-identity.outputs.build_prefix }}'] if kind == 'build' and action == 'restore' else []),
-                'Only one compatible debug restore prefix is allowed')
+                'Only one compatible release restore prefix is allowed')
         conditions = re.findall(r'(?m)^        if: (.+)$', block)
-        cache_id = 'cargo-downloads' if kind == 'download' else 'cargo-debug'
+        cache_id = 'cargo-downloads' if kind == 'download' else 'cargo-release'
         require(conditions == ([] if action == 'restore' else
                 [f"success() && steps.{cache_id}.outputs.cache-hit != 'true'"]), 'Cache restore/save policy drift')
     require("& (Join-Path $PSScriptRoot 'Verify-ScaffoldInputs.ps1') -RequireCompleteBaseline:$RequireCompleteBaseline" in scaffold,
             'Full Scaffold must repeat every input guard')
-    expected_cargo = ('& cargo check --workspace --all-targets --locked --offline',
-                      '& cargo build --workspace --locked --offline',
-                      '& cargo test --workspace --locked --offline',
-                      '& cargo clippy --workspace --all-targets --locked --offline -- -D warnings')
+    expected_cargo = ('& cargo check --release --workspace --all-targets --locked --offline',
+                      '& cargo build --release --workspace --locked --offline',
+                      '& cargo test --release --workspace --locked --offline',
+                      '& cargo clippy --release --workspace --all-targets --locked --offline -- -D warnings')
     require(tuple(line.strip() for line in scaffold.splitlines() if line.strip().startswith('& cargo ')) == expected_cargo,
             'Full Scaffold commands drift')
     for command, failure in zip(expected_cargo, ('cargo check failed', 'cargo build failed', 'cargo tests failed', 'clippy failed')):
@@ -114,6 +120,9 @@ def verify(workflow, scaffold, inputs):
     for command in ('cargo metadata --no-deps --format-version 1 --locked --offline', '& cargo fmt --all --check',
                     "$Package.edition -ne '2024'", '$Package.rust_version -ne $PinnedVersion'):
         require(command in inputs, f'Lost common scaffold policy: {command}')
+    require("$OracleRuntime = & pwsh -NoProfile -Command '[Environment]::Version.Major'\n"
+            'if ($LASTEXITCODE -ne 0 -or "$OracleRuntime".Trim() -ne \'10\') {\n' in inputs,
+            'The original-code oracle requires a successful .NET 10 PowerShell probe')
     require("    if ($LASTEXITCODE -ne 0) { throw 'cargo metadata failed' }" in inputs,
             'Metadata failures must fail the guards')
     require("    if ($LASTEXITCODE -ne 0) { throw 'rustfmt failed' }" in inputs,
@@ -132,9 +141,10 @@ def verify(workflow, scaffold, inputs):
 
 def main():
     root = Path(__file__).resolve().parents[3]
-    verify((root / '.github/workflows/rust-migration.yml').read_text(),
-           (root / 'rust/tools/Verify-Scaffold.ps1').read_text(),
-           (root / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text())
+    verify((root / '.github/workflows/rust-migration.yml').read_text(encoding='utf-8'),
+           (root / 'rust/tools/Verify-Scaffold.ps1').read_text(encoding='utf-8'),
+           (root / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text(encoding='utf-8'),
+           (root / 'rust/tools/Test-OpcDaInterop.ps1').read_text(encoding='utf-8'))
     print('CI-3 cache paths, commands, guards and ordering: PASS')
 
 

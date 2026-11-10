@@ -58,7 +58,8 @@ try {
     Write-Host "Windows x64 archive: $($Result.archive)"
     Write-Host "SHA256: $($Result.sha256)"
     $Installer = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $Result.archive -OutputDirectory $OutputDirectory
-    return [pscustomobject]@{ archive = $Result.archive; msi = $Installer.msi; checksum = $Installer.checksum; version = $Version }
+    $Setup = & (Join-Path $PSScriptRoot 'Build-WindowsSetup.ps1') -Msi $Installer.msi -OutputDirectory $OutputDirectory
+    return [pscustomobject]@{ archive = $Result.archive; msi = $Installer.msi; checksum = $Installer.checksum; setup = $Setup.setup; setup_checksum = $Setup.checksum; version = $Version }
 } finally {
     [Environment]::SetEnvironmentVariable('CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS', $SavedFlags)
     if ($AddinWork -and (Test-Path -LiteralPath $AddinWork)) { Remove-Item -LiteralPath $AddinWork -Recurse -Force }

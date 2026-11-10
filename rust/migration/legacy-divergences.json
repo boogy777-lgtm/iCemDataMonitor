@@ -5,22 +5,22 @@
     {
       "path": ".github/workflows/ci.yml",
       "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
-      "approved_blob_sha1": "e5d19816563dadeb80967349821e0db6ae1ae15c",
+      "approved_blob_sha1": "09ecd846f931ea7d3614baba0958cb7cf39b8d9b",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/20",
-        "commit": "3f04ae0816c1d9286032a2b8bb8ed41d65a447d3",
-        "reason": "Owner-authorized CI-1 component-aware monorepo routing. Extract the previous complete legacy build/test/MSI job verbatim into reusable legacy-build.yml (including accepted PR2 -NoPause), preserve full Rust/browser/differential and native installer workloads, add always-required full baseline/routing checks and strict CI gate. Unknown/incomplete changes select all consumers; original source manifest and production .NET remain unchanged. Reviewed source commit and PR20 provide exact workflow provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/50",
+        "commit": "656c446bae9554affd362b31376ddbf94eccbd49",
+        "reason": "Preserve the accepted CI-1 verified diff, immutable baseline, routing selftests, full Rust/browser/differential and unchanged legacy build/test/MSI workloads. Subsequent owner requirement 2026-11-10: separate Rust and legacy build/install pipelines so legacy failures cannot block Rust. ci.yml now owns Rust/packaging and Rust CI gate; independent legacy-ci.yml owns legacy and Legacy CI gate. Both use one ci-inputs.yml for unconditional classify/baseline/routing selftests. Exact family dependency schemas reject malformed results and unexpected skips without continue-on-error or disabling legacy checks. Original .NET projects, net48 AddIn, frozen contracts and source manifest remain unchanged. Python 3.12 32-bit 53/53 and actionlint 1.7.12 pass; hosted execution remains required. PR50 and this reviewed source commit provide exact provenance."
       },
       "operation": "modify"
     },
     {
       "path": ".github/workflows/release.yml",
       "baseline_blob_sha1": "c1eeef21286f688da9b9e05d4fddc99277b7366d",
-      "approved_blob_sha1": "bb8da88cb6aa045c66cd27b9f18d8ae8a4feb54b",
+      "approved_blob_sha1": "416e056fb115d76629b00c504ef0395060f4da24",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Use the existing -NoPause MSI option in unattended releases. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/50",
+        "commit": "656c446bae9554affd362b31376ddbf94eccbd49",
+        "reason": "Preserve accepted unattended -NoPause and repository-root dist/legacy output policy from PR45, separate from dist/rust. Subsequent owner requirement 2026-11-10: independently build and deliver .NET and Rust Setups that can explicitly remove either installed MSI family. Legacy release wraps only its own verified MSI using the existing shared launcher, emits MSI/Setup checksums and verifies both artifacts before publishing. No Rust application build/CI dependency, automatic cross-family deletion, .NET application/AddIn changes or altered historical MSI uninstall policy. Both family launcher Release builds and exact embedded MSI/family, selected removal policy, stale/foreign, tamper, unsupported-family and no-overwrite contracts pass without executing MSI. Real bidirectional uninstall and release acceptance remain open. PR50 and this reviewed source commit provide exact provenance."
       },
       "operation": "modify"
     },

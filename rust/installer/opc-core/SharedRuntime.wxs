@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- Separate product: application removal must never remove this shared runtime.
+       Installation over any pre-existing runtime requires external explicit policy. -->
+  <Package Name="iCem Shared OPC Classic Runtime" Manufacturer="iCem Data Monitor"
+           Version="3.1.4" UpgradeCode="CFAC98DF-4F13-4C41-948C-CA4AE350920A"
+           Scope="perMachine" Compressed="yes" InstallerVersion="500" UpgradeStrategy="none">
+    <SummaryInformation Description="Shared OPC Foundation Classic runtime; separate from iCem application lifecycle." />
+    <!-- Fail closed until native lifecycle/security acceptance is complete.
+         This development MSI must not overwrite foreign registrations. -->
+    <Launch Condition="Installed" Message="Shared OPC Runtime lifecycle acceptance is incomplete; installation is disabled." />
+    <?include "$(var.GuardInventory)" ?>
+    <Binary Id="OpcReadOnlyGuard" SourceFile="$(var.GuardExe)" />
+    <CustomAction Id="OpcCheckForeign" BinaryRef="OpcReadOnlyGuard" ExeCommand="" Execute="immediate" Return="check" />
+    <InstallUISequence><Custom Action="OpcCheckForeign" Before="LaunchConditions" Condition="NOT Installed" /></InstallUISequence>
+    <InstallExecuteSequence><Custom Action="OpcCheckForeign" Before="LaunchConditions" Condition="NOT Installed" /></InstallExecuteSequence>
+    <MediaTemplate EmbedCab="yes" />
+    <!-- No MajorUpgrade or other Upgrade rows: this package never removes an OPC product. -->
+    <StandardDirectory Id="TARGETDIR">
+      <Merge Id="OpcRuntimeX86" Language="1033" SourceFile="$(var.MsmX86)" DiskId="1" />
+      <Merge Id="OpcRuntimeX64" Language="1033" SourceFile="$(var.MsmX64)" DiskId="1" />
+    </StandardDirectory>
+    <StandardDirectory Id="CommonFiles64Folder">
+      <Directory Id="IcemSharedLicenseRoot" Name="iCem Data Monitor">
+        <Directory Id="IcemSharedLicenseDir" Name="OPC Classic Runtime">
+          <Component Id="OpcLicense" Guid="6991D3F6-6BF6-48D8-B893-29C5E20286A1">
+            <File Id="OpcLicenseFile" Name="OPC-LICENSE.md" Source="$(var.OpcLicense)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcSourceArchive" Guid="971D2C89-371E-490B-9A7C-D8152EED7536">
+            <File Id="OpcSourceArchiveFile" Name="source-upstream.tar" Source="$(var.SourceArchive)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcSourcePatch" Guid="117873DE-5A57-48BD-8438-5EB948F74AF2">
+            <File Id="OpcSourcePatchFile" Name="Apply-OpcEnumSecurity.ps1" Source="$(var.SecurityPatch)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcCategoryPatch" Guid="BCB27E26-C4E5-484B-8ED9-9F63506D35F1">
+            <File Id="OpcCategoryPatchFile" Name="Apply-OpcCategorySecurity.ps1" Source="$(var.CategoryPatch)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcEnumerationPatch" Guid="A68BC913-04D1-4BC1-9B2E-6A48D8168C7D">
+            <File Id="OpcEnumerationPatchFile" Name="Apply-OpcEnumEnumeration.ps1" Source="$(var.EnumerationPatch)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcBuildProvenance" Guid="3931D8ED-E3E8-416A-8F07-BA1598022F13">
+            <File Id="OpcBuildProvenanceFile" Name="build-metadata.json" Source="$(var.BuildMetadata)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcBuildRecipe" Guid="B729BC6A-34D2-4D65-9225-2D9A5E1AE42D">
+            <File Id="OpcBuildRecipeFile" Name="Build-OpcCore.ps1" Source="$(var.BuildRecipe)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcNativeRecipe" Guid="5F34165B-336D-44BD-B530-3C4C2E44BC15">
+            <File Id="OpcNativeRecipeFile" Name="New-OpcRuntimeModule.ps1" Source="$(var.NativeRecipe)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcNativeInventory" Guid="61E43BE7-E3BC-4F3B-9E1F-3F532DA681F0">
+            <File Id="OpcNativeInventoryFile" Name="native-runtime-inventory.json" Source="$(var.NativeInventory)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcNativeCodes" Guid="B2AAE4E5-D092-4A5C-B3A2-5D6622B0192F">
+            <File Id="OpcNativeCodesFile" Name="opc-component-codes.txt" Source="$(var.NativeCodes)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcNativeGuidReader" Guid="152DC718-1FF7-4D9D-9E33-DE141D4214AF">
+            <File Id="OpcNativeGuidReaderFile" Name="OpcGuidInventory.psm1" Source="$(var.NativeGuidReader)" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <Feature Id="SharedRuntime" Level="1" AllowAbsent="no">
+      <MergeRef Id="OpcRuntimeX86" />
+      <MergeRef Id="OpcRuntimeX64" />
+      <ComponentRef Id="OpcLicense" />
+      <ComponentRef Id="OpcSourceArchive" />
+      <ComponentRef Id="OpcSourcePatch" />
+      <ComponentRef Id="OpcCategoryPatch" />
+      <ComponentRef Id="OpcEnumerationPatch" />
+      <ComponentRef Id="OpcBuildProvenance" />
+      <ComponentRef Id="OpcBuildRecipe" />
+      <ComponentRef Id="OpcNativeRecipe" />
+      <ComponentRef Id="OpcNativeInventory" />
+      <ComponentRef Id="OpcNativeCodes" />
+      <ComponentRef Id="OpcNativeGuidReader" />
+    </Feature>
+  </Package>
+</Wix>

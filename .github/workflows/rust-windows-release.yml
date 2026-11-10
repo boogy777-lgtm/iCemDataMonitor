@@ -15,7 +15,7 @@ on:
         type: string
         default: ''
       publish:
-        description: 'Create a draft prerelease with the verified MSI'
+        description: 'Create a draft prerelease with the verified Rust MSI and Setup'
         type: boolean
         default: false
 permissions:
@@ -117,13 +117,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tools/browser/dashboard.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Upload Windows installer and checksum
+      - name: Upload Rust MSI, Setup and checksums
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64-release
           path: |
             dist/rust/*.msi
             dist/rust/*.msi.sha256
+            dist/rust/*-Setup.exe
+            dist/rust/*-Setup.exe.sha256
           if-no-files-found: error
       - name: Upload release evidence
         if: always()
@@ -167,7 +169,11 @@ jobs:
           $Name = "iCemDataMonitor-rust-dev-$env:RELEASE_VERSION-windows-x64.msi"
           $Msi = Join-Path $PWD "dist/rust/$Name"
           $Checksum = "$Msi.sha256"
-          if ((Get-Content -Raw -LiteralPath $Checksum).Split(' ')[0] -ine (Get-FileHash -LiteralPath $Msi).Hash) { throw 'Downloaded MSI checksum mismatch' }
-          $Notes = "Windows x64 Rust development installer. Source: $env:GITHUB_SHA. Installation, N to N+1 upgrade, downgrade rejection, uninstall, executable smoke and browser contracts passed in Actions run $env:GITHUB_RUN_ID. Hardware/UI equivalence and production cutover remain open. Unsigned development candidate with verified net48 AddIn. Legacy .NET MSI cutover is blocked."
-          & gh release create "rust-v$env:RELEASE_VERSION" $Msi $Checksum --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "iCem Data Monitor Rust $env:RELEASE_VERSION (Windows x64)" --notes $Notes
+          $Setup = Join-Path $PWD "dist/rust/iCemDataMonitor-rust-dev-$env:RELEASE_VERSION-windows-x64-Setup.exe"
+          $SetupChecksum = "$Setup.sha256"
+          foreach ($File in @($Msi, $Setup)) {
+            if ((Get-Content -Raw -LiteralPath "$File.sha256").Split(' ')[0] -ine (Get-FileHash -LiteralPath $File).Hash) { throw "Downloaded artifact checksum mismatch: $File" }
+          }
+          $Notes = "Windows x64 Rust development installer. Source: $env:GITHUB_SHA. Installation, N to N+1 upgrade, downgrade rejection, uninstall, executable smoke and browser contracts passed in Actions run $env:GITHUB_RUN_ID. Hardware/UI equivalence and production cutover remain open. Unsigned development candidate with verified net48 AddIn. Setup supports explicit confirmed removal of either MSI family; direct MSI blocks cross-family installation."
+          & gh release create "rust-v$env:RELEASE_VERSION" $Msi $Checksum $Setup $SetupChecksum --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "iCem Data Monitor Rust $env:RELEASE_VERSION (Windows x64)" --notes $Notes
           if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed; no mutation retry or overwrite.' }

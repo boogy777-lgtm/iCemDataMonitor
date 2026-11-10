@@ -1,4 +1,4 @@
-name: ci
+name: rust-ci
 on:
   push:
     branches: [main]
@@ -8,74 +8,32 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.ref }}
+  group: rust-ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  classify:
-    timeout-minutes: 5
-    runs-on: windows-latest
-    outputs:
-      legacy: ${{ steps.route.outputs.legacy }}
-      rust: ${{ steps.route.outputs.rust }}
-      packaging: ${{ steps.route.outputs.packaging }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Classify verified changed paths (unknown input selects all)
-        id: route
-        shell: pwsh
-        run: python rust/tools/ci/routing.py classify
-  baseline:
-    timeout-minutes: 10
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Test immutable baseline guard
-        shell: pwsh
-        run: ./rust/tools/Test-BaselineGuard.ps1
-      - name: Verify complete legacy baseline and approvals
-        shell: pwsh
-        run: ./rust/tools/Verify-Baseline.ps1 -RequireComplete
-  routing-tests:
-    timeout-minutes: 5
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Routing, diff, dependency and gate contracts
-        shell: pwsh
-        run: python -m unittest discover -s rust/tools/ci -p "test_*.py" -v
-  legacy:
-    needs: classify
-    if: needs.classify.outputs.legacy == 'true'
-    uses: ./.github/workflows/legacy-build.yml
+  inputs:
+    uses: ./.github/workflows/ci-inputs.yml
   rust:
-    needs: classify
-    if: needs.classify.outputs.rust == 'true'
+    needs: inputs
+    if: needs.inputs.outputs.rust == 'true'
     uses: ./.github/workflows/rust-migration.yml
   packaging:
-    needs: classify
-    if: needs.classify.outputs.packaging == 'true'
+    needs: inputs
+    if: needs.inputs.outputs.packaging == 'true'
     uses: ./.github/workflows/rust-installer-contracts.yml
   gate:
-    name: CI gate
+    name: Rust CI gate
     timeout-minutes: 5
     if: always()
-    needs: [classify, baseline, routing-tests, legacy, rust, packaging]
+    needs: [inputs, rust, packaging]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Require every selected check and reject unexpected skips
+      - name: Require selected Rust checks and reject unexpected skips
         shell: pwsh
         env:
           CI_NEEDS_JSON: ${{ toJSON(needs) }}
-        run: python rust/tools/ci/routing.py gate
+        run: python rust/tools/ci/routing.py gate --family rust

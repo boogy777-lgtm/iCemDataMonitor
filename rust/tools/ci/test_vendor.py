@@ -53,7 +53,7 @@ class VendorTests(unittest.TestCase):
         # Prove the original failure with every current patch input, including
         # reviewed SDK additions. Omit checkout attributes deliberately so plain
         # git apply still demonstrates the original CRLF reconstruction defect.
-        originals = json.loads((self.vendor / 'upstream-files.sha256.json').read_text())
+        originals = json.loads((self.vendor / 'upstream-files.sha256.json').read_text(encoding='utf-8'))
         scratch = self.base / 'plain-reconstruction'
         shutil.copytree(self.vendor, scratch, ignore=shutil.ignore_patterns('.gitattributes'))
         self.git('apply', '--reverse', str(self.vendor / 'icem.patch'), cwd=scratch)

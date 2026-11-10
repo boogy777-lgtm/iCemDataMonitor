@@ -1,0 +1,14 @@
+{
+  "package": "C:\\Users\\HALLIBURTON\\AppData\\Local\\Temp\\opencode\\icem-live-package-aecd72b28dfc4e99a3de3ab671125aa0",
+  "pid": 12584,
+  "first_run_config_created": true,
+  "bus_open": true,
+  "heartbeat_before": 8398,
+  "heartbeat_after_window_close": 8399,
+  "diagnostic_x_hides_window": true,
+  "host_serves_after_diagnostic_x": true,
+  "shell_gui_x_tested": true,
+  "visual_tray_acceptance": "not tested",
+  "registers_stale": false,
+  "config": "C:\\Users\\HALLIBURTON\\AppData\\Local\\Temp\\opencode\\icem-live-bugfix-39ca2fd998004ca5a08fa748e2221f15\\ProgramData\\Halliburton\\iCem\\DataMonitoring\\config.ini"
+}

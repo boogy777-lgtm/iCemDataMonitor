@@ -11,6 +11,7 @@ struct Input {
     update_interval_ms: u64,
     watchdog_ms: u64,
 }
+#[derive(Clone)]
 pub struct Config {
     pub(super) sidecar: PathBuf,
     pub(super) interval: Duration,

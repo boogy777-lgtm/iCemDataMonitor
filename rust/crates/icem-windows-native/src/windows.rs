@@ -18,7 +18,8 @@ use windows_sys::Win32::System::Memory::{
     UnmapViewOfFile,
 };
 use windows_sys::Win32::System::Threading::{
-    CreateMutexW, GetCurrentProcess, ReleaseMutex, WaitForSingleObject,
+    CreateMutexExW, GetCurrentProcess, MUTEX_MODIFY_STATE, ReleaseMutex,
+    SYNCHRONIZATION_SYNCHRONIZE, WaitForSingleObject,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +52,19 @@ fn wide_name(name: &str) -> Result<Vec<u16>, NativeError> {
     }
     Ok(name.encode_utf16().chain(std::iter::once(0)).collect())
 }
+
+/// Apply the NT one-code-unit uppercase table used by case-insensitive object names.
+pub fn nt_upcase(name: &str) -> Result<String, std::string::FromUtf16Error> {
+    use windows_sys::Wdk::System::SystemServices::RtlUpcaseUnicodeChar;
+    let units: Vec<u16> = name
+        .encode_utf16()
+        .map(|unit| {
+            // SAFETY: RtlUpcaseUnicodeChar accepts every UTF-16 code unit and retains no pointers.
+            unsafe { RtlUpcaseUnicodeChar(unit) }
+        })
+        .collect();
+    String::from_utf16(&units)
+}
 struct OwnedHandle(HANDLE);
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
@@ -70,8 +84,16 @@ impl NamedMutex {
     pub fn open_or_create(name: &str) -> Result<Self, NativeError> {
         let name = wide_name(name)?;
         // SAFETY: valid NUL-terminated UTF-16 lives through call; default security,
-        // initially unowned, no user pointers retained by Windows.
-        let handle = unsafe { CreateMutexW(ptr::null(), 0, name.as_ptr()) };
+        // initially unowned, no user pointers retained by Windows. Rights suffice
+        // for waiting and releasing, including when an existing DACL denies ALL_ACCESS.
+        let handle = unsafe {
+            CreateMutexExW(
+                ptr::null(),
+                name.as_ptr(),
+                0,
+                SYNCHRONIZATION_SYNCHRONIZE | MUTEX_MODIFY_STATE,
+            )
+        };
         if handle.is_null() {
             return Err(NativeError::last("create_mutex"));
         }

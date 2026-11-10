@@ -36,7 +36,7 @@ COMMON_SCAFFOLD_INPUTS = (
     'rust/third-party/rust_opc/upstream-files.sha256.json',
 )
 DOWNLOAD_PATHS = ('registry/index', 'registry/cache', 'registry/src', 'git/db', 'git/checkouts')
-BUILD_PATH = 'rust/target/debug'
+BUILD_PATH = 'rust/target/release'
 NATIVE_OVERRIDE_FAMILIES = frozenset({
     'CC', 'CXX', 'AR', 'RANLIB', 'RC', 'CFLAGS', 'CXXFLAGS', 'ARFLAGS',
     'RANLIBFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CC_MASM_ASM', 'CXXSTDLIB', 'CXXSTDLIB_STATIC',
@@ -90,7 +90,7 @@ def identity(root, cargo_home, env, compiler, cargo, source):
         raise ValueError('Expected exact source SHA')
     inputs_digest = digest_inputs(root, cargo_home)
     pin = re.search(r'(?m)^channel\s*=\s*"(\d+\.\d+\.\d+)"',
-                    (root / 'rust/rust-toolchain.toml').read_text())
+                    (root / 'rust/rust-toolchain.toml').read_text(encoding='utf-8'))
     if not pin or not compiler.startswith('rustc ' + pin[1] + ' '):
         raise ValueError('Compiler differs from exact stable pin')
     host = re.search(r'(?m)^host: (.+)$', compiler)
@@ -108,7 +108,7 @@ def identity(root, cargo_home, env, compiler, cargo, source):
                  inputs=inputs_digest,
                  native_environment=hashlib.sha256(json.dumps(native_env, sort_keys=True).encode()).hexdigest())
     compat = hashlib.sha256(json.dumps(facts, sort_keys=True).encode()).hexdigest()
-    prefix = f'ci3-debug-{compat}-'
+    prefix = f'ci3-release-{compat}-'
     return dict(facts, download_key=f'ci3-download-{compat}', build_key=prefix + source,
                 build_prefix=prefix, source=source)
 

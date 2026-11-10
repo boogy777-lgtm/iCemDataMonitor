@@ -4,6 +4,7 @@ pub mod dashboard;
 pub mod emulator;
 pub mod logs;
 pub mod navigation;
+pub mod protocol_view;
 pub mod window_visibility;
 use icem_emulation::{
     Channel,
@@ -96,6 +97,7 @@ pub struct BootStageRow {
 }
 #[derive(Default)]
 pub struct Model {
+    pub protocols: protocol_view::ProtocolView,
     pub host_logs: logs::LogView,
     pub local_logs: logs::LogView,
     pub page: Page,
@@ -141,11 +143,7 @@ impl Model {
         } else {
             &self.host_logs
         };
-        if request.command == icem_logging::Command::Get {
-            !view.pending
-        } else {
-            view.actionable()
-        }
+        view.can_submit(request.command)
     }
 
     pub fn can_toggle_sniffer(&self) -> bool {

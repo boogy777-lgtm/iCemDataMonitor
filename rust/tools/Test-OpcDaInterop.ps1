@@ -121,7 +121,7 @@ EXPORTS
     $env:ICEM_OPC_STA_CLIENT = Join-Path $Work 'sta_client.exe'
     Push-Location $Root
     try {
-        Native 'cargo' @('test', '-p', 'icem-opc-da-sidecar', '--test', 'windows_process', '--locked', '--offline', '--', '--ignored', '--nocapture')
+        Native 'cargo' @('test', '--release', '-p', 'icem-opc-da-sidecar', '--test', 'windows_process', '--locked', '--offline', '--', '--ignored', '--nocapture')
     } finally { Pop-Location }
     Write-Host 'Matching pinned OPC proxy/stub + actual Rust MTA and independent C++ STA cross-process gates: PASS'
 } finally {

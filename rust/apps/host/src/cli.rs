@@ -37,7 +37,7 @@ fn parse(args: &[String]) -> Result<(Command, bool), String> {
     Ok((command, start))
 }
 pub fn dispatch(args: &[String]) -> Option<u8> {
-    if !args.iter().any(|a| {
+    if !args.first().is_some_and(|a| {
         matches!(
             a.as_str(),
             "snapshot" | "header" | "get" | "stop" | "restart" | "--start"
@@ -218,6 +218,18 @@ fn project(reply: &RegistersReply, snapshot: bool) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn host_option_values_do_not_trigger_cli_dispatch() {
+        for value in ["snapshot", "header", "get", "stop", "restart", "--start"] {
+            let args = vec!["--ini".to_owned(), value.to_owned()];
+            assert_eq!(dispatch(&args), None, "option value {value}");
+        }
+        for command in ["snapshot", "header", "get", "stop", "restart", "--start"] {
+            // Help exits before any IPC and verifies dispatch without contacting an installed Host.
+            let args = vec![command.to_owned(), "--help".to_owned()];
+            assert_eq!(dispatch(&args), Some(0), "CLI command {command}");
+        }
+    }
     #[test]
     fn cli_shapes_and_cdab_nonfinite_projection_match_legacy() -> Result<(), String> {
         for args in [

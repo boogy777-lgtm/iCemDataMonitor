@@ -13,10 +13,18 @@ mod windows {
     struct HostPort {
         pipe: String,
         endpoint: Option<std::net::SocketAddr>,
-        station_endpoint: std::sync::OnceLock<Result<std::net::SocketAddr, String>>,
         launch: Option<icem_web::host_client::Launch>,
         ensured: std::sync::OnceLock<Result<(), String>>,
         session: std::sync::Mutex<Option<Session>>,
+    }
+    async fn dashboard_endpoint(
+        explicit: Option<std::net::SocketAddr>,
+        pipe: &str,
+    ) -> Result<std::net::SocketAddr, String> {
+        match explicit {
+            Some(endpoint) => Ok(endpoint),
+            None => icem_web::desktop_endpoint::request(pipe).await,
+        }
     }
     impl icem_desktop::host::Port for HostPort {
         fn request(&self, command: Request) -> Result<Response, String> {
@@ -77,6 +85,11 @@ mod windows {
             }
             let operation = command.operation();
             let result = runtime.block_on(async {
+                if let Request::Protocols(action) = &command {
+                    return icem_web::protocol_control::request(&self.pipe, *action)
+                        .await
+                        .map(Response::Protocols);
+                }
                 if let Request::Logs(action) = &command {
                     return Ok(Response::Logs(
                         icem_web::log_control::request(&self.pipe, *action).await,
@@ -159,26 +172,7 @@ mod windows {
                     return result;
                 }
                 if let Request::Dashboard(selected) = &command {
-                    let endpoint = match self.endpoint {
-                        Some(endpoint) => endpoint,
-                        None => *self
-                            .station_endpoint
-                            .get_or_init(|| {
-                                let paths = icem_config::StationPaths::installed()
-                                    .map_err(|e| e.to_string())?;
-                                let settings = icem_config::IniOptions::read_existing(
-                                    paths.selected().map_err(|e| e.to_string())?,
-                                )
-                                .map_err(|e| e.to_string())?;
-                                Ok((
-                                    [127, 0, 0, 1],
-                                    u16::try_from(settings.web_port).map_err(|e| e.to_string())?,
-                                )
-                                    .into())
-                            })
-                            .as_ref()
-                            .map_err(Clone::clone)?,
-                    };
+                    let endpoint = dashboard_endpoint(self.endpoint, &self.pipe).await?;
                     let data = icem_web::dashboard_client::read(endpoint, selected).await?;
                     return Ok(Response::Dashboard(Box::new(data)));
                 }
@@ -228,7 +222,11 @@ mod windows {
                         .map_err(|e| e.to_string())
                         .and_then(|r| r.into_inner().try_into())
                         .map(Response::Autostart),
-                    Request::Boot | Request::Metrics | Request::Dashboard(_) | Request::Logs(_) => {
+                    Request::Boot
+                    | Request::Metrics
+                    | Request::Dashboard(_)
+                    | Request::Logs(_)
+                    | Request::Protocols(_) => {
                         Err("adapter request must use its existing owner".into())
                     }
                     Request::LocalLogs(_) => Err("Shell logs belong to the local worker".into()),
@@ -278,7 +276,6 @@ mod windows {
         icem_desktop::run_monitor(Arc::new(HostPort {
             pipe,
             endpoint,
-            station_endpoint: std::sync::OnceLock::new(),
             launch,
             ensured: std::sync::OnceLock::new(),
             session: std::sync::Mutex::new(None),
@@ -291,6 +288,24 @@ mod windows {
         use icem_desktop::host::Port;
         use icem_web::{BootStages, HostLayers, LocalRpcServer, WebState};
         type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+        #[test]
+        fn explicit_dashboard_endpoint_does_not_query_host() -> TestResult {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            let endpoint = "127.0.0.1:8123".parse()?;
+            assert_eq!(
+                runtime.block_on(dashboard_endpoint(Some(endpoint), "invalid/pipe"))?,
+                endpoint
+            );
+            assert!(
+                runtime
+                    .block_on(dashboard_endpoint(None, "invalid/pipe"))
+                    .is_err()
+            );
+            Ok(())
+        }
 
         fn state(ready: bool) -> Result<WebState, String> {
             let boot = BootStages::default();
@@ -316,7 +331,6 @@ mod windows {
             let port = HostPort {
                 pipe: name.clone(),
                 endpoint: Some(([127, 0, 0, 1], 8090).into()),
-                station_endpoint: std::sync::OnceLock::new(),
                 launch: Some(icem_web::host_client::Launch {
                     executable: "must-never-spawn-on-reconnect.exe".into(),
                     arguments: vec![],

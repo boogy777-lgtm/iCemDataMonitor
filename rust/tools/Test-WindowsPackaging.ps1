@@ -4,6 +4,7 @@ param()
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Root = Split-Path $PSScriptRoot -Parent
+& (Join-Path $PSScriptRoot 'Test-LegacyAddinInputs.ps1')
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
 Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force

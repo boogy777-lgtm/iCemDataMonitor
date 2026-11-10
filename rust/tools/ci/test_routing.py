@@ -73,7 +73,7 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(routing.classify([]), dict.fromkeys(routing.COMPONENTS, 'false'))
 
     def test_rule_schema(self):
-        document = json.loads(routing.RULES_PATH.read_text())
+        document = json.loads(routing.RULES_PATH.read_text(encoding='utf-8'))
         self.assertEqual(set(document), {'workloads', 'rules'})
         self.assertEqual(set(document['workloads']), {'legacy', 'rust', 'shared-contracts', 'packaging', 'infrastructure', 'documentation'})
         for workloads in document['workloads'].values():
@@ -104,12 +104,12 @@ class RoutingTests(unittest.TestCase):
                 if target.is_relative_to(ROOT) and not target.is_relative_to(ROOT / 'rust'):
                     found.add(target.relative_to(ROOT).as_posix())
         for source in (ROOT / 'rust/tests/support').glob('*.cs'):
-            for relative in re.findall(r'Path.Combine\(root,\s*"([^"]+)"', source.read_text()):
+            for relative in re.findall(r'Path.Combine\(root,\s*"([^"]+)"', source.read_text(encoding='utf-8')):
                 found.add(relative)
         self.assertTrue(found, 'No oracle/source dependencies discovered')
         for path in found:
             self.assertEqual(routing.classify([path]), dict.fromkeys(routing.COMPONENTS, 'true'), path)
-        payload = json.loads((ROOT / 'rust/installer/windows-payload.json').read_text())
+        payload = json.loads((ROOT / 'rust/installer/windows-payload.json').read_text(encoding='utf-8'))
         for item in payload['files'] + payload['directories']:
             path = item['source'] + ('/future.json' if item in payload['directories'] else '')
             outputs = routing.classify([path])
@@ -119,7 +119,7 @@ class RoutingTests(unittest.TestCase):
             self.assertEqual(routing.categories(f'iCemEmule.Core/{family}/Future.cs'), {'legacy', 'shared-contracts'})
 
     def test_legacy_diagnostics_contract(self):
-        legacy = (ROOT / '.github/workflows/legacy-build.yml').read_text()
+        legacy = (ROOT / '.github/workflows/legacy-build.yml').read_text(encoding='utf-8')
         # Scope each assertion to the real step; another step cannot satisfy it.
         steps = dict(part.split('\n', 1) for part in re.split(r'(?m)^      - name: ', legacy)[1:])
         prepare = steps['Prepare CI diagnostics']
@@ -187,11 +187,14 @@ class RoutingTests(unittest.TestCase):
             '.github/workflows/release.yml': (
                 'Get-Item -LiteralPath "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"',
                 'Set-Content -LiteralPath dist/legacy/SHA256SUMS.txt',
-                'gh release create "$env:GITHUB_REF_NAME" $msi dist/legacy/SHA256SUMS.txt'),
+                './rust/tools/Build-WindowsSetup.ps1 -Msi "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"',
+                'gh release create "$env:GITHUB_REF_NAME" $msi "$msi.sha256" $setup "$setup.sha256" dist/legacy/SHA256SUMS.txt'),
             '.github/workflows/rust-windows-release.yml': (
                 'Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.zip"',
                 'Join-Path (Split-Path $PWD -Parent) "dist/rust/iCemDataMonitor-rust-dev-$env:ICEM_RELEASE_VERSION-windows-x64.msi"',
                 'dist/rust/*.msi', 'dist/rust/*.msi.sha256',
+                'dist/rust/*-Setup.exe', 'dist/rust/*-Setup.exe.sha256',
+                '$Msi $Checksum $Setup $SetupChecksum --repo',
                 'path: dist/rust', 'Join-Path $PWD "dist/rust/$Name"'),
         }
         for path, fragments in expected.items():
@@ -202,7 +205,7 @@ class RoutingTests(unittest.TestCase):
             self.assertNotIn('rust/dist/', source)
         builder = (ROOT / 'installer/build-msi.ps1').read_text(encoding='utf-8-sig')
         self.assertLess(builder.index('if (Test-BuildPathWithin $OutDir $Stage)'), builder.index('Start-Transcript'))
-        fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text()
+        fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text(encoding='utf-8')
         self.assertIn('    Test-BuildOutputPaths\n', fixture)
         for path in ('README.md', 'rust/README.md', 'docs/install.md', 'rust/installer/README.md'):
             self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
@@ -210,42 +213,88 @@ class RoutingTests(unittest.TestCase):
 
     def test_workflow_wiring(self):
         workflows = ROOT / '.github/workflows'
-        coordinator = (workflows / 'ci.yml').read_text()
-        self.assertNotRegex(coordinator, r'(?m)^    paths(?:-ignore)?:')
-        self.assertIn('fetch-depth: 0', coordinator)
-        self.assertIn('cancel-in-progress: ${{ github.event_name == \'pull_request\' }}', coordinator)
-        ids = set(re.findall(r'^  ([a-z][a-z-]*):\n', coordinator.split('jobs:\n', 1)[1], re.M))
-        self.assertEqual(ids, {'classify', 'baseline', 'routing-tests', 'legacy', 'rust', 'packaging', 'gate'})
-        gate = coordinator.split('  gate:\n', 1)[1]
-        self.assertIn('name: CI gate', gate)
-        self.assertIn('if: always()', gate)
-        self.assertIn('needs: [classify, baseline, routing-tests, legacy, rust, packaging]', gate)
-        self.assertIn('CI_NEEDS_JSON: ${{ toJSON(needs) }}', gate)
-        self.assertIn('Test-BaselineGuard.ps1', coordinator)
-        self.assertIn('Verify-Baseline.ps1 -RequireComplete', coordinator)
-        for job, file in [('legacy', 'legacy-build.yml'), ('rust', 'rust-migration.yml'), ('packaging', 'rust-installer-contracts.yml')]:
-            # Job body extends until next two-space job key (not four-space fields).
-            block = re.split(r'\n  [a-z][a-z-]*:\n', coordinator.split(f'  {job}:\n', 1)[1], maxsplit=1)[0]
-            self.assertIn(f"if: needs.classify.outputs.{job} == 'true'", block)
-            self.assertIn(f'uses: ./.github/workflows/{file}', block)
-            called = (workflows / file).read_text()
-            self.assertIn('  workflow_call:', called)
-            self.assertNotRegex(called, r'(?m)^  (push|pull_request):')
-            self.assertNotIn('concurrency:', called)  # caller owns cancellation
-        legacy = (workflows / 'legacy-build.yml').read_text()
+        sources = {family: (workflows / filename).read_text(encoding='utf-8')
+                   for family, filename in (('rust', 'ci.yml'), ('legacy', 'legacy-ci.yml'))}
+        calls = {'legacy': 'legacy-build.yml', 'rust': 'rust-migration.yml',
+                 'packaging': 'rust-installer-contracts.yml'}
+        self.assertEqual(set(sources), set(routing.FAMILIES))
+        for family, coordinator in sources.items():
+            members = routing.FAMILIES[family]
+            self.assertIn(f'name: {family}-ci\n', coordinator)
+            self.assertNotRegex(coordinator, r'(?m)^    paths(?:-ignore)?:')
+            for event in ('push', 'pull_request', 'workflow_dispatch'):
+                self.assertIn(f'  {event}:', coordinator)
+            self.assertIn(f'group: {family}-ci-${{{{ github.ref }}}}', coordinator)
+            self.assertIn('cancel-in-progress: ${{ github.event_name == \'pull_request\' }}', coordinator)
+            ids = set(re.findall(r'^  ([a-z][a-z-]*):\n', coordinator.split('jobs:\n', 1)[1], re.M))
+            self.assertEqual(ids, {'inputs', 'gate', *members})
+            inputs = coordinator.split('  inputs:\n', 1)[1].split('\n  ', 1)[0]
+            self.assertEqual(inputs, '    uses: ./.github/workflows/ci-inputs.yml')
+            gate = coordinator.split('  gate:\n', 1)[1]
+            self.assertIn(f'name: {family.title()} CI gate', gate)
+            self.assertIn('if: always()', gate)
+            self.assertIn('needs: [' + ', '.join(('inputs', *members)) + ']', gate)
+            self.assertIn('CI_NEEDS_JSON: ${{ toJSON(needs) }}', gate)
+            self.assertIn(f'run: python rust/tools/ci/routing.py gate --family {family}', gate)
+            for job in members:
+                file = calls[job]
+                # Job body extends until next two-space job key (not four-space fields).
+                block = re.split(r'\n  [a-z][a-z-]*:\n', coordinator.split(f'  {job}:\n', 1)[1], maxsplit=1)[0]
+                self.assertIn('needs: inputs', block)
+                self.assertIn(f"if: needs.inputs.outputs.{job} == 'true'", block)
+                self.assertIn(f'uses: ./.github/workflows/{file}', block)
+                called = (workflows / file).read_text(encoding='utf-8')
+                self.assertIn('  workflow_call:', called)
+                self.assertNotRegex(called, r'(?m)^  (push|pull_request):')
+                self.assertNotIn('concurrency:', called)  # caller owns cancellation
+        shared = (workflows / 'ci-inputs.yml').read_text(encoding='utf-8')
+        self.assertIn('  workflow_call:', shared)
+        self.assertNotRegex(shared, r'(?m)^  (push|pull_request):')
+        ids = set(re.findall(r'^  ([a-z][a-z-]*):\n', shared.split('jobs:\n', 1)[1], re.M))
+        self.assertEqual(ids, {'classify', 'baseline', 'routing-tests'})
+        self.assertNotIn('if:', shared)
+        self.assertNotIn('continue-on-error:', shared)
+        self.assertIn('fetch-depth: 0', shared)
+        self.assertIn('run: python rust/tools/ci/routing.py classify', shared)
+        self.assertIn('Test-BaselineGuard.ps1', shared)
+        self.assertIn('Verify-Baseline.ps1 -RequireComplete', shared)
+        self.assertIn('python -m unittest discover -s rust/tools/ci -p "test_*.py" -v', shared)
+        for component in routing.COMPONENTS:
+            self.assertIn(f'value: ${{{{ jobs.classify.outputs.{component} }}}}', shared)
+            self.assertIn(f'{component}: ${{{{ steps.route.outputs.{component} }}}}', shared)
+        legacy = (workflows / 'legacy-build.yml').read_text(encoding='utf-8')
         for command in ('dotnet build CI.slnf', 'dotnet test CI.slnf', 'installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause'):
             self.assertIn(command, legacy)
-        rust = (workflows / 'rust-migration.yml').read_text()
+        rust = (workflows / 'rust-migration.yml').read_text(encoding='utf-8')
         for command in ('Verify-Scaffold.ps1 -RequireCompleteBaseline', 'cargo fetch --locked', 'theme-contract.cjs', 'dashboard.cjs', 'host-sniffer-differential-report.json'):
             self.assertIn(command, rust)
-        release = (workflows / 'rust-windows-release.yml').read_text()
+        release = (workflows / 'rust-windows-release.yml').read_text(encoding='utf-8')
         self.assertNotIn('  pull_request:', release)
         self.assertIn('uses: ./.github/workflows/rust-installer-contracts.yml', release)
         self.assertIn('cancel-in-progress: false', release)
         self.assertIn('group: rust-windows-release-manual', release)
-        packaging = (workflows / 'rust-installer-contracts.yml').read_text()
+        packaging = (workflows / 'rust-installer-contracts.yml').read_text(encoding='utf-8')
         for command in ('Test-WindowsPackaging.ps1', 'Test-WindowsInstaller.ps1', 'if: always()', 'installer-contract-evidence'):
             self.assertIn(command, packaging)
+
+    def test_setup_delivery_is_independent_of_other_application_build(self):
+        workflows = ROOT / '.github/workflows'
+        rust = (workflows / 'rust-windows-release.yml').read_text(encoding='utf-8')
+        legacy = (workflows / 'release.yml').read_text(encoding='utf-8')
+        for forbidden in ('legacy-build.yml', 'CI.slnf', 'installer/build-msi.ps1'):
+            self.assertNotIn(forbidden, rust)
+        for forbidden in ('rust-migration.yml', 'Build-WindowsRelease.ps1', 'cargo '):
+            self.assertNotIn(forbidden, legacy)
+        for workflow, loop in ((rust, 'foreach ($File in @($Msi, $Setup))'),
+                               (legacy, 'foreach ($file in @($msi, $setup))')):
+            self.assertIn(loop, workflow)
+            self.assertIn('.sha256").Split(\' \')[0] -ine (Get-FileHash -LiteralPath', workflow)
+            self.assertIn('no mutation retry or overwrite.', workflow)
+        builder = (ROOT / 'rust/tools/Build-WindowsRelease.ps1').read_text(encoding='utf-8')
+        self.assertIn("'Build-WindowsSetup.ps1'", builder)
+        self.assertNotIn('CI.slnf', builder)
+        packaging = (workflows / 'rust-installer-contracts.yml').read_text(encoding='utf-8')
+        self.assertIn('run: ./tools/Test-WindowsSetupBuild.ps1', packaging)
 
 
 class GitFixture(unittest.TestCase):
@@ -265,7 +314,7 @@ class GitFixture(unittest.TestCase):
     def write(self, name):
         p = self.repo / name
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text('fixture\n')
+        p.write_text('fixture\n', encoding='utf-8')
 
     def commit(self):
         self.run_git('add', '-A')
@@ -331,12 +380,12 @@ class GitDiffTests(GitFixture):
         event_file = self.repo / 'event.json'
         output = self.repo / 'outputs.txt'
         for name, content in [('workflow_dispatch', '{}'), ('push', '{broken'), ('push', json.dumps({'before': '$(exit 0)', 'after': self.base}))]:
-            event_file.write_text(content)
-            output.write_text('')
+            event_file.write_text(content, encoding='utf-8')
+            output.write_text('', encoding='utf-8')
             env = dict(os.environ, GITHUB_EVENT_NAME=name, GITHUB_EVENT_PATH=str(event_file), GITHUB_OUTPUT=str(output))
             result = subprocess.run([__import__('sys').executable, str(Path(routing.__file__)), 'classify', '--repo', str(self.repo)], env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(output.read_text().splitlines(), ['legacy=true', 'rust=true', 'packaging=true'])
+            self.assertEqual(output.read_text(encoding='utf-8').splitlines(), ['legacy=true', 'rust=true', 'packaging=true'])
             self.assertEqual(json.loads(result.stdout)['mode'], 'full fallback')
 
 
@@ -733,12 +782,12 @@ class LedgerRoutingTests(GitFixture):
         head = self.commit()
         event = self.repo / 'event.json'
         output = self.repo / 'outputs.txt'
-        event.write_text(json.dumps({'before': self.base, 'after': head}))
+        event.write_text(json.dumps({'before': self.base, 'after': head}), encoding='utf-8')
         env = dict(os.environ, GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event), GITHUB_OUTPUT=str(output))
         result = subprocess.run([sys.executable, str(Path(routing.__file__)), 'classify', '--repo', str(self.repo)],
                                 env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output.read_text().splitlines(), ['legacy=true', 'rust=false', 'packaging=false'])
+        self.assertEqual(output.read_text(encoding='utf-8').splitlines(), ['legacy=true', 'rust=false', 'packaging=false'])
         diagnostic = json.loads(result.stdout)
         self.assertEqual(diagnostic['mode'], 'verified diff')
         self.assertEqual(set(diagnostic['paths']), {self.A, self.B, routing.LEDGER_PATH})
@@ -747,18 +796,34 @@ class LedgerRoutingTests(GitFixture):
 
 
 class GateTests(unittest.TestCase):
-    def needs(self, selected):
-        jobs = {name: {'result': 'success', 'outputs': {}} for name in ('classify', 'baseline', 'routing-tests')}
-        jobs['classify']['outputs'] = {name: str(name in selected).lower() for name in routing.COMPONENTS}
-        jobs.update({name: {'result': 'success' if name in selected else 'skipped', 'outputs': {}} for name in routing.COMPONENTS})
+    def needs(self, selected, family):
+        jobs = {'inputs': {'result': 'success', 'outputs': {
+            name: str(name in selected).lower() for name in routing.COMPONENTS}}}
+        jobs.update({name: {'result': 'success' if name in selected else 'skipped', 'outputs': {}}
+                     for name in routing.FAMILIES[family]})
         return jobs
+
+    def test_family_partition_and_independence(self):
+        self.assertEqual(routing.FAMILIES, {'legacy': ('legacy',), 'rust': ('rust', 'packaging')})
+        self.assertEqual(len(set(routing.COMPONENTS)), len(routing.COMPONENTS))
+        for family in routing.FAMILIES:
+            # Even a full/shared fallback requires no result from the other family.
+            good = self.needs(set(routing.COMPONENTS), family)
+            routing.validate_gate(good, family)
+            other = set(routing.COMPONENTS) - set(routing.FAMILIES[family])
+            for component in other:
+                for result in ('success', 'failure', 'skipped', 'cancelled'):
+                    bad = copy.deepcopy(good)
+                    bad[component] = {'result': result, 'outputs': {}}
+                    with self.assertRaises(ValueError):
+                        routing.validate_gate(bad, family)
 
     def test_every_selection_and_result(self):
         states = ('success', 'failure', 'cancelled', 'skipped', 'neutral', 'timed_out', '', None)
-        for bits in itertools.product((False, True), repeat=3):
+        for family, bits in itertools.product(routing.FAMILIES, itertools.product((False, True), repeat=len(routing.COMPONENTS))):
             selected = {n for n, bit in zip(routing.COMPONENTS, bits) if bit}
-            good = self.needs(selected)
-            routing.validate_gate(good)
+            good = self.needs(selected, family)
+            routing.validate_gate(good, family)
             for job in good:
                 for state in states:
                     if state == good[job]['result']:
@@ -766,21 +831,38 @@ class GateTests(unittest.TestCase):
                     bad = copy.deepcopy(good)
                     bad[job]['result'] = state
                     with self.assertRaises(ValueError, msg=(selected, job, state)):
-                        routing.validate_gate(bad)
+                        routing.validate_gate(bad, family)
 
     def test_malformed_schema(self):
-        for value in (None, [], {}, {'unexpected': {}}):
-            with self.assertRaises(ValueError):
-                routing.validate_gate(value)
-        for job in self.needs(set()):
-            for value in (None, {}, {'result': 'success'}, {'result': 'success', 'outputs': []}):
-                bad = self.needs(set()); bad[job] = value
+        for family in routing.FAMILIES:
+            for value in (None, [], {}, {'unexpected': {}}):
                 with self.assertRaises(ValueError):
-                    routing.validate_gate(bad)
-        for outputs in ({}, {'legacy': 'true'}, {'legacy': 'false', 'rust': 'false', 'packaging': 'false', 'extra': 'true'}, *({'legacy': x, 'rust': 'false', 'packaging': 'false'} for x in ('True', '', True, None, 1))):
-            bad = self.needs(set()); bad['classify']['outputs'] = outputs
+                    routing.validate_gate(value, family)
+            for job in self.needs(set(), family):
+                for value in (None, {}, {'result': 'success'}, {'result': 'success', 'outputs': []}):
+                    bad = self.needs(set(), family); bad[job] = value
+                    with self.assertRaises(ValueError):
+                        routing.validate_gate(bad, family)
+            for outputs in ({}, {'legacy': 'true'}, {'legacy': 'false', 'rust': 'false', 'packaging': 'false', 'extra': 'true'}, *({'legacy': x, 'rust': 'false', 'packaging': 'false'} for x in ('True', '', True, None, 1))):
+                bad = self.needs(set(), family); bad['inputs']['outputs'] = outputs
+                with self.assertRaises(ValueError):
+                    routing.validate_gate(bad, family)
+        for family in (None, [], {}, '', 'Rust', 'unknown'):
             with self.assertRaises(ValueError):
-                routing.validate_gate(bad)
+                routing.validate_gate({}, family)
+
+    def test_cli_gate_requires_explicit_family(self):
+        import os
+        import sys
+        for family in routing.FAMILIES:
+            env = dict(os.environ, CI_NEEDS_JSON=json.dumps(self.needs(set(routing.COMPONENTS), family)))
+            command = [sys.executable, str(Path(routing.__file__)), 'gate']
+            result = subprocess.run(command + ['--family', family], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f'{family} CI gate:', result.stdout)
+            for suffix in ([], ['--family', 'unknown']):
+                result = subprocess.run(command + suffix, env=env, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
 
 
 if __name__ == '__main__':

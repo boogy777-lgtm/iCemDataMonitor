@@ -24,7 +24,7 @@ class IdentityTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, path)
-        self.pin = tomllib.loads((self.root / 'rust/rust-toolchain.toml').read_text())['toolchain']['channel']
+        self.pin = tomllib.loads((self.root / 'rust/rust-toolchain.toml').read_text(encoding='utf-8'))['toolchain']['channel']
         self.compiler = f'rustc {self.pin} (fixture 2026-09-01)\nhost: x86_64-pc-windows-msvc\nLLVM version: 23.1'
 
     def identity(self, **kwargs):
@@ -45,7 +45,7 @@ class IdentityTests(unittest.TestCase):
                 path.write_bytes(original)
         manifest = self.root / 'rust/crates/next/Cargo.toml'
         manifest.parent.mkdir(parents=True)
-        manifest.write_text('[package]\nname="next"\n')
+        manifest.write_text('[package]\nname="next"\n', encoding='utf-8')
         self.assertNotEqual(baseline['build_prefix'], self.identity()['build_prefix'])
 
     def test_source_only_changes_primary_build_key(self):
@@ -54,6 +54,8 @@ class IdentityTests(unittest.TestCase):
         self.assertEqual(first['download_key'], next_commit['download_key'])
         self.assertNotEqual(first['build_key'], next_commit['build_key'])
         self.assertEqual(first['build_key'], first['build_prefix'] + 'a' * 40)
+        self.assertTrue(first['build_prefix'].startswith('ci3-release-'))
+        self.assertEqual(cache.BUILD_PATH, 'rust/target/release')
 
     def test_each_runner_and_compiler_input_affects_compatibility(self):
         baseline = self.identity()['build_prefix']
@@ -78,14 +80,14 @@ class IdentityTests(unittest.TestCase):
         for name in ('rust/.cargo/config', 'rust/.cargo/config.toml', '.cargo/config', '.cargo/config.toml'):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text('# Explicitly empty config\n')
+            path.write_text('# Explicitly empty config\n', encoding='utf-8')
             self.assertNotEqual(baseline, self.identity()['build_prefix'])
-            path.write_text('[build]\nrustflags=["--cfg=surprise"]\n')
+            path.write_text('[build]\nrustflags=["--cfg=surprise"]\n', encoding='utf-8')
             with self.assertRaises(ValueError):
                 self.identity()
             path.unlink()
             self.assertEqual(baseline, self.identity()['build_prefix'])
-        (self.home / 'config.toml').write_text('# external config\n')
+        (self.home / 'config.toml').write_text('# external config\n', encoding='utf-8')
         with self.assertRaises(ValueError):
             self.identity()
 
@@ -101,7 +103,7 @@ class IdentityTests(unittest.TestCase):
     def test_documentation_is_not_a_compatibility_input(self):
         baseline = self.identity()['build_prefix']
         (self.root / 'rust/docs').mkdir()
-        (self.root / 'rust/docs/CI_CD.ru.md').write_text('Measured evidence update\n')
+        (self.root / 'rust/docs/CI_CD.ru.md').write_text('Measured evidence update\n', encoding='utf-8')
         self.assertEqual(baseline, self.identity()['build_prefix'])
 
     def test_fail_closed_overrides(self):
@@ -139,29 +141,31 @@ class IdentityTests(unittest.TestCase):
 
 class ContractTests(unittest.TestCase):
     def setUp(self):
-        self.workflow = (ROOT / '.github/workflows/rust-migration.yml').read_text()
-        self.scaffold = (ROOT / 'rust/tools/Verify-Scaffold.ps1').read_text()
-        self.inputs = (ROOT / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text()
+        self.workflow = (ROOT / '.github/workflows/rust-migration.yml').read_text(encoding='utf-8')
+        self.scaffold = (ROOT / 'rust/tools/Verify-Scaffold.ps1').read_text(encoding='utf-8')
+        self.inputs = (ROOT / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text(encoding='utf-8')
+        self.interop = (ROOT / 'rust/tools/Test-OpcDaInterop.ps1').read_text(encoding='utf-8')
 
-    def verify(self, workflow=None, scaffold=None, inputs=None):
-        cache_contract.verify(workflow or self.workflow, scaffold or self.scaffold, inputs or self.inputs)
+    def verify(self, workflow=None, scaffold=None, inputs=None, interop=None):
+        cache_contract.verify(workflow or self.workflow, scaffold or self.scaffold,
+                              inputs or self.inputs, interop or self.interop)
 
     def test_actual_contract(self):
         self.verify()
 
     def test_negative_cache_path_fallback_and_condition_mutations(self):
         for before, after in (
-                ('path: rust/target/debug', 'path: rust/target'),
-                ('path: rust/target/debug', 'path: rust/target/release'),
+                ('path: rust/target/release', 'path: rust/target'),
+                ('path: rust/target/release', 'path: rust/target/debug'),
                 ('/registry/src', ''),
-                ('restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}', 'restore-keys: ci3-debug-'),
-                ('restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}', 'restore-keys: |\n            ${{ steps.cache-identity.outputs.build_prefix }}\n            ci3-debug-'),
+                ('restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}', 'restore-keys: ci3-release-'),
+                ('restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}', 'restore-keys: |\n            ${{ steps.cache-identity.outputs.build_prefix }}\n            ci3-release-'),
                 ('key: ${{ steps.cache-identity.outputs.download_key }}', 'key: download-any-lock'),
-                ('name: Verify source and skeleton\n', "name: Verify source and skeleton\n        if: steps.cargo-debug.outputs.cache-hit != 'true'\n"),
+                ('name: Verify source and skeleton\n', "name: Verify source and skeleton\n        if: steps.cargo-release.outputs.cache-hit != 'true'\n"),
                 ('name: Verify owned Host diagnostic window on Windows\n', 'name: Verify owned Host diagnostic window on Windows\n        continue-on-error: true\n'),
                 ('actions/cache/restore@v5', 'actions/cache/restore@v4'),
-                ('path: rust/target/debug', 'path: rust/target/debug\n          lookup-only: true'),
-                ('if: success() && steps.cargo-debug', 'if: always() && steps.cargo-debug')):
+                ('path: rust/target/release', 'path: rust/target/release\n          lookup-only: true'),
+                ('if: success() && steps.cargo-release', 'if: always() && steps.cargo-release')):
             self.assertIn(before, self.workflow)
             with self.subTest(mutation=before), self.assertRaises(ValueError):
                 self.verify(workflow=self.workflow.replace(before, after))
@@ -174,6 +178,25 @@ class ContractTests(unittest.TestCase):
         for flag in ('--locked', '--offline', '-- -D warnings'):
             with self.subTest(flag=flag), self.assertRaises(ValueError):
                 self.verify(workflow=self.workflow.replace(flag, '', 1))
+
+    def test_every_build_and_probe_is_release(self):
+        for line in self.workflow.splitlines():
+            if line.strip().startswith(('cargo test ', 'cargo clippy ')):
+                self.assertIn('--release', line)
+                with self.subTest(command=line), self.assertRaises(ValueError):
+                    self.verify(workflow=self.workflow.replace(line, line.replace('--release ', ''), 1))
+        for line in self.scaffold.splitlines():
+            if line.strip().startswith('& cargo '):
+                self.assertIn('--release', line)
+                with self.subTest(command=line), self.assertRaises(ValueError):
+                    self.verify(scaffold=self.scaffold.replace(line, line.replace('--release ', ''), 1))
+        with self.assertRaises(ValueError):
+            self.verify(interop=self.interop.replace("'--release', ", '', 1))
+        with self.assertRaises(ValueError):
+            self.verify(workflow=self.workflow.replace('ICEM_HOST_EXE: ${{ github.workspace }}/rust/target/release/',
+                                                       'ICEM_HOST_EXE: ${{ github.workspace }}/rust/target/debug/'))
+        with self.assertRaises(ValueError):
+            self.verify(workflow=self.workflow.replace('--host target/release/', '--host target/debug/'))
 
     def test_independent_counterparts_cannot_be_skipped_or_reordered(self):
         name = 'Verify independent MQTT and OPC UA counterparts on Windows'
@@ -199,6 +222,10 @@ class ContractTests(unittest.TestCase):
                 if any(command in line for command in ('& cargo ', '& python ', '& (Join-Path', 'cargo metadata', '$Package.edition')):
                     with self.subTest(owner=keyword, command=line), self.assertRaises(ValueError):
                         self.verify(**{keyword: text.replace(line, '# removed common check', 1)})
+        for before, after in (("[Environment]::Version.Major", "[Environment]::Version.Minor"),
+                              ("-ne '10'", "-ne '8'")):
+            with self.subTest(oracle=before), self.assertRaises(ValueError):
+                self.verify(inputs=self.inputs.replace(before, after, 1))
 
     def test_negative_exit_propagation_and_save_conditions(self):
         for text, keyword in ((self.workflow, 'workflow'), (self.scaffold, 'scaffold'), (self.inputs, 'inputs')):
@@ -208,10 +235,10 @@ class ContractTests(unittest.TestCase):
                     lines[index] = line.replace('-ne 0', '-eq 999')
                     with self.subTest(owner=keyword, line=index), self.assertRaises(ValueError):
                         self.verify(**{keyword: ''.join(lines)})
-        for mutation in ("if: success() || always() && steps.cargo-debug.outputs.cache-hit != 'true'",
-                         "if: success() && steps.cargo-debug.outputs.cache-hit != 'true' || always()"):
+        for mutation in ("if: success() || always() && steps.cargo-release.outputs.cache-hit != 'true'",
+                         "if: success() && steps.cargo-release.outputs.cache-hit != 'true' || always()"):
             with self.assertRaises(ValueError):
-                self.verify(workflow=self.workflow.replace("if: success() && steps.cargo-debug.outputs.cache-hit != 'true'", mutation))
+                self.verify(workflow=self.workflow.replace("if: success() && steps.cargo-release.outputs.cache-hit != 'true'", mutation))
 
 
 if __name__ == '__main__':
