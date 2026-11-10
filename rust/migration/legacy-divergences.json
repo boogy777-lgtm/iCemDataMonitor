@@ -5,22 +5,22 @@
     {
       "path": ".github/workflows/ci.yml",
       "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
-      "approved_blob_sha1": "09ecd846f931ea7d3614baba0958cb7cf39b8d9b",
+      "approved_blob_sha1": "64eb6d51bd3545cdf52b5ca611282ba2c332d698",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/50",
-        "commit": "656c446bae9554affd362b31376ddbf94eccbd49",
-        "reason": "Preserve the accepted CI-1 verified diff, immutable baseline, routing selftests, full Rust/browser/differential and unchanged legacy build/test/MSI workloads. Subsequent owner requirement 2026-11-10: separate Rust and legacy build/install pipelines so legacy failures cannot block Rust. ci.yml now owns Rust/packaging and Rust CI gate; independent legacy-ci.yml owns legacy and Legacy CI gate. Both use one ci-inputs.yml for unconditional classify/baseline/routing selftests. Exact family dependency schemas reject malformed results and unexpected skips without continue-on-error or disabling legacy checks. Original .NET projects, net48 AddIn, frozen contracts and source manifest remain unchanged. Python 3.12 32-bit 53/53 and actionlint 1.7.12 pass; hosted execution remains required. PR50 and this reviewed source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "7afdce73cb7839af8b8f5174cde01cf4cc574767",
+        "reason": "Historical owner-approved PR50: preserve the accepted CI-1 verified diff, immutable baseline, routing selftests, full Rust/browser/differential and unchanged legacy build/test/MSI workloads. Subsequent owner requirement 2026-11-10 split Rust and legacy build/install pipelines so legacy failures cannot block Rust; ci.yml owns Rust/packaging and Rust gate, legacy-ci.yml owns legacy and Legacy gate, and ci-inputs.yml supplies unconditional classify/baseline/routing tests. Exact family dependency schemas reject malformed results and unexpected skips without continue-on-error or disabling legacy checks. Owner-authorized stage 2 in PR51 source commit 7afdce73 moved common Setup and routing/family-gate consumers mechanically; ci.yml now calls root tools/ci/routing.py while preserving the same jobs, dependencies and gate schema. Common routing tests run unconditionally from tools/ci; Rust cache/vendor/toolchain tests remain under rust/tools/ci and execute only in the Rust family workflow. Original .NET projects, net48 AddIn, frozen contracts and immutable source manifest remain unchanged. This exact workflow blob and PR51 source commit provide approval provenance; hosted execution is required."
       },
       "operation": "modify"
     },
     {
       "path": ".github/workflows/release.yml",
       "baseline_blob_sha1": "c1eeef21286f688da9b9e05d4fddc99277b7366d",
-      "approved_blob_sha1": "416e056fb115d76629b00c504ef0395060f4da24",
+      "approved_blob_sha1": "f61ab572d5065867164104996de023dfdd6ff362",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/50",
-        "commit": "656c446bae9554affd362b31376ddbf94eccbd49",
-        "reason": "Preserve accepted unattended -NoPause and repository-root dist/legacy output policy from PR45, separate from dist/rust. Subsequent owner requirement 2026-11-10: independently build and deliver .NET and Rust Setups that can explicitly remove either installed MSI family. Legacy release wraps only its own verified MSI using the existing shared launcher, emits MSI/Setup checksums and verifies both artifacts before publishing. No Rust application build/CI dependency, automatic cross-family deletion, .NET application/AddIn changes or altered historical MSI uninstall policy. Both family launcher Release builds and exact embedded MSI/family, selected removal policy, stale/foreign, tamper, unsupported-family and no-overwrite contracts pass without executing MSI. Real bidirectional uninstall and release acceptance remain open. PR50 and this reviewed source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "7afdce73cb7839af8b8f5174cde01cf4cc574767",
+        "reason": "Historical owner-approved PR50: preserve unattended -NoPause and repository-root dist/legacy output policy, separate from dist/rust. Owner requirement 2026-11-10: independently build and deliver .NET and Rust Setups that can explicitly remove either installed MSI family. Legacy release wraps only its own verified MSI using the shared launcher, emits MSI/Setup checksums and verifies both artifacts before publishing. No Rust application build/CI dependency, automatic cross-family deletion, .NET application/AddIn changes or altered historical MSI uninstall policy. Owner-authorized stage 2 in PR51 source commit 7afdce73 rehomes the shared launcher and Release-only producer to shared/installer; this workflow now calls that common producer directly. Exact embedded MSI/family, selected ProductCode revalidation/refusal, checksums, no-overwrite, explicit consent and each product's own MSI /x remain unchanged. Build/read-only fixture checks pass without executing MSI; real bidirectional uninstall/release acceptance remain open. This exact workflow blob and PR51 source commit provide approval provenance."
       },
       "operation": "modify"
     },
