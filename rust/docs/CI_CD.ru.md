@@ -336,10 +336,14 @@ cold/warm время должны быть проверены отдельно; 
 
 На этой VMware VM Python 3.12 **32-bit** после исправления: 50/50 CI routing/cache/
 vendor/encoding tests PASS; до исправления на том же Python воспроизведён FAIL.
-Отдельно локально прошли 84 выбранных Rust Release tests, Clippy `-D warnings`
-этих пакетов, полный baseline (487 файлов + 26 подтверждённых удалений),
-packaging fixture, desktop mapping guard и rustfmt. Это не полный workspace CI:
-`Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline` остановился на создании
-test symlink из-за отсутствия elevated token; оставшиеся runtime/installer jobs
-не считаются прошедшими. Предыдущие версии WIP и существующие OPC registrations
-не заменялись; Python 32-bit не подменяет 64-bit hosted runner.
+Отдельно локально прошли 132 выбранных Rust Release tests, один cross-process
+OPC test остался `ignored`; Clippy `-D warnings` выбранных пакетов, полный baseline
+(487 файлов + 26 подтверждённых удалений), packaging fixture, desktop mapping
+guard и rustfmt — PASS. `Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline`
+сначала остановился без elevated token на test symlink; последующий отдельный
+запуск с подтверждённым UAC и полным диагностическим логом прошёл целиком.
+
+Это не полный workspace CI: из-за свободного места не запускались полный Rust
+workspace build/test, browser и установочные jobs. Предыдущие версии WIP и
+существующие OPC registrations не заменялись; Python 32-bit не подменяет 64-bit
+hosted runner. Новая CI-матрица DCOM repair также требует отдельного прогона.
