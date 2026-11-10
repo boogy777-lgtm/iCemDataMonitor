@@ -25,7 +25,7 @@ Import-Module (Join-Path $PSScriptRoot 'SharedOpcAcceptance.psm1') -Force
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Msi.sha256").Split(' ')[0])) { throw 'Blocked input MSI checksum mismatch.' }
 $Cases = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/acceptance-cases.json') -Raw | ConvertFrom-Json
-$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner')
+$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner', 'descriptor-repair')
 if ($Cases.schema_version -ne 1 -or (($Cases.cases | Sort-Object) -join ',') -cne (($Supported | Sort-Object) -join ',') -or
     @($Cases.cases | Sort-Object -Unique).Count -ne $Supported.Count -or $Case -cnotin $Supported) { throw 'Acceptance case coverage mismatch.' }
 $EvidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory)
@@ -126,6 +126,20 @@ function Build-ForeignOwner([string] $proxy, [string] $enumerator, [string] $des
         if ($LASTEXITCODE -ne 0) { throw 'Cannot build independent MSI component owner fixture.' }
     } finally { Pop-Location }
 }
+function Damage-RepairResources {
+    # Only resources installed by this transaction on this clean disposable runner.
+    $dll = Join-Path $env:WINDIR 'SysWOW64/opccomn_ps.dll'
+    if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'Owned DLL missing before damage injection.' }
+    [IO.File]::Delete($dll)
+    foreach ($view in @([Microsoft.Win32.RegistryView]::Registry32, [Microsoft.Win32.RegistryView]::Registry64)) {
+        $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
+        try {
+            $key = $machine.OpenSubKey('SOFTWARE\Classes\Interface\{13486D50-4821-11D2-A494-3CB306C10000}\NumMethods', $true)
+            if ($null -eq $key) { throw 'The installed proxy method-count registration is missing before damage injection.' }
+            try { $key.DeleteValue('', $true) } finally { $key.Dispose() }
+        } finally { $machine.Dispose() }
+    }
+}
 $report = [ordered]@{ schema_version = 1; case = $Case; result = 'FAIL'; product_commit = $env:GITHUB_SHA; input_sha256 = (Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash.ToLowerInvariant(); candidate_not_distributable = $true }
 try {
     $before = Snapshot 'before'
@@ -136,17 +150,8 @@ try {
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'fresh-install' 0
             $installed = Snapshot 'installed'
             if ((Read-SharedOpcSnapshot $installed).files.Count -ne 18) { throw 'Runtime did not install the complete 18-file native inventory.' }
-            # Damage only resources installed by this transaction on this clean
-            # disposable runner. A repair exit code without restoration is not PASS.
-            [IO.File]::Delete((Join-Path $env:WINDIR 'SysWOW64/opccomn_ps.dll'))
-            foreach ($view in @([Microsoft.Win32.RegistryView]::Registry32, [Microsoft.Win32.RegistryView]::Registry64)) {
-                $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
-                try {
-                    $key = $machine.OpenSubKey('SOFTWARE\Classes\Interface\{13486D50-4821-11D2-A494-3CB306C10000}\NumMethods', $true)
-                    if ($null -eq $key) { throw 'The installed proxy method-count registration is missing before damage injection.' }
-                    try { $key.DeleteValue('', $true) } finally { $key.Dispose() }
-                } finally { $machine.Dispose() }
-            }
+            # A repair exit code without restoring resources is not PASS.
+            Damage-RepairResources
             $null = Snapshot 'damaged'
             # Windows Installer's documented default repair is omus. Force-all
             # replacement (a) changes inherited-descriptor control metadata even
@@ -256,6 +261,55 @@ try {
                 }
             } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($clientInstaller) }
         }
+        'descriptor-repair' {
+            Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'descriptor-install' 0
+            if ((Read-SharedOpcSnapshot (Snapshot 'descriptor-installed')).files.Count -ne 18) { throw 'Runtime did not install the complete 18-file native inventory.' }
+            $native = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/native-runtime-inventory.json') -Raw | ConvertFrom-Json -AsHashtable
+            $securityRows = @(
+                foreach ($component in $native.components) {
+                    foreach ($row in $component.registry) {
+                        if (@($row.values | Where-Object { $_.name -cin @('AccessPermission', 'LaunchPermission') }).Count -gt 0) {
+                            [pscustomobject]@{ arch = $component.arch; row = $row }
+                        }
+                    }
+                }
+            )
+            $securityPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            if ($securityRows.Count -ne 2) { throw 'Expected exactly two owned AppID security rows.' }
+            foreach ($security in $securityRows) {
+                $row = $security.row
+                if ($row.key -cnotmatch '^SOFTWARE\\Classes\\AppID\\\{[0-9A-F-]{36}\}$' -or
+                    $row.key -notin $Keys -or -not $securityPaths.Add($row.key) -or $security.arch -cnotin @('x86', 'x64')) {
+                    throw 'Unreviewed or duplicate owned AppID security row.'
+                }
+                $view = if ($security.arch -ceq 'x86') { [Microsoft.Win32.RegistryView]::Registry32 } else { [Microsoft.Win32.RegistryView]::Registry64 }
+                $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
+                try {
+                    $key = $machine.OpenSubKey($row.key, $true)
+                    if ($null -eq $key) { throw 'Owned AppID missing after fresh install.' }
+                    try {
+                        foreach ($name in @('AccessPermission', 'LaunchPermission')) {
+                            if (@($row.values | Where-Object name -CEQ $name).Count -ne 1 -or $key.GetValueKind($name) -ne [Microsoft.Win32.RegistryValueKind]::Binary) {
+                                throw 'Owned AppID descriptor missing or ambiguous.'
+                            }
+                            $baseline = [byte[]]$key.GetValue($name)
+                            $bytes = New-SharedOpcCustomizedDescriptor $baseline $name 'S-1-5-21-101-202-303-1001'
+                            if ([Convert]::ToBase64String($baseline) -ceq [Convert]::ToBase64String($bytes)) { throw 'Test customization did not change the descriptor.' }
+                            $key.SetValue($name, $bytes, [Microsoft.Win32.RegistryValueKind]::Binary)
+                            if ([Convert]::ToBase64String([byte[]]$key.GetValue($name)) -cne [Convert]::ToBase64String($bytes)) { throw 'Test customization did not persist exactly.' }
+                        }
+                    } finally { $key.Dispose() }
+                } finally { $machine.Dispose() }
+            }
+            $customized = Snapshot 'descriptor-customized'
+            Damage-RepairResources
+            $null = Snapshot 'descriptor-damaged'
+            Invoke-Msi @('/fomus', ('"' + $Candidate + '"')) 'descriptor-repair' 0
+            Equal-Snapshot $customized (Snapshot 'descriptor-repaired') 'Repair with customized AppID permissions'
+            Invoke-Msi @('/x', $ProductCode) 'descriptor-uninstall' 0
+            Equal-Snapshot $before (Snapshot 'descriptor-uninstalled') 'Uninstall after customized repair'
+        }
+        default { throw 'Acceptance case has no implementation.' }
     }
     $report.result = 'PASS'
 } catch {

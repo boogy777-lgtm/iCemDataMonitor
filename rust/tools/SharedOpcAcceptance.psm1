@@ -6,6 +6,27 @@ function Read-SharedOpcSnapshot([string] $Json) {
     # represent that JSON key. Preserve all names/types with dictionary decoding.
     return ConvertFrom-Json -InputObject $Json -AsHashtable
 }
+function New-SharedOpcCustomizedDescriptor([byte[]] $Baseline, [string] $Name, [string] $Sid) {
+    # Test-only: start from the exact local-only baseline and add one account SID.
+    # This constructs bytes in memory; it does not discover or modify registrations.
+    $mask = switch -CaseSensitive ($Name) {
+        'AccessPermission' { '0x3' }
+        'LaunchPermission' { '0xb' }
+        default { throw 'Unknown test descriptor.' }
+    }
+    $account = [Security.Principal.SecurityIdentifier]::new($Sid)
+    if (-not $account.Value.StartsWith('S-1-5-21-', [StringComparison]::Ordinal) -or
+        $null -eq $account.AccountDomainSid -or $account.Value -ceq $account.AccountDomainSid.Value) {
+        throw 'Test descriptor requires one explicit account SID.'
+    }
+    $expected = [Security.AccessControl.RawSecurityDescriptor]::new("O:SYG:SYD:(A;;$mask;;;SY)(A;;$mask;;;BA)")
+    $current = [Security.AccessControl.RawSecurityDescriptor]::new($Baseline, 0)
+    if ($current.GetSddlForm('All') -cne $expected.GetSddlForm('All')) { throw 'Test descriptor baseline changed.' }
+    $customized = [Security.AccessControl.RawSecurityDescriptor]::new("O:SYG:SYD:(A;;$mask;;;SY)(A;;$mask;;;BA)(A;;$mask;;;$($account.Value))")
+    $bytes = [byte[]]::new($customized.BinaryLength)
+    $customized.GetBinaryForm($bytes, 0)
+    return ,$bytes
+}
 function Get-SharedOpcComCount([object] $Collection) {
     # The WindowsInstaller.Installer enumerator is a raw __ComObject: PowerShell
     # ETS exposes no Count, so query the COM property explicitly and read-only.
@@ -35,4 +56,4 @@ function Assert-SharedOpcRollbackLog([string] $Log) {
         throw 'Not an injected rollback after successful application of the install script.'
     }
 }
-Export-ModuleMember -Function Read-SharedOpcSnapshot, Get-SharedOpcComCount, Get-SharedOpcComItem, Assert-SharedOpcPreflightLog, Assert-SharedOpcRollbackLog
+Export-ModuleMember -Function Read-SharedOpcSnapshot, New-SharedOpcCustomizedDescriptor, Get-SharedOpcComCount, Get-SharedOpcComItem, Assert-SharedOpcPreflightLog, Assert-SharedOpcRollbackLog

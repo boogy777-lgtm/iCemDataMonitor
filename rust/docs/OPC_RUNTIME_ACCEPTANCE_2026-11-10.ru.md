@@ -18,6 +18,8 @@ production блока. В копии снимается только време�
 Матрица `acceptance-cases.json`: fresh/repair/uninstall; injected rollback;
 отказ при чужой registry registration; отказ при другом MSI-клиенте канонического
 OPC component GUID; независимые x86/x64 COM clients; удаление с shared owner.
+Добавлен седьмой case сохранения настроенных AppID descriptors при repair;
+его Windows execution и результат должны фиксироваться отдельно от run ниже.
 Снимки сравнивают типы/значения/DACL registry в обеих views,
 восемнадцать native files с hash/DACL и конфигурацию OpcEnum service.
 Чужое состояние не очищается для удобства теста; неоднозначный исход не повторяется.
@@ -348,3 +350,25 @@ Legacy, installer-contracts и release-measurements прошли, но это н
 Production `LaunchCondition=Installed` сохранён. Результат шести сценариев не
 является полной security/lifecycle acceptance. Нельзя публиковать тестовый MSI,
 снимать блок или называть Setup готовым до закрытия открытых gates.
+
+### Новый gate: сохранение индивидуальных DCOM descriptors
+
+`descriptor-repair` устанавливает только приватную TEST ONLY копию Runtime на
+чистом disposable runner, проверяет baseline обоих AppID из native inventory и
+добавляет к каждому Access/Launch descriptor отдельный тестовый account SID с
+**только local** правами. Это синтетический SID без созданной учётной записи:
+данный case не подтверждает вход или работу обычного оператора. Он проверяет
+успешную запись каждого из четырёх дескрипторов побайтовым чтением, повреждает
+собственный DLL и registry values, затем требует `/fomus` с точным восстановлением
+всего customized snapshot и uninstall без остатков. Успешный exit без сохранения
+прав — FAIL; baseline нельзя восстанавливать поверх согласованных grants.
+
+Обе функции повреждения и snapshot общие с lifecycle case. Dispatcher имеет
+обязательный fail-closed default, AST safety guard проверяет полноту его списка;
+`Test-SharedOpcAcceptance.ps1` дополнительно проверяет in-memory генератор прав,
+запрет широкого SID, неизвестного descriptor и небазового входа. Обе AppID и все
+четыре baseline descriptor независимо сверены с уже скачанным snapshot run
+`42817201447` и guard inventory; локальная сверка не меняет регистрацию VM.
+Новый case не считается пройденным до отдельного Windows run; подтверждение
+реального доступа оператора, согласия пользователя и сохранности
+foreign/shared-owner состояния остаётся открытым.

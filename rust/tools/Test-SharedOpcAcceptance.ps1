@@ -30,6 +30,29 @@ $null = $list.Add('first')
 $null = $list.Add('second')
 if ((Get-SharedOpcComCount $list) -ne 2 -or (Get-SharedOpcComItem $list 1) -cne 'second') { throw 'COM collection reflection lost Count/Item' }
 $script:checks++
+$account = 'S-1-5-21-101-202-303-1001'
+foreach ($pair in @(@('AccessPermission', '0x3'), @('LaunchPermission', '0xb'))) {
+    $name, $mask = $pair
+    $baseline = [Security.AccessControl.RawSecurityDescriptor]::new("O:SYG:SYD:(A;;$mask;;;SY)(A;;$mask;;;BA)")
+    $bytes = [byte[]]::new($baseline.BinaryLength)
+    $baseline.GetBinaryForm($bytes, 0)
+    $custom = New-SharedOpcCustomizedDescriptor $bytes $name $account
+    $actual = [Security.AccessControl.RawSecurityDescriptor]::new($custom, 0)
+    $expected = [Security.AccessControl.RawSecurityDescriptor]::new("O:SYG:SYD:(A;;$mask;;;SY)(A;;$mask;;;BA)(A;;$mask;;;$account)")
+    if ($actual.GetSddlForm('All') -cne $expected.GetSddlForm('All')) { throw 'Customized descriptor differs from the explicit local-only account grant.' }
+    $script:checks++
+    foreach ($invalid in @(
+        @{ baseline = $bytes; name = $name; sid = 'S-1-1-0' },
+        @{ baseline = $bytes; name = 'UnknownPermission'; sid = $account },
+        @{ baseline = $custom; name = $name; sid = $account }
+    )) {
+        $rejected = $false
+        try { New-SharedOpcCustomizedDescriptor $invalid.baseline $invalid.name $invalid.sid | Out-Null }
+        catch { $rejected = $true }
+        if (-not $rejected) { throw 'Customized descriptor accepted an invalid identity, name or baseline.' }
+        $script:checks++
+    }
+}
 function Rejected([scriptblock] $check, [string] $text) {
     $rejected = $false
     try { & $check $text }
