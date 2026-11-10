@@ -74,7 +74,7 @@ try {
             $registry = @(Read-WindowsMsiRecords $moduleDatabase 'SELECT `Root`, `Key`, `Name` FROM `Registry`' @('Root', 'Key', 'Name'))
             $expectedCount = 0
             foreach ($component in @($nativeData.components | Where-Object arch -CEQ $architecture)) {
-                foreach ($row in $component.registry) { $expectedCount += [Math]::Max(1, $row.values.Count) }
+                foreach ($row in $component.registry) { $expectedCount += $row.values.Count }
             }
             if ($registry.Count -ne $expectedCount -or @($registry | Where-Object { $_.Root -cne '2' -or $_.Name -cin @('-', '*') -or -not $_.Key.StartsWith('SOFTWARE\Classes\', [StringComparison]::Ordinal) }).Count) {
                 throw 'Native module registry coverage/scope mismatch.'

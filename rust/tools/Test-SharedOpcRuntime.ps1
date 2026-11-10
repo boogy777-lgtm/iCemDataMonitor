@@ -25,7 +25,7 @@ Import-Module (Join-Path $PSScriptRoot 'SharedOpcAcceptance.psm1') -Force
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Msi.sha256").Split(' ')[0])) { throw 'Blocked input MSI checksum mismatch.' }
 $Cases = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/acceptance-cases.json') -Raw | ConvertFrom-Json
-$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients')
+$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner')
 if ($Cases.schema_version -ne 1 -or (($Cases.cases | Sort-Object) -join ',') -cne (($Supported | Sort-Object) -join ',') -or
     @($Cases.cases | Sort-Object -Unique).Count -ne $Supported.Count -or $Case -cnotin $Supported) { throw 'Acceptance case coverage mismatch.' }
 $EvidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory)
@@ -118,6 +118,14 @@ function Invoke-Msi([string[]] $arguments, [string] $phase, [int] $expected) {
         if ($process.ExitCode -ne $expected) { throw "$phase returned $($process.ExitCode), expected $expected; see $log" }
     } finally { $process.Dispose() }
 }
+function Build-ForeignOwner([string] $proxy, [string] $enumerator, [string] $destination) {
+    Push-Location $Work
+    try {
+        $null = Assert-WindowsBuildSdk
+        & wix build (Join-Path $Repo 'rust/installer/opc-core/tests/ForeignOwner.wxs') -arch x86 -wx -d "ProxyPayload=$proxy" -d "EnumPayload=$enumerator" -o $destination | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot build independent MSI component owner fixture.' }
+    } finally { Pop-Location }
+}
 $report = [ordered]@{ schema_version = 1; case = $Case; result = 'FAIL'; product_commit = $env:GITHUB_SHA; input_sha256 = (Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash.ToLowerInvariant(); candidate_not_distributable = $true }
 try {
     $before = Snapshot 'before'
@@ -170,6 +178,7 @@ try {
             }
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'client-install' 0
             $null = Snapshot 'client-installed'
+            $failedClients = [Collections.Generic.List[string]]::new()
             foreach ($arch in $clientArchitectures) {
                 $exe = Join-Path $Work "client-$arch/bin/icem-opc-com-client.exe"
                 $out = Join-Path $EvidenceDirectory "com-$arch.stdout.log"
@@ -179,9 +188,10 @@ try {
                     if (-not $client.WaitForExit(60000)) { $client.Kill($true); throw "Independent $arch COM client timed out; no retry." }
                     $bits = if ($arch -ceq 'x86') { 32 } else { 64 }
                     $report.clients += [ordered]@{ architecture = $arch; expected_pointer_bits = $bits; exe_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant(); exit_code = $client.ExitCode }
-                    if ($client.ExitCode -ne 0 -or -not ([IO.File]::ReadAllText($out)).StartsWith("PASS COM/RPC: architecture=$bits; authentication=packet-privacy;", [StringComparison]::Ordinal)) { throw "Independent $arch COM/RPC client failed; see client logs." }
+                    if ($client.ExitCode -ne 0 -or -not ([IO.File]::ReadAllText($out)).StartsWith("PASS COM/RPC: architecture=$bits; authentication=packet-privacy;", [StringComparison]::Ordinal)) { $failedClients.Add($arch) }
                 } finally { $client.Dispose() }
             }
+            if ($failedClients.Count) { throw "Independent COM/RPC client failed ($($failedClients -join ', ')); see client logs. Both architectures were attempted once, without retries." }
             Invoke-Msi @('/x', $ProductCode) 'client-uninstall' 0
             Equal-Snapshot $before (Snapshot 'client-uninstalled') 'Uninstall after real COM activation'
         }
@@ -199,19 +209,52 @@ try {
         'foreign-component' {
             $foreignPayload = Join-Path $Work 'foreign.txt'
             [IO.File]::WriteAllText($foreignPayload, 'Foreign owner fixture; not an OPC library.')
-            $foreignSource = Join-Path $Repo 'rust/installer/opc-core/tests/ForeignOwner.wxs'
             $foreignMsi = Join-Path $Work 'foreign-owner.msi'
-            Push-Location $Work
-            try {
-                $null = Assert-WindowsBuildSdk
-                & wix build $foreignSource -arch x86 -wx -d "ForeignPayload=$foreignPayload" -o $foreignMsi | Out-Host
-                if ($LASTEXITCODE -ne 0) { throw 'Cannot build independent MSI component owner fixture.' }
-            } finally { Pop-Location }
+            Build-ForeignOwner $foreignPayload $foreignPayload $foreignMsi
             Invoke-Msi @('/i', ('"' + $foreignMsi + '"')) 'foreign-owner-install' 0
             $foreign = Snapshot 'foreign-owner-before'
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'foreign-owner-refusal' 1603
             Assert-SharedOpcPreflightLog ([IO.File]::ReadAllText((Join-Path $EvidenceDirectory 'foreign-owner-refusal.log')))
             Equal-Snapshot $foreign (Snapshot 'foreign-owner-after') 'Foreign MSI client refusal'
+        }
+        'shared-owner' {
+            Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'shared-runtime-install' 0
+            $sharedPaths = @((Join-Path $env:WINDIR 'SysWOW64/opcproxy.dll'), (Join-Path $env:WINDIR 'SysWOW64/OpcEnum.exe'))
+            $foreignMsi = Join-Path $Work 'shared-owner.msi'
+            # Same installed bytes/version, not synthetic executable content. This
+            # second product deliberately claims the canonical file components but
+            # does not run registration or author our service/COM rows.
+            Build-ForeignOwner $sharedPaths[0] $sharedPaths[1] $foreignMsi
+            Invoke-Msi @('/i', ('"' + $foreignMsi + '"')) 'shared-owner-install' 0
+            $coowned = Read-SharedOpcSnapshot (Snapshot 'coowned')
+            $sharedCodes = @('{3C257474-772A-6CE8-282E-7F4413643C2C}', '{4695E177-FFA9-6706-9772-290B37AD1438}')
+            $expectedKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            $native = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/native-runtime-inventory.json') -Raw | ConvertFrom-Json -AsHashtable
+            foreach ($component in @($native.components | Where-Object { $_.guid -cin $sharedCodes })) {
+                foreach ($row in $component.registry) { [void]$expectedKeys.Add($row.key) }
+            }
+            $sharedRoots = @('AppID', 'TypeLib', 'OPC.ServerList', 'OPC.ServerList.1')
+            $expected = [ordered]@{
+                registry = @($coowned.registry | Where-Object {
+                    $row = $_
+                    $isService = $row.path -ieq 'SYSTEM\CurrentControlSet\Services\OpcEnum' -or $row.path.StartsWith('SYSTEM\CurrentControlSet\Services\OpcEnum\', [StringComparison]::OrdinalIgnoreCase)
+                    $isSharedView = @($sharedRoots | Where-Object { $row.path.StartsWith('SOFTWARE\Classes\' + $_ + '\', [StringComparison]::OrdinalIgnoreCase) -or $row.path.Equals('SOFTWARE\Classes\' + $_, [StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
+                    $isService -or ($expectedKeys.Contains($row.path) -and ($row.view -ceq 'Registry32' -or $isSharedView))
+                })
+                files = @($coowned.files | Where-Object { $_.path -iin $sharedPaths })
+                services = @($coowned.services)
+            }
+            Invoke-Msi @('/x', $ProductCode) 'shared-runtime-uninstall' 0
+            Equal-Snapshot ($expected | ConvertTo-Json -Depth 30) (Snapshot 'shared-owner-retained') 'Removal with a surviving MSI client'
+            $clientInstaller = New-Object -ComObject WindowsInstaller.Installer
+            try {
+                foreach ($code in $sharedCodes) {
+                    $clients = $clientInstaller.ComponentClients($code)
+                    try {
+                        if ($clients.Count -ne 1 -or $clients.Item(0) -ieq $ProductCode) { throw 'Shared component lost its independent MSI client or retained our removed product.' }
+                    } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($clients) }
+                }
+            } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($clientInstaller) }
         }
     }
     $report.result = 'PASS'

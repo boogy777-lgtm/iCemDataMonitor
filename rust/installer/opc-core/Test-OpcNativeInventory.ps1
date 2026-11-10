@@ -13,6 +13,7 @@ $scriptFile = Join-Path $work 'New-OpcRuntimeModule.ps1'
 $inventoryFile = Join-Path $work 'native-runtime-inventory.json'
 function AppId($data) { return @($data.components.registry | Where-Object key -CEQ 'SOFTWARE\Classes\AppID\{13486D44-4821-11D2-A494-3CB306C10000}')[0] }
 $cases = @(
+    @{ name = 'untracked empty key'; change = { param($d) $d.components[0].registry[0].values = @() }; error = '^Native OPC keys must have value-backed ownership' },
     @{ name = 'missing file'; change = { param($d) $d.components = @($d.components | Select-Object -Skip 1) }; error = '^Incomplete native OPC file' },
     @{ name = 'duplicate file'; change = { param($d) $d.components[1] = $d.components[0] }; error = '^Native OPC component identity' },
     @{ name = 'foreign component'; change = { param($d) $d.components[0].guid = '{11111111-1111-1111-1111-111111111111}' }; error = '^Native OPC component identity' },
@@ -47,7 +48,7 @@ try {
         $null = & $scriptFile -CoreBuildDirectory $CoreBuildDirectory -Architecture $arch -OutputFile $output
         $xml = [xml]([IO.File]::ReadAllText($output))
         if (@($xml.SelectNodes('//*[local-name()="File"]')).Count -ne 9 -or
-            @($xml.SelectNodes('//*[local-name()="CustomAction" or local-name()="RemoveRegistry" or @SelfRegCost or @ForceDeleteOnUninstall]')).Count) { throw 'Native authoring reintroduced untracked/destructive mechanisms' }
+            @($xml.SelectNodes('//*[local-name()="CustomAction" or local-name()="RemoveRegistry" or @SelfRegCost or @ForceDeleteOnUninstall or @ForceCreateOnInstall]')).Count) { throw 'Native authoring reintroduced untracked/destructive mechanisms' }
         $expectedServices = if ($arch -ceq 'x86') { 1 } else { 0 }
         if (@($xml.SelectNodes('//*[local-name()="ServiceInstall"]')).Count -ne $expectedServices) { throw 'Native service ownership missing' }
         $checks++

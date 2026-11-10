@@ -10,7 +10,7 @@ $tokens = $null
 $errors = $null
 [void][Management.Automation.Language.Parser]::ParseFile($Fixture, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw ($errors | Out-String) }
-$ExpectedCases = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients')
+$ExpectedCases = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner')
 $Cases = Get-Content -LiteralPath (Join-Path $Root 'installer/opc-core/acceptance-cases.json') -Raw | ConvertFrom-Json
 if ((($Cases.cases | Sort-Object) -join ',') -cne (($ExpectedCases | Sort-Object) -join ',')) { throw 'Acceptance coverage drift' }
 $authoring = [xml](Get-Content -LiteralPath (Join-Path $Root 'installer/opc-core/SharedRuntime.wxs') -Raw)

@@ -98,8 +98,9 @@ namespace Icem.OpcCoreAcceptance
                 if (enumerator == null) throw new InvalidOperationException("Server returned no enumeration object");
                 Secure(enumerator, typeof(IOPCEnumGUID));
                 int next = enumerator.Next(1, out _, out uint fetched);
+                Console.Error.WriteLine("IOPCEnumGUID.Next HRESULT=0x" + next.ToString("X8") + "; fetched=" + fetched);
                 if ((next != 0 && next != 1) || fetched > 1 || (next == 0 && fetched != 1) || (next == 1 && fetched != 0))
-                    throw new InvalidOperationException("IOPCEnumGUID.Next returned an inconsistent HRESULT/count");
+                    throw new InvalidOperationException("IOPCEnumGUID.Next returned an inconsistent HRESULT/count: 0x" + next.ToString("X8") + "/" + fetched);
                 Success(enumerator.Reset(), "IOPCEnumGUID.Reset");
                 Success(enumerator.Clone(out clone), "IOPCEnumGUID.Clone");
                 if (clone == null) throw new InvalidOperationException("Server returned no cloned enumerator");

@@ -32,6 +32,7 @@ foreach ($component in $data.components) {
     $expectedDirectory = if ($parent.Id -ceq 'SystemFolder') { 'system' } else { 'common' }
     if ($component.arch -cne $expectedArch -or $component.directory -cne $expectedDirectory) { throw 'Native OPC component architecture/location changed.' }
     foreach ($row in $component.registry) {
+        if ($row.values.Count -eq 0) { throw 'Native OPC keys must have value-backed ownership.' }
         if (-not $row.key.StartsWith('SOFTWARE\Classes\', [StringComparison]::Ordinal) -or
             -not $seenRegistry.Add($component.arch + ':' + $row.key)) { throw 'Foreign/duplicate native OPC registry ownership.' }
         $valueNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -155,7 +156,6 @@ foreach ($entry in $components) {
     foreach ($row in $entry.registry) {
         $index++
         $attributes = @{ Root = 'HKLM'; Key = $row.key }
-        if ($row.values.Count -eq 0) { $attributes.Id = "OpcKey$index"; $attributes.ForceCreateOnInstall = 'yes' }
         $key = Element $component 'RegistryKey' $attributes
         foreach ($value in $row.values) {
             $index++

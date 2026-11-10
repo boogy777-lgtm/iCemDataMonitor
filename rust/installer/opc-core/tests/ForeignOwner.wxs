@@ -7,9 +7,12 @@
     <MediaTemplate EmbedCab="yes" />
     <StandardDirectory Id="SystemFolder">
       <Component Id="ForeignProxy" Guid="3C257474-772A-6CE8-282E-7F4413643C2C">
-        <File Id="ForeignProxyFile" Name="opcproxy.dll" Source="$(var.ForeignPayload)" KeyPath="yes" />
+        <File Id="ForeignProxyFile" Name="opcproxy.dll" Source="$(var.ProxyPayload)" KeyPath="yes" />
+      </Component>
+      <Component Id="ForeignEnum" Guid="4695E177-FFA9-6706-9772-290B37AD1438">
+        <File Id="ForeignEnumFile" Name="OpcEnum.exe" Source="$(var.EnumPayload)" KeyPath="yes" />
       </Component>
     </StandardDirectory>
-    <Feature Id="Foreign" Level="1"><ComponentRef Id="ForeignProxy" /></Feature>
+    <Feature Id="Foreign" Level="1"><ComponentRef Id="ForeignProxy" /><ComponentRef Id="ForeignEnum" /></Feature>
   </Package>
 </Wix>

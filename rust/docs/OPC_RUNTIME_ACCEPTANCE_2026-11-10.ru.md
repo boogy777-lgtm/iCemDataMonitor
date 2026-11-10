@@ -153,7 +153,8 @@ directory: прежний mixed-x64 MSI dual-folder workaround больше не
 Никаких ForceDeleteOnUninstall, RemoveRegistry или автоматической зачистки чужих
 keys. Native ownership каждой записи связано с существующим file-component.
 
-`native-runtime-inventory.json`: 420 owned keys / 444 values. Данные получены из
+`native-runtime-inventory.json`: 420 owned keys / 447 values (444 captured + 3
+value-backed MSI bookkeeping markers). Данные получены из
 зафиксированного чистого CI install snapshot (run/input/snapshot hashes в файле),
 shared AppID/ProgID/TypeLib keys дедуплицированы, machine paths заменены MSI refs.
 Это не слепой harvest: каждый файл/GUID/arch/location сверяется с hash-pinned
@@ -212,3 +213,30 @@ normal-operator test: fixture использует elevated runner token.
 Обе клиентские сборки локально Release 0 warnings/errors; **не запускались** на
 рабочем ПК, так как CoCreateInstance способен запустить установленную службу.
 Выполнение разрешено только общим disposable/admin gate; timeout не повторяет RPC.
+
+Run `42806848733`, head `41c73c2dbac65d4930fb228af1902c62c28f1c41`:
+штатный `/fomus` после удаления DLL и двух NumMethods values восстановил точный
+snapshot, включая SDDL. Uninstall вернул 0 и удалил все файлы/службу, но оставил
+пустой Programmable key и его пустой CLSID parent. Key-only `+` authoring не
+оказалось достаточным для полного удаления этого marker; FAIL сохранён.
+
+Исправление без ForceDelete: три прежде пустых key получают служебный DWORD
+`IcemNativeKey=1`, принадлежащий тому же file-component. При uninstall MSI удаляет
+только это значение; пустой key удаляется стандартным RemoveRegistryValues,
+а неизвестные чужие значения/children не стираются. Key presence/COM values
+сохранены; эта intentional bookkeeping delta записана в JSON. Generic key-only
+ветка удалена, inventory с пустыми values отвергается. Native checks теперь 28.
+
+Первый x86 COM probe активировал сервис, установил/проверил packet-privacy blanket
+и получил enumeration object, но Next не прошёл HRESULT/count oracle. Это не PASS;
+добавлена диагностика фактического HRESULT/count. Теперь обе архитектуры выполняют
+по одной независимой попытке, известная ошибка одной не скрывает результат другой;
+timeout по-прежнему завершает fixture без retry. На рабочем ПК probe не запускался.
+
+Шестой case `shared-owner`: совместимый synthetic MSI claims canonical OpcEnum и
+opcproxy components с точно теми же установленными bytes/version. После удаления
+только нашего Runtime ожидаются неизменённые общие файлы, COM values/DACL и служба,
+остальные собственные ресурсы удалены; Windows Installer ComponentClients должен
+показывать только независимый оставшийся продукт. Expected registry subset
+выводится из native inventory, shared-view roots проверяются явно. Оба owner cases
+используют один compile helper; чужой продукт не удаляется ради чистого теста.

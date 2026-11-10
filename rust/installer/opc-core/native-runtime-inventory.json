@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "source_commit": "efe0d1d1ea86a8a727bf26a501a261765e836766",
+  "intentional_deltas": ["Formerly empty COM keys carry IcemNativeKey=1 for value-backed transactional removal; no forced subtree deletion."],
   "capture": {"run": 42797248221, "fixture_head": "c0142fc536f0baee041b441526e1453d6c4981e3", "input_msi_sha256": "08737a0cb8328f37b4ec6e3f586373c6cba7b578a4947ecf5ab25b3e1d369cb9", "registry_snapshot_sha256": "fa06957f229a9ad7a5dd95c27a9a101f3e64ceaaa26e05051c0b365a16322a9b"},
   "components": [
     {"arch": "x86", "id": "comp_opccomn_ps", "file_id": "file_opccomn_ps", "guid": "{1902BC04-D8CF-67CE-FC28-9C8635C5C2D0}", "file": "opccomn_ps.dll", "directory": "system", "registry": [
@@ -195,15 +196,15 @@
       {"key": "SOFTWARE\\Classes\\CLSID\\{13486D51-4821-11D2-A494-3CB306C10000}", "values": [{"name": "", "kind": "String", "value": "Opc ServerList Class"}, {"name": "AppID", "kind": "String", "value": "{13486D44-4821-11D2-A494-3CB306C10000}"}]},
       {"key": "SOFTWARE\\Classes\\CLSID\\{13486D51-4821-11D2-A494-3CB306C10000}\\LocalServer32", "values": [{"name": "", "kind": "String", "value": "\"[#file_OpcEnum]\""}]},
       {"key": "SOFTWARE\\Classes\\CLSID\\{13486D51-4821-11D2-A494-3CB306C10000}\\ProgID", "values": [{"name": "", "kind": "String", "value": "OPC.ServerList.1"}]},
-      {"key": "SOFTWARE\\Classes\\CLSID\\{13486D51-4821-11D2-A494-3CB306C10000}\\Programmable", "values": []},
+      {"key": "SOFTWARE\\Classes\\CLSID\\{13486D51-4821-11D2-A494-3CB306C10000}\\Programmable", "values": [{"name": "IcemNativeKey", "kind": "DWord", "value": 1}]},
       {"key": "SOFTWARE\\Classes\\CLSID\\{13486D51-4821-11D2-A494-3CB306C10000}\\VersionIndependentProgID", "values": [{"name": "", "kind": "String", "value": "OPC.ServerList"}]},
       {"key": "SOFTWARE\\Classes\\OPC.ServerList", "values": [{"name": "", "kind": "String", "value": "Opc ServerList Class"}]},
       {"key": "SOFTWARE\\Classes\\OPC.ServerList.1", "values": [{"name": "", "kind": "String", "value": "Opc ServerList Class"}]},
       {"key": "SOFTWARE\\Classes\\OPC.ServerList.1\\CLSID", "values": [{"name": "", "kind": "String", "value": "{13486D51-4821-11D2-A494-3CB306C10000}"}]},
       {"key": "SOFTWARE\\Classes\\OPC.ServerList\\CurVer", "values": [{"name": "", "kind": "String", "value": "OPC.ServerList.1"}]},
-      {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}", "values": []},
+      {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}", "values": [{"name": "IcemNativeKey", "kind": "DWord", "value": 1}]},
       {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}\\1.1", "values": [{"name": "", "kind": "String", "value": "OpcEnum 1.1 Type Library"}]},
-      {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}\\1.1\\0", "values": []},
+      {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}\\1.1\\0", "values": [{"name": "IcemNativeKey", "kind": "DWord", "value": 1}]},
       {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}\\1.1\\0\\win32", "values": [{"name": "", "kind": "String", "value": "[#file_OpcEnum]"}]},
       {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}\\1.1\\FLAGS", "values": [{"name": "", "kind": "String", "value": "0"}]},
       {"key": "SOFTWARE\\Classes\\TypeLib\\{13486D43-4821-11D2-A494-3CB306C10000}\\1.1\\HELPDIR", "values": [{"name": "", "kind": "String", "value": "[WindowsFolder]SysWOW64"}]}
