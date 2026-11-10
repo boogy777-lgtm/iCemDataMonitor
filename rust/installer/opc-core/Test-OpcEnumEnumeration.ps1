@@ -19,7 +19,7 @@ Copy-Item -LiteralPath $source -Destination $copy
 $script:checks = 0
 try {
     $patched = & (Join-Path $PSScriptRoot 'Apply-OpcEnumEnumeration.ps1') -SourceFile $copy | Select-Object -Last 1
-    if ($patched -cne 'bfafc28b789cc6b77c47aabe911b6a7fa46cb641dd2a6ea14a8b7e04c6968c39') { throw "Unexpected patched enumeration source: $patched" }
+    if ($patched -cne 'ad1cfc6c6446c07b23426541b0d36207d19cdf9787874bc2458a7751d198a19e') { throw "Unexpected patched enumeration source: $patched" }
     $text = [IO.File]::ReadAllText($copy)
     # The upstream public IOPCEnumGUID overload keeps a large dead comment.
     # Inspect active code only so preserved historical text cannot mask a defect.
@@ -28,9 +28,16 @@ try {
     # opening brace or delegation body (the first CI attempt did exactly that).
     $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
     $publicSignature = "`t/*[out]*/ IOPCEnumGUID** ppenumClsid)${nl}{${nl}`treturn EnumClassesOfCategories2(cImplemented, rgcatidImpl, cRequired, rgcatidReq, ppenumClsid);"
-    $privateSignature = "`tIOPCEnumGUID** ppenumClsid)${nl}{${nl}`t*ppenumClsid = 0;${nl}${nl}`tIOPCEnumGUID* enumerated = NULL;"
+    $privateSignature = "`tIOPCEnumGUID** ppenumClsid)${nl}{${nl}`t*ppenumClsid = 0;"
     if (-not $text.Contains($publicSignature) -or -not $text.Contains($privateSignature)) {
         throw 'PATTERN_GUARD: enumeration function signature/delegate was damaged.'
+    }
+    # The private IOPCEnumGUID overload must request the standard category list.
+    # Passing IOPCEnumGUID** here selects itself and overflows the server stack.
+    if ([regex]::Matches($code, 'IEnumCLSID\* categories = NULL;').Count -ne 1 -or
+        [regex]::Matches($code, 'EnumClassesOfCategories2\(cImplemented, rgcatidImpl, cRequired, rgcatidReq, &categories\);').Count -ne 1 -or
+        [regex]::Matches($code, '&enumerated\)').Count -ne 1) {
+        throw 'PATTERN_GUARD: private enumeration overload calls itself instead of the category list.'
     }
     if ([regex]::Matches($code, 'IcemCreateGuidEnum<').Count -ne 2 -or
         [regex]::Matches($code, 'AtlFlagTakeOwnership').Count -ne 1 -or

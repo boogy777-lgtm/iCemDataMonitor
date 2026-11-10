@@ -302,5 +302,18 @@ IOPCEnumGUID). Structural guard проверяет наличие всех че�
 два прежних upstream-предупреждения C4996). Локальный fixture PASS; compile-only
 MSI-authoring пересобран, не поставка.
 
+Run `42816172221`, head `a96345fac47926b771b9dda8b31c53bd601574ff`: build PASS,
+`lifecycle`, `rollback`, `foreign-registry`, `foreign-component` и `shared-owner`
+PASS. `clients` снова FAIL, но уже с `0x80010105` (`RPC_E_SERVERFAULT`):
+private `IOPCEnumGUID` overload вызывал `EnumClassesOfCategories2(..., &enumerated)`
+с `IOPCEnumGUID**`, то есть **сам себя** — stack overflow в сервере. Исходный код
+передавал `IEnumGUID**` и тем выбирал соседний overload.
+
+Исправление: private overload получает `IEnumCLSID* categories` (это
+`IEnumGUID`) и явно вызывает категорийный overload; `&enumerated` остаётся только
+в публичной IEnumCLSID-обёртке. Structural guard проверяет ровно один такой вызов
+и наличие `&categories`. Полная TU снова компилируется `cl /c` без ошибок.
+Нужен новый чистый six-case run; `clients` пока не принят.
+
 Production `LaunchCondition=Installed` сохранён. Требуется новый чистый six-case
 run; до него lifecycle нельзя считать полностью принятым, а Setup не собирается.

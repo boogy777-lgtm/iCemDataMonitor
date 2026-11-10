@@ -96,19 +96,21 @@ IOPCEnumGUID** ppenumClsid)
 {
 	*ppenumClsid = 0;
 
-	IOPCEnumGUID* enumerated = NULL;
-	HRESULT hr = EnumClassesOfCategories2(cImplemented, rgcatidImpl, cRequired, rgcatidReq, &enumerated);
+	// IEnumCLSID is the standard IEnumGUID category list; requesting it here
+	// selects the other private overload. Passing IOPCEnumGUID** would recurse.
+	IEnumCLSID* categories = NULL;
+	HRESULT hr = EnumClassesOfCategories2(cImplemented, rgcatidImpl, cRequired, rgcatidReq, &categories);
 	if (FAILED(hr))
 		return hr;
 
 	std::vector<GUID> guids;
 	GUID guid;
 	unsigned long count;
-	while ((hr = enumerated->Next(1, &guid, &count)) == S_OK)
+	while ((hr = categories->Next(1, &guid, &count)) == S_OK)
 	{
 		guids.push_back(guid);
 	}
-	enumerated->Release();
+	categories->Release();
 	if (FAILED(hr))
 	{
 		return hr;
