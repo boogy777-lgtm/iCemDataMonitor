@@ -19,11 +19,19 @@ Copy-Item -LiteralPath $source -Destination $copy
 $script:checks = 0
 try {
     $patched = & (Join-Path $PSScriptRoot 'Apply-OpcEnumEnumeration.ps1') -SourceFile $copy | Select-Object -Last 1
-    if ($patched -cne '0d7f1b8569d9aea31595576d75ddcb628013be0d306487f1fbd641562031e0eb') { throw "Unexpected patched enumeration source: $patched" }
+    if ($patched -cne 'bfafc28b789cc6b77c47aabe911b6a7fa46cb641dd2a6ea14a8b7e04c6968c39') { throw "Unexpected patched enumeration source: $patched" }
     $text = [IO.File]::ReadAllText($copy)
     # The upstream public IOPCEnumGUID overload keeps a large dead comment.
     # Inspect active code only so preserved historical text cannot mask a defect.
     $code = [regex]::Replace($text, '(?s)/\*.*?\*/|//[^\r\n]*', '')
+    # Exact function boundaries: a scope edit must never consume a signature,
+    # opening brace or delegation body (the first CI attempt did exactly that).
+    $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $publicSignature = "`t/*[out]*/ IOPCEnumGUID** ppenumClsid)${nl}{${nl}`treturn EnumClassesOfCategories2(cImplemented, rgcatidImpl, cRequired, rgcatidReq, ppenumClsid);"
+    $privateSignature = "`tIOPCEnumGUID** ppenumClsid)${nl}{${nl}`t*ppenumClsid = 0;${nl}${nl}`tIOPCEnumGUID* enumerated = NULL;"
+    if (-not $text.Contains($publicSignature) -or -not $text.Contains($privateSignature)) {
+        throw 'PATTERN_GUARD: enumeration function signature/delegate was damaged.'
+    }
     if ([regex]::Matches($code, 'IcemCreateGuidEnum<').Count -ne 2 -or
         [regex]::Matches($code, 'AtlFlagTakeOwnership').Count -ne 1 -or
         [regex]::Matches($code, 'EnumType::CreateInstance').Count -ne 1 -or

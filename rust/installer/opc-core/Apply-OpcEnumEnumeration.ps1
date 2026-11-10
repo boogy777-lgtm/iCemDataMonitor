@@ -92,6 +92,8 @@ $text = Replace-Scope $text $firstStart ('// EnumClassesOfCategories' + $newline
 # block contains the same body text and must stay untouched (it only delegates).
 $secondStart = "IOPCEnumGUID** ppenumClsid)${newline}{${newline}`t*ppenumClsid = 0;"
 $secondReplacement = @'
+IOPCEnumGUID** ppenumClsid)
+{
 	*ppenumClsid = 0;
 
 	IOPCEnumGUID* enumerated = NULL;
