@@ -30,6 +30,15 @@ the embedded payload family is read from the MSI UpgradeCode, not a caller flag.
 `Test-WindowsSetup.ps1` validates removal targets, payload hash and the UI inventory
 without uninstalling anything on the SDK workstation.
 
+The two delivery pipelines are independent: `legacy-release` (`vX.Y.Z`) emits
+the .NET MSI/Setup under `dist/legacy/`; `rust-windows-release` emits Rust MSI/Setup
+under `dist/rust/` and uses `rust-vX.Y.Z` tags. Each Setup can explicitly remove
+either registered family without building or embedding the other application's
+payload. Neither installer silently takes ownership of the other family or of
+third-party OPC registrations. Legacy application tests run only in `legacy-ci`;
+they do not gate Rust CI or release. Shared immutable inputs, C# compatibility
+oracles and the real net48 AddIn remain required for Rust where applicable.
+
 A ZIP/checksum remains an internal verified build intermediate. `-OutputDirectory` selects
 another output folder: relative paths are resolved from the repository root,
 absolute paths are honored. The standalone `Build-WindowsMsi.ps1` defaults to
@@ -98,7 +107,8 @@ closure, then can force unresponsive owners after native deadlines. User-created
 config/data/logs are preserved. A reboot-required result is not a verified complete
 installation; the release gate requires exit 0 and verifies the installed hashes.
 No config or Data.dat is shipped/created by packaging. Legacy .NET MSI is separate
-and unchanged.
+and retains its own install/uninstall policy; the new Setup wrapper does not
+change historical MSI files or original .NET application behavior.
 
 This remains a **Rust development candidate**, retaining `*-dev.exe` names.
 Production cutover is not enabled merely by adding an installer. [Host E11](../docs/HOST_E11.ru.md) implements automatic Shell ensure, bounded startup,
@@ -173,6 +183,13 @@ failed before MSI creation in the unchanged Rust pipe rebind test; a separate fu
 Windows Rust CI passed that same head. That lifecycle race is recorded in PR #4,
 not bypassed by packaging. SDK-backed release, visual wizard acceptance, iCem DLL
 loading and production/offline/failure/running-process acceptance remain open. The new lifecycle fixture cases require a Windows run; test-only injected rollback is not production rollback evidence.
+
+`Test-WindowsSetupBuild.ps1` separately compiles both family launchers around
+small TEST ONLY MSIs without building legacy applications or executing MSI.
+It checks the exact embedded MSI/family, both removal policies, output/checksum,
+no-overwrite, tamper and unsupported-family refusal. These are build/read-only
+contracts, not evidence of real bidirectional uninstall, production cutover or a
+turnkey OPC Setup. Existing OPC registrations on this VM are not modified.
 
 
 The bundled `icem-opc-da-sidecar.exe` remains opt-in through Host

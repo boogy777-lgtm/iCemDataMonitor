@@ -1,4 +1,9 @@
-# CI: маршрутизация, общий gate и bounded Cargo cache
+# CI: маршрутизация, независимые family gates и bounded Cargo cache
+
+**Уточнение 2026-11-10:** Rust и legacy имеют независимые CI workflows и gates.
+Legacy build/test/MSI failure не является зависимостью Rust gate или выпуска Rust.
+Исходные .NET projects, AddIn и frozen contracts не изменены; legacy проверки
+не отключаются и не получают `continue-on-error`, а выполняются в своём workflow.
 
 Scope — маршрутизация существующих проверок поверх принятого prerequisite CI-2:
 main `25935c0481faf29f1e5ec15924cbc71e70203f62`, [PR21](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/21).
@@ -13,24 +18,31 @@ proto и SPA не меняются. E23 не входит в этот инкре
 Class: изменённые пути относятся к пересекающимся категориям `legacy`, `rust`,
 `shared-contracts`, `packaging`, `infrastructure`, `documentation`; близкий
 nonmember — только явно разрешённая Markdown-документация без runtime inputs.
-Inv: достоверный Git diff либо полный набор проверок; exact-hash approval metadata
+Inv: достоверный Git diff либо полный набор проверок своего семейства; exact-hash approval metadata
 делегируется только фактически изменённым source blobs того же diff. Ledger-only и
 provenance-only — nonmembers. Полный неизменяемый baseline и routing selftests
-обязательны; `CI gate` принимает только точные ожидаемые результаты.
+обязательны; каждый family gate принимает только точные ожидаемые результаты.
 N+1: новый путь/consumer добавляется в `tools/ci/routing-rules.json`; executable
 coverage/dependency/workflow contracts в `tools/ci/test_routing.py` обнаруживают
 неучтённые tracked paths, зависимости и пропущенные job связи.
+Состав семейств задан один раз в `routing.py::FAMILIES`: Rust = `rust/packaging`,
+legacy = `legacy`. Workflow wiring и exhaustive gate tests проверяют разбиение.
 Legacy job имеет один исполняемый источник в `legacy-build.yml`; диагностический
 контракт проверяет отдельный `RoutingTests.test_legacy_diagnostics_contract`.
 
 ## Граф и матрица
 
-`.github/workflows/ci.yml` запускается на каждом PR в main, push в main и manual
-dispatch, без path filter. Всегда выполняются Windows `classify`, `baseline`
-(`Test-BaselineGuard.ps1`, `Verify-Baseline.ps1 -RequireComplete`) и `routing-tests`.
-Условные jobs вызывают относительные reusable workflows того же commit:
-`legacy-build.yml`, `rust-migration.yml`, `rust-installer-contracts.yml`.
-Последний job имеет постоянное имя **CI gate** и `if: always()`.
+`.github/workflows/ci.yml` (`rust-ci`) и отдельный `legacy-ci.yml` запускаются
+на каждом PR в main, push в main и manual dispatch, без path filter.
+Оба вызывают один reusable `ci-inputs.yml`: Windows `classify`, `baseline`
+(`Test-BaselineGuard.ps1`, `Verify-Baseline.ps1 -RequireComplete`) и `routing-tests`
+обязательны без условий. Success общего `inputs` означает
+успех всех трёх проверок. Условные jobs вызывают reusable workflows того же commit:
+- Rust: `rust-migration.yml`, `rust-installer-contracts.yml`, затем **Rust CI gate**.
+- Legacy: `legacy-build.yml`, затем **Legacy CI gate**.
+Оба gate имеют `if: always()`, но ни один не ждёт build другого семейства.
+Общий immutable baseline проверяется и для Rust: это read-only контроль входов,
+а не сборка или запуск полного legacy solution.
 
 | Изменение | .NET build/test/MSI | Полный Rust + browser + differential | Installer contracts |
 |---|---|---|---|
@@ -72,12 +84,19 @@ category → workloads. Нет правила «все .NET изменения �
   generator/harvester и реальные SDK/build inputs. Весь общий `installer/**` и `Burservis.iCem.DataMonitor/**`, включая
   следующий неизвестный тип build input, запускают обе реализации.
 
+Матрица выбирает workload **в его собственном workflow**, а не общий release gate.
+Shared/unknown changes по-прежнему выбирают оба семейства; падение Legacy CI
+остаётся видимым, но не мешает Rust CI. Настоящие C# differential oracles и net48
+AddIn остаются необходимыми входами Rust, не зависят от результата legacy Host tests.
+
 Installer contracts проверяют синтетический AddIn и native MSI ownership.
 Они не доказывают компиляцию с proprietary SDK и не публикуют fixture MSI.
 Manual `rust-windows-release.yml` сохраняет реальный SDK/AddIn provenance,
 полный payload, install/upgrade/downgrade/uninstall, smoke/browser и draft release
 поведение; он вызывает тот же reusable installer workflow. Automatic PR trigger
-перенесён в coordinator. `rust-addin-build.yml` и `release.yml` не изменены.
+принадлежит Rust coordinator. Legacy `release.yml` отдельно выпускает MSI/Setup
+по `vX.Y.Z`; Rust manual release использует `rust-vX.Y.Z`. Оба публикуют Setup и
+checksums, но не вызывают application builder другого семейства.
 
 ## Fail-closed diff и gate
 
@@ -123,7 +142,8 @@ Missing base, absence с обеих сторон, ledger-only, provenance-only �
 shared/frozen input, workflow или unknown path сохраняет полный dependency closure.
 Новый компонент добавляется в JSON rules, без project-specific ветвей в proof.
 Диагностика сохраняет исходные paths/categories и явно выводит `metadata_delegation`
-с associated source paths; три `GITHUB_OUTPUT` booleans и gate schema неизменны.
+с associated source paths; три `GITHUB_OUTPUT` booleans неизменны,
+а schema gate теперь содержит только `inputs` и workloads своего семейства.
 
 Это proof зависимости metadata, а не новая baseline/provenance policy. В обоих
 случаях — с делегированием и без него — всегда выполняются полный
@@ -132,15 +152,16 @@ shared/frozen input, workflow или unknown path сохраняет полны�
 commit не обязан равняться новому head (это создало бы циклическую ссылку); proof
 не требует сетевого доступа или доступности указанного provenance commit.
 
-Gate получает `toJSON(needs)` через environment, проверяет точную схему шести
-зависимостей и outputs `legacy/rust/packaging` со строками только `true/false`.
-Classify/baseline/selftests должны завершиться `success`. Выбранный workload
+Gate получает `toJSON(needs)` через environment и обязательный `--family`.
+Проверяет точную схему: `inputs` плюс только workloads выбранного семейства;
+outputs `legacy/rust/packaging` допускают строки только `true/false`.
+`inputs` должен завершиться `success` (classify/baseline/selftests). Выбранный workload
 должен иметь `success`, невыбранный — ровно `skipped`. Failure, cancelled,
 unexpected skip, malformed/missing outputs и неожиданный запуск отклоняются.
 Gate сам делает checkout и не зависит от успешной загрузки предыдущего artifact.
 Classifier/selftest/gate ограничены 5 минутами, baseline — 10 минутами.
 
-Coordinator concurrency содержит identity `ci` и branch/ref; только obsolete PR
+Coordinator concurrency содержит отдельные `rust-ci`/`legacy-ci` и branch/ref; только obsolete PR
 может быть отменён. Reusable workflows не имеют конкурирующей cancellation group;
 manual release group сохраняет прежнюю общую identity `rust-windows-release-manual`
 и `cancel-in-progress: false`. Это сериализует выбор `next` между ветками. Manual
@@ -170,12 +191,15 @@ new/updated approvals и baseline hashes. Это контролируемая п
 фиксируются владельцем после независимого review; прежние E22 runs не являются
 доказательством CI-1 и ускорение до новых измерений не заявляется.
 
-На проверенном исходном состоянии main `protected=false`, required contexts пусты,
+На ранее проверенном исходном состоянии main `protected=false`, required contexts пусты,
 repository rulesets пусты; GET branch protection вернул 403 integration/admin
-unavailable. Поэтому **CI gate подготовлен как единый required-check candidate,
-но server-enforced обязательность ещё не установлена**. Workflow не может сам
-гарантировать запрет merge; требование CI gate в branch protection/ruleset должно
-быть отдельно включено владельцем с соответствующими правами.
+unavailable. **Server-enforced обязательность family gates ещё не установлена**.
+Для текущей Rust работы required context должен быть `Rust CI gate`, без зависимости
+от `Legacy CI gate`. Старый context `CI gate` больше не создаётся: если он был
+включён владельцем позднее, его нужно заменить. Repo settings этим изменением
+не меняются. Workflow сам не гарантирует правила merge.
+
+### История CI-1/CI-3 до разделения семейств
 
 Изменение baseline-файла `.github/workflows/ci.yml` записано в существующем
 exact-hash ledger: [PR20](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/20),
@@ -380,3 +404,20 @@ Routing, baseline, installer contracts и Release measurements — PASS; Rust с
 Host tests 265/266 PASS. Причина этого teardown failure не установлена; исходные
 .NET files ради установочного инкремента не меняются и тест не отключается.
 Общий gate FAIL; прохождение packaging не является полной Setup acceptance.
+
+На следующем head `8958d96` run
+[42858465068](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42858465068)
+снова FAIL на том же Rust BCL oracle `U+2C5F`; legacy build/test/MSI на этом run
+**PASS**. Поэтому прежний teardown failure не объявляется текущей причиной Rust
+блокировки и не исправляется в этом инкременте.
+
+Локальная проверка разделения семейств: Python 3.12 **53/53 PASS**, включая обе
+семьи, все комбинации selection/results, strict schemas, CLI family requirement,
+независимые workflow edges и доставку обоих Setup. `Test-WindowsSetupBuild.ps1`
+скомпилировал оба launcher в Release с 0 warnings/errors, проверил exact embedded
+MSI/family, удаление только выбранного ProductCode, stale/foreign rejection,
+tamper/unsupported/no-overwrite и обнаружение существующего Rust `0.1.2` только
+для чтения. Никакого удаления или установки продуктов не выполнялось.
+SHA256-verified actionlint `1.7.12` принял все шесть изменённых/новых workflows.
+Новые hosted family workflows и настоящий bidirectional uninstall ещё требуют
+отдельного execution evidence; эти contract fixtures не являются готовым Setup.

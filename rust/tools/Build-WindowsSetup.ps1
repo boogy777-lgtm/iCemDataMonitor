@@ -18,16 +18,22 @@ $Legacy = [xml](Get-Content -Raw (Join-Path $Repo 'installer/Product.wxs'))
 $LegacyCode = $Legacy.SelectSingleNode('/*[local-name()="Wix"]/*[local-name()="Package"]').GetAttribute('UpgradeCode')
 $Families = @{ '.NET' = [guid]$LegacyCode; 'Rust' = [guid]$Rust.upgrade_code }
 $WindowsInstaller = New-Object -ComObject WindowsInstaller.Installer
-$Database = $WindowsInstaller.OpenDatabase($Msi, 0)
-$View = $Database.OpenView('SELECT `Value` FROM `Property` WHERE `Property` = ''UpgradeCode''')
-$null = $View.Execute()
-$Record = $View.Fetch()
-if (-not $Record) { throw 'MSI has no UpgradeCode' }
-$PayloadCode = [guid]$Record.StringData(1)
-$PayloadFamilies = @($Families.Keys | Where-Object { $Families[$_] -eq $PayloadCode })
-if ($PayloadFamilies.Count -ne 1) { throw 'MSI does not belong to a supported iCem Monitor family' }
-$null = $View.Close()
-foreach ($Com in @($Record, $View, $Database, $WindowsInstaller)) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Com) }
+$Database = $View = $Record = $null
+try {
+    $Database = $WindowsInstaller.OpenDatabase($Msi, 0)
+    $View = $Database.OpenView('SELECT `Value` FROM `Property` WHERE `Property` = ''UpgradeCode''')
+    $null = $View.Execute()
+    $Record = $View.Fetch()
+    if (-not $Record) { throw 'MSI has no UpgradeCode' }
+    $PayloadCode = [guid]$Record.StringData(1)
+    $PayloadFamilies = @($Families.Keys | Where-Object { $Families[$_] -eq $PayloadCode })
+    if ($PayloadFamilies.Count -ne 1) { throw 'MSI does not belong to a supported iCem Monitor family' }
+} finally {
+    if ($View) { $null = $View.Close() }
+    foreach ($Com in @($Record, $View, $Database, $WindowsInstaller)) {
+        if ($Com) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($Com) }
+    }
+}
 $Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-setup-build-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($Work) | Out-Null
 try {
@@ -40,7 +46,7 @@ try {
     & dotnet build (Join-Path $Repo 'rust/installer/bootstrapper/Setup.csproj') -c Release "-p:PayloadPath=$Msi" "-p:InventoryPath=$Inventory" "-p:HashPath=$HashPath" "-p:FamilyPath=$FamilyPath" "-p:OutputPath=$Work/bin/" "-p:BaseIntermediateOutputPath=$Work/obj/" | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Windows setup compilation failed' }
     $Built = Join-Path $Work 'bin/iCemDataMonitor-Setup.exe'
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-WindowsSetup.ps1') -Setup $Built | Out-Host
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-WindowsSetup.ps1') -Setup $Built -ExpectedMsi $Msi -ExpectedFamily $PayloadFamilies[0] | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Windows setup checks failed' }
     $SetupHash = (Get-FileHash -LiteralPath $Built -Algorithm SHA256).Hash.ToLowerInvariant()
     Copy-Item -LiteralPath $Built -Destination $Output

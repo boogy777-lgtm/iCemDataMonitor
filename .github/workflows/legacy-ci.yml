@@ -1,0 +1,35 @@
+name: legacy-ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: legacy-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  inputs:
+    uses: ./.github/workflows/ci-inputs.yml
+  legacy:
+    needs: inputs
+    if: needs.inputs.outputs.legacy == 'true'
+    uses: ./.github/workflows/legacy-build.yml
+  gate:
+    name: Legacy CI gate
+    timeout-minutes: 5
+    if: always()
+    needs: [inputs, legacy]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require selected legacy checks and reject unexpected skips
+        shell: pwsh
+        env:
+          CI_NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python rust/tools/ci/routing.py gate --family legacy

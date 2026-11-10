@@ -461,3 +461,41 @@ https://learn.microsoft.com/en-us/windows/win32/msi/securecustomproperties.
 контроль соответствия fixed AppID snapshot, а не доверие данным клиента/UI.
 Фактический `descriptor-repair` Runtime остаётся FAIL; нового seven-case run
 исправленной реализации пока нет. Production authoring и блок не изменены.
+
+## Уточнение: независимые legacy/Rust установщики и оставшиеся gates
+
+Пользователь потребовал раздельные сборки legacy/Rust с возможностью явно удалить
+другое семейство; legacy failure не должен блокировать текущую Rust работу.
+`ci.yml` теперь содержит только Rust workloads и `Rust CI gate`, `legacy-ci.yml`
+вызывает прежний неизменённый legacy build/test/MSI и собственный `Legacy CI gate`.
+Shared read-only baseline/routing checks имеют один reusable owner `ci-inputs.yml`;
+истинные C# compatibility oracles и net48 AddIn не отключаются. См. [CI](CI_CD.ru.md).
+
+Оба Setup используют существующий launcher: явные выбор/подтверждение, повторное
+обнаружение ProductCode, штатный `/x`, без автоматической зачистки конфигурации.
+Legacy release теперь оборачивает только свой MSI, Rust release публикует свой
+Setup вместе с MSI/checksums. Прямые MSI по-прежнему блокируют cross-family install:
+для замены нужно сначала явно удалить установленный продукт через Setup.
+Исторические MSI не переписываются. Сборка обоих launcher на fixtures и read-only
+обнаружение реального Rust `0.1.2` прошли; реальное взаимное удаление ещё не принято.
+
+Последний прежний Runtime run
+[42858462741](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42858462741)
+на head `8958d96`: build и шесть cases PASS, `descriptor-repair` снова **FAIL**.
+Остаток до настоящего Rust Setup:
+1. Execute-side trusted guard и сохранение реальных четырёх DCOM descriptor values
+   при repair; новая полная семикейсовая матрица, включая UI/injection/type failures.
+2. Доказанная Unicode provider compatibility: полный Rust CI всё ещё падает на
+   `U+2C5F`; baseline и независимый oracle не ослабляются ради зелёного результата.
+3. Normal-operator/consent grants только собственного runtime; безопасная политика
+   bootstrapper для уже существующего OPC. Чужие Siemens/OPC registrations не
+   присваиваются, не перенастраиваются и не удаляются.
+4. Осторожная интеграция с исходным mixed UX WIP и настоящая Release/SDK AddIn сборка
+   итогового Rust Setup, не fixture и не пакет с заблокированным prerequisite.
+5. Установочная приёмка обоих направлений замены с сохранением config, shared OPC,
+   own upgrade/repair/rollback/uninstall, затем запуск GUI обычным пользователем,
+   DA/UA/MQTT default/live toggles, TLS/auth/trust, DPI и независимый LAN/HMI client.
+6. Signing/distribution terms и окончательная release acceptance.
+
+Ни Runtime production authoring, ни его unconditional fresh-install block этим
+разделением не изменены. Исходный UX WIP и установленный Rust `0.1.2` не трогались.

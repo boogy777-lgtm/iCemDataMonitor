@@ -1,4 +1,4 @@
-name: release
+name: legacy-release
 
 on:
   push:
@@ -53,16 +53,27 @@ jobs:
           $msi = Get-Item -LiteralPath "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
           $hash = (Get-FileHash -Path $msi.FullName -Algorithm SHA256).Hash
           $line = '{0}  {1}' -f $hash, $msi.Name
+          Set-Content -LiteralPath "$($msi.FullName).sha256" -Value $line -Encoding ascii
           Set-Content -LiteralPath dist/legacy/SHA256SUMS.txt -Value $line -Encoding ascii
           Write-Host $line
         shell: pwsh
+
+      - name: Build legacy Setup with explicit cross-family removal
+        shell: pwsh
+        run: |
+          $Setup = ./rust/tools/Build-WindowsSetup.ps1 -Msi "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
+          Get-Content -LiteralPath $Setup.checksum | Add-Content -LiteralPath dist/legacy/SHA256SUMS.txt -Encoding ascii
 
       - name: Create GitHub release and upload artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $msi = "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
-          if (-not (Test-Path -LiteralPath $msi)) { Write-Host "Missing artifact: $msi"; exit 1 }
-          gh release create "$env:GITHUB_REF_NAME" $msi dist/legacy/SHA256SUMS.txt `
+          $setup = "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64-Setup.exe"
+          foreach ($file in @($msi, $setup)) {
+            if ((Get-Content -Raw -LiteralPath "$file.sha256").Split(' ')[0] -ine (Get-FileHash -LiteralPath $file).Hash) { throw "Artifact checksum mismatch: $file" }
+          }
+          gh release create "$env:GITHUB_REF_NAME" $msi "$msi.sha256" $setup "$setup.sha256" dist/legacy/SHA256SUMS.txt `
             --title "iCem Data Monitor $env:GITHUB_REF_NAME" --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy release creation failed; no mutation retry or overwrite.' }
         shell: pwsh

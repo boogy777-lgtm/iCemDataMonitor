@@ -1,5 +1,9 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string] $Setup)
+param(
+    [Parameter(Mandatory)][string] $Setup,
+    [string] $ExpectedMsi,
+    [ValidateSet('.NET', 'Rust')][string] $ExpectedFamily
+)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Setup = (Resolve-Path -LiteralPath $Setup).Path
@@ -29,6 +33,13 @@ foreach ($Family in @('.NET', 'Rust')) {
 }
 $Payload = [IcemSetup.Program]::Payload()
 if ($Payload.Length -lt 1024) { throw 'Embedded MSI missing' }
+if ($ExpectedMsi) {
+    $ExpectedMsi = (Resolve-Path -LiteralPath $ExpectedMsi).Path
+    $Sha = [Security.Cryptography.SHA256]::Create()
+    try { $Hash = [BitConverter]::ToString($Sha.ComputeHash($Payload)).Replace('-', '') }
+    finally { $Sha.Dispose() }
+    if ($Hash -cne (Get-FileHash -LiteralPath $ExpectedMsi -Algorithm SHA256).Hash) { throw 'Setup embeds a different MSI' }
+}
 $Installed = @([IcemSetup.Inventory]::Read())
 foreach ($Product in $Installed) {
     if ([IcemSetup.Policy]::RemoveArguments($Product.Code, [IcemSetup.Product[]]$Installed) -cne ('/x ' + $Product.Code)) { throw 'Installed product cannot be removed' }
@@ -42,6 +53,7 @@ try {
     $Remove = $Form.GetType().GetField('remove', $Flags).GetValue($Form)
     $Install = $Form.GetType().GetField('install', $Flags).GetValue($Form)
     $Family = [IcemSetup.Program]::Resource('payload.family').Trim()
+    if ($ExpectedFamily -and $Family -cne $ExpectedFamily) { throw 'Setup belongs to a different payload family' }
     if ($List.Items.Count -ne $Installed.Count) { throw 'Setup UI omitted installed products' }
     if ($Remove.Enabled -ne ($Installed.Count -gt 0)) { throw 'Setup UI removal action unavailable' }
     if ($Install.Enabled -ne [IcemSetup.Policy]::CanInstall($Family, [IcemSetup.Product[]]$Installed)) { throw 'Setup UI install policy mismatch' }
