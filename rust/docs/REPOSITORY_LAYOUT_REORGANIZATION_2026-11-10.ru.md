@@ -48,7 +48,7 @@
 - actionlint 1.7.12 — PASS для изменённого `opc-runtime-acceptance.yml`. Полный repo-wide запуск локально остановился на custom runner label `icem-sdk` в неизменённом `rust-addin-build.yml`; это не объявляется полным actionlint PASS.
 - `git diff --check` — PASS.
 
-`Test-BaselineGuard.ps1` не завершился полностью: локальная сессия без elevated token не смогла создать его symlink fixture. Полный source-pinned OPC Core/MSI build, таблицы фактически собранного Runtime MSI, hosted exact-head CI и установочная матрица здесь **не запускались/не подтверждены**. Никаких `msiexec`, локальных OPC registration/service/firewall операций, полного Cargo/.NET solution build или изменения установленного MSI не выполнялось. PR #51 — проверенный локальный layout increment, не готовый release и не завершённый target tree.
+`Test-BaselineGuard.ps1` не завершился полностью: локальная сессия без elevated token не смогла создать его symlink fixture. Hosted OPC workflow run [42880016939](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42880016939) на head `687e3a8` был `in_progress` при последней проверке; результата/PASS нет. Полный source-pinned OPC Core/MSI build, таблицы фактически собранного Runtime MSI и установочная матрица локально не запускались. Никаких `msiexec`, локальных OPC registration/service/firewall операций, полного Cargo/.NET solution build или изменения установленного MSI не выполнялось. PR #51 — проверенный локальный layout increment, не готовый release и не завершённый target tree.
 
 ## История
 
