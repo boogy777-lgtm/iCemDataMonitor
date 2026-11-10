@@ -53,6 +53,10 @@ jobs:
             & dotnet tool install wix --version $Pin --tool-path $Tools
             if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX install failed' }
             $env:PATH = "$Tools;$env:PATH"
+            & dotnet build "$Root/rust/installer/opc-core/tests/RegistryGuardTests.csproj" -c Release "-p:BaseIntermediateOutputPath=$Work/test-obj/" "-p:OutputPath=$Work/test-bin/" -v:minimal
+            if ($LASTEXITCODE -ne 0) { throw 'Read-only component-owner guard fixtures did not compile' }
+            & "$Work/test-bin/icem-opc-guard-tests.exe"
+            if ($LASTEXITCODE -ne 0) { throw 'Component-owner guard fixtures failed' }
             & git init $Source
             & git -C $Source remote add origin https://github.com/OPCF-Members/OPC-Classic-CoreComponents.git
             & git -C $Source fetch --depth 1 origin efe0d1d1ea86a8a727bf26a501a261765e836766

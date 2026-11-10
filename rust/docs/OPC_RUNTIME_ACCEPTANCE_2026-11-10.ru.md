@@ -93,3 +93,31 @@ registry rows; усиленный preflight oracle принял реальный
 а rollback oracle отверг прежний ложный PASS. Generated CI MIDL inputs прошли
 все 18 inventory tests; standalone ForeignOwner MSI с `-wx` скомпилировался
 локально без установки. Установочная приёмка runtime ещё не завершена.
+
+## Подтверждённые lifecycle defects и MSI-client guard
+
+Run `42794478800`, head `ea2caec54ed26fc9b40403c12f76d64ebd5f850f` дошёл до
+настоящей матрицы (production MSI оставался заблокированным):
+- Fresh install: 18 native files. Repair: 1603, `RegisterOpcCatMgr` вернул 183
+  (`ERROR_ALREADY_EXISTS`). Uninstall в этом сценарии ещё не достигнут.
+- Injected failure действительно после успешного InstallExecute; после rollback
+  файлы удалены, но остались 441 registry rows (включая пересекающиеся snapshot
+  roots) и OpcEnum service с LocalSystem и уже отсутствующим EXE. Это FAIL.
+- Чужой MSI-клиент канонического x86 opcproxy: установка ошибочно вернула 0,
+  отказа до транзакции не было. Registry-only guard недостаточен.
+- Foreign registry отказ по-прежнему PASS, с усиленной log-проверкой.
+
+`RegistryGuard.cs` теперь читает MSI-клиентов всех 18 canonical component GUID
+через `MsiEnumClientsExW`, all-user/all-context, index 0: любой клиент или любая
+ошибка, кроме `ERROR_NO_MORE_ITEMS`, означает отказ. API только читает inventory;
+никаких repair/adoption вызовов. Фиксированный resource `opc-component-codes.txt`
+обязательно совпадает с полными Component tables обоих проверенных MSM.
+`tests/RegistryGuardTests.csproj`: Release, 0 warnings/errors; PASS 13 pure tests
+через injected API results, без реального чтения/изменения machine registrations.
+Compile-only shared MSI с новым guard также собран; это не установочная приёмка.
+
+Следующий lifecycle fix — native MSI Registry/ServiceInstall/ServiceControl
+ownership вместо self-registration/EXE registration actions, с проверкой repair
+и rollback. Не заменять это условиями «не запускать при repair», подавлением
+ошибок или ручной зачисткой shared state. Открытые client/operator/upgrade/signing
+gates остаются обязательными; production block сохранён.

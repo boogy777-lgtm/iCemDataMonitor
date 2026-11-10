@@ -10,6 +10,7 @@
   <ItemGroup><Reference Include="System"/><Reference Include="System.Core"/>
     <Compile Include="RegistryGuard.cs"/>
     <EmbeddedResource Include="$(GuardInventoryFile)"><LogicalName>opc-conflicts.txt</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="opc-component-codes.txt"><LogicalName>opc-components.txt</LogicalName></EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -47,6 +47,23 @@ foreach ($name in $names) {
     if ($file.Length -ne $matches[0].size -or (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash -ine $matches[0].sha256) { throw "Input hash mismatch: $name" }
 }
 if ((Get-FileHash -LiteralPath (Join-Path $root 'LICENSE.md') -Algorithm SHA256).Hash -ine '4f9f1935014049ea941a6d93fbd0248d1aa905c44ed2520ea2815d48c3a51291') { throw 'License does not match pinned upstream bytes.' }
+# The fixed embedded ownership inventory must cover every component from both
+# validated merge modules, not just the known OpcEnum/opcproxy examples.
+$componentCodes = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'opc-component-codes.txt'))
+$moduleCodes = @()
+$componentInstaller = New-Object -ComObject WindowsInstaller.Installer
+try {
+    foreach ($moduleName in $names[0..1]) {
+        $moduleDatabase = $componentInstaller.OpenDatabase((Join-Path $root $moduleName), 0)
+        try {
+            $moduleCodes += @(Read-WindowsMsiRecords $moduleDatabase 'SELECT `ComponentId` FROM `Component`' @('ComponentId') | ForEach-Object { $_.ComponentId })
+        } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($moduleDatabase) }
+    }
+} finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($componentInstaller) }
+if ($componentCodes.Count -ne 18 -or @($componentCodes | Sort-Object -Unique).Count -ne 18 -or
+    (($componentCodes | Sort-Object) -join '|') -cne (($moduleCodes | Sort-Object) -join '|')) {
+    throw 'MSI component ownership inventory differs from the canonical native merge modules.'
+}
 $parent = Split-Path -Parent $output
 if (-not (Test-Path -LiteralPath $parent -PathType Container)) { throw 'Output parent must already exist.' }
 $categoryIdl = Join-Path $root 'source/Source/Common/CategoryManager/CategoryManager.idl'
