@@ -311,3 +311,19 @@ source SHA, не same-exact-head. Итоговый verdict нового head и 
 metrics фиксируются в PR22 после завершения run, без циклического evidence commit.
 Таблица фиксирует первый cold run и сама по себе не является доказательством
 ускорения; итоговые данные отслеживаются в PR22.
+
+### Переход проверки и cache на Release (2026-11-10)
+
+Приведённый выше CI-3 cold run исторически использовал Debug; его измерения не
+относятся к новой конфигурации. На PR head `4f7d6fde14caca855308fa0bd76b5d687781b2f4`
+общий run `42817201085` остановился на несовпадении проверяемого перечня Debug
+команд с уже Release-only `Verify-Scaffold.ps1`.
+
+Windows Rust CI, interop Cargo test, независимые MQTT/UA counterparts и browser
+теперь используют Release. Cache разрешает только `rust/target/release` с новым
+prefix `ci3-release-`, поэтому прежний Debug cache не применяется. Прочие cache
+ограничения и проверки не удалены. `cache_contract.py` и mutation tests требуют
+Release-флаги и пути, включая вложенный interop и browser host; также они требуют
+успешную проверку версии .NET 10 для PowerShell-оракула. Фактический новый CI и
+cold/warm время должны быть проверены отдельно; локальный contract PASS не
+подменяет Windows job или установочную приёмку.

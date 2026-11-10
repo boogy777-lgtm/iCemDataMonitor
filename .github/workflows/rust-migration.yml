@@ -52,32 +52,32 @@ jobs:
         run: |
           cargo fetch --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Verify all scaffold inputs before debug restore
+      - name: Verify all scaffold inputs before release restore
         shell: pwsh
         run: ./tools/Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline
-      - name: Restore Cargo debug build
-        id: cargo-debug
+      - name: Restore Cargo release build
+        id: cargo-release
         uses: actions/cache/restore@v5
         with:
-          path: rust/target/debug
+          path: rust/target/release
           key: ${{ steps.cache-identity.outputs.build_key }}
           restore-keys: ${{ steps.cache-identity.outputs.build_prefix }}
       - name: Verify owned Host diagnostic window on Windows
         shell: pwsh
         run: |
-          cargo test --locked --offline -p icem-windows-native
+          cargo test --release --locked --offline -p icem-windows-native
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify Windows file logger boundary before desktop build
         shell: pwsh
         run: |
-          cargo test --locked --offline -p icem-logging
+          cargo test --release --locked --offline -p icem-logging
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify reviewed OPC SDK and sidecar on Windows
         shell: pwsh
         run: |
-          cargo test --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar
+          cargo test --release --locked --offline -p opc_da_bindings -p icem-opc-da-sidecar
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings
+          cargo clippy --release --locked --offline --all-targets -p opc_da_bindings -p icem-opc-da-sidecar -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./tools/Test-OpcDaInterop.ps1
           python third-party/rust_opc/verify.py
@@ -88,9 +88,9 @@ jobs:
         shell: pwsh
         run: |
           # Test the native runtime boundary before the much larger desktop graph.
-          cargo test --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows
+          cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings
+          cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify source and skeleton
         shell: pwsh
@@ -100,7 +100,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python tools/acceptance/windows_counterparts.py --host target/debug/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"
+          python tools/acceptance/windows_counterparts.py --host target/release/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload independent counterpart evidence
         if: always()
@@ -114,6 +114,7 @@ jobs:
         shell: pwsh
         env:
           ICEM_UI_ARTIFACTS: ${{ runner.temp }}/icem-ui
+          ICEM_HOST_EXE: ${{ github.workspace }}/rust/target/release/icem-host-dev.exe
         run: |
           npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -151,11 +152,11 @@ jobs:
             ${{ steps.cache-identity.outputs.cargo_home }}/git/db
             ${{ steps.cache-identity.outputs.cargo_home }}/git/checkouts
           key: ${{ steps.cache-identity.outputs.download_key }}
-      - name: Save Cargo debug build after all checks
-        if: success() && steps.cargo-debug.outputs.cache-hit != 'true'
+      - name: Save Cargo release build after all checks
+        if: success() && steps.cargo-release.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
-          path: rust/target/debug
+          path: rust/target/release
           key: ${{ steps.cache-identity.outputs.build_key }}
       - name: Record bounded cache evidence
         if: always()
@@ -163,11 +164,11 @@ jobs:
         env:
           DOWNLOAD_HIT: ${{ steps.cargo-downloads.outputs.cache-hit }}
           DOWNLOAD_MATCH: ${{ steps.cargo-downloads.outputs.cache-matched-key }}
-          DEBUG_HIT: ${{ steps.cargo-debug.outputs.cache-hit }}
-          DEBUG_MATCH: ${{ steps.cargo-debug.outputs.cache-matched-key }}
+          RELEASE_HIT: ${{ steps.cargo-release.outputs.cache-hit }}
+          RELEASE_MATCH: ${{ steps.cargo-release.outputs.cache-matched-key }}
         run: |
           $IdentityPath = "$env:RUNNER_TEMP/icem-cache-identity.json"
-          $Evidence = [ordered]@{ identityAvailable = (Test-Path $IdentityPath); downloadHit = $env:DOWNLOAD_HIT; downloadMatchedKey = $env:DOWNLOAD_MATCH; debugHit = $env:DEBUG_HIT; debugMatchedKey = $env:DEBUG_MATCH }
+          $Evidence = [ordered]@{ identityAvailable = (Test-Path $IdentityPath); downloadHit = $env:DOWNLOAD_HIT; downloadMatchedKey = $env:DOWNLOAD_MATCH; releaseHit = $env:RELEASE_HIT; releaseMatchedKey = $env:RELEASE_MATCH }
           $Evidence.cpuCount = [Environment]::ProcessorCount
           $Evidence.cpuModels = @()
           try { $Evidence.cpuModels = @((Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name) | Sort-Object -Unique) } catch { }

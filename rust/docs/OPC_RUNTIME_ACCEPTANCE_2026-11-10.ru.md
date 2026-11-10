@@ -17,7 +17,8 @@ production блока. В копии снимается только време�
 
 Матрица `acceptance-cases.json`: fresh/repair/uninstall; injected rollback;
 отказ при чужой registry registration; отказ при другом MSI-клиенте канонического
-OPC component GUID. Снимки сравнивают типы/значения/DACL registry в обеих views,
+OPC component GUID; независимые x86/x64 COM clients; удаление с shared owner.
+Снимки сравнивают типы/значения/DACL registry в обеих views,
 восемнадцать native files с hash/DACL и конфигурацию OpcEnum service.
 Чужое состояние не очищается для удобства теста; неоднозначный исход не повторяется.
 
@@ -27,9 +28,9 @@ OPC component GUID. Снимки сравнивают типы/значения/
 эффект при MSI rollback. Результаты одноразового CI нужны до изменения установочного
 контракта; initial characterization не является обещанием turnkey.
 
-Открыто: normal-operator grants только собственного runtime, x86/x64 независимые
-COM clients, upgrade и shared-owner removal, signing/distribution terms и полная
-Setup acceptance. До закрытия нужных gates production block не снимать.
+Открыто: normal-operator grants только собственного runtime, сохранение DCOM
+customizations при repair, собственный upgrade/coexistence, signing/distribution
+terms и полная Setup acceptance. До закрытия нужных gates production block не снимать.
 
 ## MIDL build gate
 
@@ -315,5 +316,35 @@ private `IOPCEnumGUID` overload вызывал `EnumClassesOfCategories2(..., &e
 и наличие `&categories`. Полная TU снова компилируется `cl /c` без ошибок.
 Нужен новый чистый six-case run; `clients` пока не принят.
 
-Production `LaunchCondition=Installed` сохранён. Требуется новый чистый six-case
-run; до него lifecycle нельзя считать полностью принятым, а Setup не собирается.
+## Run 42817201447: шесть изолированных сценариев PASS
+
+[Run 42817201447](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42817201447),
+PR head `4f7d6fde14caca855308fa0bd76b5d687781b2f4`, собрал pinned upstream
+`efe0d1d1ea86a8a727bf26a501a261765e836766` в Release и проверил все шесть cases
+на отдельных disposable runners. SHA-256 входного заблокированного MSI:
+`215daed6f28d641759fc873f237726dfeb10d07041221780f842dc9e62b22b44`.
+Поле `product_commit` в evidence содержит PR checkout `GITHUB_SHA`
+`ef0110cab8bf20b3fbd7c961944f8c69f32eb56e` (merge SHA), а не application commit;
+все результаты явно отмечают `candidate_not_distributable=true`.
+
+- `lifecycle`: fresh, удаление собственных ресурсов, штатный `/fomus` с точным
+  восстановлением snapshot и uninstall — PASS. Это не проверка `/famus` или DCOM
+  customizations.
+- `rollback`: ошибка после реального InstallExecute, полный возврат snapshot — PASS.
+- `foreign-registry` и `foreign-component`: отказ до транзакции без изменения
+  подготовленного чужого состояния — PASS.
+- `shared-owner`: после удаления нашего Runtime остались два co-owned файла, их
+  COM registrations и служба; для каждого canonical component остался другой MSI
+  клиент — PASS. Это synthetic совместимый клиент, не Siemens adoption/upgrade.
+- `clients`: независимые x86 и x64 elevated COM-клиенты прошли packet privacy и
+  `Enum/Next/Reset/Clone`; в обоих случаях пустой `Next` = `0x00000001`, `fetched=0`.
+  Это не тест обычного пользователя, удалённой сети или стороннего HMI.
+
+Общий CI [42817201085](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42817201085)
+на том же PR head завершился **FAIL**: `routing-tests` и `rust / verify` отвергли
+расхождение Release-команд Scaffold и Debug-контракта cache; `CI gate` отказал.
+Legacy, installer-contracts и release-measurements прошли, но это не отменяет FAIL.
+
+Production `LaunchCondition=Installed` сохранён. Результат шести сценариев не
+является полной security/lifecycle acceptance. Нельзя публиковать тестовый MSI,
+снимать блок или называть Setup готовым до закрытия открытых gates.
