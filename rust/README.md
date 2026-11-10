@@ -60,6 +60,9 @@ AddIn bundle. Полный пакет обязательно содержит и
 DLL фатально. MSI/checksum: `dist/rust/`. ZIP — build intermediate.
 [Runbook, SDK runner и отличие synthetic installer contracts](installer/README.md).
 
+Общий OPC Runtime MSI и его lifecycle tooling принадлежат `shared/opc-runtime/`,
+а не application installer Rust. Эта стадия описана в [отчёте о структуре](docs/REPOSITORY_LAYOUT_REORGANIZATION_2026-11-10.ru.md).
+
 ## Документы и статус
 
 - [Текущий software status](docs/IMPLEMENTATION_STATUS.ru.md)

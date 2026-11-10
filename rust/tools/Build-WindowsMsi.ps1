@@ -29,7 +29,7 @@ try {
     $PayloadSource = Write-WindowsInstallerPayload $Payload $RepositoryRoot $Work
     $Branding = New-WindowsInstallerAssets $RepositoryRoot $Work
     & (Join-Path $Branding 'gen-ui-bmps.ps1')
-    Push-Location (Join-Path $Root 'installer')
+    Push-Location (Join-Path $RepositoryRoot 'shared/installer')
     try {
         & dotnet tool restore --tool-manifest .config/dotnet-tools.json | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX tool restore failed.' }

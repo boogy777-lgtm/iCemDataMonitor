@@ -25,7 +25,7 @@ function Assert-Rejected([scriptblock] $Operation, [string] $Message) {
     throw "Expected Setup rejection: $Message"
 }
 try {
-    Push-Location (Join-Path $Root 'installer')
+    Push-Location (Join-Path $Repo 'shared/installer')
     try {
         & dotnet tool restore --tool-manifest .config/dotnet-tools.json | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX tool restore failed.' }

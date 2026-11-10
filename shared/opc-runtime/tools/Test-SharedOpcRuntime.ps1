@@ -18,13 +18,13 @@ try {
         throw 'The disposable runner must supply an elevated test token.'
     }
 } finally { $identity.Dispose() }
-$Repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-Import-Module (Join-Path $PSScriptRoot 'WindowsMsiDatabase.psm1') -Force
+$Repo = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
+Import-Module (Join-Path $Repo 'shared/installer/tools/WindowsMsiDatabase.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'WindowsBuildSdk.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'SharedOpcAcceptance.psm1') -Force
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Msi.sha256").Split(' ')[0])) { throw 'Blocked input MSI checksum mismatch.' }
-$Cases = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/acceptance-cases.json') -Raw | ConvertFrom-Json
+$Cases = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/acceptance-cases.json') -Raw | ConvertFrom-Json
 $Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner', 'descriptor-repair')
 if ($Cases.schema_version -ne 1 -or (($Cases.cases | Sort-Object) -join ',') -cne (($Supported | Sort-Object) -join ',') -or
     @($Cases.cases | Sort-Object -Unique).Count -ne $Supported.Count -or $Case -cnotin $Supported) { throw 'Acceptance case coverage mismatch.' }
@@ -122,7 +122,7 @@ function Build-ForeignOwner([string] $proxy, [string] $enumerator, [string] $des
     Push-Location $Work
     try {
         $null = Assert-WindowsBuildSdk
-        & wix build (Join-Path $Repo 'rust/installer/opc-core/tests/ForeignOwner.wxs') -arch x86 -wx -d "ProxyPayload=$proxy" -d "EnumPayload=$enumerator" -o $destination | Out-Host
+        & wix build (Join-Path $PSScriptRoot '../installer/tests/ForeignOwner.wxs') -arch x86 -wx -d "ProxyPayload=$proxy" -d "EnumPayload=$enumerator" -o $destination | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Cannot build independent MSI component owner fixture.' }
     } finally { Pop-Location }
 }
@@ -177,7 +177,7 @@ try {
                 Push-Location $Work
                 try {
                     $null = Assert-WindowsBuildSdk
-                    & dotnet build (Join-Path $Repo 'rust/installer/opc-core/tests/OpcComClient.csproj') -c Release "-p:PlatformTarget=$arch" "-p:BaseIntermediateOutputPath=$clientRoot/obj/" "-p:OutputPath=$clientRoot/bin/" -v:minimal | Out-Host
+                    & dotnet build (Join-Path $PSScriptRoot '../installer/tests/OpcComClient.csproj') -c Release "-p:PlatformTarget=$arch" "-p:BaseIntermediateOutputPath=$clientRoot/obj/" "-p:OutputPath=$clientRoot/bin/" -v:minimal | Out-Host
                     if ($LASTEXITCODE -ne 0) { throw "Independent $arch COM client did not compile" }
                 } finally { Pop-Location }
             }
@@ -234,7 +234,7 @@ try {
             $coowned = Read-SharedOpcSnapshot (Snapshot 'coowned')
             $sharedCodes = @('{3C257474-772A-6CE8-282E-7F4413643C2C}', '{4695E177-FFA9-6706-9772-290B37AD1438}')
             $expectedKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-            $native = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/native-runtime-inventory.json') -Raw | ConvertFrom-Json -AsHashtable
+            $native = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/native-runtime-inventory.json') -Raw | ConvertFrom-Json -AsHashtable
             foreach ($component in @($native.components | Where-Object { $_.guid -cin $sharedCodes })) {
                 foreach ($row in $component.registry) { [void]$expectedKeys.Add($row.key) }
             }
@@ -264,7 +264,7 @@ try {
         'descriptor-repair' {
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'descriptor-install' 0
             if ((Read-SharedOpcSnapshot (Snapshot 'descriptor-installed')).files.Count -ne 18) { throw 'Runtime did not install the complete 18-file native inventory.' }
-            $native = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/native-runtime-inventory.json') -Raw | ConvertFrom-Json -AsHashtable
+            $native = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/native-runtime-inventory.json') -Raw | ConvertFrom-Json -AsHashtable
             $securityRows = @(
                 foreach ($component in $native.components) {
                     foreach ($row in $component.registry) {

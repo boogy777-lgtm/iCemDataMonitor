@@ -4,14 +4,13 @@
 param()
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$Root = Split-Path $PSScriptRoot -Parent
 $Fixture = Join-Path $PSScriptRoot 'Test-SharedOpcRuntime.ps1'
 $tokens = $null
 $errors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($Fixture, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw ($errors | Out-String) }
 $ExpectedCases = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner', 'descriptor-repair')
-$Cases = Get-Content -LiteralPath (Join-Path $Root 'installer/opc-core/acceptance-cases.json') -Raw | ConvertFrom-Json
+$Cases = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/acceptance-cases.json') -Raw | ConvertFrom-Json
 if ((($Cases.cases | Sort-Object) -join ',') -cne (($ExpectedCases | Sort-Object) -join ',')) { throw 'Acceptance coverage drift' }
 $dispatch = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.SwitchStatementAst] -and $node.Condition.Extent.Text -ceq '$Case' }, $true))
 if ($dispatch.Count -ne 1 -or $null -eq $dispatch[0].Default) { throw 'Missing exhaustive acceptance dispatcher.' }
@@ -20,7 +19,7 @@ $implemented = @($dispatch[0].Clauses | ForEach-Object {
     $_.Item1.Value
 })
 if ((($implemented | Sort-Object) -join ',') -cne (($ExpectedCases | Sort-Object) -join ',')) { throw 'Acceptance dispatcher coverage drift' }
-$authoring = [xml](Get-Content -LiteralPath (Join-Path $Root 'installer/opc-core/SharedRuntime.wxs') -Raw)
+$authoring = [xml](Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/SharedRuntime.wxs') -Raw)
 $blocks = @($authoring.SelectNodes('//*[local-name()="Launch"]') | Where-Object { $_.Condition -ceq 'Installed' })
 if ($blocks.Count -ne 1) { throw 'Production fresh-install protection was removed' }
 $Output = Join-Path ([IO.Path]::GetTempPath()) ('icem-opc-refusal-' + [guid]::NewGuid().ToString('N'))

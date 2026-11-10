@@ -14,6 +14,29 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class RoutingTests(unittest.TestCase):
+    def test_shared_runtime_has_one_owner(self):
+        owned = (
+            'shared/opc-runtime/installer/SharedRuntime.wxs',
+            'shared/opc-runtime/installer/Build-SharedRuntime.ps1',
+            'shared/opc-runtime/installer/acceptance-cases.json',
+            'shared/opc-runtime/tools/Test-SharedOpcRuntime.ps1',
+            'shared/installer/tools/WindowsMsiDatabase.psm1',
+            'shared/installer/.config/dotnet-tools.json',
+        )
+        for path in owned:
+            with self.subTest(path=path):
+                self.assertTrue((ROOT / path).is_file())
+        retired = (
+            'rust/installer/opc-core',
+            'rust/tools/Test-SharedOpcRuntime.ps1',
+            'rust/tools/SharedOpcAcceptance.psm1',
+            'rust/tools/WindowsMsiDatabase.psm1',
+            'rust/installer/.config/dotnet-tools.json',
+        )
+        for path in retired:
+            with self.subTest(path=path):
+                self.assertFalse((ROOT / path).exists())
+
     def test_component_matrix(self):
         cases = {
             'rust/apps/host/src/main.rs': ('rust', 'packaging'),
@@ -38,6 +61,13 @@ class RoutingTests(unittest.TestCase):
             'installer/future.psm1': routing.COMPONENTS,
             'installer/future.unknown': routing.COMPONENTS,
             'rust/installer/windows-payload.json': ('rust', 'packaging'),
+            'rust/installer/bootstrapper/Setup.cs': ('rust', 'packaging'),
+            'shared/opc-runtime/installer/SharedRuntime.wxs': ('rust', 'packaging'),
+            'shared/opc-runtime/tools/Test-SharedOpcRuntime.ps1': ('rust', 'packaging'),
+            'shared/installer/tools/WindowsMsiDatabase.psm1': ('rust', 'packaging'),
+            'shared/installer/.config/dotnet-tools.json': ('rust', 'packaging'),
+            'shared/opc-runtime/README.md': (),
+            'shared/installer/README.md': (),
             '.github/workflows/new-workflow.yml': routing.COMPONENTS,
             'rust/tools/ci/routing.py': routing.COMPONENTS,
             'rust/migration/legacy-divergences.json': routing.COMPONENTS,

@@ -5,7 +5,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot '../../tools/WindowsMsiDatabase.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot '../../installer/tools/WindowsMsiDatabase.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'OpcGuidInventory.psm1') -Force
 $root = (Resolve-Path -LiteralPath $CoreBuildDirectory).Path
 $output = [IO.Path]::GetFullPath($OutputFile)

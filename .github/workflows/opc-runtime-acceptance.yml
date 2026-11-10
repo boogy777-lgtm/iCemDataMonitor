@@ -1,13 +1,12 @@
-name: rust-opc-runtime-acceptance
+name: opc-runtime-acceptance
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - rust/installer/opc-core/**
-      - rust/tools/*SharedOpc*
-      - rust/tools/WindowsBuildSdk.psm1
-      - rust/tools/WindowsMsiDatabase.psm1
-      - .github/workflows/rust-opc-runtime-acceptance.yml
+      - shared/opc-runtime/installer/**
+      - shared/opc-runtime/tools/**
+      - shared/installer/tools/WindowsMsiDatabase.psm1
+      - .github/workflows/opc-runtime-acceptance.yml
 permissions:
   contents: read
 jobs:
@@ -24,12 +23,12 @@ jobs:
       - name: Verify test isolation and unchanged production block (no installation)
         shell: pwsh
         run: |
-          ./rust/tools/Test-SharedOpcRuntimeSafety.ps1
-          ./rust/tools/Test-SharedOpcAcceptance.ps1
+          ./shared/opc-runtime/tools/Test-SharedOpcRuntimeSafety.ps1
+          ./shared/opc-runtime/tools/Test-SharedOpcAcceptance.ps1
       - id: matrix
         shell: pwsh
         run: |
-          $Cases = Get-Content rust/installer/opc-core/acceptance-cases.json -Raw | ConvertFrom-Json
+          $Cases = Get-Content shared/opc-runtime/installer/acceptance-cases.json -Raw | ConvertFrom-Json
           if ($Cases.schema_version -ne 1) { throw 'Unsupported acceptance matrix' }
           'value=' + (@{ case = @($Cases.cases) } | ConvertTo-Json -Compress) >> $env:GITHUB_OUTPUT
       - name: Build source-pinned blocked runtime (no installation)
@@ -42,22 +41,22 @@ jobs:
           $Tools = Join-Path $Work 'tools'
           $Source = Join-Path $Work 'upstream'
           $Core = Join-Path $Work 'core'
-          $Diagnostics = Join-Path $Root 'rust/artifacts/opc-build'
+          $Diagnostics = Join-Path $Root 'artifacts/opc-build'
           [IO.Directory]::CreateDirectory($Context) | Out-Null
-          Import-Module "$Root/rust/tools/WindowsBuildSdk.psm1" -Force
+          Import-Module "$Root/shared/opc-runtime/tools/WindowsBuildSdk.psm1" -Force
           Initialize-WindowsBuildSdk $Context
           Push-Location $Context
           try {
             $null = Assert-WindowsBuildSdk
-            $Pin = (Get-Content "$Root/rust/installer/.config/dotnet-tools.json" -Raw | ConvertFrom-Json).tools.wix.version
+            $Pin = (Get-Content "$Root/shared/installer/.config/dotnet-tools.json" -Raw | ConvertFrom-Json).tools.wix.version
             & dotnet tool install wix --version $Pin --tool-path $Tools
             if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX install failed' }
             $env:PATH = "$Tools;$env:PATH"
-            & dotnet build "$Root/rust/installer/opc-core/tests/RegistryGuardTests.csproj" -c Release "-p:BaseIntermediateOutputPath=$Work/test-obj/" "-p:OutputPath=$Work/test-bin/" -v:minimal
+            & dotnet build "$Root/shared/opc-runtime/installer/tests/RegistryGuardTests.csproj" -c Release "-p:BaseIntermediateOutputPath=$Work/test-obj/" "-p:OutputPath=$Work/test-bin/" -v:minimal
             if ($LASTEXITCODE -ne 0) { throw 'Read-only component-owner guard fixtures did not compile' }
             & "$Work/test-bin/icem-opc-guard-tests.exe"
             if ($LASTEXITCODE -ne 0) { throw 'Component-owner guard fixtures failed' }
-            & dotnet build "$Root/rust/installer/opc-core/tests/RegistryGuardTests.csproj" -c Release -p:StartupObject=Icem.OpcCoreGuard.NativeClientQuery -p:AssemblyName=icem-opc-native-query-tests "-p:BaseIntermediateOutputPath=$Work/native-test-obj/" "-p:OutputPath=$Work/native-test-bin/" -v:minimal
+            & dotnet build "$Root/shared/opc-runtime/installer/tests/RegistryGuardTests.csproj" -c Release -p:StartupObject=Icem.OpcCoreGuard.NativeClientQuery -p:AssemblyName=icem-opc-native-query-tests "-p:BaseIntermediateOutputPath=$Work/native-test-obj/" "-p:OutputPath=$Work/native-test-bin/" -v:minimal
             if ($LASTEXITCODE -ne 0) { throw 'Native client-query fixture did not compile' }
             & "$Work/native-test-bin/icem-opc-native-query-tests.exe"
             if ($LASTEXITCODE -ne 0) { throw 'Native read-only MSI client-query fixture failed' }
@@ -65,17 +64,17 @@ jobs:
             & git -C $Source remote add origin https://github.com/OPCF-Members/OPC-Classic-CoreComponents.git
             & git -C $Source fetch --depth 1 origin efe0d1d1ea86a8a727bf26a501a261765e836766
             if ($LASTEXITCODE -ne 0) { throw 'Pinned OPC source fetch failed' }
-            & "$Root/rust/installer/opc-core/Build-OpcCore.ps1" -SourceRepository $Source -OutputDirectory $Core -Toolchain VS2022v143
+            & "$Root/shared/opc-runtime/installer/Build-OpcCore.ps1" -SourceRepository $Source -OutputDirectory $Core -Toolchain VS2022v143
             $Raw = Join-Path $Work 'raw-enum'
             [IO.Directory]::CreateDirectory($Raw) | Out-Null
             & tar -xf "$Core/source-upstream.tar" -C $Raw 'Source/Common/ServerEnumerator/OpcSeLst.cpp'
             if ($LASTEXITCODE -ne 0) { throw 'Cannot extract pinned enumeration source for its fixture' }
-            & "$Root/rust/installer/opc-core/Test-OpcEnumEnumeration.ps1" -UpstreamSource "$Raw/Source/Common/ServerEnumerator/OpcSeLst.cpp"
-            & "$Root/rust/installer/opc-core/Test-OpcGuidInventory.ps1" -IncludeDirectory "$Core/stage-x86/include"
-            & "$Root/rust/installer/opc-core/Test-OpcNativeInventory.ps1" -CoreBuildDirectory $Core
+            & "$Root/shared/opc-runtime/installer/Test-OpcEnumEnumeration.ps1" -UpstreamSource "$Raw/Source/Common/ServerEnumerator/OpcSeLst.cpp"
+            & "$Root/shared/opc-runtime/installer/Test-OpcGuidInventory.ps1" -IncludeDirectory "$Core/stage-x86/include"
+            & "$Root/shared/opc-runtime/installer/Test-OpcNativeInventory.ps1" -CoreBuildDirectory $Core
             $Artifact = Join-Path $env:RUNNER_TEMP 'blocked-opc-runtime'
             [IO.Directory]::CreateDirectory($Artifact) | Out-Null
-            & "$Root/rust/installer/opc-core/Build-SharedRuntime.ps1" -CoreBuildDirectory $Core -OutputFile "$Artifact/runtime.msi"
+            & "$Root/shared/opc-runtime/installer/Build-SharedRuntime.ps1" -CoreBuildDirectory $Core -OutputFile "$Artifact/runtime.msi"
             Copy-Item "$Core/build-metadata.json" $Artifact
           } finally {
             [IO.Directory]::CreateDirectory($Diagnostics) | Out-Null
@@ -95,7 +94,7 @@ jobs:
         if: always()
         with:
           name: opc-build-diagnostics
-          path: rust/artifacts/opc-build/**
+          path: artifacts/opc-build/**
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
@@ -127,20 +126,20 @@ jobs:
           $Root = $PWD.Path
           $Context = Join-Path $env:RUNNER_TEMP ('opc-test-sdk-' + [guid]::NewGuid().ToString('N'))
           [IO.Directory]::CreateDirectory($Context) | Out-Null
-          Import-Module "$Root/rust/tools/WindowsBuildSdk.psm1" -Force
+          Import-Module "$Root/shared/opc-runtime/tools/WindowsBuildSdk.psm1" -Force
           Initialize-WindowsBuildSdk $Context
           Push-Location $Context
           try {
             $null = Assert-WindowsBuildSdk
-            $Pin = (Get-Content "$Root/rust/installer/.config/dotnet-tools.json" -Raw | ConvertFrom-Json).tools.wix.version
+            $Pin = (Get-Content "$Root/shared/installer/.config/dotnet-tools.json" -Raw | ConvertFrom-Json).tools.wix.version
             & dotnet tool install wix --version $Pin --tool-path "$Context/tools"
             if ($LASTEXITCODE -ne 0) { throw 'Pinned WiX install failed' }
             $env:PATH = "$Context/tools;$env:PATH"
           } finally { Pop-Location }
-          & "$Root/rust/tools/Test-SharedOpcRuntime.ps1" -Msi "$env:RUNNER_TEMP/blocked-opc-runtime/runtime.msi" -Case $env:ICEM_ACCEPTANCE_CASE -EvidenceDirectory "$Root/rust/artifacts/opc-runtime"
+          & "$Root/shared/opc-runtime/tools/Test-SharedOpcRuntime.ps1" -Msi "$env:RUNNER_TEMP/blocked-opc-runtime/runtime.msi" -Case $env:ICEM_ACCEPTANCE_CASE -EvidenceDirectory "$Root/artifacts/opc-runtime"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: opc-runtime-${{ matrix.case }}-evidence
-          path: rust/artifacts/opc-runtime/*
+          path: artifacts/opc-runtime/*
           if-no-files-found: warn

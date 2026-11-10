@@ -69,13 +69,17 @@
         "installer/**",
         "Burservis.iCem.DataMonitor/**",
         "rust/installer/**",
+        "shared/opc-runtime/**",
+        "shared/installer/**",
         "rust/tools/Build-Windows*.ps1",
         "rust/tools/Build-LegacyAddin.ps1",
         "rust/tools/WindowsPackagingFixture.psm1",
         "rust/tools/Test-Windows*.ps1"
       ],
       "exclude": [
-        "rust/installer/README.md"
+        "rust/installer/README.md",
+        "shared/opc-runtime/README.md",
+        "shared/installer/README.md"
       ]
     },
     {
@@ -88,7 +92,9 @@
         "docs/images/*.svg",
         "rust/*.md",
         "rust/docs/*.md",
-        "rust/installer/README.md"
+        "rust/installer/README.md",
+        "shared/opc-runtime/README.md",
+        "shared/installer/README.md"
       ]
     },
     {
