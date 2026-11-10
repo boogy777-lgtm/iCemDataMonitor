@@ -24,7 +24,7 @@ class IdentityTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, path)
-        self.pin = tomllib.loads((self.root / 'rust/rust-toolchain.toml').read_text())['toolchain']['channel']
+        self.pin = tomllib.loads((self.root / 'rust/rust-toolchain.toml').read_text(encoding='utf-8'))['toolchain']['channel']
         self.compiler = f'rustc {self.pin} (fixture 2026-09-01)\nhost: x86_64-pc-windows-msvc\nLLVM version: 23.1'
 
     def identity(self, **kwargs):
@@ -45,7 +45,7 @@ class IdentityTests(unittest.TestCase):
                 path.write_bytes(original)
         manifest = self.root / 'rust/crates/next/Cargo.toml'
         manifest.parent.mkdir(parents=True)
-        manifest.write_text('[package]\nname="next"\n')
+        manifest.write_text('[package]\nname="next"\n', encoding='utf-8')
         self.assertNotEqual(baseline['build_prefix'], self.identity()['build_prefix'])
 
     def test_source_only_changes_primary_build_key(self):
@@ -80,14 +80,14 @@ class IdentityTests(unittest.TestCase):
         for name in ('rust/.cargo/config', 'rust/.cargo/config.toml', '.cargo/config', '.cargo/config.toml'):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text('# Explicitly empty config\n')
+            path.write_text('# Explicitly empty config\n', encoding='utf-8')
             self.assertNotEqual(baseline, self.identity()['build_prefix'])
-            path.write_text('[build]\nrustflags=["--cfg=surprise"]\n')
+            path.write_text('[build]\nrustflags=["--cfg=surprise"]\n', encoding='utf-8')
             with self.assertRaises(ValueError):
                 self.identity()
             path.unlink()
             self.assertEqual(baseline, self.identity()['build_prefix'])
-        (self.home / 'config.toml').write_text('# external config\n')
+        (self.home / 'config.toml').write_text('# external config\n', encoding='utf-8')
         with self.assertRaises(ValueError):
             self.identity()
 
@@ -103,7 +103,7 @@ class IdentityTests(unittest.TestCase):
     def test_documentation_is_not_a_compatibility_input(self):
         baseline = self.identity()['build_prefix']
         (self.root / 'rust/docs').mkdir()
-        (self.root / 'rust/docs/CI_CD.ru.md').write_text('Measured evidence update\n')
+        (self.root / 'rust/docs/CI_CD.ru.md').write_text('Measured evidence update\n', encoding='utf-8')
         self.assertEqual(baseline, self.identity()['build_prefix'])
 
     def test_fail_closed_overrides(self):
@@ -141,10 +141,10 @@ class IdentityTests(unittest.TestCase):
 
 class ContractTests(unittest.TestCase):
     def setUp(self):
-        self.workflow = (ROOT / '.github/workflows/rust-migration.yml').read_text()
-        self.scaffold = (ROOT / 'rust/tools/Verify-Scaffold.ps1').read_text()
-        self.inputs = (ROOT / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text()
-        self.interop = (ROOT / 'rust/tools/Test-OpcDaInterop.ps1').read_text()
+        self.workflow = (ROOT / '.github/workflows/rust-migration.yml').read_text(encoding='utf-8')
+        self.scaffold = (ROOT / 'rust/tools/Verify-Scaffold.ps1').read_text(encoding='utf-8')
+        self.inputs = (ROOT / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text(encoding='utf-8')
+        self.interop = (ROOT / 'rust/tools/Test-OpcDaInterop.ps1').read_text(encoding='utf-8')
 
     def verify(self, workflow=None, scaffold=None, inputs=None, interop=None):
         cache_contract.verify(workflow or self.workflow, scaffold or self.scaffold,

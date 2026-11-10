@@ -73,7 +73,7 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(routing.classify([]), dict.fromkeys(routing.COMPONENTS, 'false'))
 
     def test_rule_schema(self):
-        document = json.loads(routing.RULES_PATH.read_text())
+        document = json.loads(routing.RULES_PATH.read_text(encoding='utf-8'))
         self.assertEqual(set(document), {'workloads', 'rules'})
         self.assertEqual(set(document['workloads']), {'legacy', 'rust', 'shared-contracts', 'packaging', 'infrastructure', 'documentation'})
         for workloads in document['workloads'].values():
@@ -104,12 +104,12 @@ class RoutingTests(unittest.TestCase):
                 if target.is_relative_to(ROOT) and not target.is_relative_to(ROOT / 'rust'):
                     found.add(target.relative_to(ROOT).as_posix())
         for source in (ROOT / 'rust/tests/support').glob('*.cs'):
-            for relative in re.findall(r'Path.Combine\(root,\s*"([^"]+)"', source.read_text()):
+            for relative in re.findall(r'Path.Combine\(root,\s*"([^"]+)"', source.read_text(encoding='utf-8')):
                 found.add(relative)
         self.assertTrue(found, 'No oracle/source dependencies discovered')
         for path in found:
             self.assertEqual(routing.classify([path]), dict.fromkeys(routing.COMPONENTS, 'true'), path)
-        payload = json.loads((ROOT / 'rust/installer/windows-payload.json').read_text())
+        payload = json.loads((ROOT / 'rust/installer/windows-payload.json').read_text(encoding='utf-8'))
         for item in payload['files'] + payload['directories']:
             path = item['source'] + ('/future.json' if item in payload['directories'] else '')
             outputs = routing.classify([path])
@@ -119,7 +119,7 @@ class RoutingTests(unittest.TestCase):
             self.assertEqual(routing.categories(f'iCemEmule.Core/{family}/Future.cs'), {'legacy', 'shared-contracts'})
 
     def test_legacy_diagnostics_contract(self):
-        legacy = (ROOT / '.github/workflows/legacy-build.yml').read_text()
+        legacy = (ROOT / '.github/workflows/legacy-build.yml').read_text(encoding='utf-8')
         # Scope each assertion to the real step; another step cannot satisfy it.
         steps = dict(part.split('\n', 1) for part in re.split(r'(?m)^      - name: ', legacy)[1:])
         prepare = steps['Prepare CI diagnostics']
@@ -202,7 +202,7 @@ class RoutingTests(unittest.TestCase):
             self.assertNotIn('rust/dist/', source)
         builder = (ROOT / 'installer/build-msi.ps1').read_text(encoding='utf-8-sig')
         self.assertLess(builder.index('if (Test-BuildPathWithin $OutDir $Stage)'), builder.index('Start-Transcript'))
-        fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text()
+        fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text(encoding='utf-8')
         self.assertIn('    Test-BuildOutputPaths\n', fixture)
         for path in ('README.md', 'rust/README.md', 'docs/install.md', 'rust/installer/README.md'):
             self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
@@ -210,7 +210,7 @@ class RoutingTests(unittest.TestCase):
 
     def test_workflow_wiring(self):
         workflows = ROOT / '.github/workflows'
-        coordinator = (workflows / 'ci.yml').read_text()
+        coordinator = (workflows / 'ci.yml').read_text(encoding='utf-8')
         self.assertNotRegex(coordinator, r'(?m)^    paths(?:-ignore)?:')
         self.assertIn('fetch-depth: 0', coordinator)
         self.assertIn('cancel-in-progress: ${{ github.event_name == \'pull_request\' }}', coordinator)
@@ -228,22 +228,22 @@ class RoutingTests(unittest.TestCase):
             block = re.split(r'\n  [a-z][a-z-]*:\n', coordinator.split(f'  {job}:\n', 1)[1], maxsplit=1)[0]
             self.assertIn(f"if: needs.classify.outputs.{job} == 'true'", block)
             self.assertIn(f'uses: ./.github/workflows/{file}', block)
-            called = (workflows / file).read_text()
+            called = (workflows / file).read_text(encoding='utf-8')
             self.assertIn('  workflow_call:', called)
             self.assertNotRegex(called, r'(?m)^  (push|pull_request):')
             self.assertNotIn('concurrency:', called)  # caller owns cancellation
-        legacy = (workflows / 'legacy-build.yml').read_text()
+        legacy = (workflows / 'legacy-build.yml').read_text(encoding='utf-8')
         for command in ('dotnet build CI.slnf', 'dotnet test CI.slnf', 'installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause'):
             self.assertIn(command, legacy)
-        rust = (workflows / 'rust-migration.yml').read_text()
+        rust = (workflows / 'rust-migration.yml').read_text(encoding='utf-8')
         for command in ('Verify-Scaffold.ps1 -RequireCompleteBaseline', 'cargo fetch --locked', 'theme-contract.cjs', 'dashboard.cjs', 'host-sniffer-differential-report.json'):
             self.assertIn(command, rust)
-        release = (workflows / 'rust-windows-release.yml').read_text()
+        release = (workflows / 'rust-windows-release.yml').read_text(encoding='utf-8')
         self.assertNotIn('  pull_request:', release)
         self.assertIn('uses: ./.github/workflows/rust-installer-contracts.yml', release)
         self.assertIn('cancel-in-progress: false', release)
         self.assertIn('group: rust-windows-release-manual', release)
-        packaging = (workflows / 'rust-installer-contracts.yml').read_text()
+        packaging = (workflows / 'rust-installer-contracts.yml').read_text(encoding='utf-8')
         for command in ('Test-WindowsPackaging.ps1', 'Test-WindowsInstaller.ps1', 'if: always()', 'installer-contract-evidence'):
             self.assertIn(command, packaging)
 
@@ -265,7 +265,7 @@ class GitFixture(unittest.TestCase):
     def write(self, name):
         p = self.repo / name
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text('fixture\n')
+        p.write_text('fixture\n', encoding='utf-8')
 
     def commit(self):
         self.run_git('add', '-A')
@@ -331,12 +331,12 @@ class GitDiffTests(GitFixture):
         event_file = self.repo / 'event.json'
         output = self.repo / 'outputs.txt'
         for name, content in [('workflow_dispatch', '{}'), ('push', '{broken'), ('push', json.dumps({'before': '$(exit 0)', 'after': self.base}))]:
-            event_file.write_text(content)
-            output.write_text('')
+            event_file.write_text(content, encoding='utf-8')
+            output.write_text('', encoding='utf-8')
             env = dict(os.environ, GITHUB_EVENT_NAME=name, GITHUB_EVENT_PATH=str(event_file), GITHUB_OUTPUT=str(output))
             result = subprocess.run([__import__('sys').executable, str(Path(routing.__file__)), 'classify', '--repo', str(self.repo)], env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(output.read_text().splitlines(), ['legacy=true', 'rust=true', 'packaging=true'])
+            self.assertEqual(output.read_text(encoding='utf-8').splitlines(), ['legacy=true', 'rust=true', 'packaging=true'])
             self.assertEqual(json.loads(result.stdout)['mode'], 'full fallback')
 
 
@@ -733,12 +733,12 @@ class LedgerRoutingTests(GitFixture):
         head = self.commit()
         event = self.repo / 'event.json'
         output = self.repo / 'outputs.txt'
-        event.write_text(json.dumps({'before': self.base, 'after': head}))
+        event.write_text(json.dumps({'before': self.base, 'after': head}), encoding='utf-8')
         env = dict(os.environ, GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event), GITHUB_OUTPUT=str(output))
         result = subprocess.run([sys.executable, str(Path(routing.__file__)), 'classify', '--repo', str(self.repo)],
                                 env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output.read_text().splitlines(), ['legacy=true', 'rust=false', 'packaging=false'])
+        self.assertEqual(output.read_text(encoding='utf-8').splitlines(), ['legacy=true', 'rust=false', 'packaging=false'])
         diagnostic = json.loads(result.stdout)
         self.assertEqual(diagnostic['mode'], 'verified diff')
         self.assertEqual(set(diagnostic['paths']), {self.A, self.B, routing.LEDGER_PATH})

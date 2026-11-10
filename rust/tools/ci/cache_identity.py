@@ -90,7 +90,7 @@ def identity(root, cargo_home, env, compiler, cargo, source):
         raise ValueError('Expected exact source SHA')
     inputs_digest = digest_inputs(root, cargo_home)
     pin = re.search(r'(?m)^channel\s*=\s*"(\d+\.\d+\.\d+)"',
-                    (root / 'rust/rust-toolchain.toml').read_text())
+                    (root / 'rust/rust-toolchain.toml').read_text(encoding='utf-8'))
     if not pin or not compiler.startswith('rustc ' + pin[1] + ' '):
         raise ValueError('Compiler differs from exact stable pin')
     host = re.search(r'(?m)^host: (.+)$', compiler)

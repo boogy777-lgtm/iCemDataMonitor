@@ -141,10 +141,10 @@ def verify(workflow, scaffold, inputs, interop):
 
 def main():
     root = Path(__file__).resolve().parents[3]
-    verify((root / '.github/workflows/rust-migration.yml').read_text(),
-           (root / 'rust/tools/Verify-Scaffold.ps1').read_text(),
-           (root / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text(),
-           (root / 'rust/tools/Test-OpcDaInterop.ps1').read_text())
+    verify((root / '.github/workflows/rust-migration.yml').read_text(encoding='utf-8'),
+           (root / 'rust/tools/Verify-Scaffold.ps1').read_text(encoding='utf-8'),
+           (root / 'rust/tools/Verify-ScaffoldInputs.ps1').read_text(encoding='utf-8'),
+           (root / 'rust/tools/Test-OpcDaInterop.ps1').read_text(encoding='utf-8'))
     print('CI-3 cache paths, commands, guards and ordering: PASS')
 
 

@@ -327,3 +327,19 @@ Release-флаги и пути, включая вложенный interop и bro
 успешную проверку версии .NET 10 для PowerShell-оракула. Фактический новый CI и
 cold/warm время должны быть проверены отдельно; локальный contract PASS не
 подменяет Windows job или установочную приёмку.
+
+Локальный прогон выявил ещё один CI-дефект: Python 3.12 на Windows с CP1251
+читал UTF-8 C# oracle через системную кодировку и завершал routing-тест
+`UnicodeDecodeError`. В `rust/tools/ci/*.py` текстовые файлы теперь читаются и
+записываются с явным UTF-8 (или UTF-8-SIG); AST-тест автоматически проверяет
+все CI Python files и отвергает пропущенную/неверную кодировку.
+
+На этой VMware VM Python 3.12 **32-bit** после исправления: 50/50 CI routing/cache/
+vendor/encoding tests PASS; до исправления на том же Python воспроизведён FAIL.
+Отдельно локально прошли 84 выбранных Rust Release tests, Clippy `-D warnings`
+этих пакетов, полный baseline (487 файлов + 26 подтверждённых удалений),
+packaging fixture, desktop mapping guard и rustfmt. Это не полный workspace CI:
+`Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline` остановился на создании
+test symlink из-за отсутствия elevated token; оставшиеся runtime/installer jobs
+не считаются прошедшими. Предыдущие версии WIP и существующие OPC registrations
+не заменялись; Python 32-bit не подменяет 64-bit hosted runner.
