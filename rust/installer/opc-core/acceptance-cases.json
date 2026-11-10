@@ -1,4 +1,4 @@
 {
   "schema_version": 1,
-  "cases": ["lifecycle", "rollback", "foreign-registry", "foreign-component"]
+  "cases": ["lifecycle", "rollback", "foreign-registry", "foreign-component", "clients"]
 }

@@ -25,7 +25,7 @@ Import-Module (Join-Path $PSScriptRoot 'SharedOpcAcceptance.psm1') -Force
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Msi.sha256").Split(' ')[0])) { throw 'Blocked input MSI checksum mismatch.' }
 $Cases = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/acceptance-cases.json') -Raw | ConvertFrom-Json
-$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component')
+$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients')
 if ($Cases.schema_version -ne 1 -or (($Cases.cases | Sort-Object) -join ',') -cne (($Supported | Sort-Object) -join ',') -or
     @($Cases.cases | Sort-Object -Unique).Count -ne $Supported.Count -or $Case -cnotin $Supported) { throw 'Acceptance case coverage mismatch.' }
 $EvidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory)
@@ -140,7 +140,11 @@ try {
                 } finally { $machine.Dispose() }
             }
             $null = Snapshot 'damaged'
-            Invoke-Msi @('/famus', ('"' + $Candidate + '"')) 'repair' 0
+            # Windows Installer's documented default repair is omus. Force-all
+            # replacement (a) changes inherited-descriptor control metadata even
+            # for healthy files; it is a separate unaccepted maintenance case.
+            # Keep the exact ACL comparator; do not normalize away that difference.
+            Invoke-Msi @('/fomus', ('"' + $Candidate + '"')) 'repair' 0
             Equal-Snapshot $installed (Snapshot 'repaired') 'Repair'
             Invoke-Msi @('/x', $ProductCode) 'uninstall' 0
             Equal-Snapshot $before (Snapshot 'uninstalled') 'Uninstall'
@@ -149,6 +153,37 @@ try {
             Invoke-Msi @('/i', ('"' + $Candidate + '"'), 'ICEM_ACCEPTANCE_ROLLBACK=1') 'injected-rollback' 1603
             Assert-SharedOpcRollbackLog ([IO.File]::ReadAllText((Join-Path $EvidenceDirectory 'injected-rollback.log')))
             Equal-Snapshot $before (Snapshot 'rolled-back') 'Rollback'
+        }
+        'clients' {
+            # Compile is safe, but executing these clients may activate the service;
+            # both remain strictly behind the disposable/admin gate at script entry.
+            $clientArchitectures = @('x86', 'x64')
+            $report['clients'] = @()
+            foreach ($arch in $clientArchitectures) {
+                $clientRoot = Join-Path $Work "client-$arch"
+                Push-Location $Work
+                try {
+                    $null = Assert-WindowsBuildSdk
+                    & dotnet build (Join-Path $Repo 'rust/installer/opc-core/tests/OpcComClient.csproj') -c Release "-p:PlatformTarget=$arch" "-p:BaseIntermediateOutputPath=$clientRoot/obj/" "-p:OutputPath=$clientRoot/bin/" -v:minimal | Out-Host
+                    if ($LASTEXITCODE -ne 0) { throw "Independent $arch COM client did not compile" }
+                } finally { Pop-Location }
+            }
+            Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'client-install' 0
+            $null = Snapshot 'client-installed'
+            foreach ($arch in $clientArchitectures) {
+                $exe = Join-Path $Work "client-$arch/bin/icem-opc-com-client.exe"
+                $out = Join-Path $EvidenceDirectory "com-$arch.stdout.log"
+                $err = Join-Path $EvidenceDirectory "com-$arch.stderr.log"
+                $client = Start-Process -FilePath $exe -RedirectStandardOutput $out -RedirectStandardError $err -PassThru
+                try {
+                    if (-not $client.WaitForExit(60000)) { $client.Kill($true); throw "Independent $arch COM client timed out; no retry." }
+                    $bits = if ($arch -ceq 'x86') { 32 } else { 64 }
+                    $report.clients += [ordered]@{ architecture = $arch; expected_pointer_bits = $bits; exe_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant(); exit_code = $client.ExitCode }
+                    if ($client.ExitCode -ne 0 -or -not ([IO.File]::ReadAllText($out)).StartsWith("PASS COM/RPC: architecture=$bits; authentication=packet-privacy;", [StringComparison]::Ordinal)) { throw "Independent $arch COM/RPC client failed; see client logs." }
+                } finally { $client.Dispose() }
+            }
+            Invoke-Msi @('/x', $ProductCode) 'client-uninstall' 0
+            Equal-Snapshot $before (Snapshot 'client-uninstalled') 'Uninstall after real COM activation'
         }
         'foreign-registry' {
             $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry32)

@@ -186,3 +186,29 @@ exit без восстановления ресурсов больше не сч
 нынешний native inventory задаёт только исходный SY/BA baseline. Перед поставкой
 нужны отдельное владение/проверка operator policy и тест customized descriptors;
 нельзя молча выдать повторную запись baseline за сохранение разрешений оператора.
+
+### Native run и расширение клиентской проверки
+
+Run `42803585178`, head `68e85086ee6f375ff2ff080770f771e00286bd45`: свежие native
+x86/x64 MSM и shared MSI собраны; реальные rollback/foreign-registry/foreign-MSI
+owner checks PASS. Rollback после выполненного InstallExecute вернул полный
+исходный снимок: без оставшихся native файлов, COM-записей и OpcEnum service.
+
+`/famus` вернул 0 и восстановил удалённый DLL/NumMethods values, но strict snapshot
+отверг repair: у 17 не удалявшихся файлов исчез `SE_DACL_AUTO_INHERITED` (`AI`);
+SID owner/group, ACE/masks, hashes, registry и service configuration не изменились.
+Этот **forced-all reinstall результат не принят** и не нормализуется comparator.
+Для штатной maintenance-проверки используется документированный default `/fomus`,
+а не force-all `a`: https://learn.microsoft.com/en-us/windows/win32/msi/command-line-options.
+Требование восстановления намеренно удалённых ресурсов и точное сравнение всего
+snapshot, включая SDDL, сохраняются. Поддержка forced reinstall отдельно открыта.
+
+Добавлен пятый disposable case `clients`: один независимый net48 COM client source
+собирается в x86 и x64, активирует настоящий OPCEnum, проверяет blanket packet
+privacy и RPC Enum/Next/Reset/Clone через IOPCServerList2/IOPCEnumGUID, затем удаляет
+runtime и сравнивает чистое состояние. ABI/vtable order сверены с pinned
+`Source/Common/ProxyStub/opccomn.idl`. Это не сторонний HMI/LAN acceptance и не
+normal-operator test: fixture использует elevated runner token.
+Обе клиентские сборки локально Release 0 warnings/errors; **не запускались** на
+рабочем ПК, так как CoCreateInstance способен запустить установленную службу.
+Выполнение разрешено только общим disposable/admin gate; timeout не повторяет RPC.
