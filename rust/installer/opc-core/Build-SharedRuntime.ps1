@@ -47,16 +47,43 @@ foreach ($name in $names) {
     if ($file.Length -ne $matches[0].size -or (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash -ine $matches[0].sha256) { throw "Input hash mismatch: $name" }
 }
 if ((Get-FileHash -LiteralPath (Join-Path $root 'LICENSE.md') -Algorithm SHA256).Hash -ine '4f9f1935014049ea941a6d93fbd0248d1aa905c44ed2520ea2815d48c3a51291') { throw 'License does not match pinned upstream bytes.' }
+$nativeNames = @('New-OpcRuntimeModule.ps1', 'native-runtime-inventory.json', 'opc-component-codes.txt', 'OpcGuidInventory.psm1')
+if (@($metadata.native_inputs).Count -ne $nativeNames.Count) { throw 'Incomplete native ownership provenance.' }
+foreach ($name in $nativeNames) {
+    $record = @($metadata.native_inputs | Where-Object name -CEQ $name)
+    if ($record.Count -ne 1 -or $record[0].sha256 -ine (Get-FileHash -LiteralPath (Join-Path $root $name) -Algorithm SHA256).Hash -or
+        $record[0].sha256 -ine (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $name) -Algorithm SHA256).Hash) { throw "Native ownership provenance mismatch: $name" }
+}
+$nativeData = Get-Content -LiteralPath (Join-Path $root 'native-runtime-inventory.json') -Raw | ConvertFrom-Json -AsHashtable
 # The fixed embedded ownership inventory must cover every component from both
 # validated merge modules, not just the known OpcEnum/opcproxy examples.
 $componentCodes = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'opc-component-codes.txt'))
 $moduleCodes = @()
 $componentInstaller = New-Object -ComObject WindowsInstaller.Installer
 try {
-    foreach ($moduleName in $names[0..1]) {
+    foreach ($moduleIndex in 0..1) {
+        $moduleName = $names[$moduleIndex]
+        $architecture = if ($moduleIndex -eq 0) { 'x86' } else { 'x64' }
         $moduleDatabase = $componentInstaller.OpenDatabase((Join-Path $root $moduleName), 0)
         try {
             $moduleCodes += @(Read-WindowsMsiRecords $moduleDatabase 'SELECT `ComponentId` FROM `Component`' @('ComponentId') | ForEach-Object { $_.ComponentId })
+            $tables = @(Read-WindowsMsiRecords $moduleDatabase 'SELECT `Name` FROM `_Tables`' @('Name') | ForEach-Object { $_.Name })
+            foreach ($forbidden in @('SelfReg', 'CustomAction', 'RemoveRegistry')) {
+                if ($forbidden -cin $tables -and @(Read-WindowsMsiRecords $moduleDatabase "SELECT * FROM ``$forbidden``" @('First')).Count) { throw "Nontransactional/unbounded module table: $forbidden" }
+            }
+            $registry = @(Read-WindowsMsiRecords $moduleDatabase 'SELECT `Root`, `Key`, `Name` FROM `Registry`' @('Root', 'Key', 'Name'))
+            $expectedCount = 0
+            foreach ($component in @($nativeData.components | Where-Object arch -CEQ $architecture)) {
+                foreach ($row in $component.registry) { $expectedCount += [Math]::Max(1, $row.values.Count) }
+            }
+            if ($registry.Count -ne $expectedCount -or @($registry | Where-Object { $_.Root -cne '2' -or $_.Name -cin @('-', '*') -or -not $_.Key.StartsWith('SOFTWARE\Classes\', [StringComparison]::Ordinal) }).Count) {
+                throw 'Native module registry coverage/scope mismatch.'
+            }
+            $serviceCount = if ($architecture -ceq 'x86') { 1 } else { 0 }
+            foreach ($table in @('ServiceInstall', 'ServiceControl')) {
+                $actualCount = if ($table -cin $tables) { @(Read-WindowsMsiRecords $moduleDatabase "SELECT ``Name`` FROM ``$table``" @('Name')).Count } else { 0 }
+                if ($actualCount -ne $serviceCount) { throw 'Native service ownership coverage mismatch.' }
+            }
         } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($moduleDatabase) }
     }
 } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($componentInstaller) }
@@ -119,6 +146,13 @@ $guardKeys.Add('SOFTWARE\Classes\AppID\OpcEnum.EXE')
 $guardKeys.Add('SOFTWARE\Classes\AppID\OpcCategoryManager.exe')
 $guardKeys.Add('SOFTWARE\Classes\OPC.OpcCategoryManager')
 $guardKeys.Add('SOFTWARE\Classes\OPC.OpcCategoryManager.1')
+foreach ($component in $nativeData.components) {
+    foreach ($row in $component.registry) {
+        if (-not @($guardKeys | Where-Object { $row.key.Equals($_, [StringComparison]::OrdinalIgnoreCase) -or $row.key.StartsWith($_ + '\', [StringComparison]::OrdinalIgnoreCase) }).Count) {
+            throw "Native registration is outside the conflict inventory: $($row.key)"
+        }
+    }
+}
 [IO.File]::WriteAllLines($inventoryFile, $guardKeys, [Text.UTF8Encoding]::new($false))
 $guardBuild = "$output.guard-build"
 if (Test-Path -LiteralPath $guardBuild) { throw 'Guard build directory already exists.' }
@@ -133,7 +167,8 @@ $recipe = Join-Path $PSScriptRoot 'Build-OpcCore.ps1'
 & wix build (Join-Path $PSScriptRoot 'SharedRuntime.wxs') -arch x64 `
     -d "MsmX86=$(Join-Path $root $names[0])" -d "MsmX64=$(Join-Path $root $names[1])" `
     -d "OpcLicense=$(Join-Path $root $names[2])" -d "GuardInventory=$include" -d "GuardExe=$guardExe" `
-    -d "SourceArchive=$archiveFile" -d "SecurityPatch=$patchFile" -d "CategoryPatch=$categoryPatch" -d "BuildMetadata=$(Join-Path $root 'build-metadata.json')" -d "BuildRecipe=$recipe" -o $output
+    -d "SourceArchive=$archiveFile" -d "SecurityPatch=$patchFile" -d "CategoryPatch=$categoryPatch" -d "BuildMetadata=$(Join-Path $root 'build-metadata.json')" -d "BuildRecipe=$recipe" `
+    -d "NativeRecipe=$(Join-Path $root $nativeNames[0])" -d "NativeInventory=$(Join-Path $root $nativeNames[1])" -d "NativeCodes=$(Join-Path $root $nativeNames[2])" -d "NativeGuidReader=$(Join-Path $root $nativeNames[3])" -o $output
 if ($LASTEXITCODE -ne 0) { throw "WiX failed with exit code $LASTEXITCODE" }
 if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw 'WiX did not produce the MSI.' }
 # WiX 5 defaults to an implicit major upgrade even without a MajorUpgrade element.

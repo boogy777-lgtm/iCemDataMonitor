@@ -46,6 +46,8 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Apply-OpcCategorySecurity.ps1')
 $categorySource = Join-Path $checkout 'Source/Common/CategoryManager/CategoryManager.cpp'
 $categoryPatchedHash = (& $categoryPatchCopy -SourceFile $categorySource | Select-Object -Last 1)
 if (-not $categoryPatchedHash -or $categoryPatchedHash -notmatch '^[a-f0-9]{64}$') { throw 'CategoryManager security patch failed.' }
+$nativeInputNames = @('New-OpcRuntimeModule.ps1', 'native-runtime-inventory.json', 'opc-component-codes.txt', 'OpcGuidInventory.psm1')
+foreach ($name in $nativeInputNames) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $output $name) }
 
 if (((Get-Content (Join-Path $checkout 'build.txt') -Raw).Trim()) -cne '131') { throw 'Unexpected upstream build counter.' }
 if ((Get-Content (Join-Path $checkout 'version.txt') -Raw) -notmatch '(?s)MAJOR=3\s+MINOR=1\s+REVISION=4') { throw 'Unexpected upstream version.' }
@@ -69,14 +71,15 @@ if ((Get-Content (Join-Path $checkout 'version.txt') -Raw) -notmatch '(?s)MAJOR=
 $modules = @()
 foreach ($arch in @('x86', 'x64')) {
     $platform = if ($arch -eq 'x86') { 'Win32' } else { 'x64' }
-    $guid = if ($arch -eq 'x86') { 'E25DF0F2-0F29-47E8-8537-265285ED9757' } else { 'E68AB89F-6DF7-4750-8BC1-F14B2064F313' }
     $build = Join-Path $output "build-$arch"
     $stage = Join-Path $output "stage-$arch"
     Invoke-Checked cmake @('-S', $checkout, '-B', $build, '-G', $generator, '-A', $platform, '-T', $toolset, '-DOPC_BUILD_TESTS=OFF', "-DCMAKE_INSTALL_PREFIX=$stage")
     Invoke-Checked cmake @('--build', $build, '--config', 'Release')
     Invoke-Checked cmake @('--install', $build, '--config', 'Release')
+    $nativeAuthoring = Join-Path $output "native-$arch.wxs"
+    & (Join-Path $output 'New-OpcRuntimeModule.ps1') -CoreBuildDirectory $output -Architecture $arch -OutputFile $nativeAuthoring
     $module = Join-Path $output "opc-com-proxystub-mergemodule-$version-$arch.msm"
-    Invoke-Checked wix @('build', (Join-Path $checkout 'WiX/MergeModule.wxs'), '-arch', $arch, '-d', "BinDir=$stage\bin", '-d', "ModuleGuid=$guid", '-d', "PlatformTag=($arch)", '-d', "Platform=$arch", '-d', "Version=$version", '-bindpath', (Join-Path $checkout 'WiX'), '-o', $module)
+    Invoke-Checked wix @('build', $nativeAuthoring, '-arch', $arch, '-wx', '-o', $module)
     if (!(Test-Path -LiteralPath $module -PathType Leaf)) { throw "Missing module: $module" }
     $modules += Get-Item -LiteralPath $module
 }
@@ -92,10 +95,11 @@ $metadata = [ordered]@{
     category_patch_sha256 = (Get-FileHash -LiteralPath $categoryPatchCopy -Algorithm SHA256).Hash.ToLowerInvariant()
     category_patched_sha256 = $categoryPatchedHash
     category_com_module_sha256 = (Get-FileHash -LiteralPath (Join-Path $checkout 'Source/Shared/OpcUtilityClasses/COpcComModule.cpp') -Algorithm SHA256).Hash.ToLowerInvariant()
+    native_inputs = @($nativeInputNames | ForEach-Object { [ordered]@{ name = $_; sha256 = (Get-FileHash -LiteralPath (Join-Path $output $_) -Algorithm SHA256).Hash.ToLowerInvariant() } })
     cmake = ((& cmake --version | Select-Object -First 1) -join '')
     wix = $wixVersion; dotnet_sdk = '8.0.423'; generator = $generator; toolset = $toolset
     cmake_cache_sha256 = @(foreach ($arch in @('x86', 'x64')) { (Get-FileHash -LiteralPath (Join-Path $output "build-$arch/CMakeCache.txt") -Algorithm SHA256).Hash.ToLowerInvariant() })
     files = @($files | ForEach-Object { [ordered]@{ name = $_.Name; size = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } })
-    note = 'Locally modified, unsigned build with explicit OpcEnum and CategoryManager security patches; hashes are not vendor signatures.'
+    note = 'Locally modified, unsigned build with explicit OpcEnum/CategoryManager security patches and native MSI ownership; hashes are not vendor signatures.'
 }
 $metadata | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'build-metadata.json') -Encoding utf8

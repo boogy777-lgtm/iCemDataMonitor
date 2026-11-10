@@ -6,9 +6,9 @@
            Version="3.1.4" UpgradeCode="CFAC98DF-4F13-4C41-948C-CA4AE350920A"
            Scope="perMachine" Compressed="yes" InstallerVersion="500" UpgradeStrategy="none">
     <SummaryInformation Description="Shared OPC Foundation Classic runtime; separate from iCem application lifecycle." />
-    <!-- Fail closed until canonical IID/OPCEnum conflict detection is complete.
+    <!-- Fail closed until native lifecycle/security acceptance is complete.
          This development MSI must not overwrite foreign registrations. -->
-    <Launch Condition="Installed" Message="Shared OPC Runtime conflict detection is not yet available; installation is disabled." />
+    <Launch Condition="Installed" Message="Shared OPC Runtime lifecycle acceptance is incomplete; installation is disabled." />
     <?include "$(var.GuardInventory)" ?>
     <Binary Id="OpcReadOnlyGuard" SourceFile="$(var.GuardExe)" />
     <CustomAction Id="OpcCheckForeign" BinaryRef="OpcReadOnlyGuard" ExeCommand="" Execute="immediate" Return="check" />
@@ -41,6 +41,18 @@
           <Component Id="OpcBuildRecipe" Guid="B729BC6A-34D2-4D65-9225-2D9A5E1AE42D">
             <File Id="OpcBuildRecipeFile" Name="Build-OpcCore.ps1" Source="$(var.BuildRecipe)" KeyPath="yes" />
           </Component>
+          <Component Id="OpcNativeRecipe" Guid="5F34165B-336D-44BD-B530-3C4C2E44BC15">
+            <File Id="OpcNativeRecipeFile" Name="New-OpcRuntimeModule.ps1" Source="$(var.NativeRecipe)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcNativeInventory" Guid="61E43BE7-E3BC-4F3B-9E1F-3F532DA681F0">
+            <File Id="OpcNativeInventoryFile" Name="native-runtime-inventory.json" Source="$(var.NativeInventory)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcNativeCodes" Guid="B2AAE4E5-D092-4A5C-B3A2-5D6622B0192F">
+            <File Id="OpcNativeCodesFile" Name="opc-component-codes.txt" Source="$(var.NativeCodes)" KeyPath="yes" />
+          </Component>
+          <Component Id="OpcNativeGuidReader" Guid="152DC718-1FF7-4D9D-9E33-DE141D4214AF">
+            <File Id="OpcNativeGuidReaderFile" Name="OpcGuidInventory.psm1" Source="$(var.NativeGuidReader)" KeyPath="yes" />
+          </Component>
         </Directory>
       </Directory>
     </StandardDirectory>
@@ -53,6 +65,10 @@
       <ComponentRef Id="OpcCategoryPatch" />
       <ComponentRef Id="OpcBuildProvenance" />
       <ComponentRef Id="OpcBuildRecipe" />
+      <ComponentRef Id="OpcNativeRecipe" />
+      <ComponentRef Id="OpcNativeInventory" />
+      <ComponentRef Id="OpcNativeCodes" />
+      <ComponentRef Id="OpcNativeGuidReader" />
     </Feature>
   </Package>
 </Wix>

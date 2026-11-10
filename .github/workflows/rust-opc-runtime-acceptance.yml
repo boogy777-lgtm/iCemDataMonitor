@@ -67,6 +67,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Pinned OPC source fetch failed' }
             & "$Root/rust/installer/opc-core/Build-OpcCore.ps1" -SourceRepository $Source -OutputDirectory $Core -Toolchain VS2022v143
             & "$Root/rust/installer/opc-core/Test-OpcGuidInventory.ps1" -IncludeDirectory "$Core/stage-x86/include"
+            & "$Root/rust/installer/opc-core/Test-OpcNativeInventory.ps1" -CoreBuildDirectory $Core
             $Artifact = Join-Path $env:RUNNER_TEMP 'blocked-opc-runtime'
             [IO.Directory]::CreateDirectory($Artifact) | Out-Null
             & "$Root/rust/installer/opc-core/Build-SharedRuntime.ps1" -CoreBuildDirectory $Core -OutputFile "$Artifact/runtime.msi"
@@ -80,6 +81,7 @@ jobs:
                 [IO.Directory]::CreateDirectory($Destination) | Out-Null
                 Copy-Item -Path "$Include/*_i.c" -Destination $Destination
               }
+              if (Test-Path "$Core/native-$Arch.wxs") { Copy-Item "$Core/native-$Arch.wxs" $Diagnostics }
             }
             if (Test-Path "$Core/build-metadata.json") { Copy-Item "$Core/build-metadata.json" $Diagnostics }
             Pop-Location

@@ -137,3 +137,52 @@ CI с полным admin token до сборки MSI. Pure tests не подме
 Отдельная **read-only** machine-context диагностика исправленного interop
 подтвердила 259 для незарегистрированного GUID и 0/ProductCode OPC Core для
 канонического opcproxy. Production all-user policy этим не ослабляется.
+
+## Переход на native MSI ownership
+
+Run `42797248221`, head `c0142fc536f0baee041b441526e1453d6c4981e3`: source build
+и real native query smoke PASS; foreign registry и foreign component-owner PASS,
+clean fresh install вернул 0. Repair снова 1603; настоящий rollback оставляет
+регистрации/службу. Эти два lifecycle defects не закрыты зелёными foreign checks.
+
+`New-OpcRuntimeModule.ps1` заменяет upstream self-registration/EXE actions native
+Registry, ServiceInstall и ServiceControl таблицами; все 18 canonical GUID,
+имена/расположение файлов и demand/LocalSystem/RPCSS service contract сохраняются.
+Для семи SystemFolder x86 files используется явный физический Windows/SysWOW64
+directory: прежний mixed-x64 MSI dual-folder workaround больше не требуется.
+Никаких ForceDeleteOnUninstall, RemoveRegistry или автоматической зачистки чужих
+keys. Native ownership каждой записи связано с существующим file-component.
+
+`native-runtime-inventory.json`: 420 owned keys / 444 values. Данные получены из
+зафиксированного чистого CI install snapshot (run/input/snapshot hashes в файле),
+shared AppID/ProgID/TypeLib keys дедуплицированы, machine paths заменены MSI refs.
+Это не слепой harvest: каждый файл/GUID/arch/location сверяется с hash-pinned
+upstream authoring; каждый IID/name/method count и proxy factory — с реальными
+MIDL vtables и прежним pinned GUID inventory. Оба AppID требуют прежних local-only
+SY/BA Access/Launch descriptors и AuthenticationLevel=6; внешний config не читается.
+
+`Test-OpcNativeInventory.ps1`: локально PASS 27 проверок, включая пропуски,
+дубликаты, подмены методов/IID/factory/file references, widening DCOM и service
+ownership. Обе native MSM скомпилировались с `-wx`, без установки. Первые
+compile-only варианты были отвергнуты WiX из-за лишнего RegistryKey Id; исправлена
+сама authoring schema, предупреждения/ошибки не подавлялись.
+
+Core builder теперь всегда использует native module recipe; native inputs
+включены в metadata и source payload. Shared builder отвергает SelfReg,
+module CustomAction/RemoveRegistry, проверяет registry/service coverage и
+принадлежность всех registrations conflict inventory. Требуется свежий CI
+lifecycle run этой реализации. Production fresh-install block сохранён.
+
+Локальный compile-only shared MSI с cached Release binaries собран, guard Release
+0 warnings/errors; SHA-256 `3f2e73b22bf4c1ca34e8365a941cd2262738507d17e384002350185b3ac57ddb`.
+Это явно помеченный fixture, не доказательство свежей source build. Setup refusal
+для него PASS: блок сработал до компиляции/публикации Setup. Syntax 15 scripts,
+27 native authoring и 13 acceptance-oracle checks PASS; установки на ПК не было.
+Lifecycle fixture усилен: после fresh install удаляет только собственный DLL и
+default NumMethods value в обеих registry views на disposable runner; `/famus`
+обязан восстановить точный installed snapshot перед uninstall. Успешный repair
+exit без восстановления ресурсов больше не считается достаточным.
+Отдельно не закрыто сохранение consent-driven operator grants при repair:
+нынешний native inventory задаёт только исходный SY/BA baseline. Перед поставкой
+нужны отдельное владение/проверка operator policy и тест customized descriptors;
+нельзя молча выдать повторную запись baseline за сохранение разрешений оператора.

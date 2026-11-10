@@ -128,7 +128,19 @@ try {
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'fresh-install' 0
             $installed = Snapshot 'installed'
             if ((Read-SharedOpcSnapshot $installed).files.Count -ne 18) { throw 'Runtime did not install the complete 18-file native inventory.' }
-            Invoke-Msi @('/fa', ('"' + $Candidate + '"')) 'repair' 0
+            # Damage only resources installed by this transaction on this clean
+            # disposable runner. A repair exit code without restoration is not PASS.
+            [IO.File]::Delete((Join-Path $env:WINDIR 'SysWOW64/opccomn_ps.dll'))
+            foreach ($view in @([Microsoft.Win32.RegistryView]::Registry32, [Microsoft.Win32.RegistryView]::Registry64)) {
+                $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
+                try {
+                    $key = $machine.OpenSubKey('SOFTWARE\Classes\Interface\{13486D50-4821-11D2-A494-3CB306C10000}\NumMethods', $true)
+                    if ($null -eq $key) { throw 'The installed proxy method-count registration is missing before damage injection.' }
+                    try { $key.DeleteValue('', $true) } finally { $key.Dispose() }
+                } finally { $machine.Dispose() }
+            }
+            $null = Snapshot 'damaged'
+            Invoke-Msi @('/famus', ('"' + $Candidate + '"')) 'repair' 0
             Equal-Snapshot $installed (Snapshot 'repaired') 'Repair'
             Invoke-Msi @('/x', $ProductCode) 'uninstall' 0
             Equal-Snapshot $before (Snapshot 'uninstalled') 'Uninstall'
