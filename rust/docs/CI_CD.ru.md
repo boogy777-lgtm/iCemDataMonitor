@@ -336,7 +336,7 @@ cold/warm время должны быть проверены отдельно; 
 
 На этой VMware VM Python 3.12 **32-bit** после исправления: 50/50 CI routing/cache/
 vendor/encoding tests PASS; до исправления на том же Python воспроизведён FAIL.
-Отдельно локально прошли 132 выбранных Rust Release tests, один cross-process
+Отдельно локально прошли 135 выбранных Rust Release tests, один cross-process
 OPC test остался `ignored`; Clippy `-D warnings` выбранных пакетов, полный baseline
 (487 файлов + 26 подтверждённых удалений), packaging fixture, desktop mapping
 guard и rustfmt — PASS. `Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline`
@@ -347,3 +347,26 @@ guard и rustfmt — PASS. `Verify-ScaffoldInputs.ps1 -RequireCompleteBaseline`
 workspace build/test, browser и установочные jobs. Предыдущие версии WIP и
 существующие OPC registrations не заменялись; Python 32-bit не подменяет 64-bit
 hosted runner. Новая CI-матрица DCOM repair также требует отдельного прогона.
+
+### Unicode provider gate на другом Windows runner
+
+В [run 42821685437](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42821685437)
+после исправления Release-контракта routing, baseline, legacy, packaging, измерения
+и ранние Rust checks прошли. Полный Rust Scaffold завершился **FAIL** на
+`identity::tests::all_scalars_match_independent_windows_bcl`: первое обнаруженное
+расхождение `U+2C5F`/`U+2C2F`, runner Windows `10.0.26100`, .NET `10.0.14`.
+Затем общий CI gate также FAIL; browser/counterpart steps не выполнялись.
+
+Проверяемая таблица зафиксирована для Windows `10.0.19045` и .NET `10.0.13`
+(`ordinal-identity-baseline.json`); одновременно изменились OS и версия CLR,
+поэтому по одному этому запуску причину между ICU/OS/CLR разделить нельзя.
+Это реальное различие совместимости emulator name identity, а не разрешение
+выключить тест или автоматически обновить baseline под новый runner. Нужны
+выбор поддерживаемых Windows/provider и доказанная политика совместимости;
+до этого full release gate остаётся открытым.
+
+На этой VM Windows `10.0.19045` / .NET `10.0.13` та же пара не равна;
+`Generate-OrdinalIdentity.ps1 -Check` подтвердил 1 112 064 scalars, 1462 mappings
+и все contextual witnesses, а `cargo test --release -p icem-emulation --lib`
+прошёл 3/3 включая независимый BCL oracle. Это подтверждает baseline данной VM,
+но не опровергает FAIL Windows `10.0.26100` и не устанавливает единственную причину.
