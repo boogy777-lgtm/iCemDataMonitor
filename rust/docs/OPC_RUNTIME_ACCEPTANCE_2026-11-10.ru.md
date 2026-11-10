@@ -56,3 +56,40 @@ RGS и IDL восстановлены из закреплённого `source-up
 Обычный CI `42790763716` также не прошёл: Scaffold/cache command contract drift,
 legacy tests и Windows heap profiling. Baseline и packaging contracts прошли.
 Эти результаты не подменяются отдельной OPC-матрицей и не означают release acceptance.
+
+## Oracle rollback: запрет ложного PASS
+
+Read-only проверка собранной `InstallExecuteSequence` обнаружила отсутствие
+`InstallExecute`: Type 19 на 6550 перед `InstallFinalize` сам по себе не доказывает,
+что deferred operations вообще применялись. Результат старого rollback fixture,
+даже если он зелёный, **не является принятой rollback-проверкой**.
+
+В TEST ONLY CI-копии добавляется стандартный `InstallExecute` на 6500, только
+для `ICEM_ACCEPTANCE_ROLLBACK=1`. Oracle требует в логе выполненный FileCopy,
+успешный InstallExecute, затем именно injected Type 19 failure, в этом порядке.
+Foreign-owner oracle отдельно требует реального отказа `OpcCheckForeign` до
+InstallInitialize. `Test-SharedOpcAcceptance.ps1`: локально PASS 12 synthetic-log
+проверок; ранний сбой/только имя scheduled action/неверный порядок не дают PASS.
+Основание: Microsoft `InstallExecute Action` выполняет накопленный install script,
+не завершая транзакцию: https://learn.microsoft.com/en-us/windows/win32/msi/installexecute-action.
+
+Run `42793336639`, head `2aeefc9ad881390b52b35dc13f5910f227eb0b42`:
+- Source-pinned x86/x64 Release + MSI build PASS. Сохранённые MIDL inputs подтвердили
+  timestamp-only drift (`03:14:07` у runner, `08:14:07` у локального baseline),
+  помимо пути. Тела проходят те же pins; не требуется расширять допустимый код.
+- Foreign registry refusal PASS; snapshots unchanged.
+- Fresh install вернул 0 и сохранил installed snapshot, но lifecycle fixture
+  остановился до repair: `ConvertFrom-Json` без dictionary mode отверг допустимое
+  пустое имя default registry value. Общий `Read-SharedOpcSnapshot` сохраняет его.
+- Foreign MSI-owner fixture не компилировался: WiX File требует `Source`, не
+  `SourceFile`. Authoring вынесен в `opc-core/tests/ForeignOwner.wxs` для отдельной
+  compile-only проверки; до проверки preflight этот job не дошёл.
+- Старый rollback job показал PASS до реального script execution; этот результат
+  не принимается. Более строгий oracle добавлен до последующего acceptance run.
+
+`Test-SharedOpcAcceptance.ps1` теперь проверяет 13 сценариев, включая default
+registry value. На скачанных CI evidence новый decoder прочитал 18 файлов/441
+registry rows; усиленный preflight oracle принял реальный foreign-registry log,
+а rollback oracle отверг прежний ложный PASS. Generated CI MIDL inputs прошли
+все 18 inventory tests; standalone ForeignOwner MSI с `-wx` скомпилировался
+локально без установки. Установочная приёмка runtime ещё не завершена.

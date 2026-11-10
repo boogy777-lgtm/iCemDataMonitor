@@ -21,6 +21,7 @@ try {
 $Repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Import-Module (Join-Path $PSScriptRoot 'WindowsMsiDatabase.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'WindowsBuildSdk.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'SharedOpcAcceptance.psm1') -Force
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Msi.sha256").Split(' ')[0])) { throw 'Blocked input MSI checksum mismatch.' }
 $Cases = Get-Content -LiteralPath (Join-Path $Repo 'rust/installer/opc-core/acceptance-cases.json') -Raw | ConvertFrom-Json
@@ -55,6 +56,13 @@ try {
     # Test-only copy: preserve every real conflict guard and custom action. Never publish it.
     Execute-Sql 'DELETE FROM `LaunchCondition` WHERE `Condition` = ''Installed'''
     Execute-Sql 'UPDATE `Property` SET `Value` = ''TEST ONLY - iCem Shared OPC Runtime'' WHERE `Property` = ''ProductName'''
+    # Standard WiX sequencing may omit InstallExecute. Without it, a Type 19 at
+    # 6550 fails before deferred changes run at InstallFinalize: not a rollback test.
+    $execute = @(Read-WindowsMsiRecords $database 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''InstallExecute''' @('Sequence'))
+    if ($execute.Count -gt 1 -or ($execute.Count -eq 1 -and [int]$execute[0].Sequence -ne 6500)) { throw 'Unexpected InstallExecute sequencing.' }
+    if ($execute.Count -eq 0) {
+        Execute-Sql 'INSERT INTO `InstallExecuteSequence` (`Action`, `Condition`, `Sequence`) VALUES (''InstallExecute'', ''ICEM_ACCEPTANCE_ROLLBACK = 1'', 6500)'
+    }
     Execute-Sql 'INSERT INTO `CustomAction` (`Action`, `Type`, `Target`) VALUES (''IcemAcceptanceRollback'', 19, ''Expected acceptance rollback injection'')'
     Execute-Sql 'INSERT INTO `InstallExecuteSequence` (`Action`, `Condition`, `Sequence`) VALUES (''IcemAcceptanceRollback'', ''ICEM_ACCEPTANCE_ROLLBACK = 1'', 6550)'
     $database.Commit()
@@ -110,22 +118,16 @@ function Invoke-Msi([string[]] $arguments, [string] $phase, [int] $expected) {
         if ($process.ExitCode -ne $expected) { throw "$phase returned $($process.ExitCode), expected $expected; see $log" }
     } finally { $process.Dispose() }
 }
-function Refused-Before-Transaction([string] $phase) {
-    $log = [IO.File]::ReadAllText((Join-Path $EvidenceDirectory "$phase.log"))
-    if ($log -match '(?m)^Action start [^\r\n]*: InstallInitialize\.' -or -not $log.Contains('OpcCheckForeign')) {
-        throw 'A late registration error/rollback is not a valid foreign-owner preflight refusal.'
-    }
-}
 $report = [ordered]@{ schema_version = 1; case = $Case; result = 'FAIL'; product_commit = $env:GITHUB_SHA; input_sha256 = (Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash.ToLowerInvariant(); candidate_not_distributable = $true }
 try {
     $before = Snapshot 'before'
-    $initial = $before | ConvertFrom-Json
+    $initial = Read-SharedOpcSnapshot $before
     if ($initial.registry.Count -ne 0 -or $initial.files.Count -ne 0 -or $initial.services.Count -ne 0) { throw 'Disposable runner is not OPC-clean; refusing to adopt or clean existing components.' }
     switch ($Case) {
         'lifecycle' {
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'fresh-install' 0
             $installed = Snapshot 'installed'
-            if (($installed | ConvertFrom-Json).files.Count -ne 18) { throw 'Runtime did not install the complete 18-file native inventory.' }
+            if ((Read-SharedOpcSnapshot $installed).files.Count -ne 18) { throw 'Runtime did not install the complete 18-file native inventory.' }
             Invoke-Msi @('/fa', ('"' + $Candidate + '"')) 'repair' 0
             Equal-Snapshot $installed (Snapshot 'repaired') 'Repair'
             Invoke-Msi @('/x', $ProductCode) 'uninstall' 0
@@ -133,6 +135,7 @@ try {
         }
         'rollback' {
             Invoke-Msi @('/i', ('"' + $Candidate + '"'), 'ICEM_ACCEPTANCE_ROLLBACK=1') 'injected-rollback' 1603
+            Assert-SharedOpcRollbackLog ([IO.File]::ReadAllText((Join-Path $EvidenceDirectory 'injected-rollback.log')))
             Equal-Snapshot $before (Snapshot 'rolled-back') 'Rollback'
         }
         'foreign-registry' {
@@ -143,27 +146,24 @@ try {
             } finally { $machine.Dispose() }
             $foreign = Snapshot 'foreign-before'
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'foreign-refusal' 1603
-            Refused-Before-Transaction 'foreign-refusal'
+            Assert-SharedOpcPreflightLog ([IO.File]::ReadAllText((Join-Path $EvidenceDirectory 'foreign-refusal.log')))
             Equal-Snapshot $foreign (Snapshot 'foreign-after') 'Foreign registration refusal'
         }
         'foreign-component' {
             $foreignPayload = Join-Path $Work 'foreign.txt'
             [IO.File]::WriteAllText($foreignPayload, 'Foreign owner fixture; not an OPC library.')
-            $foreignSource = Join-Path $Work 'Foreign.wxs'
-            [IO.File]::WriteAllText($foreignSource, @"
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"><Package Name="iCem Acceptance Foreign Component" Manufacturer="iCem test only" Version="1.0.0" UpgradeCode="83DBDF96-794A-4437-8B5F-80BF54274F67" Scope="perMachine" UpgradeStrategy="none"><MediaTemplate EmbedCab="yes"/><StandardDirectory Id="SystemFolder"><Component Id="ForeignProxy" Guid="3C257474-772A-6CE8-282E-7F4413643C2C"><File Id="ForeignProxyFile" Name="opcproxy.dll" SourceFile="$foreignPayload" KeyPath="yes"/></Component></StandardDirectory><Feature Id="Foreign" Level="1"><ComponentRef Id="ForeignProxy"/></Feature></Package></Wix>
-"@)
+            $foreignSource = Join-Path $Repo 'rust/installer/opc-core/tests/ForeignOwner.wxs'
             $foreignMsi = Join-Path $Work 'foreign-owner.msi'
             Push-Location $Work
             try {
                 $null = Assert-WindowsBuildSdk
-                & wix build $foreignSource -arch x86 -wx -o $foreignMsi | Out-Host
+                & wix build $foreignSource -arch x86 -wx -d "ForeignPayload=$foreignPayload" -o $foreignMsi | Out-Host
                 if ($LASTEXITCODE -ne 0) { throw 'Cannot build independent MSI component owner fixture.' }
             } finally { Pop-Location }
             Invoke-Msi @('/i', ('"' + $foreignMsi + '"')) 'foreign-owner-install' 0
             $foreign = Snapshot 'foreign-owner-before'
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'foreign-owner-refusal' 1603
-            Refused-Before-Transaction 'foreign-owner-refusal'
+            Assert-SharedOpcPreflightLog ([IO.File]::ReadAllText((Join-Path $EvidenceDirectory 'foreign-owner-refusal.log')))
             Equal-Snapshot $foreign (Snapshot 'foreign-owner-after') 'Foreign MSI client refusal'
         }
     }

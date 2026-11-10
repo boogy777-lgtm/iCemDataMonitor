@@ -4,8 +4,7 @@ on:
   pull_request:
     paths:
       - rust/installer/opc-core/**
-      - rust/tools/Test-SharedOpcRuntime.ps1
-      - rust/tools/Test-SharedOpcRuntimeSafety.ps1
+      - rust/tools/*SharedOpc*
       - rust/tools/WindowsBuildSdk.psm1
       - rust/tools/WindowsMsiDatabase.psm1
       - .github/workflows/rust-opc-runtime-acceptance.yml
@@ -24,7 +23,9 @@ jobs:
           dotnet-version: 8.0.423
       - name: Verify test isolation and unchanged production block (no installation)
         shell: pwsh
-        run: ./rust/tools/Test-SharedOpcRuntimeSafety.ps1
+        run: |
+          ./rust/tools/Test-SharedOpcRuntimeSafety.ps1
+          ./rust/tools/Test-SharedOpcAcceptance.ps1
       - id: matrix
         shell: pwsh
         run: |
