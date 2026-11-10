@@ -121,3 +121,19 @@ ownership вместо self-registration/EXE registration actions, с прове
 и rollback. Не заменять это условиями «не запускать при repair», подавлением
 ошибок или ручной зачисткой shared state. Открытые client/operator/upgrade/signing
 gates остаются обязательными; production block сохранён.
+
+Run `42795522797` собрал новый guard, но выявил отдельный interop defect: Win32
+вызов со всеми null outputs возвращает 87 (`ERROR_INVALID_PARAMETER`), несмотря
+на optional annotations API docs. Поэтому fresh runner тоже получил отказ;
+зелёные foreign-owner jobs этого run **не принимаются** как доказательство.
+Вызов исправлен: выделяется 39-character ProductCode buffer и output context.
+Отказ при любых API errors сохранён; к whitelist ошибок ничего не добавлено.
+
+Добавлен отдельный real native read-only smoke (`tests/NativeClientQuery.cs`),
+использующий тот же метод, что production guard; он проверяет все 18 queries в
+CI с полным admin token до сборки MSI. Pure tests не подменяют этот gate.
+Локально компиляция Release PASS. All-user smoke на рабочем ПК вернул 5
+(`ACCESS_DENIED`), так как текущий token не повышен; повышение не выполнялось.
+Отдельная **read-only** machine-context диагностика исправленного interop
+подтвердила 259 для незарегистрированного GUID и 0/ProductCode OPC Core для
+канонического opcproxy. Production all-user policy этим не ослабляется.

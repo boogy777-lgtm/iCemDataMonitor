@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.Win32;
 
 namespace Icem.OpcCoreGuard
@@ -10,10 +11,17 @@ namespace Icem.OpcCoreGuard
     internal static class RegistryGuard
     {
         // Read-only query. Index zero suffices: fresh install accepts no existing
-        // client, in any per-machine/per-user context. Null outputs need no buffers.
+        // client, in any per-machine/per-user context. Supply the product buffer:
+        // Windows returns ERROR_INVALID_PARAMETER when every output is null.
         [DllImport("msi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
         private static extern uint MsiEnumClientsExW(string component, string userSid,
-            uint context, uint index, IntPtr product, IntPtr installedContext, IntPtr sid, IntPtr sidLength);
+            uint context, uint index, StringBuilder product, out uint installedContext, IntPtr sid, IntPtr sidLength);
+
+        internal static uint QueryFirstClient(string component)
+        {
+            return MsiEnumClientsExW(component, "S-1-1-0", 7, 0,
+                new StringBuilder(39), out _, IntPtr.Zero, IntPtr.Zero);
+        }
 
         internal static bool ComponentsAbsent(TextReader reader, Func<string, uint> firstClient)
         {
@@ -50,8 +58,7 @@ namespace Icem.OpcCoreGuard
                 {
                     if (components == null) return 1;
                     using (var reader = new StreamReader(components))
-                        if (!ComponentsAbsent(reader, component => MsiEnumClientsExW(component, "S-1-1-0", 7, 0,
-                            IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero))) return 1;
+                        if (!ComponentsAbsent(reader, QueryFirstClient)) return 1;
                 }
                 using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("opc-conflicts.txt"))
                 {
