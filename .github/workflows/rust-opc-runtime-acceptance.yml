@@ -66,6 +66,7 @@ jobs:
             & git -C $Source fetch --depth 1 origin efe0d1d1ea86a8a727bf26a501a261765e836766
             if ($LASTEXITCODE -ne 0) { throw 'Pinned OPC source fetch failed' }
             & "$Root/rust/installer/opc-core/Build-OpcCore.ps1" -SourceRepository $Source -OutputDirectory $Core -Toolchain VS2022v143
+            & "$Root/rust/installer/opc-core/Test-OpcEnumEnumeration.ps1" -UpstreamSource "$Source/Source/Common/ServerEnumerator/OpcSeLst.cpp"
             & "$Root/rust/installer/opc-core/Test-OpcGuidInventory.ps1" -IncludeDirectory "$Core/stage-x86/include"
             & "$Root/rust/installer/opc-core/Test-OpcNativeInventory.ps1" -CoreBuildDirectory $Core
             $Artifact = Join-Path $env:RUNNER_TEMP 'blocked-opc-runtime'

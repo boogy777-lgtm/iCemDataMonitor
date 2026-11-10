@@ -25,6 +25,11 @@ if ($snapshot.registry.Count -ne 1 -or $snapshot.registry[0].values[''].value -c
     throw 'Snapshot decoder lost a default/named registry value or empty collection'
 }
 $script:checks++
+$list = [Collections.ArrayList]::new()
+$null = $list.Add('first')
+$null = $list.Add('second')
+if ((Get-SharedOpcComCount $list) -ne 2 -or (Get-SharedOpcComItem $list 1) -cne 'second') { throw 'COM collection reflection lost Count/Item' }
+$script:checks++
 function Rejected([scriptblock] $check, [string] $text) {
     $rejected = $false
     try { & $check $text }

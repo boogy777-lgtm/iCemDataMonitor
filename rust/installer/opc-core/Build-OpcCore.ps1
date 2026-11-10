@@ -46,6 +46,11 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Apply-OpcCategorySecurity.ps1')
 $categorySource = Join-Path $checkout 'Source/Common/CategoryManager/CategoryManager.cpp'
 $categoryPatchedHash = (& $categoryPatchCopy -SourceFile $categorySource | Select-Object -Last 1)
 if (-not $categoryPatchedHash -or $categoryPatchedHash -notmatch '^[a-f0-9]{64}$') { throw 'CategoryManager security patch failed.' }
+$enumerationPatchCopy = Join-Path $output 'Apply-OpcEnumEnumeration.ps1'
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Apply-OpcEnumEnumeration.ps1') -Destination $enumerationPatchCopy
+$serverListSource = Join-Path $checkout 'Source/Common/ServerEnumerator/OpcSeLst.cpp'
+$enumerationPatchedHash = (& $enumerationPatchCopy -SourceFile $serverListSource | Select-Object -Last 1)
+if (-not $enumerationPatchedHash -or $enumerationPatchedHash -notmatch '^[a-f0-9]{64}$') { throw 'OpcEnum category enumeration patch failed.' }
 $nativeInputNames = @('New-OpcRuntimeModule.ps1', 'native-runtime-inventory.json', 'opc-component-codes.txt', 'OpcGuidInventory.psm1')
 foreach ($name in $nativeInputNames) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $output $name) }
 
@@ -94,6 +99,8 @@ $metadata = [ordered]@{
     opcenum_patched_sha256 = $patchedHash
     category_patch_sha256 = (Get-FileHash -LiteralPath $categoryPatchCopy -Algorithm SHA256).Hash.ToLowerInvariant()
     category_patched_sha256 = $categoryPatchedHash
+    enumeration_patch_sha256 = (Get-FileHash -LiteralPath $enumerationPatchCopy -Algorithm SHA256).Hash.ToLowerInvariant()
+    enumeration_patched_sha256 = $enumerationPatchedHash
     category_com_module_sha256 = (Get-FileHash -LiteralPath (Join-Path $checkout 'Source/Shared/OpcUtilityClasses/COpcComModule.cpp') -Algorithm SHA256).Hash.ToLowerInvariant()
     native_inputs = @($nativeInputNames | ForEach-Object { [ordered]@{ name = $_; sha256 = (Get-FileHash -LiteralPath (Join-Path $output $_) -Algorithm SHA256).Hash.ToLowerInvariant() } })
     cmake = ((& cmake --version | Select-Object -First 1) -join '')

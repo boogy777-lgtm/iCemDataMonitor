@@ -240,3 +240,50 @@ opcproxy components с точно теми же установленными byt
 показывать только независимый оставшийся продукт. Expected registry subset
 выводится из native inventory, shared-view roots проверяются явно. Оба owner cases
 используют один compile helper; чужой продукт не удаляется ради чистого теста.
+
+## Run 42809892810 и исправление enumeration/shared-owner
+
+Head `f5dc826b26bf6116a3fec0527c3f49f7e96897e1`, шесть cases:
+- `lifecycle` **PASS**: fresh install, намеренное удаление DLL/NumMethods, `/fomus`
+  repair с точным восстановлением snapshot, uninstall с точным возвратом к чистому
+  состоянию (включая три `IcemNativeKey` marker keys). Пустых остатков больше нет.
+- `rollback` **PASS** с усиленным oracle: реальный FileCopy → успешный
+  InstallExecute → injected Type 19 → полный чистый snapshot.
+- `foreign-registry` и `foreign-component` **PASS**.
+- `clients` **FAIL**: обе архитектуры получили `Next HRESULT=0x80004005`, `fetched=0`.
+- `shared-owner` **FAIL**: synthetic owner установлен, наш uninstall вернул точный
+  ожидаемый snapshot, но fixture упал на чтении `ComponentClients.Count`.
+
+### Причина Next и исправление
+
+`COpcServerList::EnumClassesOfCategories2` создаёт `EnumGUID`/`EnumCLSID` через
+`new`, затем `Init` с `AtlFlagTakeOwnership`. Для пустого результата вызывается
+`Init(NULL, NULL, ...)`, а `CComEnumImpl::Next` явно возвращает `E_FAIL`, если
+`m_begin`/`m_end`/`m_iter` равны NULL. Clean runner не содержит OPC DA 2.0
+servers, поэтому список пуст — это и есть подтверждённая причина, а не interop
+клиента. Дополнительно исходный код передаёт владение `std::vector` ATL, а затем
+удаляет vector/неудачный объект: memory ownership был несогласован.
+
+`Apply-OpcEnumEnumeration.ps1` (source pin `0075084291...`) заменяет обе
+обёртки одним helper: копирует GUID snapshots в owned массив; пустой набор
+инициализирует non-null `begin == end`, чтобы `Next` вернул `S_FALSE/0`; при
+успешном `QueryInterface` объект остаётся с refcount 1, при ошибке удаляется
+вместе с массивом. Возвращаемые `S_OK`/`S_FALSE`, порядок GUID, `Skip`, `Reset`
+и независимый `Clone` проверяются отдельным fixture, скомпилированным из точного
+helper text. Локально `Test-OpcEnumEnumeration.ps1` PASS 3 проверки; повторное
+применение патча и изменение source отклоняются. Патч встроен в
+`Build-OpcCore.ps1`, его hash и patched-source hash проверяются
+`Build-SharedRuntime.ps1`, а сам патч включён в source payload MSI.
+
+### Shared-owner fixture defect
+
+`WindowsInstaller.Installer.ComponentClients()` возвращает raw `__ComObject`;
+PowerShell ETS не показывает `Count`. Это дефект fixture, не Runtime. Добавлены
+чистые `Get-SharedOpcComCount/Item` через явный read-only reflection; они
+используются в fixture и проверены unit-сценарием. Ожидаемый retained snapshot
+дошёл до сравнения и совпал, то есть файлы/COM values/service второго клиента
+пережили удаление нашего продукта; проверка количества клиентов ещё должна
+подтвердить отсутствие нашего ProductCode после uninstall.
+
+Production `LaunchCondition=Installed` сохранён. Требуется новый чистый six-case
+run; до него lifecycle нельзя считать полностью принятым, а Setup не собирается.

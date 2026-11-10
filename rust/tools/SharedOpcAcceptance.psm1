@@ -6,6 +6,16 @@ function Read-SharedOpcSnapshot([string] $Json) {
     # represent that JSON key. Preserve all names/types with dictionary decoding.
     return ConvertFrom-Json -InputObject $Json -AsHashtable
 }
+function Get-SharedOpcComCount([object] $Collection) {
+    # The WindowsInstaller.Installer enumerator is a raw __ComObject: PowerShell
+    # ETS exposes no Count, so query the COM property explicitly and read-only.
+    if ($null -eq $Collection) { throw 'Missing MSI client collection.' }
+    return [int]$Collection.GetType().InvokeMember('Count', [Reflection.BindingFlags]::GetProperty, $null, $Collection, $null)
+}
+function Get-SharedOpcComItem([object] $Collection, [int] $Index) {
+    if ($null -eq $Collection) { throw 'Missing MSI client collection.' }
+    return $Collection.GetType().InvokeMember('Item', [Reflection.BindingFlags]::GetProperty, $null, $Collection, [object[]]@($Index))
+}
 function Assert-SharedOpcPreflightLog([string] $Log) {
     $start = [regex]::Match($Log, '(?m)^Action start [^\r\n]*: OpcCheckForeign\.\r?$')
     $failed = [regex]::Match($Log, '(?m)^Action ended [^\r\n]*: OpcCheckForeign\. Return value 3\.\r?$')
@@ -25,4 +35,4 @@ function Assert-SharedOpcRollbackLog([string] $Log) {
         throw 'Not an injected rollback after successful application of the install script.'
     }
 }
-Export-ModuleMember -Function Read-SharedOpcSnapshot, Assert-SharedOpcPreflightLog, Assert-SharedOpcRollbackLog
+Export-ModuleMember -Function Read-SharedOpcSnapshot, Get-SharedOpcComCount, Get-SharedOpcComItem, Assert-SharedOpcPreflightLog, Assert-SharedOpcRollbackLog

@@ -251,7 +251,7 @@ try {
                 foreach ($code in $sharedCodes) {
                     $clients = $clientInstaller.ComponentClients($code)
                     try {
-                        if ($clients.Count -ne 1 -or $clients.Item(0) -ieq $ProductCode) { throw 'Shared component lost its independent MSI client or retained our removed product.' }
+                        if ((Get-SharedOpcComCount $clients) -ne 1 -or (Get-SharedOpcComItem $clients 0) -ieq $ProductCode) { throw 'Shared component lost its independent MSI client or retained our removed product.' }
                     } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($clients) }
                 }
             } finally { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($clientInstaller) }

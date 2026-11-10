@@ -35,6 +35,9 @@
           <Component Id="OpcCategoryPatch" Guid="BCB27E26-C4E5-484B-8ED9-9F63506D35F1">
             <File Id="OpcCategoryPatchFile" Name="Apply-OpcCategorySecurity.ps1" Source="$(var.CategoryPatch)" KeyPath="yes" />
           </Component>
+          <Component Id="OpcEnumerationPatch" Guid="A68BC913-04D1-4BC1-9B2E-6A48D8168C7D">
+            <File Id="OpcEnumerationPatchFile" Name="Apply-OpcEnumEnumeration.ps1" Source="$(var.EnumerationPatch)" KeyPath="yes" />
+          </Component>
           <Component Id="OpcBuildProvenance" Guid="3931D8ED-E3E8-416A-8F07-BA1598022F13">
             <File Id="OpcBuildProvenanceFile" Name="build-metadata.json" Source="$(var.BuildMetadata)" KeyPath="yes" />
           </Component>
@@ -63,6 +66,7 @@
       <ComponentRef Id="OpcSourceArchive" />
       <ComponentRef Id="OpcSourcePatch" />
       <ComponentRef Id="OpcCategoryPatch" />
+      <ComponentRef Id="OpcEnumerationPatch" />
       <ComponentRef Id="OpcBuildProvenance" />
       <ComponentRef Id="OpcBuildRecipe" />
       <ComponentRef Id="OpcNativeRecipe" />

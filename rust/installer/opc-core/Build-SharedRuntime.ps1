@@ -20,12 +20,15 @@ if ($metadata.commit -cne 'efe0d1d1ea86a8a727bf26a501a261765e836766' -or
     $metadata.version -cne '3.1.4.132' -or $metadata.configuration -cne 'Release') { throw 'Untrusted source metadata.' }
 $patchFile = Join-Path $root 'Apply-OpcEnumSecurity.ps1'
 $categoryPatch = Join-Path $root 'Apply-OpcCategorySecurity.ps1'
+$enumerationPatch = Join-Path $root 'Apply-OpcEnumEnumeration.ps1'
 $archiveFile = Join-Path $root 'source-upstream.tar'
 $expectedPatch = '4bdfd807a64bab694120c3e047086b36decaca6de8702c56b5515482c2711f8e'
 $expectedPatchedSource = '2ba163374d6d708e9d2a2b7b8b52dcda74ecc959a40b92fe69b9de1442eb26af'
 $expectedCategoryPatch = 'cca5106e63285577d757f5202d3d652e19e12c9d6d0d4ddda7a3867ed6fc046c'
 $expectedCategorySource = '8713e8f45b0e3946a7a0079b657aa48e6a5f3d2aab1687e89f6ee3000ef0430a'
 $expectedComModule = 'b968a2cf6d5259538a4ddbf2120219ec3842b99da57b3789155c6e75363bebe3'
+$expectedEnumerationPatch = '76a7c51f04bdfed9715f29714ccf3f3673c68785b9fa4be36a98e60285de71a8'
+$expectedEnumerationSource = '2335e3332a44acd2f94a6b0d8f3a47ab714863d1a674e9b972591b769057895b'
 if ((Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'Apply-OpcEnumSecurity.ps1') -Algorithm SHA256).Hash -ine $expectedPatch -or
     $metadata.security_patch_sha256 -ine $expectedPatch -or $metadata.opcenum_patched_sha256 -ine $expectedPatchedSource -or
     (Get-FileHash -LiteralPath $patchFile -Algorithm SHA256).Hash -ine $expectedPatch -or
@@ -34,9 +37,13 @@ if ((Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'Apply-OpcEnumSecurity.p
     $metadata.category_com_module_sha256 -ine $expectedComModule -or
     (Get-FileHash -LiteralPath (Join-Path $root 'source/Source/Shared/OpcUtilityClasses/COpcComModule.cpp') -Algorithm SHA256).Hash -ine $expectedComModule -or
     (Get-FileHash -LiteralPath $categoryPatch -Algorithm SHA256).Hash -ine $expectedCategoryPatch -or
+    (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'Apply-OpcEnumEnumeration.ps1') -Algorithm SHA256).Hash -ine $expectedEnumerationPatch -or
+    $metadata.enumeration_patch_sha256 -ine $expectedEnumerationPatch -or $metadata.enumeration_patched_sha256 -ine $expectedEnumerationSource -or
+    (Get-FileHash -LiteralPath $enumerationPatch -Algorithm SHA256).Hash -ine $expectedEnumerationPatch -or
+    (Get-FileHash -LiteralPath (Join-Path $root 'source/Source/Common/ServerEnumerator/OpcSeLst.cpp') -Algorithm SHA256).Hash -ine $expectedEnumerationSource -or
     (Get-FileHash -LiteralPath $archiveFile -Algorithm SHA256).Hash -ine $metadata.source_archive_sha256 -or
     (Get-FileHash -LiteralPath (Join-Path $root 'source/Source/Common/ServerEnumerator/OpcEnum.cpp') -Algorithm SHA256).Hash -ine $metadata.opcenum_patched_sha256) {
-    throw 'Missing or mismatched reviewed OpcEnum security provenance.'
+    throw 'Missing or mismatched reviewed OpcEnum security/enumeration provenance.'
 }
 $names = @('opc-com-proxystub-mergemodule-3.1.4.132-x86.msm', 'opc-com-proxystub-mergemodule-3.1.4.132-x64.msm', 'LICENSE.md')
 if (@($metadata.files).Count -ne $names.Count) { throw 'Unexpected build inventory.' }
@@ -167,7 +174,7 @@ $recipe = Join-Path $PSScriptRoot 'Build-OpcCore.ps1'
 & wix build (Join-Path $PSScriptRoot 'SharedRuntime.wxs') -arch x64 `
     -d "MsmX86=$(Join-Path $root $names[0])" -d "MsmX64=$(Join-Path $root $names[1])" `
     -d "OpcLicense=$(Join-Path $root $names[2])" -d "GuardInventory=$include" -d "GuardExe=$guardExe" `
-    -d "SourceArchive=$archiveFile" -d "SecurityPatch=$patchFile" -d "CategoryPatch=$categoryPatch" -d "BuildMetadata=$(Join-Path $root 'build-metadata.json')" -d "BuildRecipe=$recipe" `
+    -d "SourceArchive=$archiveFile" -d "SecurityPatch=$patchFile" -d "CategoryPatch=$categoryPatch" -d "EnumerationPatch=$enumerationPatch" -d "BuildMetadata=$(Join-Path $root 'build-metadata.json')" -d "BuildRecipe=$recipe" `
     -d "NativeRecipe=$(Join-Path $root $nativeNames[0])" -d "NativeInventory=$(Join-Path $root $nativeNames[1])" -d "NativeCodes=$(Join-Path $root $nativeNames[2])" -d "NativeGuidReader=$(Join-Path $root $nativeNames[3])" -o $output
 if ($LASTEXITCODE -ne 0) { throw "WiX failed with exit code $LASTEXITCODE" }
 if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw 'WiX did not produce the MSI.' }
