@@ -19,7 +19,7 @@
 - `rust/installer/.config/dotnet-tools.json` → единственный `shared/installer/.config/dotnet-tools.json`; Rust MSI, family fixtures и Runtime workflow восстановят WiX из этого общего manifest.
 - `.github/workflows/rust-opc-runtime-acceptance.yml` → `.github/workflows/opc-runtime-acceptance.yml`; moved paths, workflow owner и ignored evidence destination обновлены.
 
-Обновлены текущие builder/fixture consumers, routing rules/tests и installer/runtime docs. Точечные hash-сравнения подтвердили неизменность moved OPC security/category/enumeration patches, native ownership inventory, component-code list и `SharedRuntime.wxs`. Не менялись canonical OPC GUID/18-component inventory, DLL locations, registry/service authoring, native ownership, Runtime version/upgrade identity, внешние API/bytes и установочные пути. Production fresh-install condition и отказ foreign/shared-owner guards сохранены. Runtime descriptor repair остаётся известным **FAIL**, здесь не исправлялся.
+Обновлены текущие builder/fixture consumers, routing rules/tests и installer/runtime docs. PR review follow-up добавил `shared/installer/.config/dotnet-tools.json` в `opc-runtime-acceptance.yml::on.pull_request.paths` и regression `test_opc_runtime_trigger_covers_actual_inputs`: он читает именно trigger path-list и проверяет tracked Runtime installer/tools inputs, hash-sensitive `.gitattributes`, общий WiX manifest и MSI helper. Точечные hash-сравнения подтвердили неизменность moved OPC security/category/enumeration patches, native ownership inventory, component-code list и `SharedRuntime.wxs`. Не менялись canonical OPC GUID/18-component inventory, DLL locations, registry/service authoring, native ownership, Runtime version/upgrade identity, внешние API/bytes и установочные пути. Production fresh-install condition и отказ foreign/shared-owner guards сохранены. Runtime descriptor repair остаётся известным **FAIL**, здесь не исправлялся.
 
 ## Что намеренно не перенесено
 
@@ -39,7 +39,7 @@
 
 ## Проверки
 
-- Python 3.12 32-bit: `python -m unittest discover -s rust/tools/ci -p "test_*.py"` — **54/54 PASS**.
+- Python 3.12 32-bit: `python -m unittest discover -s rust/tools/ci -p "test_*.py"` — **55/55 PASS**, включая проверку реального `on.pull_request.paths` coverage для Runtime inputs.
 - `Verify-Baseline.ps1 -RequireComplete` — **PASS**, 487 существующих файлов + 26 разрешённых удалений из 513; 111 exact approvals; frozen proto/assets, D16/D17 и REST inventory проверены. Manifest и ledger pins не изменены.
 - `Test-SharedOpcRuntimeSafety.ps1` — PASS: refusal до file/registry/service/MSI effects и production condition сохранён; `Test-SharedOpcAcceptance.ps1` — **22/22 PASS**.
 - PowerShell parser: 18 moved OPC `.ps1/.psm1` — PASS.

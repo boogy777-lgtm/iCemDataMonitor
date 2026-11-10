@@ -1,4 +1,5 @@
 import copy
+import fnmatch
 import itertools
 import json
 from pathlib import Path
@@ -14,6 +15,29 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class RoutingTests(unittest.TestCase):
+    def test_opc_runtime_trigger_covers_actual_inputs(self):
+        workflow = (ROOT / '.github/workflows/opc-runtime-acceptance.yml').read_text(encoding='utf-8')
+        event = re.search(r'(?ms)^on:\n.*?^  pull_request:\n(?P<body>.*?)(?=^\S|\Z)', workflow)
+        self.assertIsNotNone(event, 'Runtime workflow must have a pull_request trigger')
+        paths = re.search(r'(?m)^    paths:\n((?:^      - [^\n]*\n?)+)', event.group('body'))
+        self.assertIsNotNone(paths, 'Runtime pull_request trigger must declare paths')
+        patterns = [line.strip()[2:].strip().strip("'\"")
+                    for line in paths.group(1).splitlines()]
+
+        tracked = routing.git(ROOT, 'ls-files', '-z').decode('utf-8').split('\0')[:-1]
+        inputs = [path for path in tracked if path.startswith((
+            'shared/opc-runtime/installer/', 'shared/opc-runtime/tools/'))]
+        inputs += [
+            'shared/opc-runtime/.gitattributes',
+            'shared/installer/.config/dotnet-tools.json',
+            'shared/installer/tools/WindowsMsiDatabase.psm1',
+        ]
+        for path in inputs:
+            with self.subTest(input=path):
+                self.assertTrue((ROOT / path).is_file())
+                self.assertTrue(any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns),
+                                f'{path} is a Runtime build/test input but is absent from on.pull_request.paths')
+
     def test_shared_runtime_has_one_owner(self):
         owned = (
             'shared/opc-runtime/installer/SharedRuntime.wxs',

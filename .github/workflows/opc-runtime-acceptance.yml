@@ -5,6 +5,8 @@ on:
     paths:
       - shared/opc-runtime/installer/**
       - shared/opc-runtime/tools/**
+      - shared/opc-runtime/.gitattributes
+      - shared/installer/.config/dotnet-tools.json
       - shared/installer/tools/WindowsMsiDatabase.psm1
       - .github/workflows/opc-runtime-acceptance.yml
 permissions:
