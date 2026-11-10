@@ -86,10 +86,14 @@ $firstReplacement = @'
 
 
 '@ -replace "`r?`n", $newline
-$text = Replace-Scope $text $firstStart ('// EnumClassesOfCategories' + $newline + 'STDMETHODIMP COpcServerList::EnumClassesOfCategories2(') $firstReplacement
+$text = Replace-Scope $text $firstStart ('// EnumClassesOfCategories' + $newline + 'STDMETHODIMP COpcServerList::EnumClassesOfCategories(') $firstReplacement
 
-$secondStart = "`t*ppenumClsid = 0;${newline}${newline}`t// need to create a master list."
+# Anchor on the private overload signature: the public overload's dead comment
+# block contains the same body text and must stay untouched (it only delegates).
+$secondStart = "IOPCEnumGUID** ppenumClsid)${newline}{${newline}`t*ppenumClsid = 0;"
 $secondReplacement = @'
+	*ppenumClsid = 0;
+
 	IOPCEnumGUID* enumerated = NULL;
 	HRESULT hr = EnumClassesOfCategories2(cImplemented, rgcatidImpl, cRequired, rgcatidReq, &enumerated);
 	if (FAILED(hr))

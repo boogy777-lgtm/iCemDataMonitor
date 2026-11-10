@@ -19,14 +19,19 @@ Copy-Item -LiteralPath $source -Destination $copy
 $script:checks = 0
 try {
     $patched = & (Join-Path $PSScriptRoot 'Apply-OpcEnumEnumeration.ps1') -SourceFile $copy | Select-Object -Last 1
-    if ($patched -cne '2335e3332a44acd2f94a6b0d8f3a47ab714863d1a674e9b972591b769057895b') { throw "Unexpected patched enumeration source: $patched" }
+    if ($patched -cne '0d7f1b8569d9aea31595576d75ddcb628013be0d306487f1fbd641562031e0eb') { throw "Unexpected patched enumeration source: $patched" }
     $text = [IO.File]::ReadAllText($copy)
-    if ([regex]::Matches($text, 'IcemCreateGuidEnum<').Count -ne 2 -or
-        [regex]::Matches($text, 'AtlFlagTakeOwnership').Count -ne 1 -or
-        [regex]::Matches($text, 'EnumType::CreateInstance').Count -ne 1 -or
-        $text -match 'new std::vector<GUID>|delete newEnum|new Enum(GUID|CLSID)|->Init\(NULL, NULL' -or
-        $text -notmatch 'return IcemCreateGuidEnum<IEnumCLSID, &IID_IEnumCLSID, CLSID>\(guids,' -or
-        $text -notmatch 'return IcemCreateGuidEnum<IOPCEnumGUID, &IID_IOPCEnumGUID, GUID>\(guids,') {
+    # The upstream public IOPCEnumGUID overload keeps a large dead comment.
+    # Inspect active code only so preserved historical text cannot mask a defect.
+    $code = [regex]::Replace($text, '(?s)/\*.*?\*/|//[^\r\n]*', '')
+    if ([regex]::Matches($code, 'IcemCreateGuidEnum<').Count -ne 2 -or
+        [regex]::Matches($code, 'AtlFlagTakeOwnership').Count -ne 1 -or
+        [regex]::Matches($code, 'EnumType::CreateInstance').Count -ne 1 -or
+        $code -match 'new std::vector<GUID>|delete newEnum|new Enum(GUID|CLSID)|->Init\(NULL, NULL' -or
+        [regex]::Matches($code, 'STDMETHODIMP COpcServerList::EnumClassesOfCategories').Count -ne 4 -or
+        $code -notmatch 'return EnumClassesOfCategories2\(cImplemented, rgcatidImpl, cRequired, rgcatidReq, ppenumClsid\);' -or
+        $code -notmatch 'return IcemCreateGuidEnum<IEnumCLSID, &IID_IEnumCLSID, CLSID>\(guids,' -or
+        $code -notmatch 'return IcemCreateGuidEnum<IOPCEnumGUID, &IID_IOPCEnumGUID, GUID>\(guids,') {
         throw 'PATTERN_GUARD: enumeration ownership/empty-set patch is incomplete or a legacy mechanism returned.'
     }
     $script:checks++

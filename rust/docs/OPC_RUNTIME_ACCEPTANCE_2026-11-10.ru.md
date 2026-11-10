@@ -87,7 +87,7 @@ Run `42793336639`, head `2aeefc9ad881390b52b35dc13f5910f227eb0b42`:
 - Старый rollback job показал PASS до реального script execution; этот результат
   не принимается. Более строгий oracle добавлен до последующего acceptance run.
 
-`Test-SharedOpcAcceptance.ps1` теперь проверяет 13 сценариев, включая default
+`Test-SharedOpcAcceptance.ps1` теперь проверяет 14 сценариев, включая default
 registry value. На скачанных CI evidence новый decoder прочитал 18 файлов/441
 registry rows; усиленный preflight oracle принял реальный foreign-registry log,
 а rollback oracle отверг прежний ложный PASS. Generated CI MIDL inputs прошли
@@ -284,6 +284,19 @@ PowerShell ETS не показывает `Count`. Это дефект fixture, �
 дошёл до сравнения и совпал, то есть файлы/COM values/service второго клиента
 пережили удаление нашего продукта; проверка количества клиентов ещё должна
 подтвердить отсутствие нашего ProductCode после uninstall.
+
+### Ошибка первого варианта патча
+
+Run `42814132414`, head `12733dd1847049ad07721a6cbf7f82695b4b5104`, остановился до
+установки: linker обнаружил отсутствие публичного overload
+`EnumClassesOfCategories(..., IOPCEnumGUID**)`. Первый вариант scope-замены
+захватил его вместе с мёртвым комментарием; CI не был принят как успешный.
+Якоря патча теперь привязаны к точным сигнатурам: публичный overload остаётся
+делегирующим, изменяются только две реализации (IEnumCLSID и private
+IOPCEnumGUID). Structural guard проверяет наличие всех четырёх определений,
+сохранение delegate и двух helper-вызовов; комментарии при проверке активного
+кода исключаются, чтобы мёртвый upstream-текст не скрывал регрессию. Локальный
+fixture снова PASS; compile-only MSI-authoring собран (`b790cf01...`, не поставка).
 
 Production `LaunchCondition=Installed` сохранён. Требуется новый чистый six-case
 run; до него lifecycle нельзя считать полностью принятым, а Setup не собирается.

@@ -27,8 +27,8 @@ $expectedPatchedSource = '2ba163374d6d708e9d2a2b7b8b52dcda74ecc959a40b92fe69b9de
 $expectedCategoryPatch = 'cca5106e63285577d757f5202d3d652e19e12c9d6d0d4ddda7a3867ed6fc046c'
 $expectedCategorySource = '8713e8f45b0e3946a7a0079b657aa48e6a5f3d2aab1687e89f6ee3000ef0430a'
 $expectedComModule = 'b968a2cf6d5259538a4ddbf2120219ec3842b99da57b3789155c6e75363bebe3'
-$expectedEnumerationPatch = '76a7c51f04bdfed9715f29714ccf3f3673c68785b9fa4be36a98e60285de71a8'
-$expectedEnumerationSource = '2335e3332a44acd2f94a6b0d8f3a47ab714863d1a674e9b972591b769057895b'
+$expectedEnumerationPatch = '7c883548cab9e3dc9a00c2e3091c0ec0fb538b9ecf7de08c271cad8a99f36fca'
+$expectedEnumerationSource = '0d7f1b8569d9aea31595576d75ddcb628013be0d306487f1fbd641562031e0eb'
 if ((Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'Apply-OpcEnumSecurity.ps1') -Algorithm SHA256).Hash -ine $expectedPatch -or
     $metadata.security_patch_sha256 -ine $expectedPatch -or $metadata.opcenum_patched_sha256 -ine $expectedPatchedSource -or
     (Get-FileHash -LiteralPath $patchFile -Algorithm SHA256).Hash -ine $expectedPatch -or
