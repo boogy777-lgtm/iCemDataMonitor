@@ -60,7 +60,7 @@
 ### Проверки stage 2
 
 - `$env:PYTHONDONTWRITEBYTECODE='1'; & 'C:\Python312-32\python.exe' -m unittest discover -s tools/ci -p 'test_*.py'` (repo root) — **36/36 PASS** (common routing, exact approval dependency proof, both family-gate graphs, moved Setup owner/consumers and suite coverage).
-- `$env:PYTHONDONTWRITEBYTECODE='1'; & 'C:\Python312-32\python.exe' -m unittest discover -s tools/ci -p 'test_*.py'` (`rust/`) — **21/21 PASS** (Rust cache/vendor/encoding suite; still Rust-owned).
+- `$env:PYTHONDONTWRITEBYTECODE='1'; & 'C:\Python312-32\python.exe' -m unittest discover -s tools/ci -p 'test_*.py'` (`rust/`) — **22/22 PASS** (Rust cache/vendor/encoding suite; still Rust-owned).
 - `& 'C:\Users\HALLIBURTON\AppData\Local\Temp\opencode\pwsh-7.6.7-verified-20261110\pwsh.exe' -NoProfile -File .\shared\installer\tools\Test-WindowsSetupBuild.ps1` — обе .NET/Rust Release TEST ONLY fixture Setup сборки: 0 warnings/errors; exact embedded MSI/family/hash, selected ProductCode/refusal, no-overwrite/tamper/unsupported checks PASS. Existing Rust MSI `0.1.2` только обнаружен/read-only; никакой MSI не запускался. Это не turnkey/release acceptance.
 - `& 'C:\Users\HALLIBURTON\AppData\Local\Temp\opencode\pwsh-7.6.7-verified-20261110\pwsh.exe' -NoProfile -File .\rust\tools\Test-WindowsPackaging.ps1` — PASS pure packaging/AddIn inventory/native ownership/UI/options/path/checksum contracts.
 - `& 'C:\Users\HALLIBURTON\AppData\Local\Temp\opencode\pwsh-7.6.7-verified-20261110\pwsh.exe' -NoProfile -File .\shared\opc-runtime\tools\Test-SharedOpcRuntimeSafety.ps1` — PASS; `... -File .\shared\opc-runtime\tools\Test-SharedOpcAcceptance.ps1` — **22/22 PASS**.
@@ -70,6 +70,12 @@
 - `git diff --check` — PASS; полный release-family/hosted verdict для final stage-2 head не ожидался/не опрашивался.
 
 Stage 2 изменил только layout/call sites и test discovery. Никаких MSI installation/uninstallation, registrations, services, firewall или full Cargo/.NET solution builds не выполнялось. Runtime `descriptor-repair` failure остаётся открытым. Целевое дерево ещё не завершено: .NET project/test relocation, AddIn producer/tools/tests relocation и отдельное решение по frozen proto/SPA/catalog ownership остаются вне этой стадии.
+
+### Review follow-up: UTF-8 guard coverage после переноса
+
+После stage 2 review обнаружил, что `rust/tools/ci/test_encoding.py` продолжал glob только Rust directory и поэтому перестал проверять common sources в `tools/ci`. Исправлен один существующий AST guard: он сканирует `.py` автоматически в обоих CI roots. Новый `test_scan_finds_implicit_io_in_a_new_common_source` подаёт synthetic common source с implicit `read_text()` и `write_text(encoding='cp1251')` и требует обнаружить оба нарушения; список filenames не поддерживается вручную, implementation guard не дублируется.
+
+После follow-up: root common suite **36/36 PASS**, Rust suite **22/22 PASS** (Python 3.12); `git diff --check` PASS. Изменён только тестовый coverage и связанная документация: production/build code, approvals, baseline, source manifest, MSI и machine state не затрагивались. Hosted CI не опрашивался.
 
 ## История
 

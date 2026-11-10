@@ -357,9 +357,10 @@ cold/warm время должны быть проверены отдельно; 
 
 Локальный прогон выявил ещё один CI-дефект: Python 3.12 на Windows с CP1251
 читал UTF-8 C# oracle через системную кодировку и завершал routing-тест
-`UnicodeDecodeError`. В common routing suite `tools/ci/*.py` и Rust-specific
-`rust/tools/ci/*.py` текстовые файлы читаются/пишутся с явным UTF-8 (или UTF-8-SIG); AST-тест автоматически проверяет
-все CI Python files и отвергает пропущенную/неверную кодировку.
+`UnicodeDecodeError`. Python CI sources в common `tools/ci/` и Rust-specific
+`rust/tools/ci/` используют явный UTF-8 (или UTF-8-SIG). Единственный AST guard
+`rust/tools/ci/test_encoding.py` обнаруживает implicit/wrong encoding в обеих
+директориях; synthetic regression проверяет, что новый common `.py` реально сканируется.
 
 На этой VMware VM Python 3.12 **32-bit** после исправления: 50/50 CI routing/cache/
 vendor/encoding tests PASS; до исправления на том же Python воспроизведён FAIL.
