@@ -1,7 +1,9 @@
 # iCem repository layout — поэтапная реорганизация
 
-**Состояние:** stage 2 завершён локально и опубликован в draft PR #51; это всё ещё
-не полная миграция целевого дерева и не release acceptance. Ветка
+**Текущее состояние:** stage 3 source candidate опубликован в draft PR #51; scoped
+.NET/AddIn/shared-input relocations и их consumers завершены. Это не release
+acceptance и не полное исполнение всего буквального layout target: незавершённый
+tail перечислен отдельно ниже. Ветка
 `refactor/repo-layout-luna-20261110`, PR [#51](https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51)
 (draft, base `feat/opc-runtime-acceptance-20261110`). Основной PR #50 остаётся draft.
 
@@ -11,7 +13,13 @@
 - **Inv:** common Setup имеет единственный `shared/installer` producer; common gate tooling — `tools/ci`; Rust-specific checks остаются в `rust/tools/ci`. Exact Setup CLI/EXE/resource names, embedded MSI/family/hash, ProductCode revalidation/refusal, checksums, no-overwrite, explicit consent и own-MSI `/x`, независимые gate graphs и immutable baseline сохранены. Проверки: ownership/discovery/routing tests, Release fixture builds, packaging/safety/oracle tests и `Verify-Baseline -RequireComplete`.
 - **N+1:** новые common Setup inputs входят в `shared/installer`, common routing/cases — в `tools/ci`; `test_shared_setup_has_one_owner_and_direct_consumers`, suite discovery, tracked-path routing coverage и workflow gate tests ловят забытый consumer/path. Rust-only cache/vendor/toolchain case остаётся в `rust/tools/ci` и Rust gate.
 
-## Реализовано: old → new
+## Историческая запись этапов 1–2
+
+Следующий old → new список и утверждения «пока остаётся» ниже фиксируют состояние
+ранних stage 1/2 commits, а не актуальное дерево. Их текущий статус переопределён
+completion matrix и literal-target tail в stage 3 ниже.
+
+## Реализовано на stage 1/2: old → new
 
 - `rust/installer/opc-core/**` → `shared/opc-runtime/installer/**` (включая inventories, source patches, authoring и pure/native tests).
 - `rust/tools/{Test-SharedOpcRuntime.ps1,Test-SharedOpcRuntimeSafety.ps1,Test-SharedOpcAcceptance.ps1,SharedOpcAcceptance.psm1,WindowsBuildSdk.psm1}` → `shared/opc-runtime/tools/`.
@@ -21,11 +29,11 @@
 
 Обновлены текущие builder/fixture consumers, routing rules/tests и installer/runtime docs. PR review follow-up добавил `shared/installer/.config/dotnet-tools.json` в `opc-runtime-acceptance.yml::on.pull_request.paths` и regression `test_opc_runtime_trigger_covers_actual_inputs`: он читает именно trigger path-list и проверяет tracked Runtime installer/tools inputs, hash-sensitive `.gitattributes`, общий WiX manifest и MSI helper. Точечные hash-сравнения подтвердили неизменность moved OPC security/category/enumeration patches, native ownership inventory, component-code list и `SharedRuntime.wxs`. Не менялись canonical OPC GUID/18-component inventory, DLL locations, registry/service authoring, native ownership, Runtime version/upgrade identity, внешние API/bytes и установочные пути. Production fresh-install condition и отказ foreign/shared-owner guards сохранены. Runtime descriptor repair остаётся известным **FAIL**, здесь не исправлялся.
 
-## Что намеренно не перенесено
+## Что на stage 2 ещё не было перенесено (историческая запись)
 
-- .NET application projects/tests пока остаются в root; их перенос в `dotnet/src/tests` — отдельный механический этап.
+- На том stage .NET application projects/tests оставались в root; stage 3 перенёс их в `dotnet/src/` и `dotnet/tests/`.
 - Application-specific MSI/Product/payload modules остаются в исходных family trees; common Setup не принимает family policy из shared core.
-- `Burservis.iCem.DataMonitor` AddIn, frozen proto/SPA/catalogs и `rust/migration/source-manifest.json` не двигались и не копировались. Их содержимое/pins не менялись.
+- На том stage AddIn, proto и catalogs не двигались; stage 3 перенёс единственный AddIn в `shared/icem-addin/`, proto в `shared/contracts/`, catalogs в раздельные `shared/catalogs/{host,emulator}/`. Исторический `rust/migration/source-manifest.json` не перемещался и не менялся.
 
 ## Stage 2: common Setup и CI tooling
 
@@ -79,8 +87,9 @@ Stage 2 изменил только layout/call sites и test discovery. Ник�
 
 ## Stage 3: завершение принятого layout в Luna
 
-Stage 3 завершает целевую directory relocation в этом PR. Это только перемещение
-владения, обновление discovery/build/CI consumers и проверяемая provenance; source
+Stage 3 завершает согласованный .NET/AddIn/shared-input scope этого PR, но не весь
+буквальный layout target. Это только перемещение владения, обновление
+discovery/build/CI consumers и проверяемая provenance; source
 contents менялись только в project/call-site paths, source guards, README и CI
 routing. Namespaces, assembly/executable identities, MSI GUIDs, byte-level frozen
 inputs, runtime installed paths и application behavior не менялись.
@@ -121,6 +130,29 @@ MSI paths and each product's payload destinations are unchanged.
 5. **Bidirectional/application acceptance:** shared Runtime harness under `shared/opc-runtime/tools/`; application release and Rust/.NET family acceptance stay in their respective owners, with runtime host paths unchanged.
 6. **Signing/distribution:** existing release workflows and docs; signing credentials, certificates and distribution authorization are not claimed.
 
+### Оставшийся tail буквального layout target (не выполнен этим PR)
+
+- Rust tooling физически не реорганизован: существующие build/release scripts и
+  домены `rust/tools/{acceptance,browser,ci,perf}` сохранены; common routing уже
+  вынесен в `tools/ci/`, Rust-only cache/vendor/toolchain tests остаются в
+  `rust/tools/ci/`. Перенос Rust build/perf tooling не заявляется.
+- Rust test domains не переносились: `rust/tests/{fixtures,opc-da-interop,support,windows}`
+  и product-owned test files остались в текущем Rust дереве. Installer/integration
+  checks не перемещались в новые общие владельцы только ради симметрии.
+- Документация остаётся разделённой между общими `docs/` и Rust product-owned
+  `rust/docs/`; общего docs-root consolidation не было. Branding ownership
+  завершён только для ранее общего корневого `assets/**` → `shared/assets/**`.
+  `dotnet/installer/assets/**` и `rust/assets/**` остаются product-specific inputs,
+  а не единым общим каталогом.
+- Frozen legacy Host SPA и Rust D16/D17 SPA — разные owners и не объединялись;
+  Rust SPA остаётся в `rust/`. Product MSI/payload policy также раздельны
+  (`dotnet/installer/` и `rust/installer/`), хотя общий Setup принадлежит
+  `shared/installer/`.
+
+Это фактический незакрытый tail относительно более широкого буквального target.
+В этом review follow-up новых переносов нет; stable stage-3 source candidate
+передаётся Terra без заявления о полном target/release.
+
 ### Stage 3 validation and publication record
 
 - Common Python 3.12 suite: **36/36 PASS**; Rust-owned Python 3.12 suite: **22/22 PASS**.
@@ -132,11 +164,18 @@ MSI paths and each product's payload destinations are unchanged.
 - `actionlint` 1.7.12: **PASS** on all four changed workflows using a temporary external config declaring the repository's existing `self-hosted, Windows, X64, icem-sdk` runner labels. No repository actionlint configuration changed.
 - Baseline guard pure positive/negative cases pass through absence-probe failure; complete suite stops at the first symlink fixture because this process lacks Windows Administrator privilege (`Administrator privilege required`). No skip/bypass was added.
 - `Verify-Baseline.ps1 -RequireComplete`: **PASS**, 487 verified existing files, 26 previously approved deletions from 513 pinned origins, and 139 exact approvals. Exactly 42 current logical paths changed approval (14 exact existing approvals refreshed, 28 new); provenance points to the source-only PR51 commit. The historical source commit and source-manifest hashes are unchanged; no delete approvals were added.
-- No local Cargo compilation/check/test/clippy, full .NET solution build, MSI mutation, registration/service/firewall operation or broad cleanup was run. Full Rust/legacy verdict belongs to hosted Release CI on the exact published head. Descriptor repair and Unicode findings remain unchanged.
+- В successful recovery continuation не запускались local Cargo
+  compilation/check/test/clippy, полный .NET solution build, MSI mutation,
+  registration/service/firewall operation или broad cleanup. До recovery была
+  неуспешная Debug Cargo попытка; parent удалил только подтверждённые созданные
+  Debug binaries. Это не Release validation; audit record:
+  `artifacts/recovery/luna-debug-generated-binaries-20261111.json`. Full Rust/legacy
+  verdict принадлежит hosted Release CI на exact published head. Descriptor repair
+  и Unicode findings не менялись.
 
 - Source-only commit: `241341dea6b7b0349eb2c8ed4e5bee8866e99c45` (`Complete repository layout relocation`).
 - Exact approval/provenance commit: `61baf2cc484edfbe61a8b3b3e0b31b2559707c6b` (`Approve exact layout relocation blobs`); only the 42 changed logical baseline-owned paths were approved, with no delete approvals or unrelated approval refresh.
-- Final exact HEAD / PR #51 push: pending report-only completion commit and normal branch push.
+- Source/provenance chain confirmed: source `241341dea6b7b0349eb2c8ed4e5bee8866e99c45`, approval `61baf2cc484edfbe61a8b3b3e0b31b2559707c6b`. Предыдущий report HEAD перед этим document-only follow-up — `09b658a3efbd185f38ac95343dda3be910732fe0`; итоговый report-only commit и push проверяются по `git`/PR #51 (этот файл не может содержать hash собственного commit).
 
 ## История
 
