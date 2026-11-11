@@ -198,8 +198,12 @@ contracts, not evidence of real bidirectional uninstall, production cutover or a
 turnkey OPC Setup. Existing OPC registrations on this VM are not modified.
 
 
-The bundled `icem-opc-da-sidecar.exe` remains opt-in through Host
-`--opc-da-config`; installation does not start it or register COM classes,
-proxy/stubs, OPCEnum or DCOM permissions. The synchronous DA development profile
-and its open client/registration acceptance gates are documented in
-[OPCDA_P7B](../docs/OPCDA_P7B.ru.md).
+For normal Host `--autostart`, the bundled `icem-opc-da-sidecar.exe` beside Host
+is the default DA profile when the station's existing `opcda_on=1`. Explicit
+`opcda_on=0` suppresses startup; a supplied `--opc-da-config` selects that profile
+instead. A failed DA startup, bundled or explicit, retains fail-fast behavior and
+prevents Host readiness. Development launches without `--autostart` still need
+`--opc-da-config`. Installation itself does not start the sidecar or register
+COM classes, proxy/stubs, OPCEnum or DCOM permissions.
+Runtime class registration is not persistent discoverability or client acceptance;
+the synchronous DA profile and its open gates are in [OPCDA_P7B](../docs/OPCDA_P7B.ru.md).

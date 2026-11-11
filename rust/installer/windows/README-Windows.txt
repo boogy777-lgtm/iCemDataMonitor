@@ -43,7 +43,11 @@ Hardware, MMF/ACL, Explorer/GPU/DPI/IME, visual and production cutover acceptanc
 remain separate gates.
 
 
-Optional OPC DA synchronous read profile: icem-opc-da-sidecar.exe is included.
-Host starts it only with --opc-da-config FILE. Installation does not register
-COM classes, OPC Foundation proxy/stubs, OPCEnum or DCOM permissions.
-Windows COM/client acceptance remains open; this is a development profile.
+OPC DA synchronous read profile: icem-opc-da-sidecar.exe is included beside Host.
+Normal --autostart tries it when the existing station opcda_on=1; explicit 0
+suppresses startup. --opc-da-config FILE selects an explicit profile. Development
+launches without --autostart still require that option. An unavailable enabled
+sidecar fails Host startup. Installation does not register COM
+classes, OPC Foundation proxy/stubs, OPCEnum or DCOM permissions. Runtime class
+registration is not persistent discoverability; Windows COM/client acceptance
+remains open and this is a development profile.
