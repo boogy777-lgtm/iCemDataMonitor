@@ -47,6 +47,15 @@ GitHub runner, не проверка medium-integrity attacker или защит
 descriptor-repair при этом **FAIL**, остальные шесть cases — PASS. Ни trust,
 ни неизменность исходных bytes при repair из этого не следуют.
 
+На [42956539042](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42956539042),
+source `44a914e`, ограниченный same-SID medium token получил `ERROR_ACCESS_DENIED`
+на все шесть проверенных process rights и при install, и при repair. Matrix
+по-прежнему 6/7: `descriptor-repair` FAIL. Модель не включает другого SID,
+over-the-shoulder elevation, full UI, file replacement или изменение registry
+между preflight и записью. Наблюдаемые пути — `Windows\System32\msiexec.exe`
+и `Windows\Installer\MSI*.tmp`; это не проверка file/parent DACL или integrity
+файла. Никаких общих security-выводов из модели не делается.
+
 Документированные границы, подтверждающие необходимость проверки:
 
 * [Microsoft: AppSearch](https://learn.microsoft.com/en-us/windows/win32/msi/appsearch-table)

@@ -47,5 +47,6 @@ oracle; hosted [42952420072](https://github.com/boogy777-lgtm/iCemDataMonitor/ac
 `-p icem-emulation --features icem-emulation/ordinal-icu-26100`, включая
 тот же exhaustive test. Захваченный в этом run provider JSON имеет тот же
 SHA-256 `3cd7e208de9b2d1e898f37fc753f47f774df89a4d86b11acff28f15b4e5a96c2`.
-На момент проверки весь run ещё выполнялся; эти результаты не являются полным
-Rust CI или проверкой изменений packaging, добавленных позднее.
+Весь run позднее завершился FAIL на старом assertion default DA в
+`grpc_control.rs`, не на Unicode. Эти результаты не являются полным Rust CI
+или проверкой изменений packaging, добавленных позднее.
