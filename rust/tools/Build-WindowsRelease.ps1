@@ -14,7 +14,7 @@ $Root = Split-Path $PSScriptRoot -Parent
 $RepositoryRoot = Split-Path $Root -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
-Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force
+Import-Module (Join-Path $RepositoryRoot 'shared/icem-addin/tools/LegacyAddin.psm1') -Force
 Assert-WindowsMsiVersion $Version
 if (-not $OutputDirectory) { $OutputDirectory = 'dist/rust' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)
@@ -32,7 +32,7 @@ try {
     }
     if (-not $AddinDirectory) {
         $AddinWork = Join-Path ([IO.Path]::GetTempPath()) ('icem-release-addin-' + [guid]::NewGuid().ToString('N'))
-        & (Join-Path $PSScriptRoot 'Build-LegacyAddin.ps1') -OutputDirectory $AddinWork
+        & (Join-Path $RepositoryRoot 'shared/icem-addin/tools/Build-LegacyAddin.ps1') -OutputDirectory $AddinWork
         $AddinDirectory = $AddinWork
     }
     $null = Test-LegacyAddinBundle $AddinDirectory $RepositoryRoot

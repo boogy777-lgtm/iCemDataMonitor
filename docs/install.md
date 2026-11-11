@@ -52,14 +52,14 @@ Restart Manager сначала просит graceful shutdown; force — явн�
 завершением release gate. Установленный legacy MSI обнаруживается и блокирует
 Rust MSI: автоматического production cutover нет.
 
-Отдельный legacy builder `installer/build-msi.ps1` и workflow `release.yml`
+Отдельный legacy builder `dotnet/installer/build-msi.ps1` и workflow `release.yml`
 сохранены для reference compatibility; их GUID и runtime handoff
 не являются политикой Rust MSI. [Релиз](release.md), [конфигурация](config.md).
 
 
 ## Legacy MSI: исправленный цикл установки
 
-`installer/build-msi.ps1` сохраняет прежний UpgradeCode, ProgramData layout,
+`dotnet/installer/build-msi.ps1` сохраняет прежний UpgradeCode, ProgramData layout,
 скрытую ARP-запись и разрешённый downgrade. Замена версии теперь выполняется
 внутри MSI transaction: ошибка нового пакета откатывает удаление старого.
 Повторный запуск того же MSI ремонтирует owned files; новый build той же версии

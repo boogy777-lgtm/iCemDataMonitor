@@ -48,8 +48,8 @@ Owned frame/cache/snapshot не содержит ссылок в изменяе�
 ## Development EXE
 
 ```powershell
-cargo run -p icem-emulator-app --bin icem-lan-dev -- --templates ../iCemEmulator/templates --ticks 3 --interval-ms 0
-cargo run -p icem-emulator-app --bin icem-lan-dev -- --templates ../iCemEmulator/templates --ticks 3 --interval-ms 0 --emulate true --freeze-at 1 --firmware true --equipment 0x12345678 --preset 2 --set "0x13120206:Pump A Pressure=1000"
+cargo run -p icem-emulator-app --bin icem-lan-dev -- --templates ../shared/catalogs/emulator --ticks 3 --interval-ms 0
+cargo run -p icem-emulator-app --bin icem-lan-dev -- --templates ../shared/catalogs/emulator --ticks 3 --interval-ms 0 --emulate true --freeze-at 1 --firmware true --equipment 0x12345678 --preset 2 --set "0x13120206:Pump A Pressure=1000"
 ```
 
 --templates обязателен: существующий каталог с lantable_registry.json и

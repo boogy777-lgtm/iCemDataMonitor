@@ -82,7 +82,7 @@ fn formatter_rounding_exclusion_short_values_and_nonfinite() {
 #[test]
 fn original_profile_has_34_variables_and_32_wire_fields() -> TestResult {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../iCemEmulator/templates/flecs_4.53.json");
+        .join("../../../shared/catalogs/emulator/flecs_4.53.json");
     let template = load_template(&path, None)?;
     assert_eq!(template.variables.len(), 34);
     assert_eq!(template.variables.iter().filter(|v| !v.exclude).count(), 32);

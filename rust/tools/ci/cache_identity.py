@@ -17,6 +17,8 @@ COMMON_SCAFFOLD_INPUTS = (
     'rust/tools/Test-BaselineGuard.ps1',
     'rust/tools/Test-WindowsPackaging.ps1',
     'rust/tools/Verify-Baseline.ps1',
+    'rust/tools/BaselineMetadata.psm1',
+    'rust/tools/SourceRelocations.psm1',
     'rust/tools/Test-DesktopMappingGuard.ps1',
     'rust/tools/Verify-DesktopMapping.ps1',
     'rust/tools/Test-OpcDaInterop.ps1',
@@ -32,6 +34,7 @@ COMMON_SCAFFOLD_INPUTS = (
     'rust/tests/opc-da-interop/opccomn.idl',
     'rust/tools/ci/cache_identity.py',
     'rust/tools/ci/cache_contract.py',
+    'rust/migration/source-relocations.json',
     'rust/third-party/rust_opc/verify.py',
     'rust/third-party/rust_opc/upstream-files.sha256.json',
 )

@@ -77,6 +77,64 @@ Stage 2 изменил только layout/call sites и test discovery. Ник�
 
 После follow-up: root common suite **36/36 PASS**, Rust suite **22/22 PASS** (Python 3.12); `git diff --check` PASS. Изменён только тестовый coverage и связанная документация: production/build code, approvals, baseline, source manifest, MSI и machine state не затрагивались. Hosted CI не опрашивался.
 
+## Stage 3: завершение принятого layout в Luna
+
+Stage 3 завершает целевую directory relocation в этом PR. Это только перемещение
+владения, обновление discovery/build/CI consumers и проверяемая provenance; source
+contents менялись только в project/call-site paths, source guards, README и CI
+routing. Namespaces, assembly/executable identities, MSI GUIDs, byte-level frozen
+inputs, runtime installed paths и application behavior не менялись.
+
+### Completion matrix и old → new
+
+| Владение / класс | Старый путь | Канонический владелец | Проверка полноты |
+|---|---|---|---|
+| .NET production projects | root `iCemDataMonitor.*`, `iCemEmulator`, `iCemEmule.Core` | `dotnet/src/<project>/` | solution inventory, project references, path/source guards |
+| .NET tests | root `iCemDataMonitor.*.Tests`, `iCemEmule.Tests` | `dotnet/tests/<project>/` | `dotnet/CI.slnf`, solution inventory, moved test locators |
+| .NET solution/SDK/installer/tools | root `iCemDataMonitor.sln`, `CI.slnf`, `global.json`, `installer/`, `build.ps1`, `scripts/make-release.ps1` | `dotnet/{iCemDataMonitor.sln,CI.slnf,global.json,installer/,tools/}` | Release solution list, task/build/release consumers, package fixture |
+| Real vendor AddIn source/test producer | root `Burservis.iCem.DataMonitor{,.Tests}/` | единственный `shared/icem-addin/{src,tests}/` | AddIn source inventory/provenance tests, legacy build/test workflows |
+| AddIn build/provenance tools | `rust/tools/Build-LegacyAddin.ps1`, `rust/installer/LegacyAddin.psm1`, `rust/tools/Test-LegacyAddinInputs.ps1` | `shared/icem-addin/tools/` | SDK input, linked-source containment, exact source provenance tests |
+| Frozen common contract | `iCemDataMonitor.Contracts/Protos/telemetry.proto` | `shared/contracts/telemetry.proto` | immutable pin/frozen proto guard; no duplicate source |
+| Host catalog ownership | `iCemDataMonitor.Plugins.Icem/templates/**`, root `templates/{variable_registry,flecs_4.53,plc_basic}.json` | `shared/catalogs/host/**` | project content links, payload inventory, source-origin map |
+| Emulator catalog ownership | `iCemEmulator/templates/**` | `shared/catalogs/emulator/**` | emulator project/test/oracle/payload consumers and source-origin map |
+| Common frozen branding assets | root `assets/**` | `shared/assets/**` | exact origin blob checks and consumer-path validation |
+| Common OPC Runtime and Setup | prior `rust/installer/opc-core/**`, Rust Setup/tool paths | `shared/opc-runtime/**`, `shared/installer/**` | prior stage 1/2 safety, acceptance and Setup fixtures |
+| Common/Rust CI routing | `rust/tools/ci/{routing.py,routing-rules.json,test_routing.py}` | common `tools/ci/`; Rust-only cache/vendor checks remain `rust/tools/ci/` | 36 common + 22 Rust Python tests and workflow path/input guards |
+| Frozen Rust SPA/assets and Rust-owned products | `rust/**` | remain `rust/**` | existing frozen predicates/oracles and product-specific inventories |
+
+The exact 408 logical-origin moves and one-destination ownership map are
+`migration/source-relocations.json`; the pinned historical `source-manifest.json`
+remains unchanged. Host and emulator catalogs are deliberately separate even
+where two historical lantable files have identical bytes. `rust/assets/**` remain
+Rust product inputs; only the historical common root `assets/**` moved to
+`shared/assets/**`. Rust D16/D17 SPA copies remain Rust-owned, separate from the
+legacy Host SPA. `dotnet/installer/assets/**` remain .NET installer-specific
+branding/bitmaps; they are not duplicated into the common icon root. Installed
+MSI paths and each product's payload destinations are unchanged.
+
+### Terra handoff: six task paths after layout completion
+
+1. **DCOM descriptor repair:** `shared/opc-runtime/installer/{SharedRuntime.wxs,New-OpcRuntimeModule.ps1,native-runtime-inventory.json}` and `shared/opc-runtime/tools/{Test-SharedOpcRuntime.ps1,SharedOpcAcceptance.psm1}`. Four descriptor repair and trusted execute-side guards remain separate; the known repair failure is not fixed or suppressed here.
+2. **Unicode provider:** unchanged `rust/crates/icem-emulation/src/identity.rs` and `rust/tools/ordinal-identity-baseline.json`; frozen oracle and Unicode behavior remain Terra scope.
+3. **OPC operator/coexistence:** Runtime implementation under `shared/opc-runtime/`, common Setup under `shared/installer/`, Rust MSI family policy under `rust/installer/`, legacy .NET MSI policy under `dotnet/installer/`; no UX WIP changed.
+4. **UX / real SDK AddIn build:** canonical source/tests/provenance are now `shared/icem-addin/{src,tests,tools}/`; real SDK-dependent build/visual acceptance remains external and was not simulated.
+5. **Bidirectional/application acceptance:** shared Runtime harness under `shared/opc-runtime/tools/`; application release and Rust/.NET family acceptance stay in their respective owners, with runtime host paths unchanged.
+6. **Signing/distribution:** existing release workflows and docs; signing credentials, certificates and distribution authorization are not claimed.
+
+### Stage 3 validation and publication record
+
+- Common Python 3.12 suite: **36/36 PASS**; Rust-owned Python 3.12 suite: **22/22 PASS**.
+- `Test-WindowsPackaging.ps1`: **PASS**, including AddIn source boundary/provenance, payload roundtrip, checksum, native ownership/options and frozen path contracts.
+- Runtime safety: **PASS**; Runtime acceptance fixture: **22/22 PASS**.
+- `Test-WindowsSetupBuild.ps1`: **PASS**; both Release-only Setup fixture builds had 0 warnings/errors, with family/product/checksum/refusal checks. The fixtures compile only; no MSI install/uninstall/repair occurred.
+- `dotnet sln dotnet/iCemDataMonitor.sln list`: **27 projects**; `git diff --check`: **PASS**. The PowerShell parser and changed-workflow `actionlint` results are recorded after the final source/provenance pair below.
+- Baseline guard pure positive/negative cases pass through absence-probe failure; complete suite stops at the first symlink fixture because this process lacks Windows Administrator privilege (`Administrator privilege required`). No skip/bypass was added. `Verify-Baseline -RequireComplete` remains the required exact-approval gate after the source commit.
+- No local Cargo compilation/check/test/clippy, full .NET solution build, MSI mutation, registration/service/firewall operation or broad cleanup was run. Full Rust/legacy verdict belongs to hosted Release CI on the exact published head. Descriptor repair and Unicode findings remain unchanged.
+
+- Source-only commit: pending.
+- Exact approval/provenance commit: pending; only the 42 genuinely changed logical baseline-owned paths will be updated after the source commit, without delete approvals or unrelated approval refresh.
+- Final exact HEAD / PR #51 push: pending.
+
 ## История
 
 - Parent/base: `c2724ccb80693f41309f81cea4d1f3155459bbe3`.

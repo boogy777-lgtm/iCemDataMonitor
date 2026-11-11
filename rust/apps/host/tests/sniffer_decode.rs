@@ -81,7 +81,7 @@ fn original_host_decoder_matches_catalog_types_spans_and_pinned_wire()
     let mut checks = 0;
     let mut types = std::collections::BTreeSet::new();
     let mut catalog =
-        Catalog::load(&root.join("iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json"))?;
+        Catalog::load(&root.join("shared/catalogs/host/lantable_registry.json"))?;
     for case in cases {
         let frame = bytes(text(case, "frame")?)?;
         let signals = case["signals"].as_array().ok_or("signals")?;

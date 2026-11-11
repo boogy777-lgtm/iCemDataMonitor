@@ -30,9 +30,9 @@ Windows x64, PowerShell7.6 (.NET 10), Rust1.99.1 (rust-toolchain.toml), MSVC/Win
 ```powershell
 cargo fetch --locked
 cargo fmt --all --check
-cargo check --workspace --all-targets --locked --offline
-cargo test --workspace --locked --offline
-cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+cargo check --release --workspace --all-targets --locked --offline
+cargo test --release --workspace --locked --offline
+cargo clippy --release --workspace --all-targets --locked --offline -- -D warnings
 cargo build --release --locked --offline -p icem-host-app -p icem-shell-app -p icem-emulator-app -p icem-opc-da-sidecar
 pwsh -NoProfile -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
 ```

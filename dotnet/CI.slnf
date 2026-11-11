@@ -1,0 +1,30 @@
+{
+  "solution": {
+    "path": "iCemDataMonitor.sln",
+    "projects": [
+      "src\\iCemDataMonitor.Contracts\\iCemDataMonitor.Contracts.csproj",
+      "tests\\iCemDataMonitor.Contracts.Tests\\iCemDataMonitor.Contracts.Tests.csproj",
+      "src\\iCemDataMonitor.Sdk\\iCemDataMonitor.Sdk.csproj",
+      "tests\\iCemDataMonitor.Sdk.Tests\\iCemDataMonitor.Sdk.Tests.csproj",
+      "src\\iCemDataMonitor.Core\\iCemDataMonitor.Core.csproj",
+      "tests\\iCemDataMonitor.Core.Tests\\iCemDataMonitor.Core.Tests.csproj",
+      "src\\iCemDataMonitor.Data\\iCemDataMonitor.Data.csproj",
+      "tests\\iCemDataMonitor.Data.Tests\\iCemDataMonitor.Data.Tests.csproj",
+      "src\\iCemDataMonitor.Transport\\iCemDataMonitor.Transport.csproj",
+      "tests\\iCemDataMonitor.Transport.Tests\\iCemDataMonitor.Transport.Tests.csproj",
+      "src\\iCemDataMonitor.Plugins.Icem\\iCemDataMonitor.Plugins.Icem.csproj",
+      "tests\\iCemDataMonitor.Plugins.Icem.Tests\\iCemDataMonitor.Plugins.Icem.Tests.csproj",
+      "src\\iCemDataMonitor.Host.Core\\iCemDataMonitor.Host.Core.csproj",
+      "src\\iCemDataMonitor.HostClient\\iCemDataMonitor.HostClient.csproj",
+      "src\\iCemDataMonitor.Host\\iCemDataMonitor.Host.csproj",
+      "tests\\iCemDataMonitor.Host.Tests\\iCemDataMonitor.Host.Tests.csproj",
+      "src\\iCemDataMonitor.Shell.WinUI\\iCemDataMonitor.Shell.WinUI.csproj",
+      "src\\iCemDataMonitor.Tools.IconGen\\iCemDataMonitor.Tools.IconGen.csproj",
+      "src\\iCemDataMonitor.Emulator.WinUI\\iCemDataMonitor.Emulator.WinUI.csproj",
+      "tests\\iCemDataMonitor.UI.Tests\\iCemDataMonitor.UI.Tests.csproj",
+      "src\\iCemEmulator\\iCemEmulator.csproj",
+      "src\\iCemEmule.Core\\iCemEmule.Core.csproj",
+      "tests\\iCemEmule.Tests\\iCemEmule.Tests.csproj"
+    ]
+  }
+}

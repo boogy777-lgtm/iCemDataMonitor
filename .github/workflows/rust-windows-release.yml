@@ -92,7 +92,7 @@ jobs:
           ADDIN_RUN_ID: ${{ inputs.addin_run_id }}
         run: |
           if ($env:ADDIN_RUN_ID) {
-            Import-Module ./installer/LegacyAddin.psm1 -Force
+            Import-Module ./shared/icem-addin/tools/LegacyAddin.psm1 -Force
             $Bundle = Test-LegacyAddinBundle (Join-Path $env:RUNNER_TEMP 'icem-addin') (Split-Path $PWD -Parent)
             if ($Bundle.source_commit -cne $env:ICEM_ADDIN_SOURCE_COMMIT) { throw 'AddIn manifest commit differs from SDK workflow run' }
             ./tools/Build-WindowsRelease.ps1 -Version $env:ICEM_RELEASE_VERSION -AddinDirectory (Join-Path $env:RUNNER_TEMP 'icem-addin')

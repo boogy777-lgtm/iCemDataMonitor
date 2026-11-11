@@ -9,7 +9,7 @@ $Repo = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Pare
 $Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-setup-contract-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($Work) | Out-Null
 $Rust = Get-Content -Raw -LiteralPath (Join-Path $Repo 'rust/installer/windows-installer.json') | ConvertFrom-Json
-$Legacy = [xml](Get-Content -Raw -LiteralPath (Join-Path $Repo 'installer/Product.wxs'))
+$Legacy = [xml](Get-Content -Raw -LiteralPath (Join-Path $Repo 'dotnet/installer/Product.wxs'))
 $Families = [ordered]@{
     '.NET' = [guid]$Legacy.SelectSingleNode('/*[local-name()="Wix"]/*[local-name()="Package"]').GetAttribute('UpgradeCode')
     'Rust' = [guid]$Rust.upgrade_code

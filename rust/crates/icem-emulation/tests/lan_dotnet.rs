@@ -109,7 +109,7 @@ fn original_lan_providers_byte_for_byte() -> TestResult {
         major >= 9,
         "source targets .NET 9+ saturating cast semantics"
     );
-    let templates = root.join("iCemEmulator/templates");
+    let templates = root.join("shared/catalogs/emulator");
     let registry = Registry::load(
         &templates.join("lantable_registry.json"),
         Some(&templates.join("firmware_registry.json")),

@@ -54,9 +54,9 @@ Toolchain закреплён в `rust/rust-toolchain.toml`: Rust **1.99.1**, Edi
 ```powershell
 cargo fetch --locked
 cargo fmt --all --check
-cargo check --workspace --all-targets --locked --offline
-cargo test --workspace --locked --offline
-cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+cargo check --release --workspace --all-targets --locked --offline
+cargo test --release --workspace --locked --offline
+cargo clippy --release --workspace --all-targets --locked --offline -- -D warnings
 cargo build --release --locked --offline -p icem-host-app -p icem-shell-app -p icem-emulator-app -p icem-opc-da-sidecar
 ```
 
@@ -86,10 +86,10 @@ release builder. Опциональный `Start-Emulator.ps1` запускае�
 Изолированный пример без станции (fixture, не живые измерения):
 
 ```powershell
-cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixtures/bus-v5-minimal.bin --bind 127.0.0.1:1502 --duration-ms 10000
+cargo run --release -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixtures/bus-v5-minimal.bin --bind 127.0.0.1:1502 --duration-ms 10000
 ```
 
-Для полного MSI дополнительно нужны .NET SDK из `global.json`, WiX 5.0.2
+Для полного MSI дополнительно нужны .NET SDK из `dotnet/global.json`, WiX 5.0.2
 (закреплённый tool manifest) и **реальный iCem SDK либо проверенный SDK-built AddIn bundle**.
 Из корня репозитория:
 
@@ -123,8 +123,9 @@ COM/LAN по умолчанию выключены. Npcap нужен для LAN 
 |---|---|
 | `rust/apps/`, `rust/crates/` | Текущие Host, Shell, independent emulator, общие данные и adapters |
 | `rust/installer/`, `rust/tools/` | Windows candidate MSI, verification и release tooling |
-| `Burservis.iCem.DataMonitor/` | Сохранённый net48 AddIn внутри vendor iCem |
-| Корневые `.NET` проекты, `installer/` | Legacy reference/build compatibility и исходный MSI |
+| `dotnet/src/`, `dotnet/tests/`, `dotnet/installer/` | Legacy .NET reference/build compatibility и исходный MSI |
+| `shared/icem-addin/` | Единственный сохранённый net48 AddIn producer, tests и provenance tooling |
+| `shared/contracts/`, `shared/catalogs/{host,emulator}/`, `shared/assets/` | Единственные frozen common inputs; Host/emulator catalogs имеют отдельное владение |
 | `rust/contracts/` | Действующий OpenAPI и исторический pinned route inventory |
 | `rust/migration/` | Неизменный source manifest и exact-hash legacy divergence ledger |
 | `specs/` | Wire/config contracts и legacy спецификации с явным current-status override |

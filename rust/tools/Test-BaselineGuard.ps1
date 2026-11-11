@@ -17,6 +17,9 @@ function Hash-Fixture([string] $Path) {
 function Save-Ledger {
     Write-Fixture 'rust/migration/legacy-divergences.json' ($script:Ledger | ConvertTo-Json -Depth 8)
 }
+function Save-Relocations($Entries) {
+    Write-Fixture 'rust/migration/source-relocations.json' (@{ schema_version = 1; relocations = @($Entries) } | ConvertTo-Json -Depth 8)
+}
 function New-Fixture {
     if (Test-Path $Fixture) { Remove-Item -LiteralPath $Fixture -Recurse -Force }
     [IO.Directory]::CreateDirectory($Fixture) | Out-Null
@@ -25,6 +28,8 @@ function New-Fixture {
     Write-Fixture '.gitattributes' "*.ps1 text eol=crlf`n"
     Write-Fixture 'legacy.cs' "baseline`n"
     Write-Fixture 'legacy.ps1' "# baseline`n"
+    Write-Fixture 'owner-a.cs' 'same bytes'
+    Write-Fixture 'owner-b.cs' 'same bytes'
     Write-Fixture 'iCemDataMonitor.Contracts/Protos/telemetry.proto' "syntax = `"proto3`";`n"
     foreach ($Name in @('iCemDataMonitor.ico', 'iCemEmule.ico')) {
         Write-Fixture "assets/$Name" 'synthetic icon bytes for guard test'
@@ -39,7 +44,7 @@ function New-Fixture {
     Write-Fixture 'rust/web/dashboard/main.css' 'body {}'
     Write-Fixture 'rust/contracts/http/openapi.json' '{"paths":{"/active":{}}}'
     Write-Fixture 'rust/contracts/http/route-inventory.json' '{"routes":[{"path":"/active","status":"active"}]}'
-    $Files = @('.gitattributes', 'legacy.cs', 'legacy.ps1', 'iCemDataMonitor.Contracts/Protos/telemetry.proto',
+    $Files = @('.gitattributes', 'legacy.cs', 'legacy.ps1', 'owner-a.cs', 'owner-b.cs', 'iCemDataMonitor.Contracts/Protos/telemetry.proto',
         'assets/iCemDataMonitor.ico', 'assets/iCemEmule.ico', 'iCemDataMonitor.Host/wwwroot/index.html',
         'iCemDataMonitor.Host/wwwroot/main.css') | ForEach-Object {
             @{ path = $_; git_blob_sha1 = Hash-Fixture $_; size = (Get-Item -Force (Join-Path $Fixture $_)).Length }
@@ -58,8 +63,11 @@ function New-Fixture {
         })
     }
     Save-Ledger
+    Save-Relocations @()
     [IO.Directory]::CreateDirectory((Join-Path $Fixture 'rust/tools')) | Out-Null
     Copy-Item -LiteralPath $Guard -Destination (Join-Path $Fixture 'rust/tools/Verify-Baseline.ps1')
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'BaselineMetadata.psm1') -Destination (Join-Path $Fixture 'rust/tools/BaselineMetadata.psm1')
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'SourceRelocations.psm1') -Destination (Join-Path $Fixture 'rust/tools/SourceRelocations.psm1')
 }
 function Check-Case([string] $Name, [scriptblock] $Mutate, [string] $ExpectedError = '') {
     New-Fixture
@@ -79,6 +87,65 @@ try {
     Check-Case 'revert of accepted maintenance' { Write-Fixture 'legacy.cs' "baseline`n" } 'Hash mismatch: legacy.cs'
     Check-Case 'unlisted legacy change' { Write-Fixture 'legacy.ps1' '# unreviewed' } 'Hash mismatch: legacy.ps1'
     Check-Case 'missing baseline file' { Remove-Item (Join-Path $Fixture 'legacy.cs') } 'Full source copy is required'
+    Check-Case 'relocation preserves exact approved blob' {
+        $Old = Join-Path $Fixture 'legacy.cs'
+        $New = Join-Path $Fixture 'dotnet/src/legacy.cs'
+        [IO.Directory]::CreateDirectory((Split-Path $New -Parent)) | Out-Null
+        Move-Item -LiteralPath $Old -Destination $New
+        Save-Relocations @(@{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/legacy.cs' })
+    }
+    Check-Case 'relocation cannot alias an unmoved equal-byte owner' {
+        Remove-Item -LiteralPath (Join-Path $Fixture 'owner-a.cs')
+        Save-Relocations @(@{ source_path = 'owner-a.cs'; destination_path = 'OWNER-B.cs' })
+    } 'Colliding effective source paths'
+    Check-Case 'relocation destination tampering rejected' {
+        Remove-Item -LiteralPath (Join-Path $Fixture 'legacy.cs')
+        Write-Fixture 'dotnet/src/legacy.cs' 'tampered'
+        Save-Relocations @(@{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/legacy.cs' })
+    } 'Hash mismatch: legacy.cs'
+    Check-Case 'missing relocation destination rejected' {
+        Remove-Item -LiteralPath (Join-Path $Fixture 'legacy.cs')
+        Save-Relocations @(@{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/missing.cs' })
+    } 'Full source copy is required'
+    Check-Case 'retired source owner rejected' {
+        Write-Fixture 'dotnet/src/legacy.cs' "approved maintenance`n"
+        Save-Relocations @(@{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/legacy.cs' })
+    } 'Approved deleted path exists: legacy.cs'
+    foreach ($Entry in @(
+        @{ source_path = 'unknown.cs'; destination_path = 'dotnet/src/unknown.cs' },
+        @{ source_path = 'legacy.cs'; destination_path = '../outside.cs' },
+        @{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/trailing./file.cs' },
+        @{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/trailing /file.cs' },
+        @{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/one.cs'; extra = $true },
+        @{ source_path = 'legacy.cs'; destination_path = 'legacy.cs' })) {
+        Check-Case "invalid relocation $($Entry | ConvertTo-Json -Compress)" { Save-Relocations @($Entry) } 'relocation'
+    }
+    Check-Case 'duplicate relocation source rejected' {
+        Save-Relocations @(
+            @{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/one.cs' },
+            @{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/two.cs' })
+    } 'Duplicate relocation source'
+    Check-Case 'case alias destination rejected' {
+        Save-Relocations @(
+            @{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/one.cs' },
+            @{ source_path = 'legacy.ps1'; destination_path = 'dotnet/src/ONE.cs' })
+    } 'Colliding/case-alias relocation destination'
+    Check-Case 'file cannot alias another effective path ancestor' {
+        Save-Relocations @(@{ source_path = 'owner-a.cs'; destination_path = 'legacy.cs/child.cs' })
+    } 'Effective source file is also a path ancestor'
+    Check-Case 'unknown relocation document field rejected' {
+        Write-Fixture 'rust/migration/source-relocations.json' '{"schema_version":1,"relocations":[],"extra":true}'
+    } 'Unknown or missing source-relocation fields'
+    Check-Case 'duplicate relocation JSON key rejected' {
+        Write-Fixture 'rust/migration/source-relocations.json' '{"schema_version":1,"schema_version":1,"relocations":[]}'
+    } 'Duplicate source-relocation JSON key'
+    Check-Case 'frozen source cannot be overridden by relocation' {
+        Remove-Item -LiteralPath (Join-Path $Fixture 'iCemDataMonitor.Contracts/Protos/telemetry.proto')
+        Remove-Item -LiteralPath (Join-Path $Fixture 'iCemDataMonitor.Contracts/Protos') -Force
+        Remove-Item -LiteralPath (Join-Path $Fixture 'iCemDataMonitor.Contracts') -Force
+        Write-Fixture 'shared/contracts/telemetry.proto' 'tampered'
+        Save-Relocations @(@{ source_path = 'iCemDataMonitor.Contracts/Protos/telemetry.proto'; destination_path = 'shared/contracts/telemetry.proto' })
+    } 'Hash mismatch:'
     Check-Case 'missing approval' { $script:Ledger.changes = @(); Save-Ledger } 'Hash mismatch: legacy.cs'
     Check-Case 'wrong upstream commit' { $script:Ledger.source_commit = '3' * 40; Save-Ledger } 'schema/source commit mismatch'
     Check-Case 'upstream commit must be scalar string' { $script:Ledger.source_commit = @($script:Ledger.source_commit); Save-Ledger } 'schema/source commit mismatch'
@@ -116,6 +183,10 @@ try {
         Remove-Item -LiteralPath (Join-Path $Fixture 'legacy.cs')
         Save-Ledger
     }
+    Check-Case 'approved deletion cannot be mapped' {
+        Approve-Deletion
+        Save-Relocations @(@{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/legacy.cs' })
+    } 'Approved deletion cannot be relocated'
     Check-Case 'approved delete complete' { Approve-Deletion }
     Check-Case 'delete with hash rejected' { Approve-Deletion; $script:Ledger.changes[0].approved_blob_sha1 = '3' * 40; Save-Ledger } 'Unknown or missing ledger fields'
     Check-Case 'delete wrong baseline' { Approve-Deletion; $script:Ledger.changes[0].baseline_blob_sha1 = '3' * 40; Save-Ledger } 'Invalid divergence hashes'
@@ -123,6 +194,15 @@ try {
     Check-Case 'delete missing provenance' { Approve-Deletion; $script:Ledger.changes[0].provenance.reason = ''; Save-Ledger } 'Missing divergence provenance'
     Check-Case 'deleted file returned' { Approve-Deletion; Write-Fixture 'legacy.cs' 'returned' } 'Approved deleted path exists'
     Check-Case 'deleted directory returned' { Approve-Deletion; [IO.Directory]::CreateDirectory((Join-Path $Fixture 'legacy.cs')) | Out-Null } 'Approved deleted path exists'
+    Check-Case 'absence probe errors fail closed' {
+        Approve-Deletion
+        # Inject a provider read error, independent of OS privileges (CI may run as root).
+        $GuardPath = Join-Path $Fixture 'rust/tools/Verify-Baseline.ps1'
+        $Text = [IO.File]::ReadAllText($GuardPath).Replace(
+            'try { $Entry = Get-Item -Force -LiteralPath $Current -ErrorAction Stop }',
+            "try { throw [IO.IOException]::new('synthetic absence probe I/O failure') }")
+        [IO.File]::WriteAllText($GuardPath, $Text)
+    } 'synthetic absence probe I/O failure'
     foreach ($Target in @('legacy.ps1', 'missing-target')) {
         Check-Case "deleted symlink $Target" {
             Approve-Deletion
@@ -139,15 +219,18 @@ try {
         Save-Ledger
         New-Item -ItemType SymbolicLink -Path (Join-Path $Fixture 'nested') -Target (Join-Path $Fixture 'missing-parent') | Out-Null
     } 'Deleted path has link or redirected parent'
-    Check-Case 'absence probe errors fail closed' {
-        Approve-Deletion
-        # Inject a provider read error, independent of OS privileges (CI may run as root).
-        $GuardPath = Join-Path $Fixture 'rust/tools/Verify-Baseline.ps1'
-        $Text = [IO.File]::ReadAllText($GuardPath).Replace(
-            'try { $Entry = Get-Item -Force -LiteralPath $Current -ErrorAction Stop }',
-            "try { throw [IO.IOException]::new('synthetic absence probe I/O failure') }")
-        [IO.File]::WriteAllText($GuardPath, $Text)
-    } 'synthetic absence probe I/O failure'
+    Check-Case 'relocation destination symlink rejected' {
+        Remove-Item -LiteralPath (Join-Path $Fixture 'legacy.cs')
+        $Destination = Join-Path $Fixture 'dotnet/src/legacy.cs'
+        [IO.Directory]::CreateDirectory((Split-Path $Destination -Parent)) | Out-Null
+        New-Item -ItemType SymbolicLink -Path $Destination -Target (Join-Path $Fixture 'legacy.ps1') | Out-Null
+        Save-Relocations @(@{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/legacy.cs' })
+    } 'Source relocation path contains a link/reparse point'
+    Check-Case 'relocation redirected parent rejected' {
+        Remove-Item -LiteralPath (Join-Path $Fixture 'legacy.cs')
+        New-Item -ItemType SymbolicLink -Path (Join-Path $Fixture 'dotnet') -Target $Fixture | Out-Null
+        Save-Relocations @(@{ source_path = 'legacy.cs'; destination_path = 'dotnet/src/legacy.cs' })
+    } 'Source relocation path contains a link/reparse point'
     Write-Host 'Baseline guard regression suite passed.'
 } finally {
     if (Test-Path $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force }

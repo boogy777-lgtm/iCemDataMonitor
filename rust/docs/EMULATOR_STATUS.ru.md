@@ -55,8 +55,8 @@ exhaustive decode match проверяет полноту.
 Из rust/:
 
 ```powershell
-cargo run -p icem-emulator-app --bin icem-emulator-dev -- --template ../iCemEmulator/templates/flecs_4.53.json --ticks 3 --set "PS Pump Press=1234.5"
-cargo run -p icem-emulator-app --bin icem-emulator-dev -- --template ../iCemEmulator/templates/plc_basic.json --ticks 3 --interval-ms 0 --format json
+cargo run -p icem-emulator-app --bin icem-emulator-dev -- --template ../shared/catalogs/emulator/flecs_4.53.json --ticks 3 --set "PS Pump Press=1234.5"
+cargo run -p icem-emulator-app --bin icem-emulator-dev -- --template ../shared/catalogs/emulator/plc_basic.json --ticks 3 --interval-ms 0 --format json
 ```
 
 --registry PATH выбирает explicit registry. --set принимает текущие Name/LegacyName

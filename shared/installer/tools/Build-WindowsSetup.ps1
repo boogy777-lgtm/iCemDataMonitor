@@ -14,7 +14,7 @@ if ((Test-Path -LiteralPath $Output) -or (Test-Path -LiteralPath "$Output.sha256
 $Hash = (Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash.ToLowerInvariant()
 if ((Get-Content -Raw -LiteralPath "$Msi.sha256").Split(' ')[0] -ine $Hash) { throw 'MSI checksum mismatch' }
 $Rust = Get-Content -Raw (Join-Path $Repo 'rust/installer/windows-installer.json') | ConvertFrom-Json
-$Legacy = [xml](Get-Content -Raw (Join-Path $Repo 'installer/Product.wxs'))
+$Legacy = [xml](Get-Content -Raw (Join-Path $Repo 'dotnet/installer/Product.wxs'))
 $LegacyCode = $Legacy.SelectSingleNode('/*[local-name()="Wix"]/*[local-name()="Package"]').GetAttribute('UpgradeCode')
 $Families = @{ '.NET' = [guid]$LegacyCode; 'Rust' = [guid]$Rust.upgrade_code }
 $WindowsInstaller = New-Object -ComObject WindowsInstaller.Installer
@@ -43,7 +43,10 @@ try {
     [IO.File]::WriteAllText($Inventory, ".NET|$([guid]$LegacyCode)`nRust|$([guid]$Rust.upgrade_code)`n")
     [IO.File]::WriteAllText($HashPath, $Hash)
     [IO.File]::WriteAllText($FamilyPath, $PayloadFamilies[0])
-    & dotnet build (Join-Path $Repo 'shared/installer/bootstrapper/Setup.csproj') -c Release "-p:PayloadPath=$Msi" "-p:InventoryPath=$Inventory" "-p:HashPath=$HashPath" "-p:FamilyPath=$FamilyPath" "-p:OutputPath=$Work/bin/" "-p:BaseIntermediateOutputPath=$Work/obj/" | Out-Host
+    Push-Location (Join-Path $Repo 'dotnet')
+    try {
+        & dotnet build (Join-Path $Repo 'shared/installer/bootstrapper/Setup.csproj') -c Release "-p:PayloadPath=$Msi" "-p:InventoryPath=$Inventory" "-p:HashPath=$HashPath" "-p:FamilyPath=$FamilyPath" "-p:OutputPath=$Work/bin/" "-p:BaseIntermediateOutputPath=$Work/obj/" | Out-Host
+    } finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { throw 'Windows setup compilation failed' }
     $Built = Join-Path $Work 'bin/iCemDataMonitor-Setup.exe'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-WindowsSetup.ps1') -Setup $Built -ExpectedMsi $Msi -ExpectedFamily $PayloadFamilies[0] | Out-Host

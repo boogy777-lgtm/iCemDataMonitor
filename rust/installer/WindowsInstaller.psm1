@@ -93,7 +93,7 @@ function Write-WindowsInstallerPayload([string] $PayloadDirectory, [string] $Rep
     return $Wxs
 }
 function New-WindowsInstallerAssets([string] $RepositoryRoot, [string] $WorkDirectory) {
-    $Legacy = Join-Path $RepositoryRoot 'installer'
+    $Legacy = Join-Path $RepositoryRoot 'dotnet/installer'
     $Adapter = Join-Path $WorkDirectory 'branding'
     $Assets = Join-Path $Adapter 'assets'
     [IO.Directory]::CreateDirectory($Assets) | Out-Null

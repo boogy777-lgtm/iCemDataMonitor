@@ -4,36 +4,16 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 $SourceRoot = Split-Path $Root -Parent
 $Manifest = Get-Content -Raw (Join-Path $Root 'migration/source-manifest.json') | ConvertFrom-Json
+Import-Module (Join-Path $PSScriptRoot 'BaselineMetadata.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'SourceRelocations.psm1') -Force
 # Keep the upstream manifest immutable. Approved legacy maintenance has a separate,
 # exact-path ledger; it cannot override frozen protocol, icon or SPA checks.
-function Assert-UniqueJsonKeys([System.Text.Json.JsonElement] $Node) {
-    if ($Node.ValueKind -eq 'Object') {
-        $Names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-        foreach ($Property in $Node.EnumerateObject()) {
-            if (-not $Names.Add($Property.Name)) { throw 'Duplicate ledger JSON key' }
-            Assert-UniqueJsonKeys $Property.Value
-        }
-    } elseif ($Node.ValueKind -eq 'Array') {
-        foreach ($Child in $Node.EnumerateArray()) { Assert-UniqueJsonKeys $Child }
-    }
-}
-function Assert-Fields($Object, [string[]] $Names) {
-    if ($Object -isnot [System.Collections.IDictionary] -or
-        $Object.Count -ne $Names.Count -or @($Object.Keys | Where-Object { $_ -cnotin $Names }).Count) {
-        throw 'Unknown or missing ledger fields'
-    }
-}
-function Test-CanonicalPath($Value) {
-    return ($Value -is [string] -and $Value.Length -gt 0 -and
-        $Value -cnotmatch '(^/|[\\:\x00-\x1f\x7f])' -and
-        @($Value.Split('/') | Where-Object { $_ -cin @('', '.', '..') }).Count -eq 0)
-}
 $LedgerText = [IO.File]::ReadAllText((Join-Path $Root 'migration/legacy-divergences.json'),
     [Text.UTF8Encoding]::new($false, $true))
 $Json = [System.Text.Json.JsonDocument]::Parse($LedgerText)
-try { Assert-UniqueJsonKeys $Json.RootElement } finally { $Json.Dispose() }
+try { Assert-UniqueJsonKeys $Json.RootElement 'Duplicate ledger JSON key' } finally { $Json.Dispose() }
 $Ledger = ConvertFrom-Json -InputObject $LedgerText -AsHashtable
-Assert-Fields $Ledger @('schema_version', 'source_commit', 'changes')
+Assert-ExactFields $Ledger @('schema_version', 'source_commit', 'changes') 'Unknown or missing ledger fields'
 if ($Ledger.schema_version -isnot [long] -or $Ledger.schema_version -ne 2 -or $Ledger.source_commit -isnot [string] -or $Ledger.source_commit -cne $Manifest.source_commit -or
     $Ledger.changes -isnot [array]) {
     throw 'Legacy divergence ledger schema/source commit mismatch'
@@ -48,7 +28,7 @@ foreach ($Change in $Ledger.changes) {
     if ($Change.operation -cnotin @('modify', 'delete')) { throw 'Unknown divergence operation' }
     $Fields = @('path', 'operation', 'baseline_blob_sha1', 'provenance')
     if ($Change.operation -ceq 'modify') { $Fields += 'approved_blob_sha1' }
-    Assert-Fields $Change $Fields
+    Assert-ExactFields $Change $Fields 'Unknown or missing ledger fields'
     if (-not (Test-CanonicalPath $Change.path)) { throw 'Noncanonical divergence path' }
     if (-not $Baseline.ContainsKey($Change.path)) { throw "Divergence outside baseline: $($Change.path)" }
     if ($Change.path -match '(?i)(\.proto$|^assets/|^iCemDataMonitor.Host/wwwroot/)') {
@@ -61,7 +41,7 @@ foreach ($Change in $Ledger.changes) {
          $Change.approved_blob_sha1 -ceq $Change.baseline_blob_sha1))) {
         throw "Invalid divergence hashes: $($Change.path)"
     }
-    Assert-Fields $Change.provenance @('commit', 'pull_request', 'reason')
+    Assert-ExactFields $Change.provenance @('commit', 'pull_request', 'reason') 'Unknown or missing ledger fields'
     $PullPrefix = 'https://github.com/' + $Manifest.source_repository + '/pull/'
     if ($Change.provenance.commit -isnot [string] -or $Change.provenance.commit -cnotmatch '^[0-9a-f]{40}$' -or
         $Change.provenance.pull_request -isnot [string] -or
@@ -94,17 +74,33 @@ function Get-CanonicalHash([string] $FilePath, [string] $Relative) {
     if ($LASTEXITCODE -ne 0) { throw "Cannot hash $Relative" }
     return $Hash.Trim()
 }
+$DeletedPaths = @($Approved.Values | Where-Object operation -ceq 'delete' | ForEach-Object path)
+$Relocations = Read-SourceRelocations (Join-Path $Root 'migration/source-relocations.json') @($Manifest.files | ForEach-Object path) $DeletedPaths
+$Owners = @($Manifest.files | Where-Object { $_.path.Contains('/') } | ForEach-Object { $_.path.Split('/')[0] } | Sort-Object -Unique)
+foreach ($Owner in $Owners) {
+    $OwnerItems = @($Manifest.files | Where-Object {
+        $_.path.StartsWith($Owner + '/', [StringComparison]::Ordinal) -and
+        -not ($Approved.ContainsKey($_.path) -and $Approved[$_.path].operation -ceq 'delete')
+    })
+    if ($OwnerItems.Count -gt 0 -and @($OwnerItems | Where-Object { -not $Relocations.ContainsKey($_.path) }).Count -eq 0) {
+        Assert-DeletedPathAbsent $Owner
+    }
+}
 $Missing = @()
 $Verified = 0
 $Deleted = 0
 foreach ($Item in $Manifest.files) {
+    $Relative = if ($Relocations.ContainsKey($Item.path)) { $Relocations[$Item.path] } else { $Item.path }
     if ($Approved.ContainsKey($Item.path) -and $Approved[$Item.path].operation -ceq 'delete') {
+        if ($Relocations.ContainsKey($Item.path)) { throw "Approved deletion cannot be relocated: $($Item.path)" }
         Assert-DeletedPathAbsent $Item.path
         $Deleted++
         continue
     }
     $ExpectedHash = if ($Approved.ContainsKey($Item.path)) { $Approved[$Item.path].approved_blob_sha1 } else { $Item.git_blob_sha1 }
-    $Path = Join-Path $SourceRoot $Item.path
+    if ($Relocations.ContainsKey($Item.path)) { Assert-DeletedPathAbsent $Item.path }
+    Assert-NoRelocationLinks $SourceRoot $Relative
+    $Path = Join-Path $SourceRoot $Relative
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { $Missing += $Item.path; continue }
     $Hash = & git hash-object --no-filters -- $Path
     if ($LASTEXITCODE -ne 0) { throw "git hash-object failed: $($Item.path)" }
@@ -113,8 +109,7 @@ foreach ($Item in $Manifest.files) {
     } else {
         # The preserved upstream .gitattributes uses CRLF for .ps1 checkout.
         # Compare its canonical Git blob too; never normalize binary fixtures.
-        $Relative = $Item.path
-        $CanonicalHash = & git -C $SourceRoot hash-object "--path=$Relative" -- $Path
+        $CanonicalHash = & git -C $SourceRoot hash-object "--path=$($Item.path)" -- $Path
         if ($LASTEXITCODE -ne 0 -or $CanonicalHash.Trim() -ne $ExpectedHash) {
             throw "Hash mismatch: $($Item.path)"
         }
@@ -122,7 +117,8 @@ foreach ($Item in $Manifest.files) {
     $Verified++
 }
 $OriginalRelative = 'iCemDataMonitor.Contracts/Protos/telemetry.proto'
-$Original = Join-Path $SourceRoot $OriginalRelative
+$OriginalActual = if ($Relocations.ContainsKey($OriginalRelative)) { $Relocations[$OriginalRelative] } else { $OriginalRelative }
+$Original = Join-Path $SourceRoot $OriginalActual
 $ProtoRecord = @($Manifest.files | Where-Object path -eq $OriginalRelative)
 if ($ProtoRecord.Count -ne 1 -or (Get-CanonicalHash $Original $OriginalRelative) -ne $ProtoRecord[0].git_blob_sha1) {
     throw 'Canonical frozen proto changed'
@@ -131,18 +127,21 @@ $ProtoFiles = @(Get-ChildItem -LiteralPath $SourceRoot -Filter '*.proto' -Recurs
     Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' })
 if ($ProtoFiles.Count -ne 1 -or $ProtoFiles[0].FullName -ne $Original) { throw 'Expected exactly one canonical proto' }
 foreach ($Asset in @('iCemDataMonitor.ico', 'iCemEmule.ico')) {
-    if ((Get-FileHash (Join-Path $Root "assets/$Asset")).Hash -ne (Get-FileHash (Join-Path $SourceRoot "assets/$Asset")).Hash) {
+    $AssetSource = "assets/$Asset"
+    $AssetActual = if ($Relocations.ContainsKey($AssetSource)) { $Relocations[$AssetSource] } else { $AssetSource }
+    if ((Get-FileHash (Join-Path $Root "assets/$Asset")).Hash -ne (Get-FileHash (Join-Path $SourceRoot $AssetActual)).Hash) {
         throw "Original icon changed: $Asset"
     }
 }
 $Dashboard = Join-Path $Root 'web/dashboard'
 Get-ChildItem -File -Recurse $Dashboard | ForEach-Object {
     $Relative = [IO.Path]::GetRelativePath($Dashboard, $_.FullName)
-    $Source = Join-Path $SourceRoot ('iCemDataMonitor.Host/wwwroot/' + $Relative)
+    $SourceRelative = 'iCemDataMonitor.Host/wwwroot/' + $Relative.Replace('\', '/')
+    $SourceActual = if ($Relocations.ContainsKey($SourceRelative)) { $Relocations[$SourceRelative] } else { $SourceRelative }
+    $Source = Join-Path $SourceRoot $SourceActual
     # The original tree uses text=auto, while the frozen Rust SPA uses -text.
     # Compare canonical Git bytes; Windows checkout newline conversion is not a source change.
     $RustRelative = 'rust/web/dashboard/' + $Relative.Replace('\', '/')
-    $SourceRelative = 'iCemDataMonitor.Host/wwwroot/' + $Relative.Replace('\', '/')
     if ($Relative -eq 'index.html') {
         # D16: the only allowed SPA edits are the D16 bool and D17 valid trailer spacing.
         # Source hash was checked above; compare the complete transformed text.

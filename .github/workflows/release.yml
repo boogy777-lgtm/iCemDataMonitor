@@ -33,10 +33,12 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+          global-json-file: dotnet/global.json
 
       - name: Install WiX v5 toolset
         run: dotnet tool install --global wix --version 5.0.2
         shell: pwsh
+        working-directory: dotnet
 
       - name: Add dotnet global tools to PATH
         run: |
@@ -45,7 +47,7 @@ jobs:
         shell: pwsh
 
       - name: Build MSI
-        run: installer/build-msi.ps1 -MsiVersion $env:MSI_VERSION -NoPause
+        run: ./dotnet/installer/build-msi.ps1 -MsiVersion $env:MSI_VERSION -NoPause
         shell: pwsh
 
       - name: Compute SHA256 checksums

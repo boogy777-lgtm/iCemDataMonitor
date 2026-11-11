@@ -62,7 +62,7 @@ fn differential_original_dotnet_classes() -> TestResult {
     for entry in rows(&oracle, "templates")? {
         let template = load_template(
             &root
-                .join("iCemEmulator/templates")
+                .join("shared/catalogs/emulator")
                 .join(string(entry, "file")?),
             None,
         )?;

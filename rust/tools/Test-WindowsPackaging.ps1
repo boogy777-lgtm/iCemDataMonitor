@@ -4,10 +4,11 @@ param()
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Root = Split-Path $PSScriptRoot -Parent
-& (Join-Path $PSScriptRoot 'Test-LegacyAddinInputs.ps1')
+$RepositoryRoot = Split-Path $Root -Parent
+& (Join-Path $RepositoryRoot 'shared/icem-addin/tools/Test-LegacyAddinInputs.ps1')
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
-Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force
+Import-Module (Join-Path $RepositoryRoot 'shared/icem-addin/tools/LegacyAddin.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'WindowsPackagingFixture.psm1') -Force
 $Temp = Join-Path ([IO.Path]::GetTempPath()) ('icem-package-tests-' + [guid]::NewGuid().ToString('N'))
 $Repo = Join-Path $Temp 'repo'
@@ -52,11 +53,11 @@ try {
         -not (Test-Path -LiteralPath (Join-Path $Unpack $DaBinary[0].destination) -PathType Leaf)) { throw 'DA sidecar omitted from payload' }
     $HostRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'host').templates_directory) + '/variable_registry.json')
     $EmulatorRegistry = Join-Path $Unpack ((($Verified.binaries | Where-Object role -EQ 'emulator').templates_directory) + '/variable_registry.json')
-    if ((Get-FileHash $HostRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'templates/variable_registry.json')).Hash -or
-        (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemEmulator/templates/variable_registry.json')).Hash -or
+    if ((Get-FileHash $HostRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'shared/catalogs/host/variable_registry.json')).Hash -or
+        (Get-FileHash $EmulatorRegistry).Hash -cne (Get-FileHash (Join-Path $Repo 'shared/catalogs/emulator/variable_registry.json')).Hash -or
         $HostRegistry -ceq $EmulatorRegistry) { throw 'Host/emulator canonical registries were merged or substituted' }
     $HostLantable = Join-Path $Unpack 'templates/lantable_registry.json'
-    if ((Get-FileHash $HostLantable).Hash -cne (Get-FileHash (Join-Path $Repo 'iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json')).Hash) { throw 'Host lantable catalog missing or substituted' }
+    if ((Get-FileHash $HostLantable).Hash -cne (Get-FileHash (Join-Path $Repo 'shared/catalogs/host/lantable_registry.json')).Hash) { throw 'Host lantable catalog missing or substituted' }
     # The installer is rendered from the already verified inventory, including
     # the integrity manifest itself. Adding a payload file cannot miss the MSI.
     $Numeric = Package '0.1.0'
@@ -178,7 +179,7 @@ try {
     Assert-Rejected { Test-LegacyAddinBundle $Fixture.addin $Repo } 'exactly DLL and provenance'
     Remove-Item -LiteralPath (Join-Path $Fixture.addin 'vendor.dll')
     $Adapter = New-WindowsInstallerAssets $Repo (Join-Path $Temp 'ui-work')
-    if ((Get-FileHash (Join-Path $Adapter 'assets/Burservis_logo_cyr_red.png')).Hash -cne (Get-FileHash (Join-Path $Repo 'installer/assets/Burservis_logo_cyr_red.png')).Hash) { throw 'Original Burservis logo changed' }
+    if ((Get-FileHash (Join-Path $Adapter 'assets/Burservis_logo_cyr_red.png')).Hash -cne (Get-FileHash (Join-Path $Repo 'dotnet/installer/assets/Burservis_logo_cyr_red.png')).Hash) { throw 'Original Burservis logo changed' }
     if (@(Get-ChildItem -LiteralPath $Adapter -Recurse -File).Count -ne 3) { throw 'Branding adapter contains unrelated policy/scripts' }
     $PlanPath = Join-Path $Repo 'rust/installer/windows-payload.json'
     $Original = Get-Content -Raw -LiteralPath $PlanPath

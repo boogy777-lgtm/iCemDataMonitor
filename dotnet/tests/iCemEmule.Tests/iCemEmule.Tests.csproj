@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 2026-09-01 (owner decree «Блок 2 п.5»): test stack aligned to the
+         solution-wide train (17.13.0 / 2.9.3 / 3.0.2). -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\iCemEmule.Core\iCemEmule.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Emulator templates are kept in their canonical shared catalog owner. -->
+    <Content Include="..\..\..\shared\catalogs\emulator\**" Link="templates\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

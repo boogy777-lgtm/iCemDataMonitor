@@ -68,22 +68,24 @@ class RoutingTests(unittest.TestCase):
             'rust/Cargo.lock': ('rust', 'packaging'),
             'rust/rust-toolchain.toml': ('rust', 'packaging'),
             'rust/tools/browser/dashboard.cjs': ('rust', 'packaging'),
-            'iCemDataMonitor.Shell.WinUI/MainWindow.xaml': ('legacy',),
-            'iCemDataMonitor.Core/New.cs': ('legacy',),
-            'iCemDataMonitor.Sdk/Bus/BusLayout.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Data/Bus/BusReader.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Transport/ModbusTcpPublisher.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs': routing.COMPONENTS,
-            'iCemDataMonitor.Contracts/Protos/telemetry.proto': routing.COMPONENTS,
-            'iCemEmule.Core/Control/NewOracleInput.cs': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/NewSdkInput.cs': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/future.targets': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/future.resx': routing.COMPONENTS,
-            'Burservis.iCem.DataMonitor/future.unknown': routing.COMPONENTS,
-            'installer/gen-payload.ps1': routing.COMPONENTS,
-            'installer/future.psm1': routing.COMPONENTS,
-            'installer/future.unknown': routing.COMPONENTS,
+            'rust/tools/BaselineMetadata.psm1': routing.COMPONENTS,
+            'rust/tools/SourceRelocations.psm1': routing.COMPONENTS,
+            'dotnet/src/iCemDataMonitor.Shell.WinUI/MainWindow.xaml': ('legacy',),
+            'dotnet/src/iCemDataMonitor.Core/New.cs': ('legacy',),
+            'dotnet/src/iCemDataMonitor.Sdk/Bus/BusLayout.cs': routing.COMPONENTS,
+            'dotnet/src/iCemDataMonitor.Data/Bus/BusReader.cs': routing.COMPONENTS,
+            'dotnet/src/iCemDataMonitor.Transport/ModbusTcpPublisher.cs': routing.COMPONENTS,
+            'dotnet/src/iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs': routing.COMPONENTS,
+            'dotnet/src/iCemDataMonitor.Host.Core/Endpoints/RegistryEndpoints.cs': routing.COMPONENTS,
+            'shared/contracts/telemetry.proto': routing.COMPONENTS,
+            'dotnet/src/iCemEmule.Core/Control/NewOracleInput.cs': routing.COMPONENTS,
+            'shared/icem-addin/src/NewSdkInput.cs': routing.COMPONENTS,
+            'shared/icem-addin/src/future.targets': routing.COMPONENTS,
+            'shared/icem-addin/src/future.resx': routing.COMPONENTS,
+            'shared/icem-addin/src/future.unknown': routing.COMPONENTS,
+            'dotnet/installer/gen-payload.ps1': routing.COMPONENTS,
+            'dotnet/installer/future.psm1': routing.COMPONENTS,
+            'dotnet/installer/future.unknown': routing.COMPONENTS,
             'rust/installer/windows-payload.json': ('rust', 'packaging'),
             'shared/installer/bootstrapper/Setup.cs': routing.COMPONENTS,
             'shared/installer/tools/Build-WindowsSetup.ps1': routing.COMPONENTS,
@@ -98,10 +100,11 @@ class RoutingTests(unittest.TestCase):
             'tools/ci/routing.py': routing.COMPONENTS,
             'rust/tools/ci/cache_identity.py': ('rust', 'packaging'),
             'rust/migration/legacy-divergences.json': routing.COMPONENTS,
+            'rust/migration/source-relocations.json': routing.COMPONENTS,
             'docs/Wireshark/iCemCrio.pcapng.bin': routing.COMPONENTS,
             'docs/Wireshark/notes.md': routing.COMPONENTS,
             'specs/dotnet-server/Э5_config.csv': routing.COMPONENTS,
-            'iCemDataMonitor.Host/wwwroot/main.css': routing.COMPONENTS,
+            'dotnet/src/iCemDataMonitor.Host/wwwroot/main.css': routing.COMPONENTS,
             'Directory.Build.targets': routing.COMPONENTS,
             'README.md': (), 'rust/docs/CI_CD.ru.md': (), 'docs/development.md': (),
             'docs/images/software-architecture.svg': (),
@@ -115,18 +118,20 @@ class RoutingTests(unittest.TestCase):
             'docs/new.binary': routing.COMPONENTS,
             'NewProject/New.csproj': routing.COMPONENTS,
             'future.config': routing.COMPONENTS,
-            'iCemDataMonitor.Core/future.unknown': routing.COMPONENTS,
+            'dotnet/src/iCemDataMonitor.Core/future.unknown': routing.COMPONENTS,
             '../README.md': routing.COMPONENTS,
         }
         for path, selected in cases.items():
             with self.subTest(path=path):
                 self.assertEqual(routing.classify([path]), {c: str(c in selected).lower() for c in routing.COMPONENTS})
-        self.assertEqual(routing.classify(['rust/README.md', 'iCemDataMonitor.Core/New.cs', 'rust/apps/new.rs']), dict.fromkeys(routing.COMPONENTS, 'true'))
+        self.assertEqual(routing.classify(['rust/README.md', 'dotnet/src/iCemDataMonitor.Core/New.cs', 'rust/apps/new.rs']), dict.fromkeys(routing.COMPONENTS, 'true'))
         self.assertEqual(routing.categories('docs/images/software-architecture.svg'), {'documentation'})
         self.assertEqual(routing.categories('docs/images/next-architecture.svg'), {'documentation'})
         self.assertEqual(routing.categories('rust/crates/icem-bus/src/lib.rs'), {'rust', 'shared-contracts'})
-        self.assertEqual(routing.categories('installer/Product.wxs'), {'legacy', 'packaging'})
+        self.assertEqual(routing.categories('dotnet/installer/Product.wxs'), {'legacy', 'packaging'})
         self.assertEqual(routing.categories('rust/migration/source-manifest.json'), {'rust', 'shared-contracts', 'infrastructure'})
+        self.assertEqual(routing.categories('rust/tools/SourceRelocations.psm1'), {'rust', 'infrastructure'})
+        self.assertEqual(routing.categories('rust/migration/source-relocations.json'), {'rust', 'shared-contracts', 'infrastructure'})
         self.assertEqual(routing.classify([]), dict.fromkeys(routing.COMPONENTS, 'false'))
 
     def test_rule_schema(self):
@@ -173,7 +178,7 @@ class RoutingTests(unittest.TestCase):
             self.assertEqual((outputs['rust'], outputs['packaging']), ('true', 'true'), path)
         # New files in any C# oracle source family inherit the shared closure.
         for family in ('Core', 'Control', 'Dfb', 'Emitters'):
-            self.assertEqual(routing.categories(f'iCemEmule.Core/{family}/Future.cs'), {'legacy', 'shared-contracts'})
+            self.assertEqual(routing.categories(f'dotnet/src/iCemEmule.Core/{family}/Future.cs'), {'legacy', 'shared-contracts'})
 
     def test_legacy_diagnostics_contract(self):
         legacy = (ROOT / '.github/workflows/legacy-build.yml').read_text(encoding='utf-8')
@@ -213,9 +218,9 @@ class RoutingTests(unittest.TestCase):
             '            **/TestResults/**/*.trx',
             '            **/TestResults/**/*Sequence.xml',
             '            **/TestResults/**/*.log',
-            '            installer/artifacts/*.log'])
+            '            dotnet/installer/artifacts/*.log'])
         lifecycle = steps['Verify legacy MSI lifecycle with disposable payload']
-        self.assertIn('        run: installer/tests/Test-LegacyInstaller.ps1\n', lifecycle)
+        self.assertIn('        run: ./dotnet/installer/tests/Test-LegacyInstaller.ps1\n', lifecycle)
         self.assertIn('        timeout-minutes: 15\n', lifecycle)
         self.assertNotIn('continue-on-error:', lifecycle)
         self.assertIn('-NoPause -AllowMissingAddinForCi', steps['Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)'])
@@ -226,12 +231,12 @@ class RoutingTests(unittest.TestCase):
         # Build defaults, direct packaging and CI upload/download consumers must
         # agree; installed payload and compiler intermediates have other owners.
         expected = {
-            'installer/build-msi.ps1': (
+            'dotnet/installer/build-msi.ps1': (
                 "$OutDir = Join-Path $Repo 'dist/legacy'",
                 'if (-not [IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $Repo $OutDir }',
                 'if (Test-BuildPathWithin $OutDir $Stage)',
                 'Where-Object { -not (Test-BuildPathOverlap $_.FullName $OutDir) }'),
-            'scripts/make-release.ps1': ('dist\\legacy\\iCemDataMonitor-',),
+            'dotnet/tools/scripts/make-release.ps1': ('dist\\legacy\\iCemDataMonitor-',),
             'rust/tools/Build-WindowsRelease.ps1': (
                 "if (-not $OutputDirectory) { $OutputDirectory = 'dist/rust' }",
                 '$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)'),
@@ -260,9 +265,9 @@ class RoutingTests(unittest.TestCase):
                 with self.subTest(path=path, fragment=fragment):
                     self.assertIn(fragment, source)
             self.assertNotIn('rust/dist/', source)
-        builder = (ROOT / 'installer/build-msi.ps1').read_text(encoding='utf-8-sig')
+        builder = (ROOT / 'dotnet/installer/build-msi.ps1').read_text(encoding='utf-8-sig')
         self.assertLess(builder.index('if (Test-BuildPathWithin $OutDir $Stage)'), builder.index('Start-Transcript'))
-        fixture = (ROOT / 'installer/tests/Test-LegacyInstaller.ps1').read_text(encoding='utf-8')
+        fixture = (ROOT / 'dotnet/installer/tests/Test-LegacyInstaller.ps1').read_text(encoding='utf-8')
         self.assertIn('    Test-BuildOutputPaths\n', fixture)
         for path in ('README.md', 'rust/README.md', 'docs/install.md', 'rust/installer/README.md'):
             self.assertIn('dist/rust/', (ROOT / path).read_text(encoding='utf-8-sig'))
@@ -320,7 +325,7 @@ class RoutingTests(unittest.TestCase):
             self.assertIn(f'value: ${{{{ jobs.classify.outputs.{component} }}}}', shared)
             self.assertIn(f'{component}: ${{{{ steps.route.outputs.{component} }}}}', shared)
         legacy = (workflows / 'legacy-build.yml').read_text(encoding='utf-8')
-        for command in ('dotnet build CI.slnf', 'dotnet test CI.slnf', 'installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause'):
+        for command in ('dotnet build CI.slnf', 'dotnet test CI.slnf', 'dotnet/installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause'):
             self.assertIn(command, legacy)
         rust = (workflows / 'rust-migration.yml').read_text(encoding='utf-8')
         for command in ('Verify-Scaffold.ps1 -RequireCompleteBaseline', 'cargo fetch --locked', 'theme-contract.cjs', 'dashboard.cjs', 'host-sniffer-differential-report.json'):
@@ -495,9 +500,9 @@ class GitDiffTests(GitFixture):
 
 
 class LedgerRoutingTests(GitFixture):
-    A = 'iCemDataMonitor.Core/A.cs'
-    B = 'iCemDataMonitor.UI.Tests/B.cs'
-    SHARED = 'iCemDataMonitor.Data/Bus/BusReader.cs'
+    A = 'dotnet/src/iCemDataMonitor.Core/A.cs'
+    B = 'dotnet/tests/iCemDataMonitor.UI.Tests/B.cs'
+    SHARED = 'dotnet/src/iCemDataMonitor.Data/Bus/BusReader.cs'
     FROZEN = 'iCemDataMonitor.Host/wwwroot/index.html'
 
     def setUp(self):
@@ -865,7 +870,7 @@ class LedgerRoutingTests(GitFixture):
 
     def test_literal_paths_and_regular_source_base(self):
         # A wildcard-looking approval must query exactly that source, never its siblings.
-        path = 'iCemDataMonitor.Core/[A].cs'
+        path = 'dotnet/src/iCemDataMonitor.Core/[A].cs'
         self.write(path)
         self.manifest['files'].append({'path': path, 'git_blob_sha1': self.hash(path),
                                       'size': 8, 'available': True})
