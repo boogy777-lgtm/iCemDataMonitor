@@ -69,7 +69,11 @@ fn grpc_host_toggle_ignores_desired_state_and_stops_listener()
         assert!(stages.iter().any(|s| s.id == "ready" && s.completed));
         let status = client.get_status(HostStatusRequest {}).await?.into_inner();
         assert!(status.bus_open);
-        assert!(status.layers.ok_or("layers missing")?.modbus_bound);
+        let startup_layers = status.layers.ok_or("layers missing")?;
+        assert!(startup_layers.modbus_bound);
+        // This fixture has no DA sidecar: this is the default plan, not proof
+        // of a running OPC server or an actuator for the legacy DA RPC.
+        assert!(startup_layers.opc_da);
         // Every command is acknowledged by the Host service owner, including
         // headless demand-attach and repeated commands. GetStatus probes the HWND.
         for visible in [false, true, true, false, true, false] {
@@ -121,7 +125,7 @@ fn grpc_host_toggle_ignores_desired_state_and_stops_listener()
                 })
                 .await?
                 .into_inner();
-            assert!(!opc.opc_da);
+            assert_eq!(opc.opc_da, startup_layers.opc_da);
             assert_eq!(opc.web, expected);
         }
         // Fixture-only Host has no physical capture owner. A toggle is handled

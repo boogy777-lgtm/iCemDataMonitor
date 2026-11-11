@@ -25,6 +25,16 @@ tests до выбора trusted design. Получение строки чере
 property доверенной, а сравнение заранее известного литерала не является tamper
 test настоящих DCOM properties.
 
+На completed [42954354395](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42954354395)
+из `9878b21` тестовый repair шёл в x64 `msiexec.exe` с DLL `MSI*.tmp`:
+primary process token имел high integrity и не был LocalSystem; отдельного
+thread impersonation token не наблюдалось. Effective token получил все шесть
+проверенных прав над собственным процессом. Это свидетельство именно elevated
+GitHub runner, не проверка medium-integrity attacker или защиты другого SID.
+Обе registry views вернули binary values, тестовый quoted литерал совпал;
+descriptor-repair при этом **FAIL**, остальные шесть cases — PASS. Ни trust,
+ни неизменность исходных bytes при repair из этого не следуют.
+
 Документированные границы, подтверждающие необходимость проверки:
 
 * [Microsoft: AppSearch](https://learn.microsoft.com/en-us/windows/win32/msi/appsearch-table)
