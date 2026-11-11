@@ -127,13 +127,16 @@ MSI paths and each product's payload destinations are unchanged.
 - `Test-WindowsPackaging.ps1`: **PASS**, including AddIn source boundary/provenance, payload roundtrip, checksum, native ownership/options and frozen path contracts.
 - Runtime safety: **PASS**; Runtime acceptance fixture: **22/22 PASS**.
 - `Test-WindowsSetupBuild.ps1`: **PASS**; both Release-only Setup fixture builds had 0 warnings/errors, with family/product/checksum/refusal checks. The fixtures compile only; no MSI install/uninstall/repair occurred.
-- `dotnet sln dotnet/iCemDataMonitor.sln list`: **27 projects**; `git diff --check`: **PASS**. The PowerShell parser and changed-workflow `actionlint` results are recorded after the final source/provenance pair below.
-- Baseline guard pure positive/negative cases pass through absence-probe failure; complete suite stops at the first symlink fixture because this process lacks Windows Administrator privilege (`Administrator privilege required`). No skip/bypass was added. `Verify-Baseline -RequireComplete` remains the required exact-approval gate after the source commit.
+- `dotnet sln dotnet/iCemDataMonitor.sln list`: **27 projects**; PowerShell 7.6.7 parser: **31/31 changed `.ps1/.psm1` files PASS**; `git diff --check`: **PASS**.
+- Static project-input scan: **111 literal project references/content/icon/manifest paths PASS**; dynamic MSBuild properties and SDK-provided references were excluded (no build performed).
+- `actionlint` 1.7.12: **PASS** on all four changed workflows using a temporary external config declaring the repository's existing `self-hosted, Windows, X64, icem-sdk` runner labels. No repository actionlint configuration changed.
+- Baseline guard pure positive/negative cases pass through absence-probe failure; complete suite stops at the first symlink fixture because this process lacks Windows Administrator privilege (`Administrator privilege required`). No skip/bypass was added.
+- `Verify-Baseline.ps1 -RequireComplete`: **PASS**, 487 verified existing files, 26 previously approved deletions from 513 pinned origins, and 139 exact approvals. Exactly 42 current logical paths changed approval (14 exact existing approvals refreshed, 28 new); provenance points to the source-only PR51 commit. The historical source commit and source-manifest hashes are unchanged; no delete approvals were added.
 - No local Cargo compilation/check/test/clippy, full .NET solution build, MSI mutation, registration/service/firewall operation or broad cleanup was run. Full Rust/legacy verdict belongs to hosted Release CI on the exact published head. Descriptor repair and Unicode findings remain unchanged.
 
-- Source-only commit: pending.
-- Exact approval/provenance commit: pending; only the 42 genuinely changed logical baseline-owned paths will be updated after the source commit, without delete approvals or unrelated approval refresh.
-- Final exact HEAD / PR #51 push: pending.
+- Source-only commit: `241341dea6b7b0349eb2c8ed4e5bee8866e99c45` (`Complete repository layout relocation`).
+- Exact approval/provenance commit: `61baf2cc484edfbe61a8b3b3e0b31b2559707c6b` (`Approve exact layout relocation blobs`); only the 42 changed logical baseline-owned paths were approved, with no delete approvals or unrelated approval refresh.
+- Final exact HEAD / PR #51 push: pending report-only completion commit and normal branch push.
 
 ## История
 
