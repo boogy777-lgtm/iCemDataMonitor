@@ -767,7 +767,7 @@
       "provenance": {
         "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/52",
         "commit": "8bc7a268318ceb77d121cac8567d44b9e7d7950d",
-        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md. Subsequent PR52 source commit restores the relocated dotnet/src Core project locator while preserving every architecture assertion."
+        "reason": "Historical PR39, source commit 2f332af1dcd46ffcd7c7ce7dd91a0cbc3217a2ac: Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md. Subsequent PR52 source commit restores the relocated dotnet/src Core project locator while preserving every architecture assertion."
       }
     },
     {
