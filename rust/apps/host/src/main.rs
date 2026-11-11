@@ -362,15 +362,7 @@ fn run<D: icem_platform_windows::console::Device>(
         options.opc_da_config.take(),
         acquisition.snapshot_reader(),
     );
-    for protocol in [
-        optional_consumers::Protocol::OpcDa,
-        optional_consumers::Protocol::OpcUa,
-        optional_consumers::Protocol::Mqtt,
-    ] {
-        if optional.state(&consumers, protocol).configured {
-            optional.set_enabled(&mut consumers, protocol, true)?;
-        }
-    }
+    optional.start_configured(&mut consumers, options.opc_da)?;
     let (server_slot, modbus_handle) = modbus_consumer::start(
         modbus_consumer::Config {
             address: options.bind,

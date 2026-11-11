@@ -37,6 +37,33 @@ mod tests {
     use super::*;
     use std::net::{TcpListener, TcpStream};
 
+    #[test]
+    fn configured_da_starts_only_when_station_plan_allows_it()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("icem-da-start-plan-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let path = root.join("config.json");
+        std::fs::write(
+            &path,
+            br#"{"sidecar":"missing-test-sidecar.exe","update_interval_ms":200,"watchdog_ms":1000}"#,
+        )?;
+        let config = opc_da_consumer::Config::load(&path)?;
+        std::fs::remove_file(&path)?;
+        std::fs::remove_dir(&root)?;
+        let (_, reader) = icem_core::publication::latest_snapshot();
+        let mut optional = OptionalConsumers::new(None, None, Some(config), reader);
+        let mut registry = Registry::new();
+        optional.start_configured(&mut registry, false)?;
+        let state = optional.state(&registry, Protocol::OpcDa);
+        assert!(state.configured && !state.enabled && state.error.is_none());
+        // The named test executable is absent: an enabled plan must try the real
+        // start path and report its failure, not silently claim it started.
+        assert!(optional.start_configured(&mut registry, true).is_err());
+        let state = optional.state(&registry, Protocol::OpcDa);
+        assert!(state.configured && !state.running && state.error.is_some());
+        Ok(())
+    }
+
     #[cfg(windows)]
     #[test]
     #[ignore = "requires separately built release sidecar and available COM class"]
@@ -224,6 +251,18 @@ impl OptionalConsumers {
             running: status == Some(Status::Running),
             error,
         }
+    }
+    pub fn start_configured(
+        &mut self,
+        registry: &mut Registry,
+        opc_da_enabled: bool,
+    ) -> Result<(), String> {
+        for protocol in [Protocol::OpcDa, Protocol::OpcUa, Protocol::Mqtt] {
+            if self.configured(protocol) && (protocol != Protocol::OpcDa || opc_da_enabled) {
+                self.set_enabled(registry, protocol, true)?;
+            }
+        }
+        Ok(())
     }
     pub fn set_enabled(
         &mut self,

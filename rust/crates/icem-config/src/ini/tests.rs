@@ -3,12 +3,13 @@ use super::*;
 fn defaults_and_every_field_round_trip() -> Result<(), ConfigError> {
     let defaults = IniOptions::default();
     assert!(defaults.validate().is_empty());
+    assert_eq!(defaults.opcda_on, 1);
     assert_eq!(IniOptions::parse(&defaults.render())?, defaults);
     assert_eq!(KEYS.len(), 16);
     let custom = IniOptions {
         modbus_on: 0,
         web_on: 0,
-        opcda_on: 1,
+        opcda_on: 0,
         lansniffer_on: 0,
         ui_set_as_default: 0,
         web_remote_on: 1,

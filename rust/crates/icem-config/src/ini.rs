@@ -1,4 +1,4 @@
-//! Closed config.ini schema, matching IniConfig/IniOptions in the pinned .NET tree.
+//! Closed config.ini schema; the DA startup default follows the current operator requirement.
 use crate::text_file::decode_read_all_text as decode_text;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -58,7 +58,7 @@ macro_rules! ini_fields {
 ini_fields! {
     modbus_on: i32 = 1 => ("station", Flag, false),
     web_on: i32 = 1 => ("station", Flag, true),
-    opcda_on: i32 = 0 => ("station", Flag, false),
+    opcda_on: i32 = 1 => ("station", Flag, false),
     lansniffer_on: i32 = 1 => ("station", Flag, false),
     ui_set_as_default: i32 = 1 => ("station", Flag, true),
     web_remote_on: i32 = 0 => ("station", Flag, true),
