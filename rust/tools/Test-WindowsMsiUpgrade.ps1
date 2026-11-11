@@ -234,12 +234,13 @@ try {
     $Source = Join-Path $Work 'source'
     [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $Source)
     $SourceManifest = Test-WindowsPayload $Source
+    if (-not $SourceManifest.PSObject.Properties['ordinal_identity_provider']) { throw 'Upgrade fixture cannot infer the identity provider of an unmarked archive' }
     # Recompile the very same archive: ProductCode=* must produce a new identity.
     $SameMsi = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $Archive -OutputDirectory (Join-Path $Work 'same-version')
     $SameCode = Read-MsiProperty $SameMsi.msi 'ProductCode'
     if ($SameCode -eq $FirstCode -or (Read-MsiProperty $SameMsi.msi 'ProductVersion') -ne $Version) { throw 'Same-version rebuild must have an independent ProductCode and unchanged version' }
     $ProductCodes.Add($SameCode)
-    $NextArchive = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $BinaryDirectory -AddinDirectory (Join-Path $Source 'addin') -OutputDirectory $Work -Version $Next -Commit $SourceManifest.source_commit -Compiler $SourceManifest.compiler
+    $NextArchive = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $BinaryDirectory -AddinDirectory (Join-Path $Source 'addin') -OutputDirectory $Work -Version $Next -Commit $SourceManifest.source_commit -Compiler $SourceManifest.compiler -OrdinalProvider $SourceManifest.ordinal_identity_provider
     $NextMsi = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $NextArchive.archive -OutputDirectory $Work
     $NextCode = Read-MsiProperty $NextMsi.msi 'ProductCode'
     if ($NextCode -eq $FirstCode) { throw 'N+1 must have a new ProductCode' }

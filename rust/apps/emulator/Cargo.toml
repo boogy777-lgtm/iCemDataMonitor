@@ -8,6 +8,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+ordinal-icu-26100 = ["icem-emulation/ordinal-icu-26100"]
+
 [[bin]]
 name = "icem-emulator-dev"
 path = "src/main.rs"

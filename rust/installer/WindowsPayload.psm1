@@ -39,6 +39,12 @@ function Test-WindowsPayload([string] $Directory) {
     if ($Manifest.schema_version -ne 2 -or $Manifest.target -ne 'x86_64-pc-windows-msvc' -or $Manifest.readiness -ne 'development' -or $Manifest.addin_directory -cne 'addin') {
         throw 'Invalid release manifest'
     }
+    # Schema 2 archives created before profiles have no such field; keep them
+    # readable without guessing which provider they actually used.
+    $Identity = $Manifest.PSObject.Properties['ordinal_identity_provider']
+    if ($null -ne $Identity -and ($Identity.Value -isnot [string] -or $Identity.Value -cnotin @('icu-19045', 'icu-26100'))) {
+        throw 'Invalid ordinal identity provider in release manifest'
+    }
     $Expected = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($Entry in $Manifest.files) {
         $Path = Join-PayloadPath $Directory $Entry.path
@@ -75,7 +81,8 @@ function New-WindowsArchive {
         [Parameter(Mandatory)] [string] $OutputDirectory,
         [Parameter(Mandatory)] [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')] [string] $Version,
         [Parameter(Mandatory)] [ValidatePattern('^[0-9a-f]{40}$')] [string] $Commit,
-        [Parameter(Mandatory)] [string] $Compiler
+        [Parameter(Mandatory)] [string] $Compiler,
+        [Parameter(Mandatory)] [ValidateSet('icu-19045', 'icu-26100', IgnoreCase = $false)] [string] $OrdinalProvider
     )
     $RepositoryRoot = (Resolve-Path -LiteralPath $RepositoryRoot).Path
     $Plan = Read-WindowsPayloadPlan $RepositoryRoot
@@ -121,18 +128,19 @@ function New-WindowsArchive {
         })
         $Manifest = [ordered]@{
             schema_version = 2; artifact_version = $Version; source_commit = $Commit; compiler = $Compiler
+            ordinal_identity_provider = $OrdinalProvider
             addin_directory = $Plan.addin_directory
             target = $Plan.target; profile = 'release'; crt = 'static'; readiness = 'development'
             binaries = $Plan.binaries; files = $Files
             note = 'File hashes exclude this manifest. Hardware/UI/MSI parity and Authenticode signing are separate acceptance gates.'
         }
         [IO.File]::WriteAllText((Join-Path $Stage 'release-manifest.json'), ($Manifest | ConvertTo-Json -Depth 8))
-        $null = Test-WindowsPayload $Stage
+        if ((Test-WindowsPayload $Stage).ordinal_identity_provider -cne $OrdinalProvider) { throw 'Staged ordinal identity provider mismatch' }
         $Zip = Join-Path $Work $Name
         [IO.Compression.ZipFile]::CreateFromDirectory($Stage, $Zip)
         $Extracted = Join-Path $Work 'verify'
         [IO.Compression.ZipFile]::ExtractToDirectory($Zip, $Extracted)
-        $null = Test-WindowsPayload $Extracted
+        if ((Test-WindowsPayload $Extracted).ordinal_identity_provider -cne $OrdinalProvider) { throw 'Extracted ordinal identity provider mismatch' }
         $Hash = (Get-FileHash -LiteralPath $Zip -Algorithm SHA256).Hash.ToLowerInvariant()
         [IO.File]::WriteAllText((Join-Path $Work 'checksum'), "$Hash  $Name`n")
         [IO.File]::Move($Zip, $Archive) # no overwrite; publish only after roundtrip validation

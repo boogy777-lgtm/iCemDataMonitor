@@ -14,9 +14,11 @@ fold, не нормализация и не изменение ASCII-only про
 время запуска. На неизвестных OS/BCL/NLS/ICU этот документ не обещает
 совместимость. Перенос бинарника на другую машину сам по себе не переключает
 таблицу; выбор для целевой системы и отдельный gate перед развертыванием
-остаются обязанностью сборки/владельца. Существующий `Build-WindowsRelease.ps1`
-пока не выбирает второй профиль и не маркирует MSI им; это не готовый
-универсальный Setup и не подтверждение production deployment.
+остаются обязанностью сборки/владельца. `Build-WindowsRelease.ps1` принимает
+`-OrdinalProvider icu-19045|icu-26100`, применяет его к тестам и сборке и
+записывает в `release-manifest.json`; прежние schema-2 архивы без поля остаются
+читаемыми, но их provider не угадывается. Это не универсальный Setup и не
+подтверждение production deployment.
 
 `tests/fixtures/ordinal-icu-19045.json` — независимый полный oracle VM,
 SHA-256 `2aee7c7a28df6793d88054b12be89a44ee9b562f981b737e83e2c9f0e345c0f3`.
@@ -37,3 +39,13 @@ Windows-gated тест дополнительно сравнивает все 1 
 исторический default и принимает `-OrdinalIcu26100` для второго. Подтверждение
 каждого provider требует реального выполненного теста на соответствующем host,
 а не только сравнения с захваченным JSON.
+
+Результаты на source `3a762a6aa81d7373bad1133d285037fe690d06b9`: локально
+19045/.NET 10.0.13 — четыре identity tests PASS, включая полный независимый
+oracle; hosted [42952420072](https://github.com/boogy777-lgtm/iCemDataMonitor/actions/runs/42952420072)
+— шаг `Verify Windows emulator integration before desktop build` SUCCESS с
+`-p icem-emulation --features icem-emulation/ordinal-icu-26100`, включая
+тот же exhaustive test. Захваченный в этом run provider JSON имеет тот же
+SHA-256 `3cd7e208de9b2d1e898f37fc753f47f774df89a4d86b11acff28f15b4e5a96c2`.
+На момент проверки весь run ещё выполнялся; эти результаты не являются полным
+Rust CI или проверкой изменений packaging, добавленных позднее.

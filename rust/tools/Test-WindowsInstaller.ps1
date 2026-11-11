@@ -12,7 +12,7 @@ Import-Module (Join-Path $PSScriptRoot 'WindowsPackagingFixture.psm1') -Force
 $Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-msi-contract-' + [guid]::NewGuid().ToString('N'))
 try {
     $Fixture = New-WindowsPackagingFixture $Work
-    $Archive = New-WindowsArchive -RepositoryRoot $Fixture.repo -BinaryDirectory $Fixture.bins -AddinDirectory $Fixture.addin -OutputDirectory (Join-Path $Work 'out') -Version 0.1.0 -Commit ('1' * 40) -Compiler 'SYNTHETIC CONTRACT FIXTURE; NOT A RELEASE'
+    $Archive = New-WindowsArchive -RepositoryRoot $Fixture.repo -BinaryDirectory $Fixture.bins -AddinDirectory $Fixture.addin -OutputDirectory (Join-Path $Work 'out') -Version 0.1.0 -Commit ('1' * 40) -Compiler 'SYNTHETIC CONTRACT FIXTURE; NOT A RELEASE' -OrdinalProvider 'icu-19045'
     $Payload = Join-Path $Work 'payload'
     [IO.Compression.ZipFile]::ExtractToDirectory($Archive.archive, $Payload)
     $First = Join-Path $Work 'harvest-one'; $Second = Join-Path $Work 'harvest-two'

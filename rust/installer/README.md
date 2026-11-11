@@ -127,7 +127,13 @@ contain exactly one DLL in `Payload.Addin`. Manifest/source collisions, non-AMD6
 EXEs, missing/extra/tampered files, absent/mismatched AddIn and escaping paths fail.
 
 `release-manifest.json` schema 2 records source commit, compiler, release/static
-CRT target and all payload SHA256/size values. ZIP staging/extraction is validated.
+CRT target, the explicitly selected `ordinal_identity_provider` and all payload
+SHA256/size values. Unmarked older schema-2 archives remain readable without
+guessing their provider. `Build-WindowsRelease.ps1 -OrdinalProvider icu-19045`
+or `icu-26100` selects the same profile for the full test gate and the build;
+the build host must match the selected measured provider. The binary does not
+auto-switch for a different deployment machine. See
+[provider policy](../docs/ORDINAL_PROVIDERS_2026-11-11.ru.md). ZIP staging/extraction is validated.
 MSI is built with high CAB compression and warnings/validation errors fail the
 build. No .NET10/WinAppSDK/WebView2 runtime payload is added; net48 belongs to the
 original iCem process. Npcap/COM drivers remain external. Signing is not implemented.

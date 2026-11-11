@@ -5,7 +5,9 @@ param(
     [ValidatePattern('^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$')]
     [string] $Version,
     [string] $OutputDirectory,
-    [string] $AddinDirectory
+    [string] $AddinDirectory,
+    [ValidateSet('icu-19045', 'icu-26100', IgnoreCase = $false)]
+    [string] $OrdinalProvider = 'icu-19045'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -46,20 +48,27 @@ try {
     if (-not $Pin -or $Compiler -notmatch ('^rustc ' + [regex]::Escape($Pin) + ' ')) { throw 'rustc does not match rust-toolchain.toml.' }
     & cargo fetch --locked --target $Plan.target
     if ($LASTEXITCODE -ne 0) { throw 'Locked dependency fetch failed.' }
-    & (Join-Path $PSScriptRoot 'Verify-Scaffold.ps1') -RequireCompleteBaseline
+    $Use26100 = switch -CaseSensitive ($OrdinalProvider) {
+        'icu-19045' { $false }
+        'icu-26100' { $true }
+        default { throw 'Unsupported ordinal identity provider' }
+    }
+    Write-Host "Ordinal identity target: $OrdinalProvider"
+    & (Join-Path $PSScriptRoot 'Verify-Scaffold.ps1') -RequireCompleteBaseline -OrdinalIcu26100:$Use26100
     $env:CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS = '-C target-feature=+crt-static'
     $Build = @('build', '--release', '--locked', '--offline', '--target', $Plan.target, '--target-dir', (Join-Path $Root 'target'))
+    if ($Use26100) { $Build += @('--features', 'icem-emulator-app/ordinal-icu-26100') }
     foreach ($Package in @($Plan.binaries.package | Sort-Object -Unique)) { $Build += @('--package', $Package) }
     foreach ($Binary in $Plan.binaries) { $Build += @('--bin', $Binary.bin) }
     & cargo @Build
     if ($LASTEXITCODE -ne 0) { throw 'Windows release compilation failed.' }
     $Built = Join-Path $Root "target/$($Plan.target)/release"
-    $Result = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $Built -AddinDirectory $AddinDirectory -OutputDirectory $OutputDirectory -Version $Version -Commit $Commit.Trim() -Compiler $Compiler
+    $Result = New-WindowsArchive -RepositoryRoot $RepositoryRoot -BinaryDirectory $Built -AddinDirectory $AddinDirectory -OutputDirectory $OutputDirectory -Version $Version -Commit $Commit.Trim() -Compiler $Compiler -OrdinalProvider $OrdinalProvider
     Write-Host "Windows x64 archive: $($Result.archive)"
     Write-Host "SHA256: $($Result.sha256)"
     $Installer = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $Result.archive -OutputDirectory $OutputDirectory
     $Setup = & (Join-Path $RepositoryRoot 'shared/installer/tools/Build-WindowsSetup.ps1') -Msi $Installer.msi -OutputDirectory $OutputDirectory
-    return [pscustomobject]@{ archive = $Result.archive; msi = $Installer.msi; checksum = $Installer.checksum; setup = $Setup.setup; setup_checksum = $Setup.checksum; version = $Version }
+    return [pscustomobject]@{ archive = $Result.archive; msi = $Installer.msi; checksum = $Installer.checksum; setup = $Setup.setup; setup_checksum = $Setup.checksum; version = $Version; ordinal_identity_provider = $OrdinalProvider }
 } finally {
     [Environment]::SetEnvironmentVariable('CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS', $SavedFlags)
     if ($AddinWork -and (Test-Path -LiteralPath $AddinWork)) { Remove-Item -LiteralPath $AddinWork -Recurse -Force }
