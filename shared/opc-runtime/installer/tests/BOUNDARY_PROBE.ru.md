@@ -29,6 +29,25 @@ hex digit в полном наборе байтов. Он **не включён 
 проверяет структуру security descriptor, DACL, доверенность источника или гонки;
 одного успешного сравнения недостаточно для разрешения repair.
 
+`../BoundedSecurityDescriptor.h` — отдельная structural-проверка serialized
+self-relative SD с фактической длиной. До pointer-only `IsValidAcl` и
+`IsValidSecurityDescriptor` она ограничивает offsets, ACL/ACE lengths и SID;
+вход остаётся неизменным. Проверяется структурное подмножество обычных
+allow/deny, object и audit ACE с произвольными SID и masks, а не только
+две baseline строки. Conditional/callback, resource-attribute, label, reserved и
+неизвестные ACE отвергаются: их payload не проверяется этими Win32 APIs. Это
+может отказать и корректному descriptor, поэтому расширение поддержки требует
+отдельной проверяемой обработки, а не молчаливого принятия. Null/отсутствующая
+DACL структурно допустима; адрес input обязан быть DWORD-aligned для Win32.
+Validator не принимает решений о правах DCOM.
+
+`BoundedSecurityDescriptorTests.cpp` запускается тем же Release build и
+проверяет counterexample с `AclSize=0`, OS-generated allow/deny/object/audit,
+другой порядок частей и неизменность bytes, повреждённые offsets/lengths и
+исчерпывающие усечения у guard page, плюс детерминированные мутации. Это НЕ
+проверка provenance, concurrency или MSI writer; в production MSI validator
+пока не включён и сохранение permissions при repair всё ещё не реализовано.
+
 Эти данные описывают **конкретный** процесс и токен теста. `AccessCheck` на его
 DACL не доказывает невозможность injection другим токеном, с включёнными
 привилегиями или через DLL/file replacement; пути сами по себе не доказывают

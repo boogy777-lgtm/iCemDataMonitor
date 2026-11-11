@@ -16,7 +16,9 @@ $source = Join-Path $PSScriptRoot 'BoundaryProbe.cpp'
 $testSource = Join-Path $PSScriptRoot 'BoundaryProbeSelfTest.cpp'
 $rawTestSource = Join-Path $PSScriptRoot 'RawRegistrySnapshotTests.cpp'
 $rawHeader = Join-Path $PSScriptRoot '../RawRegistrySnapshot.h'
-foreach ($path in @($vcvars, $source, $testSource, $rawTestSource, $rawHeader)) {
+$descriptorTestSource = Join-Path $PSScriptRoot 'BoundedSecurityDescriptorTests.cpp'
+$descriptorHeader = Join-Path $PSScriptRoot '../BoundedSecurityDescriptor.h'
+foreach ($path in @($vcvars, $source, $testSource, $rawTestSource, $rawHeader, $descriptorTestSource, $descriptorHeader)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or $path.IndexOfAny($badChars) -ge 0 -or $path -cmatch '[^\x20-\x7e]') { throw 'Missing or unsupported probe build input.' }
 }
 [IO.Directory]::CreateDirectory($output) | Out-Null
@@ -27,6 +29,8 @@ $test = Join-Path $output 'BoundaryProbeSelfTest.exe'
 $testObj = Join-Path $output 'BoundaryProbeSelfTest.obj'
 $rawTest = Join-Path $output 'RawRegistrySnapshotTests.exe'
 $rawTestObj = Join-Path $output 'RawRegistrySnapshotTests.obj'
+$descriptorTest = Join-Path $output 'BoundedSecurityDescriptorTests.exe'
+$descriptorTestObj = Join-Path $output 'BoundedSecurityDescriptorTests.obj'
 $content = @"
 @echo off
 call "$vcvars" amd64 >nul
@@ -40,6 +44,10 @@ if errorlevel 1 exit /b 1
 cl.exe /nologo /EHsc /O2 /W4 /WX /Fo:"$rawTestObj" /Fe:"$rawTest" "$rawTestSource" /link /INCREMENTAL:NO
 if errorlevel 1 exit /b 1
 "$rawTest"
+if errorlevel 1 exit /b 1
+cl.exe /nologo /EHsc /O2 /W4 /WX /Fo:"$descriptorTestObj" /Fe:"$descriptorTest" "$descriptorTestSource" /link /INCREMENTAL:NO advapi32.lib
+if errorlevel 1 exit /b 1
+"$descriptorTest"
 exit /b %errorlevel%
 "@
 [IO.File]::WriteAllText($command, $content, [Text.Encoding]::ASCII)
