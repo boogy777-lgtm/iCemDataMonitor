@@ -27,6 +27,13 @@ function Package([string] $Version) {
 }
 try {
     $Fixture = New-WindowsPackagingFixture $Temp
+    $ToolManifest = 'shared/installer/.config/dotnet-tools.json'
+    $FixtureManifest = Join-Path $Fixture.repo $ToolManifest
+    if (-not (Test-Path -LiteralPath $FixtureManifest -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $FixtureManifest -Algorithm SHA256).Hash -cne
+        (Get-FileHash -LiteralPath (Join-Path $RepositoryRoot $ToolManifest) -Algorithm SHA256).Hash) {
+        throw 'The MSI lifecycle fixture must stage the exact shared WiX tool manifest'
+    }
     $FixtureGenerator = Join-Path $Fixture.repo 'dotnet/installer/gen-payload.ps1'
     if (-not (Test-Path -LiteralPath $FixtureGenerator -PathType Leaf)) { throw 'Legacy payload generator was not staged at its canonical relocated path' }
     foreach ($Consumer in @('rust/tools/Test-WindowsInstaller.ps1', 'rust/installer/WindowsInstaller.psm1')) {
