@@ -77,6 +77,9 @@ jobs:
             $Artifact = Join-Path $env:RUNNER_TEMP 'blocked-opc-runtime'
             [IO.Directory]::CreateDirectory($Artifact) | Out-Null
             & "$Root/shared/opc-runtime/installer/Build-SharedRuntime.ps1" -CoreBuildDirectory $Core -OutputFile "$Artifact/runtime.msi"
+            & "$Root/shared/opc-runtime/installer/tests/Build-BoundaryProbe.ps1" -OutputDirectory "$Work/boundary-probe"
+            Copy-Item "$Work/boundary-probe/BoundaryProbe.dll" $Artifact
+            Copy-Item "$Work/boundary-probe/BoundaryProbe.dll.sha256" $Artifact
             Copy-Item "$Core/build-metadata.json" $Artifact
           } finally {
             [IO.Directory]::CreateDirectory($Diagnostics) | Out-Null

@@ -24,6 +24,11 @@ Import-Module (Join-Path $PSScriptRoot 'WindowsBuildSdk.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'SharedOpcAcceptance.psm1') -Force
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Msi.sha256").Split(' ')[0])) { throw 'Blocked input MSI checksum mismatch.' }
+$Probe = Join-Path (Split-Path $Msi -Parent) 'BoundaryProbe.dll'
+if (-not (Test-Path -LiteralPath $Probe -PathType Leaf) -or -not (Test-Path -LiteralPath "$Probe.sha256" -PathType Leaf) -or
+    (Get-FileHash -LiteralPath $Probe -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Probe.sha256").Split(' ')[0])) {
+    throw 'Missing or mismatched TEST ONLY execute-side boundary probe.'
+}
 $Cases = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/acceptance-cases.json') -Raw | ConvertFrom-Json
 $Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner', 'descriptor-repair')
 if ($Cases.schema_version -ne 1 -or (($Cases.cases | Sort-Object) -join ',') -cne (($Supported | Sort-Object) -join ',') -or
@@ -56,6 +61,24 @@ try {
     # Test-only copy: preserve every real conflict guard and custom action. Never publish it.
     Execute-Sql 'DELETE FROM `LaunchCondition` WHERE `Condition` = ''Installed'''
     Execute-Sql 'UPDATE `Property` SET `Value` = ''TEST ONLY - iCem Shared OPC Runtime'' WHERE `Property` = ''ProductName'''
+    # Diagnostic DLL exists only in this disposable copy. It cannot validate or
+    # preserve descriptors; the telemetry must not be mistaken for acceptance.
+    $initialize = @(Read-WindowsMsiRecords $database 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''InstallInitialize''' @('Sequence'))
+    if ($initialize.Count -ne 1 -or [int]$initialize[0].Sequence -le 1) { throw 'Cannot locate pre-transaction probe slot.' }
+    $probeSequence = [int]$initialize[0].Sequence - 1
+    if (@(Read-WindowsMsiRecords $database "SELECT ``Action`` FROM ``InstallExecuteSequence`` WHERE ``Sequence`` = $probeSequence" @('Action')).Count) { throw 'Probe sequence slot is occupied.' }
+    $probeRecord = $installer.CreateRecord(1)
+    $probeView = $database.OpenView('INSERT INTO `Binary` (`Name`, `Data`) VALUES (''IcemBoundaryProbe'', ?)')
+    try {
+        $null = $probeRecord.SetStream(1, $Probe)
+        $null = $probeView.Execute($probeRecord)
+    } finally {
+        $null = $probeView.Close()
+        foreach ($com in @($probeView, $probeRecord)) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($com) }
+    }
+    Execute-Sql 'INSERT INTO `CustomAction` (`Action`, `Type`, `Source`, `Target`) VALUES (''IcemBoundaryProbe'', 1, ''IcemBoundaryProbe'', ''InspectBoundary'')'
+    Execute-Sql "INSERT INTO ``InstallExecuteSequence`` (``Action``, ``Condition``, ``Sequence``) VALUES ('IcemBoundaryProbe', '', $probeSequence)"
+    Execute-Sql 'INSERT INTO `Property` (`Property`, `Value`) VALUES (''ICEM_BOUNDARY_PROBE'', ''raw" OTHER=1;#x00'')'
     # Standard WiX sequencing may omit InstallExecute. Without it, a Type 19 at
     # 6550 fails before deferred changes run at InstallFinalize: not a rollback test.
     $execute = @(Read-WindowsMsiRecords $database 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''InstallExecute''' @('Sequence'))
@@ -116,6 +139,15 @@ function Invoke-Msi([string[]] $arguments, [string] $phase, [int] $expected) {
     try {
         if (-not $process.WaitForExit(180000)) { $process.Kill($true); throw "$phase exceeded the disposable transaction budget; outcome unknown, no retry." }
         if ($process.ExitCode -ne $expected) { throw "$phase returned $($process.ExitCode), expected $expected; see $log" }
+        $targetsRuntime = @($arguments | Where-Object { $_ -ceq ('"' + $Candidate + '"') -or $_ -ieq $ProductCode }).Count -gt 0
+        if ($expected -eq 0 -and $targetsRuntime) {
+            $text = [IO.File]::ReadAllText($log)
+            foreach ($marker in @('ICEM_BOUNDARY_CONTEXT', 'ICEM_BOUNDARY_PROCESS', 'ICEM_BOUNDARY_THREAD', 'ICEM_BOUNDARY_ACCESS', 'ICEM_BOUNDARY_IMAGE', 'ICEM_BOUNDARY_PROPERTY')) {
+                if (-not $text.Contains($marker, [StringComparison]::Ordinal)) { throw "$phase lacks execute-side boundary evidence: $marker" }
+            }
+            if (-not [regex]::IsMatch($text, 'ICEM_BOUNDARY_PROPERTY characters=\d+;literalMatch=1')) { throw "$phase did not preserve the raw quoted MSI property through the DLL API." }
+            if ([regex]::Matches($text, 'ICEM_BOUNDARY_REG index=').Count -lt 8) { throw "$phase lacks both registry views for both fixed AppIDs." }
+        }
     } finally { $process.Dispose() }
 }
 function Build-ForeignOwner([string] $proxy, [string] $enumerator, [string] $destination) {

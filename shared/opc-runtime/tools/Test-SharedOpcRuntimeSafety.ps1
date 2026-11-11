@@ -22,6 +22,28 @@ if ((($implemented | Sort-Object) -join ',') -cne (($ExpectedCases | Sort-Object
 $authoring = [xml](Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/SharedRuntime.wxs') -Raw)
 $blocks = @($authoring.SelectNodes('//*[local-name()="Launch"]') | Where-Object { $_.Condition -ceq 'Installed' })
 if ($blocks.Count -ne 1) { throw 'Production fresh-install protection was removed' }
+$probeSource = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '../installer/tests/BoundaryProbe.cpp'))
+$fixtureSource = [IO.File]::ReadAllText($Fixture)
+function Assert-ProbeIsolation([string] $production, [string] $fixture, [string] $source) {
+    $copy = $fixture.IndexOf('Copy-Item -LiteralPath $Msi -Destination $Candidate', [StringComparison]::Ordinal)
+    if ($production.Contains('IcemBoundaryProbe', [StringComparison]::Ordinal) -or
+        $source -match '\b(RegSet|RegCreate|RegDelete|MsiSetProperty|AdjustTokenPrivileges|WriteProcessMemory)\w*\s*\(' -or
+        $source -notmatch '\bMsiGetPropertyW\s*\(' -or $source -notmatch '\bRegOpenKeyExW\s*\(' -or
+        $copy -lt 0 -or $fixture.IndexOf('IcemBoundaryProbe', [StringComparison]::Ordinal) -le $copy) {
+        throw 'Boundary diagnostics must remain read-only and confined to the disposable MSI copy.'
+    }
+}
+Assert-ProbeIsolation $authoring.OuterXml $fixtureSource $probeSource
+$negativeProbes = @(
+    [pscustomobject]@{ production = ($authoring.OuterXml + 'IcemBoundaryProbe'); fixture = $fixtureSource; source = $probeSource }
+    [pscustomobject]@{ production = $authoring.OuterXml; fixture = ('IcemBoundaryProbe' + $fixtureSource); source = $probeSource }
+    [pscustomobject]@{ production = $authoring.OuterXml; fixture = $fixtureSource; source = ($probeSource + '; RegSetValueExW(') }
+)
+foreach ($mutation in $negativeProbes) {
+    $rejected = $false
+    try { Assert-ProbeIsolation $mutation.production $mutation.fixture $mutation.source } catch { $rejected = $true }
+    if (-not $rejected) { throw 'Probe isolation guard accepted a negative mutation.' }
+}
 $Output = Join-Path ([IO.Path]::GetTempPath()) ('icem-opc-refusal-' + [guid]::NewGuid().ToString('N'))
 $Rejected = $false
 $SavedActions = $env:GITHUB_ACTIONS
