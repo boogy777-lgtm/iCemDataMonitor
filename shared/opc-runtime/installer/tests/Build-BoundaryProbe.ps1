@@ -1,5 +1,5 @@
 #requires -Version 7.4
-# TEST ONLY. Compiles a read-only native DLL; does not run MSI or touch registry.
+# TEST ONLY. Compiles native fixtures; does not run MSI or touch registry.
 [CmdletBinding()]
 param([Parameter(Mandatory)][string] $OutputDirectory)
 Set-StrictMode -Version Latest
@@ -22,7 +22,8 @@ $snapshotSource = Join-Path $PSScriptRoot '../OpcRepairSnapshot.cpp'
 $snapshotHeader = Join-Path $PSScriptRoot '../OpcRepairSnapshot.h'
 $snapshotTestSource = Join-Path $PSScriptRoot 'OpcRepairSnapshotTests.cpp'
 $snapshotInventoryTest = Join-Path $PSScriptRoot 'Test-RepairSnapshotInventory.ps1'
-foreach ($path in @($vcvars, $source, $testSource, $rawTestSource, $rawHeader, $descriptorTestSource, $descriptorHeader, $snapshotSource, $snapshotHeader, $snapshotTestSource, $snapshotInventoryTest)) {
+$candidateSource = Join-Path $PSScriptRoot 'TestOnlyRepairSnapshot.cpp'
+foreach ($path in @($vcvars, $source, $testSource, $rawTestSource, $rawHeader, $descriptorTestSource, $descriptorHeader, $snapshotSource, $snapshotHeader, $snapshotTestSource, $snapshotInventoryTest, $candidateSource)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or $path.IndexOfAny($badChars) -ge 0 -or $path -cmatch '[^\x20-\x7e]') { throw 'Missing or unsupported probe build input.' }
 }
 [IO.Directory]::CreateDirectory($output) | Out-Null
@@ -38,6 +39,9 @@ $descriptorTestObj = Join-Path $output 'BoundedSecurityDescriptorTests.obj'
 $snapshotObj = Join-Path $output 'OpcRepairSnapshot.obj'
 $snapshotTest = Join-Path $output 'OpcRepairSnapshotTests.exe'
 $snapshotTestObj = Join-Path $output 'OpcRepairSnapshotTests.obj'
+$candidateDll = Join-Path $output 'TestOnlyRepairSnapshot.dll'
+$candidateObj = Join-Path $output 'TestOnlyRepairSnapshot.obj'
+$candidateExports = Join-Path $output 'TestOnlyRepairSnapshot.exports.txt'
 $content = @"
 @echo off
 call "$vcvars" amd64 >nul
@@ -58,6 +62,12 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 cl.exe /nologo /EHsc /O2 /W4 /WX /DUNICODE /D_UNICODE /c /Fo:"$snapshotObj" "$snapshotSource"
 if errorlevel 1 exit /b 1
+cl.exe /nologo /EHsc /O2 /W4 /WX /DUNICODE /D_UNICODE /c /Fo:"$candidateObj" "$candidateSource"
+if errorlevel 1 exit /b 1
+link.exe /nologo /DLL /INCREMENTAL:NO /OUT:"$candidateDll" "$candidateObj" "$snapshotObj" advapi32.lib msi.lib
+if errorlevel 1 exit /b 1
+dumpbin.exe /nologo /exports "$candidateDll" > "$candidateExports"
+if errorlevel 1 exit /b 1
 cl.exe /nologo /EHsc /O2 /W4 /WX /DUNICODE /D_UNICODE /Fo:"$snapshotTestObj" /Fe:"$snapshotTest" "$snapshotTestSource" /link /INCREMENTAL:NO advapi32.lib
 if errorlevel 1 exit /b 1
 "$snapshotTest"
@@ -65,8 +75,15 @@ exit /b %errorlevel%
 "@
 [IO.File]::WriteAllText($command, $content, [Text.Encoding]::ASCII)
 & $env:ComSpec /d /c $command
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'Release boundary probe compilation or process-local API test failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'Release fixture compilation or process-local API test failed.' }
+$exports = [IO.File]::ReadAllText($candidateExports)
+foreach ($name in @('TestOnlyRepairSnapshot', 'TestOnlyTamperSnapshot')) {
+    if ($exports -notmatch "(?m)^\s*\d+\s+[0-9A-F]+\s+[0-9A-F]+\s+$name\s*\r?$") { throw "Missing native test-only MSI export: $name" }
+}
 & $snapshotInventoryTest -Executable $snapshotTest
-$hash = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText("$dll.sha256", "$hash  BoundaryProbe.dll`n", [Text.Encoding]::ASCII)
-Write-Output "TEST ONLY boundary probe: $dll SHA256 $hash"
+foreach ($file in @($dll, $candidateDll, $snapshotTest)) {
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw 'Missing compiled test fixture.' }
+    $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+    [IO.File]::WriteAllText("$file.sha256", "$hash  $([IO.Path]::GetFileName($file))`n", [Text.Encoding]::ASCII)
+    Write-Output "TEST ONLY fixture: $file SHA256 $hash"
+}

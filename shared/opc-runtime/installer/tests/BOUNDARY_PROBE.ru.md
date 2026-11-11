@@ -67,10 +67,31 @@ value, ошибки чтения/типа/размера и malformed/tampered p
 test сравнивает manifest компилированного reader с native inventory и отвергает
 пропуск, дубли и некорректные bindings. Это **не** проверка реальных MSI API,
 registry DACL, package/session/host/module/source provenance или невозможности
-изменения value после проверки. Reader ещё не вызывается MSI и не выдаёт права
-на запись. Подмена API/process или активной базы и привилегированное конкурентное
+изменения value после проверки. Reader не вызывается production MSI и сам не
+выдаёт права на запись. Подмена API/process или активной базы и привилегированное конкурентное
 изменение не исключаются этими тестами; связывать результат с writer до
 доказательства trust boundary небезопасно.
+
+Подготовлен отдельный `TestOnlyRepairSnapshot.cpp`: после проверок disposable
+GitHub-hosted/admin harness встраивает его с настоящим reader **только в копию**
+MSI и временно связывает native `Registry` rows с private hex properties.
+Тот же harness проверяет исходные compiled rows, view компонентов и новую форму
+`#x[private]`; он планирует `/fomus`, `/famus`, basic UI, независимые клиенты,
+rollback и pre-`InstallInitialize` отказ на property tamper, missing/empty/type,
+malformed SD и HKCU decoy. Это эксперимент для проверки MSI-механики, не
+реализованная package policy и не доверенный guard: active database, host,
+module, source и unsupported transforms он не проверяет. До фактического
+завершения нового hosted run все перечисленные integration results — **не
+проверены**, даже если локальные fake-API fixtures проходят. Production MSI
+по-прежнему author-ит исходные baseline values и не содержит эту DLL.
+
+Runtime workflow теперь требует `repository.private=true` и совпадение имени
+репозитория в GitHub event до сборки/передачи каких-либо Runtime binaries;
+mutating harness повторяет ту же проверку после hosted/admin gate. При public
+или недоступном metadata job явно FAIL, а jobs с бинарниками не запускаются.
+Текущий репозиторий `boogy777-lgtm/iCemDataMonitor` публичен, поэтому новый
+private Runtime run здесь невозможен без решения владельца. Эта проверка —
+изоляция CI, а не доказательство целостности MSI или защиты от администратора.
 
 Эти данные описывают **конкретный** процесс и токен теста. `AccessCheck` на его
 DACL не доказывает невозможность injection другим токеном, с включёнными

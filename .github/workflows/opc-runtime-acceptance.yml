@@ -12,7 +12,19 @@ on:
 permissions:
   contents: read
 jobs:
+  require-private-ci:
+    runs-on: windows-2022
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Require private CI before building or uploading Runtime binaries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module ./shared/opc-runtime/tools/SharedOpcAcceptance.psm1 -Force
+          Assert-SharedOpcPrivateCi ([IO.File]::ReadAllText($env:GITHUB_EVENT_PATH)) $env:GITHUB_REPOSITORY
   build-blocked-runtime:
+    needs: require-private-ci
     runs-on: windows-2022
     timeout-minutes: 60
     outputs:
@@ -78,8 +90,10 @@ jobs:
             [IO.Directory]::CreateDirectory($Artifact) | Out-Null
             & "$Root/shared/opc-runtime/installer/Build-SharedRuntime.ps1" -CoreBuildDirectory $Core -OutputFile "$Artifact/runtime.msi"
             & "$Root/shared/opc-runtime/installer/tests/Build-BoundaryProbe.ps1" -OutputDirectory "$Work/boundary-probe"
-            Copy-Item "$Work/boundary-probe/BoundaryProbe.dll" $Artifact
-            Copy-Item "$Work/boundary-probe/BoundaryProbe.dll.sha256" $Artifact
+            foreach ($Name in @('BoundaryProbe.dll', 'TestOnlyRepairSnapshot.dll', 'OpcRepairSnapshotTests.exe')) {
+              Copy-Item "$Work/boundary-probe/$Name" $Artifact
+              Copy-Item "$Work/boundary-probe/$Name.sha256" $Artifact
+            }
             Copy-Item "$Core/build-metadata.json" $Artifact
           } finally {
             [IO.Directory]::CreateDirectory($Diagnostics) | Out-Null
