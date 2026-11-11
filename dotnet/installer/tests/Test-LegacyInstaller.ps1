@@ -7,7 +7,9 @@ if (-not $IsWindows -or ($env:GITHUB_ACTIONS -ne 'true' -and -not $AllowMachineC
     throw 'Use a disposable Windows CI runner or explicitly pass -AllowMachineChanges on a disposable Windows VM.'
 }
 $Root = Split-Path $PSScriptRoot -Parent
-$Repository = Split-Path $Root -Parent
+$Repository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path
+$OwnerSource = Join-Path $Repository 'rust/installer/tests/LockedFileOwner.cs'
+if (-not (Test-Path -LiteralPath $OwnerSource -PathType Leaf)) { throw 'File-owner fixture source missing before MSI test effects.' }
 Import-Module (Join-Path $Root 'BuildPaths.psm1') -Force
 $Work = Join-Path ([IO.Path]::GetTempPath()) ('icem-legacy-contract-' + [guid]::NewGuid().ToString('N'))
 $Install = Join-Path $Work "installed $([char]0x0442) files"
@@ -312,7 +314,7 @@ try {
     # Real file-owner tests share only the disposable C# lock fixture with Rust.
     $Locks = Join-Path $Work 'locks'; [IO.Directory]::CreateDirectory($Locks) | Out-Null
     $OwnerExe = Join-Path $Locks ('icem-lock-' + [guid]::NewGuid().ToString('N') + '.exe')
-    & (Join-Path $Framework 'csc.exe') /nologo /target:winexe /platform:x64 "/out:$OwnerExe" "/reference:$Framework/System.Windows.Forms.dll" "/reference:$Framework/System.Drawing.dll" (Join-Path $Repository 'rust/installer/tests/LockedFileOwner.cs') | Out-Host
+    & (Join-Path $Framework 'csc.exe') /nologo /target:winexe /platform:x64 "/out:$OwnerExe" "/reference:$Framework/System.Windows.Forms.dll" "/reference:$Framework/System.Drawing.dll" $OwnerSource | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'File-owner fixture compilation failed' }
     $ForeignFile = Join-Path $Locks 'foreign.dll'; [IO.File]::WriteAllText($ForeignFile,'unrelated')
     $Foreign = Start-FileOwner $OwnerExe $ForeignFile 'foreign' 'stubborn'
