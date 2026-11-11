@@ -177,6 +177,12 @@ MSI paths and each product's payload destinations are unchanged.
 - Exact approval/provenance commit: `61baf2cc484edfbe61a8b3b3e0b31b2559707c6b` (`Approve exact layout relocation blobs`); only the 42 changed logical baseline-owned paths were approved, with no delete approvals or unrelated approval refresh.
 - Source/provenance chain confirmed: source `241341dea6b7b0349eb2c8ed4e5bee8866e99c45`, approval `61baf2cc484edfbe61a8b3b3e0b31b2559707c6b`. Предыдущий report HEAD перед этим document-only follow-up — `09b658a3efbd185f38ac95343dda3be910732fe0`; итоговый report-only commit и push проверяются по `git`/PR #51 (этот файл не может содержать hash собственного commit).
 
+### Narrow hosted-review follow-up
+
+- На exact `5834dfeb` hosted Rust CI run `42942169399`, packaging job `130266926859`, обнаружил неверный source locator в Rust install fixture: он искал `repo/installer/gen-payload.ps1` вместо уже staged `repo/dotnet/installer/gen-payload.ps1`. Job завершился до вызова Windows Installer; это path-resolution failure, не verdict об установке/поведении MSI. Common/Rust routing and baseline jobs прошли; package/AddIn pure checks и обе Setup Release fixtures также прошли. Полный job log: `artifacts/layout-ci-review/42942169399-packaging-130266926859.log`.
+- Исправлены оба активных Rust build-time consumers: `rust/tools/Test-WindowsInstaller.ps1` и `rust/installer/WindowsInstaller.psm1`. Existing `Test-WindowsPackaging.ps1` теперь проверяет staged canonical fixture input, оба ожидаемых call sites, отсутствие retired generator path во всех Rust `.ps1/.psm1` consumers, а также positive/negative matcher cases. Logical origin `installer/gen-payload.ps1` в immutable provenance не менялся.
+- Follow-up local checks: `Test-WindowsPackaging.ps1` PASS; common Python **36/36**, Rust Python **22/22**, PowerShell parser **3/3 changed scripts**, `git diff --check` PASS. Ни MSI, ни ledger, ни source manifest не менялись; no local Cargo/installer execution. Hosted rerun outcome записывается отдельно только после запуска; queued run не считается PASS.
+
 ## История
 
 - Parent/base: `c2724ccb80693f41309f81cea4d1f3155459bbe3`.

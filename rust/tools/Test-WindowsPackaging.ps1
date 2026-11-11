@@ -27,6 +27,21 @@ function Package([string] $Version) {
 }
 try {
     $Fixture = New-WindowsPackagingFixture $Temp
+    $FixtureGenerator = Join-Path $Fixture.repo 'dotnet/installer/gen-payload.ps1'
+    if (-not (Test-Path -LiteralPath $FixtureGenerator -PathType Leaf)) { throw 'Legacy payload generator was not staged at its canonical relocated path' }
+    foreach ($Consumer in @('rust/tools/Test-WindowsInstaller.ps1', 'rust/installer/WindowsInstaller.psm1')) {
+        $Text = [IO.File]::ReadAllText((Join-Path $RepositoryRoot $Consumer))
+        if ($Text -notmatch 'dotnet/installer/gen-payload\.ps1') { throw "Relocated legacy payload generator path missing from $Consumer" }
+    }
+    $StaleGeneratorPattern = '(?<!dotnet/)installer/gen-payload\.ps1|(?<!dotnet\\)installer\\gen-payload\.ps1'
+    if ('Join-Path $Fixture.repo ''installer/gen-payload.ps1''' -notmatch $StaleGeneratorPattern -or
+        'Join-Path $Fixture.repo ''dotnet/installer/gen-payload.ps1''' -match $StaleGeneratorPattern) {
+        throw 'Legacy payload generator path regression matcher is incomplete'
+    }
+    $StaleGeneratorCallers = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Include '*.ps1', '*.psm1' |
+        Where-Object FullName -CNE $PSCommandPath |
+        Where-Object { [IO.File]::ReadAllText($_.FullName) -match $StaleGeneratorPattern })
+    if ($StaleGeneratorCallers.Count) { throw "Retired legacy payload generator path remains in active Rust tooling: $($StaleGeneratorCallers.FullName -join ', ')" }
     # Delivery overrides must survive invocation from outside the checkout.
     Push-Location $Temp
     try {
@@ -205,6 +220,6 @@ try {
     Assert-Rejected { Package '0.1.1-test' } 'Not a Windows PE'
     if (@(Get-ChildItem -LiteralPath $Output -Filter '.package-*' -Force).Count) { throw 'Failed packaging left staging directories' }
     if (@(Get-ChildItem -LiteralPath $Output -Filter '*0.1.1*').Count) { throw 'Failed packaging published an archive' }
-    Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture, failure cleanup; full AddIn inventory, native MSI ownership/UI/options/paths, stable option components and N+1 version selection.'
+    Write-Host 'PASS Windows packaging: ZIP roundtrip/completeness/checksums, relocated payload-generator consumer paths, no overwrite, tamper/missing/extra files, path escape/duplicates, PE architecture, failure cleanup; full AddIn inventory, native MSI ownership/UI/options/paths, stable option components and N+1 version selection.'
 } finally { if (Test-Path -LiteralPath $Temp) { Remove-Item -LiteralPath $Temp -Recurse -Force } }
 
