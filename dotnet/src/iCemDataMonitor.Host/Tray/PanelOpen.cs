@@ -77,13 +77,11 @@ public static class ShellExeResolver
             Path.GetFullPath(Path.Combine(hostBaseDir, "..", "shell", ShellExeName)),
         };
 
-        // 3) dev-layout walk-up: find <repo>\iCemDataMonitor.Shell.WinUI\bin
-        //    (2026-09-01 repo-restructure decree: flat layout — projects live
-        //    in the repo ROOT, the server-dotnet level no longer exists).
+        // 4) dev-layout walk-up: find <repo>\dotnet\src\iCemDataMonitor.Shell.WinUI\bin.
         var dir = new DirectoryInfo(hostBaseDir);
         for (int depth = 0; depth < 8 && dir is not null; depth++, dir = dir.Parent)
         {
-            var binRoot = Path.Combine(dir.FullName, "iCemDataMonitor.Shell.WinUI", "bin");
+            var binRoot = Path.Combine(dir.FullName, "dotnet", "src", "iCemDataMonitor.Shell.WinUI", "bin");
             if (!Directory.Exists(binRoot))
                 continue;
             // layout: bin\[x64\]<config>\net10.0-windows10.0.19041.0\win-x64\iCemDataMonitor.WinUI.exe

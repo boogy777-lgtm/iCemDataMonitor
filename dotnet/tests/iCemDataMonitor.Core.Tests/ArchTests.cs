@@ -21,10 +21,10 @@ public sealed class ArchTests
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName,
-                   "iCemDataMonitor.Core", "iCemDataMonitor.Core.csproj"))) root = root.Parent;
+                   "dotnet", "src", "iCemDataMonitor.Core", "iCemDataMonitor.Core.csproj"))) root = root.Parent;
         Assert.NotNull(root);
         var project = XDocument.Load(Path.Combine(root.FullName,
-            "iCemDataMonitor.Core", "iCemDataMonitor.Core.csproj"));
+            "dotnet", "src", "iCemDataMonitor.Core", "iCemDataMonitor.Core.csproj"));
         var references = project.Descendants("ProjectReference")
             .Select(node => Path.GetFileNameWithoutExtension(((string)node.Attribute("Include")!)
                 .Replace('\\', '/'))).ToArray();
