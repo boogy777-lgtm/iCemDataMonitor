@@ -198,6 +198,12 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.verify(workflow=self.workflow.replace('--host target/release/', '--host target/debug/'))
 
+    def test_identity_profile_cannot_be_omitted_from_the_full_gate(self):
+        with self.assertRaises(ValueError):
+            self.verify(workflow=self.workflow.replace(' -OrdinalIcu26100', '', 1))
+        with self.assertRaises(ValueError):
+            self.verify(scaffold=self.scaffold.replace('@IdentityFeatures', '@OtherFeatures', 1))
+
     def test_independent_counterparts_cannot_be_skipped_or_reordered(self):
         name = 'Verify independent MQTT and OPC UA counterparts on Windows'
         for replacement in ('# removed counterpart gate', name + "\n        if: success() && false"):

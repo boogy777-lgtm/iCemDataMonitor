@@ -22,11 +22,41 @@ function Assert-Rejected([scriptblock] $Operation, [string] $Message) {
     }
     if (-not $Failed) { throw "Expected rejection: $Message" }
 }
-function Package([string] $Version) {
-    New-WindowsArchive -RepositoryRoot $Repo -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Output -Version $Version -Commit ('1' * 40) -Compiler 'synthetic packaging fixture'
+function Package([string] $Version, [string] $OrdinalProvider = 'icu-19045') {
+    New-WindowsArchive -RepositoryRoot $Repo -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Output -Version $Version -Commit ('1' * 40) -Compiler 'synthetic packaging fixture' -OrdinalProvider $OrdinalProvider
+}
+function Assert-OrdinalReleaseRouting([string] $Release, [string] $EmulatorManifest) {
+    foreach ($Required in @(
+        '$Use26100 = switch -CaseSensitive ($OrdinalProvider)',
+        '''icu-19045'' { $false }',
+        '''icu-26100'' { $true }',
+        'default { throw ''Unsupported ordinal identity provider'' }',
+        '-OrdinalIcu26100:$Use26100',
+        '$Build += @(''--features'', ''icem-emulator-app/ordinal-icu-26100'')',
+        '-OrdinalProvider $OrdinalProvider'
+    )) {
+        if (-not $Release.Contains($Required, [StringComparison]::Ordinal)) { throw 'Ordinal release build routing is incomplete' }
+    }
+    if (-not $EmulatorManifest.Contains('ordinal-icu-26100 = ["icem-emulation/ordinal-icu-26100"]', [StringComparison]::Ordinal)) {
+        throw 'Ordinal release build routing is incomplete'
+    }
 }
 try {
     $Fixture = New-WindowsPackagingFixture $Temp
+    $ReleaseSource = [IO.File]::ReadAllText((Join-Path $Root 'tools/Build-WindowsRelease.ps1'))
+    $EmulatorManifest = [IO.File]::ReadAllText((Join-Path $Root 'apps/emulator/Cargo.toml'))
+    Assert-OrdinalReleaseRouting $ReleaseSource $EmulatorManifest
+    foreach ($Marker in @('''icu-19045'' { $false }', '''icu-26100'' { $true }', '-OrdinalIcu26100:$Use26100', 'icem-emulator-app/ordinal-icu-26100', '-OrdinalProvider $OrdinalProvider')) {
+        Assert-Rejected { Assert-OrdinalReleaseRouting ($ReleaseSource.Replace($Marker, 'removed')) $EmulatorManifest } 'Ordinal release build routing'
+    }
+    Assert-Rejected { Assert-OrdinalReleaseRouting $ReleaseSource ($EmulatorManifest.Replace('icem-emulation/ordinal-icu-26100', 'removed')) } 'Ordinal release build routing'
+    $ToolManifest = 'shared/installer/.config/dotnet-tools.json'
+    $FixtureManifest = Join-Path $Fixture.repo $ToolManifest
+    if (-not (Test-Path -LiteralPath $FixtureManifest -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $FixtureManifest -Algorithm SHA256).Hash -cne
+        (Get-FileHash -LiteralPath (Join-Path $RepositoryRoot $ToolManifest) -Algorithm SHA256).Hash) {
+        throw 'The MSI lifecycle fixture must stage the exact shared WiX tool manifest'
+    }
     $FixtureGenerator = Join-Path $Fixture.repo 'dotnet/installer/gen-payload.ps1'
     if (-not (Test-Path -LiteralPath $FixtureGenerator -PathType Leaf)) { throw 'Legacy payload generator was not staged at its canonical relocated path' }
     foreach ($Consumer in @('rust/tools/Test-WindowsInstaller.ps1', 'rust/installer/WindowsInstaller.psm1')) {
@@ -49,7 +79,7 @@ try {
             @{ repository = 'repo'; output = 'delivery space'; expected = (Join-Path $Repo 'delivery space'); version = '0.2.0-relative' },
             @{ repository = $Repo; output = (Join-Path $Temp 'absolute delivery'); expected = (Join-Path $Temp 'absolute delivery'); version = '0.2.0-absolute' }
         )) {
-            $Delivered = New-WindowsArchive -RepositoryRoot $Case.repository -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Case.output -Version $Case.version -Commit ('1' * 40) -Compiler 'synthetic output-path fixture'
+            $Delivered = New-WindowsArchive -RepositoryRoot $Case.repository -BinaryDirectory $Bins -AddinDirectory $Fixture.addin -OutputDirectory $Case.output -Version $Case.version -Commit ('1' * 40) -Compiler 'synthetic output-path fixture' -OrdinalProvider 'icu-19045'
             if ((Split-Path $Delivered.archive -Parent) -cne $Case.expected -or
                 -not (Test-Path -LiteralPath $Delivered.checksum)) { throw 'Delivery output override depends on caller working directory' }
         }
@@ -62,6 +92,23 @@ try {
     $Unpack = Join-Path $Temp 'relocated space'
     [IO.Compression.ZipFile]::ExtractToDirectory($Result.archive, $Unpack)
     $Verified = Test-WindowsPayload $Unpack
+    if ($Verified.ordinal_identity_provider -cne 'icu-19045') { throw 'Historical ordinal profile was not recorded in the fixture archive' }
+    $SecondProfile = Package '0.3.0-profile' 'icu-26100'
+    $SecondUnpack = Join-Path $Temp 'second ordinal profile'
+    [IO.Compression.ZipFile]::ExtractToDirectory($SecondProfile.archive, $SecondUnpack)
+    if ((Test-WindowsPayload $SecondUnpack).ordinal_identity_provider -cne 'icu-26100') { throw 'Second ordinal profile was not recorded in the fixture archive' }
+    $IdentityManifest = Join-Path $SecondUnpack 'release-manifest.json'
+    $OriginalManifest = [IO.File]::ReadAllText($IdentityManifest)
+    $MutatedManifest = $OriginalManifest | ConvertFrom-Json -AsHashtable
+    $MutatedManifest.ordinal_identity_provider = 'unknown'
+    [IO.File]::WriteAllText($IdentityManifest, ($MutatedManifest | ConvertTo-Json -Depth 8))
+    Assert-Rejected { Test-WindowsPayload $SecondUnpack } 'Invalid ordinal identity provider'
+    $null = $MutatedManifest.Remove('ordinal_identity_provider')
+    [IO.File]::WriteAllText($IdentityManifest, ($MutatedManifest | ConvertTo-Json -Depth 8))
+    if ((Test-WindowsPayload $SecondUnpack).PSObject.Properties['ordinal_identity_provider']) { throw 'An old unmarked manifest must not acquire a guessed provider' }
+    [IO.File]::WriteAllText($IdentityManifest, $OriginalManifest)
+    Assert-Rejected { Package '0.1.2-unknown' 'unknown' } 'OrdinalProvider'
+    Assert-Rejected { Package '0.1.2-uppercase' 'ICU-26100' } 'OrdinalProvider'
     if ($Verified.files.Count -ne $ExpectedCount) { throw 'Template directory was not packaged completely' }
     $DaBinary = @($Verified.binaries | Where-Object role -CEQ 'opc-da-sidecar')
     if ($DaBinary.Count -ne 1 -or $DaBinary[0].destination -cne 'icem-opc-da-sidecar.exe' -or

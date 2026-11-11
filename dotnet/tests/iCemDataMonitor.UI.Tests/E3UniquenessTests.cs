@@ -93,6 +93,20 @@ public class SecondInstanceMutexContractTests : IDisposable
     }
 }
 
+internal static class ShellTestSources
+{
+    internal static string Directory()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null &&
+               !File.Exists(Path.Combine(dir.FullName, "dotnet", "src", "iCemDataMonitor.Shell.WinUI", "App.xaml.cs")))
+            dir = dir.Parent;
+        if (dir is null)
+            throw new InvalidOperationException("shell sources not found above " + AppContext.BaseDirectory);
+        return Path.Combine(dir.FullName, "dotnet", "src", "iCemDataMonitor.Shell.WinUI");
+    }
+}
+
 /// <summary>
 /// Source guard, owner decree 2026-08-26 (P1): SINGLE tray owner = HOST.
 /// Production bug: TWO identical icons hung in the tray at once — the WinForms
@@ -105,21 +119,10 @@ public class SecondInstanceMutexContractTests : IDisposable
 /// </summary>
 public class ShellExitPathGuardTests
 {
-    private static string ShellDir()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null &&
-               !File.Exists(Path.Combine(dir.FullName, "iCemDataMonitor.Shell.WinUI", "App.xaml.cs")))
-            dir = dir.Parent;
-        if (dir is null)
-            throw new InvalidOperationException("shell sources not found above " + AppContext.BaseDirectory);
-        return Path.Combine(dir.FullName, "iCemDataMonitor.Shell.WinUI");
-    }
-
     private static string Read(string fileName)
     {
         // Sources are UTF-8; explicit encoding keeps кириллица intact.
-        return System.IO.File.ReadAllText(Path.Combine(ShellDir(), fileName), System.Text.Encoding.UTF8);
+        return System.IO.File.ReadAllText(Path.Combine(ShellTestSources.Directory(), fileName), System.Text.Encoding.UTF8);
     }
 
     [Fact]
@@ -133,7 +136,7 @@ public class ShellExitPathGuardTests
             Assert.DoesNotContain("H.NotifyIcon", src);
             Assert.DoesNotContain("TrayIconHost", src);
         }
-        Assert.False(File.Exists(Path.Combine(ShellDir(), "TrayIconHost.cs")),
+        Assert.False(File.Exists(Path.Combine(ShellTestSources.Directory(), "TrayIconHost.cs")),
             "TrayIconHost.cs must be deleted: single tray owner = host (P1)");
     }
 
@@ -165,19 +168,8 @@ public class ShellExitPathGuardTests
 /// </summary>
 public class ShellSurfaceGuardTests
 {
-    private static string ShellDir()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null &&
-               !File.Exists(Path.Combine(dir.FullName, "iCemDataMonitor.Shell.WinUI", "App.xaml.cs")))
-            dir = dir.Parent;
-        if (dir is null)
-            throw new InvalidOperationException("shell sources not found above " + AppContext.BaseDirectory);
-        return Path.Combine(dir.FullName, "iCemDataMonitor.Shell.WinUI");
-    }
-
     private static IEnumerable<string> ShellSourceFiles() =>
-        Directory.EnumerateFiles(ShellDir(), "*.*", SearchOption.AllDirectories)
+        Directory.EnumerateFiles(ShellTestSources.Directory(), "*.*", SearchOption.AllDirectories)
             .Where(f =>
             {
                 var name = Path.GetFileName(f);
@@ -262,5 +254,5 @@ public class ShellSurfaceGuardTests
     }
 
     private static string Read(string fileName) =>
-        System.IO.File.ReadAllText(Path.Combine(ShellDir(), fileName), System.Text.Encoding.UTF8);
+        System.IO.File.ReadAllText(Path.Combine(ShellTestSources.Directory(), fileName), System.Text.Encoding.UTF8);
 }

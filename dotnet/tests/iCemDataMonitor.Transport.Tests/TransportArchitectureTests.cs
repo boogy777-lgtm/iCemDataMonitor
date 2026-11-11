@@ -4,8 +4,17 @@ namespace iCemDataMonitor.Transport.Tests;
 
 public class TransportArchitectureTests
 {
-    private static readonly string TransportProjectDir = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "iCemDataMonitor.Transport");
+    private static readonly string TransportProjectDir = FindTransportProject();
+
+    private static string FindTransportProject()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            var project = Path.Combine(dir.FullName, "dotnet", "src", "iCemDataMonitor.Transport");
+            if (File.Exists(Path.Combine(project, "iCemDataMonitor.Transport.csproj"))) return project;
+        }
+        throw new DirectoryNotFoundException("Transport sources not found above " + AppContext.BaseDirectory);
+    }
 
     /// <summary>
     /// ModbusTcpPublisher (v2) MUST NOT reference SSF template loading, the v1

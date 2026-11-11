@@ -22,10 +22,26 @@ $Repo = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Pare
 Import-Module (Join-Path $Repo 'shared/installer/tools/WindowsMsiDatabase.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'WindowsBuildSdk.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'SharedOpcAcceptance.psm1') -Force
+if ([string]::IsNullOrWhiteSpace($env:GITHUB_EVENT_PATH) -or -not (Test-Path -LiteralPath $env:GITHUB_EVENT_PATH -PathType Leaf)) {
+    throw 'Private Runtime CI event metadata is missing.'
+}
+Assert-SharedOpcPrivateCi ([IO.File]::ReadAllText($env:GITHUB_EVENT_PATH)) $env:GITHUB_REPOSITORY
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 if ((Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$Msi.sha256").Split(' ')[0])) { throw 'Blocked input MSI checksum mismatch.' }
+$Fixtures = @{}
+foreach ($name in @('BoundaryProbe.dll', 'TestOnlyRepairSnapshot.dll', 'OpcRepairSnapshotTests.exe')) {
+    $file = Join-Path (Split-Path $Msi -Parent) $name
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf) -or -not (Test-Path -LiteralPath "$file.sha256" -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash -ine ([IO.File]::ReadAllText("$file.sha256").Split(' ')[0])) {
+        throw "Missing or mismatched TEST ONLY fixture: $name"
+    }
+    $Fixtures[$name] = $file
+}
+& (Join-Path $PSScriptRoot '../installer/tests/Test-RepairSnapshotInventory.ps1') -Executable $Fixtures['OpcRepairSnapshotTests.exe']
+$Bindings = @(& $Fixtures['OpcRepairSnapshotTests.exe'] --manifest)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot read TEST ONLY compiled repair bindings.' }
 $Cases = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../installer/acceptance-cases.json') -Raw | ConvertFrom-Json
-$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner', 'descriptor-repair')
+$Supported = @('lifecycle', 'rollback', 'foreign-registry', 'foreign-component', 'clients', 'shared-owner', 'descriptor-repair', 'descriptor-adversarial')
 if ($Cases.schema_version -ne 1 -or (($Cases.cases | Sort-Object) -join ',') -cne (($Supported | Sort-Object) -join ',') -or
     @($Cases.cases | Sort-Object -Unique).Count -ne $Supported.Count -or $Case -cnotin $Supported) { throw 'Acceptance case coverage mismatch.' }
 $EvidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory)
@@ -40,6 +56,17 @@ $database = $installer.OpenDatabase($Candidate, 1)
 function Execute-Sql([string] $sql) {
     $view = $database.OpenView($sql)
     try { $null = $view.Execute() } finally { $null = $view.Close(); $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($view) }
+}
+function Add-TestBinary([string] $name, [string] $path) {
+    $record = $installer.CreateRecord(1)
+    $view = $database.OpenView("INSERT INTO ``Binary`` (``Name``, ``Data``) VALUES ('$name', ?)")
+    try {
+        $null = $record.SetStream(1, $path)
+        $null = $view.Execute($record)
+    } finally {
+        $null = $view.Close()
+        foreach ($com in @($view, $record)) { $null = [Runtime.InteropServices.Marshal]::FinalReleaseComObject($com) }
+    }
 }
 try {
     $blocked = @(Read-WindowsMsiRecords $database 'SELECT `Condition` FROM `LaunchCondition` WHERE `Condition` = ''Installed''' @('Condition'))
@@ -56,6 +83,70 @@ try {
     # Test-only copy: preserve every real conflict guard and custom action. Never publish it.
     Execute-Sql 'DELETE FROM `LaunchCondition` WHERE `Condition` = ''Installed'''
     Execute-Sql 'UPDATE `Property` SET `Value` = ''TEST ONLY - iCem Shared OPC Runtime'' WHERE `Property` = ''ProductName'''
+    # Diagnostic DLL exists only in this disposable copy. It cannot validate or
+    # preserve descriptors; the telemetry must not be mistaken for acceptance.
+    $initialize = @(Read-WindowsMsiRecords $database 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''InstallInitialize''' @('Sequence'))
+    if ($initialize.Count -ne 1 -or [int]$initialize[0].Sequence -le 1) { throw 'Cannot locate pre-transaction probe slot.' }
+    $probeSequence = [int]$initialize[0].Sequence - 1
+    $snapshotSequence = $probeSequence - 1
+    $tamperSequence = $probeSequence - 2
+    foreach ($sequence in @($tamperSequence, $snapshotSequence, $probeSequence)) {
+        if ($sequence -le 1 -or @(Read-WindowsMsiRecords $database "SELECT ``Action`` FROM ``InstallExecuteSequence`` WHERE ``Sequence`` = $sequence" @('Action')).Count) { throw 'TEST ONLY pre-transaction sequence slot is occupied.' }
+    }
+    $appSearch = @(Read-WindowsMsiRecords $database 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''AppSearch''' @('Sequence'))
+    if ($appSearch.Count -ne 1 -or [int]$appSearch[0].Sequence -ge $tamperSequence) { throw 'AppSearch must precede the TEST ONLY snapshot guard.' }
+    Add-TestBinary 'IcemBoundaryProbe' $Fixtures['BoundaryProbe.dll']
+    Execute-Sql 'INSERT INTO `CustomAction` (`Action`, `Type`, `Source`, `Target`) VALUES (''IcemBoundaryProbe'', 1, ''IcemBoundaryProbe'', ''InspectBoundary'')'
+    Execute-Sql "INSERT INTO ``InstallExecuteSequence`` (``Action``, ``Condition``, ``Sequence``) VALUES ('IcemBoundaryProbe', '', $probeSequence)"
+    Execute-Sql 'INSERT INTO `Property` (`Property`, `Value`) VALUES (''ICEM_BOUNDARY_PROBE'', ''raw" OTHER=1;#x00'')'
+    # Link the real reader only in this disposable copy. The DLL DOES NOT prove
+    # package/session trust and must never be published as a production guard.
+    $registry = @(Read-WindowsMsiRecords $database 'SELECT `Registry`, `Root`, `Key`, `Name`, `Value`, `Component_` FROM `Registry`' @('Id', 'Root', 'Key', 'Name', 'Value', 'Component'))
+    $components = @(Read-WindowsMsiRecords $database 'SELECT `Component`, `Attributes` FROM `Component`' @('Id', 'Attributes'))
+    $transportNames = [Collections.Generic.List[string]]::new()
+    $writerNames = [Collections.Generic.List[string]]::new()
+    foreach ($binding in $Bindings) {
+        $arch, $key, $name, $public32, $public64, $private = $binding.Split('|')
+        $rows = @($registry | Where-Object { $_.Key -ceq $key -and $_.Name -ceq $name })
+        if ($rows.Count -ne 1 -or $rows[0].Root -cne '2' -or $rows[0].Id -cnotmatch '^[A-Za-z0-9_.]+$' -or
+            $rows[0].Value -cnotmatch '^#x(?:[0-9A-Fa-f]{2})+$') { throw 'Unexpected compiled native descriptor Registry row.' }
+        $owner = @($components | Where-Object Id -CEQ $rows[0].Component)
+        if ($owner.Count -ne 1 -or (([int]$owner[0].Attributes -band 256) -ne $(if ($arch -ceq 'x64') { 256 } else { 0 }))) {
+            throw 'Descriptor Registry row has the wrong native component view.'
+        }
+        if (@(Read-WindowsMsiRecords $database "SELECT ``Property`` FROM ``Property`` WHERE ``Property`` = '$private'" @('Property')).Count) { throw 'TEST ONLY writer property already exists.' }
+        $baselineHex = $rows[0].Value.Substring(2)
+        Execute-Sql "INSERT INTO ``Property`` (``Property``, ``Value``) VALUES ('$private', '$baselineHex')"
+        Execute-Sql "UPDATE ``Registry`` SET ``Value`` = '#x[$private]' WHERE ``Registry`` = '$($rows[0].Id)'"
+        $updated = @(Read-WindowsMsiRecords $database "SELECT ``Value`` FROM ``Registry`` WHERE ``Registry`` = '$($rows[0].Id)'" @('Value'))
+        if ($updated.Count -ne 1 -or $updated[0].Value -cne "#x[$private]") { throw 'TEST ONLY binary writer representation differs from the intended Registry row.' }
+        $writerNames.Add($private)
+        foreach ($view in @(@($public32, 2), @($public64, 18))) {
+            $property, $type = $view
+            $locator = $property + '_LOC'
+            Execute-Sql "INSERT INTO ``RegLocator`` (``Signature_``, ``Root``, ``Key``, ``Name``, ``Type``) VALUES ('$locator', 2, '$key', '$name', $type)"
+            Execute-Sql "INSERT INTO ``AppSearch`` (``Property``, ``Signature_``) VALUES ('$property', '$locator')"
+            $transportNames.Add($property)
+        }
+    }
+    # This switch exists only in the disposable candidate and enables the
+    # deliberate post-AppSearch property corruption used by negative tests.
+    $transportNames.Add('ICEM_TEST_TAMPER')
+    foreach ($entry in (Get-SharedOpcSnapshotPropertySets -Transport $transportNames.ToArray() -Writer $writerNames.ToArray())) {
+        $property, $names = $entry.property, $entry.names
+        $current = @(Read-WindowsMsiRecords $database "SELECT ``Value`` FROM ``Property`` WHERE ``Property`` = '$property'" @('Value'))
+        if ($current.Count -gt 1) { throw 'Duplicate MSI policy property.' }
+        $combined = if ($current.Count) { @($current[0].Value.Split(';') | Where-Object { $_ }) + @($names) } else { @($names) }
+        if (@($combined | Sort-Object -Unique).Count -ne $combined.Count) { throw 'Duplicate TEST ONLY transfer/hidden property.' }
+        $value = $combined -join ';'
+        if ($current.Count) { Execute-Sql "UPDATE ``Property`` SET ``Value`` = '$value' WHERE ``Property`` = '$property'" }
+        else { Execute-Sql "INSERT INTO ``Property`` (``Property``, ``Value``) VALUES ('$property', '$value')" }
+    }
+    Add-TestBinary 'IcemTestSnapshot' $Fixtures['TestOnlyRepairSnapshot.dll']
+    Execute-Sql 'INSERT INTO `CustomAction` (`Action`, `Type`, `Source`, `Target`) VALUES (''IcemTestSnapshotGuard'', 1, ''IcemTestSnapshot'', ''TestOnlyRepairSnapshot'')'
+    Execute-Sql 'INSERT INTO `CustomAction` (`Action`, `Type`, `Source`, `Target`) VALUES (''IcemTestSnapshotTamper'', 1, ''IcemTestSnapshot'', ''TestOnlyTamperSnapshot'')'
+    Execute-Sql "INSERT INTO ``InstallExecuteSequence`` (``Action``, ``Condition``, ``Sequence``) VALUES ('IcemTestSnapshotGuard', 'Installed AND NOT (REMOVE = `"ALL`")', $snapshotSequence)"
+    Execute-Sql "INSERT INTO ``InstallExecuteSequence`` (``Action``, ``Condition``, ``Sequence``) VALUES ('IcemTestSnapshotTamper', 'Installed AND ICEM_TEST_TAMPER', $tamperSequence)"
     # Standard WiX sequencing may omit InstallExecute. Without it, a Type 19 at
     # 6550 fails before deferred changes run at InstallFinalize: not a rollback test.
     $execute = @(Read-WindowsMsiRecords $database 'SELECT `Sequence` FROM `InstallExecuteSequence` WHERE `Action` = ''InstallExecute''' @('Sequence'))
@@ -112,10 +203,23 @@ function Equal-Snapshot([string] $before, [string] $after, [string] $phase) {
 }
 function Invoke-Msi([string[]] $arguments, [string] $phase, [int] $expected) {
     $log = Join-Path $EvidenceDirectory "$phase.log"
-    $process = Start-Process -FilePath (Join-Path $env:WINDIR 'System32/msiexec.exe') -ArgumentList (@($arguments) + @('/qn', '/norestart', '/l*v', ('"' + $log + '"'))) -PassThru
+    $withUi = @(Resolve-SharedOpcMsiArguments $arguments)
+    $process = Start-Process -FilePath (Join-Path $env:WINDIR 'System32/msiexec.exe') -ArgumentList ($withUi + @('/norestart', '/l*v', ('"' + $log + '"'))) -PassThru
     try {
         if (-not $process.WaitForExit(180000)) { $process.Kill($true); throw "$phase exceeded the disposable transaction budget; outcome unknown, no retry." }
         if ($process.ExitCode -ne $expected) { throw "$phase returned $($process.ExitCode), expected $expected; see $log" }
+        $targetsRuntime = @($arguments | Where-Object { $_ -ceq ('"' + $Candidate + '"') -or $_ -ieq $ProductCode }).Count -gt 0
+        if ($expected -eq 0 -and $targetsRuntime) {
+            $text = [IO.File]::ReadAllText($log)
+            foreach ($marker in @('ICEM_BOUNDARY_CONTEXT', 'ICEM_BOUNDARY_PROCESS', 'ICEM_BOUNDARY_THREAD', 'ICEM_BOUNDARY_ACCESS', 'ICEM_BOUNDARY_RESTRICTED', 'ICEM_BOUNDARY_IMAGE', 'ICEM_BOUNDARY_PROPERTY')) {
+                if (-not $text.Contains($marker, [StringComparison]::Ordinal)) { throw "$phase lacks execute-side boundary evidence: $marker" }
+            }
+            if (-not [regex]::IsMatch($text, 'ICEM_BOUNDARY_PROPERTY characters=\d+;literalMatch=1')) { throw "$phase did not preserve the raw quoted MSI property through the DLL API." }
+            if (-not [regex]::IsMatch($text, 'ICEM_BOUNDARY_RESTRICTED mediumSameSid=1;adminEnabled=0;openStatus=(?:\d+,){5}\d+(?![\d,])')) { throw "$phase lacks complete restricted-token process access evidence." }
+            if ([regex]::Matches($text, 'ICEM_BOUNDARY_REG index=').Count -lt 8) { throw "$phase lacks both registry views for both fixed AppIDs." }
+            if (@($arguments | Where-Object { $_ -cmatch '^/f[a-z]+$' }).Count) { Assert-SharedOpcSnapshotAcceptedLog $text }
+            if ('/qb!-' -cin $arguments -and -not [regex]::IsMatch($text, '(?m)^Property\([CS]\): UILevel = 3\r?$')) { throw "$phase did not log basic UI level." }
+        }
     } finally { $process.Dispose() }
 }
 function Build-ForeignOwner([string] $proxy, [string] $enumerator, [string] $destination) {
@@ -140,7 +244,7 @@ function Damage-RepairResources {
         } finally { $machine.Dispose() }
     }
 }
-$report = [ordered]@{ schema_version = 1; case = $Case; result = 'FAIL'; product_commit = $env:GITHUB_SHA; input_sha256 = (Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash.ToLowerInvariant(); candidate_not_distributable = $true }
+$report = [ordered]@{ schema_version = 1; case = $Case; result = 'FAIL'; product_commit = $env:GITHUB_SHA; input_sha256 = (Get-FileHash -LiteralPath $Msi -Algorithm SHA256).Hash.ToLowerInvariant(); candidate_not_distributable = $true; package_session_trust_verified = $false }
 try {
     $before = Snapshot 'before'
     $initial = Read-SharedOpcSnapshot $before
@@ -182,7 +286,13 @@ try {
                 } finally { Pop-Location }
             }
             Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'client-install' 0
-            $null = Snapshot 'client-installed'
+            $clientInstalled = Snapshot 'client-installed'
+            Damage-RepairResources
+            Invoke-Msi @('/fomus', ('"' + $Candidate + '"')) 'client-repair' 0
+            Equal-Snapshot $clientInstalled (Snapshot 'client-repaired') 'Repair before independent clients'
+            Damage-RepairResources
+            Invoke-Msi @('/famus', ('"' + $Candidate + '"')) 'client-force-repair' 0
+            if ((Read-SharedOpcSnapshot (Snapshot 'client-force-repaired')).files.Count -ne 18) { throw 'Force repair did not restore the complete native file inventory.' }
             $failedClients = [Collections.Generic.List[string]]::new()
             foreach ($arch in $clientArchitectures) {
                 $exe = Join-Path $Work "client-$arch/bin/icem-opc-com-client.exe"
@@ -306,8 +416,79 @@ try {
             $null = Snapshot 'descriptor-damaged'
             Invoke-Msi @('/fomus', ('"' + $Candidate + '"')) 'descriptor-repair' 0
             Equal-Snapshot $customized (Snapshot 'descriptor-repaired') 'Repair with customized AppID permissions'
+            Damage-RepairResources
+            Invoke-Msi @('/fomus', ('"' + $Candidate + '"'), '/qb!-') 'descriptor-basic-ui-repair' 0
+            Equal-Snapshot $customized (Snapshot 'descriptor-basic-ui-repaired') 'Basic UI repair with customized AppID permissions'
+            Damage-RepairResources
+            $null = Snapshot 'descriptor-force-damaged'
+            Invoke-Msi @('/famus', ('"' + $Candidate + '"')) 'descriptor-force-repair' 0
+            Equal-Snapshot $customized (Snapshot 'descriptor-force-repaired') 'Force-all repair with customized AppID permissions'
             Invoke-Msi @('/x', $ProductCode) 'descriptor-uninstall' 0
             Equal-Snapshot $before (Snapshot 'descriptor-uninstalled') 'Uninstall after customized repair'
+        }
+        'descriptor-adversarial' {
+            Invoke-Msi @('/i', ('"' + $Candidate + '"')) 'adversarial-install' 0
+            $parts = $Bindings[0].Split('|')
+            $view = if ($parts[0] -ceq 'x86') { [Microsoft.Win32.RegistryView]::Registry32 } else { [Microsoft.Win32.RegistryView]::Registry64 }
+            $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
+            try {
+                $key = $machine.OpenSubKey($parts[1], $true)
+                if ($null -eq $key) { throw 'Owned AppID missing before negative tests.' }
+                try {
+                    if ($key.GetValueKind($parts[2]) -ne [Microsoft.Win32.RegistryValueKind]::Binary) { throw 'Owned descriptor is not binary.' }
+                    $original = [byte[]]$key.GetValue($parts[2], $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+                    if ($original.Length -eq 0) { throw 'Owned descriptor is empty before negative tests.' }
+                    function Assert-Refusal([string] $phase, [string[]] $extra) {
+                        $state = Snapshot "$phase-before"
+                        $arguments = @(Get-SharedOpcAdversarialRepairArguments -Candidate $Candidate -Extra $extra)
+                        Invoke-Msi $arguments $phase 1603
+                        $log = [IO.File]::ReadAllText((Join-Path $EvidenceDirectory "$phase.log"))
+                        Assert-SharedOpcSnapshotRefusalLog $log
+                        if (@($extra | Where-Object { $_ -clike 'ICEM_TEST_TAMPER=*' }).Count -and
+                            -not $log.Contains('ICEM_TEST_SNAPSHOT_TAMPERED', [StringComparison]::Ordinal)) { throw 'Property tampering action did not execute.' }
+                        if ('/qb!-' -cin $extra -and -not [regex]::IsMatch($log, '(?m)^Property\([CS]\): UILevel = 3\r?$')) { throw 'Negative case did not run with basic UI level.' }
+                        Equal-Snapshot $state (Snapshot "$phase-after") "Pre-transaction refusal $phase"
+                    }
+                    foreach ($mode in @('missing', 'tamper', 'odd', 'injection')) {
+                        Assert-Refusal "property-$mode" @("ICEM_TEST_TAMPER=$mode")
+                    }
+                    Assert-Refusal 'property-tamper-basic-ui' @('ICEM_TEST_TAMPER=tamper', '/qb!-')
+                    foreach ($mode in @('missing', 'empty', 'string', 'dword', 'malformed')) {
+                        try {
+                            switch ($mode) {
+                                'missing' { $key.DeleteValue($parts[2], $true) }
+                                'empty' { $key.SetValue($parts[2], [byte[]]::new(0), [Microsoft.Win32.RegistryValueKind]::Binary) }
+                                'string' { $key.SetValue($parts[2], ('#x' + [Convert]::ToHexString($original)), [Microsoft.Win32.RegistryValueKind]::String) }
+                                'dword' { $key.SetValue($parts[2], 1, [Microsoft.Win32.RegistryValueKind]::DWord) }
+                                'malformed' { $key.SetValue($parts[2], [Convert]::FromHexString('01000480000000000000000000000000140000000200000000000000'), [Microsoft.Win32.RegistryValueKind]::Binary) }
+                            }
+                            Assert-Refusal "registry-$mode" @()
+                        } finally { $key.SetValue($parts[2], $original, [Microsoft.Win32.RegistryValueKind]::Binary) }
+                    }
+                    # HKCU is a decoy only. Refuse if anything existed there;
+                    # remove precisely this key created by this disposable test.
+                    $user = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser, $view)
+                    try {
+                        $existing = $user.OpenSubKey($parts[1], $false)
+                        if ($null -ne $existing) { $existing.Dispose(); throw 'HKCU decoy already exists; refusing to modify it.' }
+                        $decoy = $user.CreateSubKey($parts[1], $true)
+                        if ($null -eq $decoy) { throw 'Cannot create the disposable HKCU decoy.' }
+                        try {
+                            $decoy.SetValue($parts[2], $original, [Microsoft.Win32.RegistryValueKind]::Binary)
+                            try {
+                                $key.DeleteValue($parts[2], $true)
+                                $property = if ($parts[0] -ceq 'x86') { $parts[3] } else { $parts[4] }
+                                Assert-Refusal 'hkcu-decoy' @($property + '=#x' + [Convert]::ToHexString($original))
+                            } finally { $key.SetValue($parts[2], $original, [Microsoft.Win32.RegistryValueKind]::Binary) }
+                        } finally {
+                            $decoy.Dispose()
+                            $user.DeleteSubKey($parts[1], $true)
+                        }
+                    } finally { $user.Dispose() }
+                } finally { $key.Dispose() }
+            } finally { $machine.Dispose() }
+            Invoke-Msi @('/x', $ProductCode) 'adversarial-uninstall' 0
+            Equal-Snapshot $before (Snapshot 'adversarial-uninstalled') 'Uninstall after negative descriptor cases'
         }
         default { throw 'Acceptance case has no implementation.' }
     }

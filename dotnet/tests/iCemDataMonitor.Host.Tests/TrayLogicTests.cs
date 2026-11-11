@@ -136,9 +136,8 @@ public class TrayLogicTests
     public void ShellResolver_DevWalkUp_FindsRepoLayout()
     {
         // AppContext.BaseDirectory of the TEST host lives under
-        // <repo>\iCemDataMonitor.Host.Tests\bin\... — walk-up must
-        // reach the real Shell.WinUI bin candidates.
-        // 2026-09-01 repo-restructure decree: flat layout, no server-dotnet level.
+        // <repo>\dotnet\tests\iCemDataMonitor.Host.Tests\bin\... — walk-up must
+        // reach the real Shell.WinUI bin candidates under dotnet\src.
         var list = ShellExeResolver.ResolveCandidates(AppContext.BaseDirectory);
         // P1 2026-08-26: THREE deployment probes now precede the dev walk-up
         // (sibling → shell\ → ..\shell\) — skip all of them.
@@ -146,6 +145,26 @@ public class TrayLogicTests
         Assert.NotEmpty(devCandidates);
         Assert.All(devCandidates, c =>
             Assert.Contains(Path.Combine("iCemDataMonitor.Shell.WinUI", "bin"), c));
+    }
+
+    [Fact]
+    public void ShellResolver_DevWalkUp_FindsRelocatedSourceTree()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"shell-layout_{Guid.NewGuid():N}");
+        try
+        {
+            var hostDir = Path.Combine(root, "dotnet", "src", "iCemDataMonitor.Host", "bin", "Release", "net10.0");
+            var shellDir = Path.Combine(root, "dotnet", "src", "iCemDataMonitor.Shell.WinUI", "bin", "x64", "Release", "net10.0-windows10.0.19041.0", "win-x64");
+            Directory.CreateDirectory(hostDir);
+            Directory.CreateDirectory(shellDir);
+            var shellExe = Path.Combine(shellDir, ShellExeResolver.ShellExeName);
+            File.WriteAllText(shellExe, "test fixture; never executed");
+            Assert.Equal(shellExe, ShellExeResolver.ResolveShellExePath(hostDir));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]

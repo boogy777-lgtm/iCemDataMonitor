@@ -49,9 +49,9 @@ def verify(workflow, scaffold, inputs, interop):
                    './tools/Test-OpcDaInterop.ps1',
                    'python third-party/rust_opc/verify.py',
                    'git diff --exit-code -- third-party/rust_opc'),
-        order[9]: ('cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows',
-                   'cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings'),
-        order[10]: ('./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline',),
+        order[9]: ('cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows -p icem-emulation --features icem-emulation/ordinal-icu-26100',
+                   'cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -p icem-emulation --features icem-emulation/ordinal-icu-26100 -- -D warnings'),
+        order[10]: ('./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline -OrdinalIcu26100',),
         order[11]: ('python tools/acceptance/windows_counterparts.py --host target/release/icem-host-dev.exe --fixture tests/fixtures/bus-v5-minimal.bin --work "$env:RUNNER_TEMP/icem-counterparts"',),
         order[12]: ('npm ci --prefix tools/browser --ignore-scripts --no-audit --no-fund',
                     'node tools/browser/theme-contract.cjs', 'node tools/browser/dashboard.cjs'),
@@ -101,10 +101,12 @@ def verify(workflow, scaffold, inputs, interop):
                 [f"success() && steps.{cache_id}.outputs.cache-hit != 'true'"]), 'Cache restore/save policy drift')
     require("& (Join-Path $PSScriptRoot 'Verify-ScaffoldInputs.ps1') -RequireCompleteBaseline:$RequireCompleteBaseline" in scaffold,
             'Full Scaffold must repeat every input guard')
-    expected_cargo = ('& cargo check --release --workspace --all-targets --locked --offline',
-                      '& cargo build --release --workspace --locked --offline',
-                      '& cargo test --release --workspace --locked --offline',
-                      '& cargo clippy --release --workspace --all-targets --locked --offline -- -D warnings')
+    require("$IdentityFeatures = if ($OrdinalIcu26100) { @('--features', 'icem-emulation/ordinal-icu-26100') } else { @() }" in scaffold,
+            'The selected identity profile must be applied to every workspace command')
+    expected_cargo = ('& cargo check --release --workspace --all-targets --locked --offline @IdentityFeatures',
+                      '& cargo build --release --workspace --locked --offline @IdentityFeatures',
+                      '& cargo test --release --workspace --locked --offline @IdentityFeatures',
+                      '& cargo clippy --release --workspace --all-targets --locked --offline @IdentityFeatures -- -D warnings')
     require(tuple(line.strip() for line in scaffold.splitlines() if line.strip().startswith('& cargo ')) == expected_cargo,
             'Full Scaffold commands drift')
     for command, failure in zip(expected_cargo, ('cargo check failed', 'cargo build failed', 'cargo tests failed', 'clippy failed')):

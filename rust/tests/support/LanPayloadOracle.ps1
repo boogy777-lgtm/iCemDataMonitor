@@ -1,6 +1,6 @@
 param([Parameter(Mandatory)][string]$RepoRoot, [string]$LoadingFixtures)
 $ErrorActionPreference = 'Stop'
-$Core = Join-Path $RepoRoot 'iCemEmule.Core'
+$Core = Join-Path $RepoRoot 'dotnet/src/iCemEmule.Core'
 $Files = @((Join-Path $PSScriptRoot 'EmulatorOracleGlobals.cs'))
 $Files += @('DeviceTemplate','ISignalValueProvider','SimFileResolver','SignalWireCodec','LantableRegistry','UnitConversion','AcePayloadProvider','DfbAcePayloadProvider','FrozenPayloadProvider','ManualOverridePayloadProvider','UnitConvertingPayloadProvider') | ForEach-Object { Join-Path $Core "Core/$_.cs" }
 $Files += @(Get-ChildItem (Join-Path $Core 'Dfb') -Filter '*.cs' -File -Recurse | ForEach-Object FullName)

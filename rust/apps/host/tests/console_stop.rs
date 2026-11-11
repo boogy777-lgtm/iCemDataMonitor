@@ -146,7 +146,16 @@ fn manual_restart_and_autostart_quit(
     let icon =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/iCemDataMonitor.ico");
     let root = std::env::temp_dir().join(format!("icem-console-autostart-{}", std::process::id()));
-    std::fs::create_dir_all(&root)?;
+    std::fs::create_dir(&root)?;
+    // This test exercises console/tray lifecycle, not COM. An explicit OFF keeps
+    // it from launching an installed DA sidecar if one happens to be beside Host.
+    let station = icem_config::IniOptions {
+        opcda_on: 0,
+        lansniffer_on: 0,
+        mmf_path: root.join("absent-bus.dat").to_string_lossy().into_owned(),
+        ..Default::default()
+    };
+    std::fs::write(root.join("config.ini"), station.render())?;
     for autostart in [false, true] {
         let pipe = format!("icem-console-start-{}-{autostart}", std::process::id());
         let identity = icem_platform_windows::HostIpcIdentity::for_pipe(&pipe)?;

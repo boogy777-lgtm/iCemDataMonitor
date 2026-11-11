@@ -127,7 +127,13 @@ contain exactly one DLL in `Payload.Addin`. Manifest/source collisions, non-AMD6
 EXEs, missing/extra/tampered files, absent/mismatched AddIn and escaping paths fail.
 
 `release-manifest.json` schema 2 records source commit, compiler, release/static
-CRT target and all payload SHA256/size values. ZIP staging/extraction is validated.
+CRT target, the explicitly selected `ordinal_identity_provider` and all payload
+SHA256/size values. Unmarked older schema-2 archives remain readable without
+guessing their provider. `Build-WindowsRelease.ps1 -OrdinalProvider icu-19045`
+or `icu-26100` selects the same profile for the full test gate and the build;
+the build host must match the selected measured provider. The binary does not
+auto-switch for a different deployment machine. See
+[provider policy](../docs/ORDINAL_PROVIDERS_2026-11-11.ru.md). ZIP staging/extraction is validated.
 MSI is built with high CAB compression and warnings/validation errors fail the
 build. No .NET10/WinAppSDK/WebView2 runtime payload is added; net48 belongs to the
 original iCem process. Npcap/COM drivers remain external. Signing is not implemented.
@@ -192,8 +198,12 @@ contracts, not evidence of real bidirectional uninstall, production cutover or a
 turnkey OPC Setup. Existing OPC registrations on this VM are not modified.
 
 
-The bundled `icem-opc-da-sidecar.exe` remains opt-in through Host
-`--opc-da-config`; installation does not start it or register COM classes,
-proxy/stubs, OPCEnum or DCOM permissions. The synchronous DA development profile
-and its open client/registration acceptance gates are documented in
-[OPCDA_P7B](../docs/OPCDA_P7B.ru.md).
+For normal Host `--autostart`, the bundled `icem-opc-da-sidecar.exe` beside Host
+is the default DA profile when the station's existing `opcda_on=1`. Explicit
+`opcda_on=0` suppresses startup; a supplied `--opc-da-config` selects that profile
+instead. A failed DA startup, bundled or explicit, retains fail-fast behavior and
+prevents Host readiness. Development launches without `--autostart` still need
+`--opc-da-config`. Installation itself does not start the sidecar or register
+COM classes, proxy/stubs, OPCEnum or DCOM permissions.
+Runtime class registration is not persistent discoverability or client acceptance;
+the synchronous DA profile and its open gates are in [OPCDA_P7B](../docs/OPCDA_P7B.ru.md).

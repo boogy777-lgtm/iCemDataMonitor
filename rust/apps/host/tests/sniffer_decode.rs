@@ -80,8 +80,7 @@ fn original_host_decoder_matches_catalog_types_spans_and_pinned_wire()
     let cases = result["cases"].as_array().ok_or("missing cases")?;
     let mut checks = 0;
     let mut types = std::collections::BTreeSet::new();
-    let mut catalog =
-        Catalog::load(&root.join("shared/catalogs/host/lantable_registry.json"))?;
+    let mut catalog = Catalog::load(&root.join("shared/catalogs/host/lantable_registry.json"))?;
     for case in cases {
         let frame = bytes(text(case, "frame")?)?;
         let signals = case["signals"].as_array().ok_or("signals")?;

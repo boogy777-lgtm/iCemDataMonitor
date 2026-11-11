@@ -18,6 +18,24 @@ pub struct Config {
     pub(super) watchdog: Duration,
 }
 impl Config {
+    /// The packaged sidecar is next to the Host, not relative to the working directory.
+    pub fn installed() -> Result<Self, String> {
+        let executable = std::env::current_exe().map_err(|e| format!("OPC DA executable: {e}"))?;
+        Self::beside_executable(&executable)
+    }
+
+    fn beside_executable(executable: &Path) -> Result<Self, String> {
+        let directory = executable
+            .parent()
+            .filter(|path| !path.as_os_str().is_empty())
+            .ok_or("OPC DA executable has no parent")?;
+        Ok(Self {
+            sidecar: directory.join("icem-opc-da-sidecar.exe"),
+            interval: Duration::from_millis(200),
+            watchdog: Duration::from_millis(1000),
+        })
+    }
+
     pub fn load(path: &Path) -> Result<Self, String> {
         let mut bytes = Vec::new();
         std::fs::File::open(path)
@@ -63,5 +81,18 @@ mod tests {
         ] {
             assert!(Config::parse(invalid, Path::new(".")).is_err());
         }
+    }
+
+    #[test]
+    fn installed_profile_is_relative_to_host_executable() -> Result<(), String> {
+        let config = Config::beside_executable(Path::new("install/bin/host.exe"))?;
+        assert_eq!(
+            config.sidecar,
+            Path::new("install/bin/icem-opc-da-sidecar.exe")
+        );
+        assert_eq!(config.interval, Duration::from_millis(200));
+        assert_eq!(config.watchdog, Duration::from_millis(1000));
+        assert!(Config::beside_executable(Path::new("host.exe")).is_err());
+        Ok(())
     }
 }

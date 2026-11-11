@@ -249,7 +249,11 @@ fn options() -> Result<Options, String> {
         sniffer_adapter,
         mqtt,
         opcua,
-        opc_da_config,
+        opc_da_config: match opc_da_config {
+            Some(config) => Some(config),
+            None if autostart => Some(opc_da_consumer::Config::installed()?),
+            None => None,
+        },
     })
 }
 struct Fixture(Arc<Snapshot>);
@@ -362,15 +366,9 @@ fn run<D: icem_platform_windows::console::Device>(
         options.opc_da_config.take(),
         acquisition.snapshot_reader(),
     );
-    for protocol in [
-        optional_consumers::Protocol::OpcDa,
-        optional_consumers::Protocol::OpcUa,
-        optional_consumers::Protocol::Mqtt,
-    ] {
-        if optional.state(&consumers, protocol).configured {
-            optional.set_enabled(&mut consumers, protocol, true)?;
-        }
-    }
+    // Retain fail-fast until a sidecar that fails after spawn can keep its owner
+    // on cleanup failure; otherwise Host could report ready with an unowned child.
+    optional.start_configured(&mut consumers, options.opc_da)?;
     let (server_slot, modbus_handle) = modbus_consumer::start(
         modbus_consumer::Config {
             address: options.bind,

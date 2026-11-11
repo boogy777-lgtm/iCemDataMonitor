@@ -15,6 +15,27 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class RoutingTests(unittest.TestCase):
+    def test_legacy_installer_checks_repository_inputs_before_effects(self):
+        script = ROOT / 'dotnet/installer/tests/Test-LegacyInstaller.ps1'
+        text = script.read_text(encoding='utf-8')
+
+        def check(source):
+            root = re.search(r"\$Repository\s*=\s*\(Resolve-Path -LiteralPath \(Join-Path \$PSScriptRoot '([^']+)'\)\)\.Path", source)
+            self.assertIsNotNone(root, 'Missing literal repository root')
+            self.assertEqual((script.parent / root.group(1)).resolve(), ROOT)
+            inputs = re.findall(r"(?m)^\$(\w+)\s*=\s*Join-Path \$Repository '([^']+)'", source)
+            self.assertTrue(inputs, 'Missing repository input discovery')
+            preflight = source.split('$Work =', 1)[0]
+            for name, path in inputs:
+                self.assertTrue((ROOT / path).is_file(), path)
+                self.assertRegex(preflight, rf'(?m)^if \(-not \(Test-Path -LiteralPath \${name} -PathType Leaf\)\) \{{ throw ')
+
+        check(text)
+        with self.assertRaises(AssertionError):
+            check(text.replace("$PSScriptRoot '../../..'", "$PSScriptRoot '../..'", 1))
+        with self.assertRaises(AssertionError):
+            check(text.replace('Test-Path -LiteralPath $OwnerSource -PathType Leaf', '$true', 1))
+
     def test_opc_runtime_trigger_covers_actual_inputs(self):
         workflow = (ROOT / '.github/workflows/opc-runtime-acceptance.yml').read_text(encoding='utf-8')
         event = re.search(r'(?ms)^on:\n.*?^  pull_request:\n(?P<body>.*?)(?=^\S|\Z)', workflow)

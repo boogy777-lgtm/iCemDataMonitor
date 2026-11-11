@@ -16,6 +16,9 @@ function New-WindowsPackagingFixture([string] $Directory) {
     foreach ($Name in @('gen-payload.ps1', 'gen-ui-bmps.ps1', 'assets/Burservis_logo_cyr_red.png', 'assets/app-icon.ico')) {
         Copy-Item -LiteralPath (Join-Path $SourceRoot "dotnet/installer/$Name") -Destination (Join-Path $Repo "dotnet/installer/$Name")
     }
+    $ToolManifest = 'shared/installer/.config/dotnet-tools.json'
+    [IO.Directory]::CreateDirectory((Split-Path (Join-Path $Repo $ToolManifest) -Parent)) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $SourceRoot $ToolManifest) -Destination (Join-Path $Repo $ToolManifest)
     $Plan = Get-Content -Raw -LiteralPath (Join-Path $Root 'installer/windows-payload.json') | ConvertFrom-Json
     foreach ($File in $Plan.files) {
         $Target = Join-Path $Repo $File.source

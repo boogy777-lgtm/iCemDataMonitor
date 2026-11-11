@@ -39,6 +39,25 @@ jobs:
       - name: Run Rust-specific stdlib CI tests
         shell: pwsh
         run: python -m unittest discover -s tools/ci -p "test_*.py" -v
+      - name: Capture independent ordinal provider evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Output = & ./tests/support/OrdinalIdentityOracle.ps1
+          $Oracle = $Output | ConvertFrom-Json
+          if ($Oracle.scalarCount -ne 1112064 -or $Oracle.provider -eq 'Unknown (see switches)') { throw 'Incomplete or unidentified ordinal provider evidence' }
+          $Path = Join-Path $env:RUNNER_TEMP 'icem-ordinal-provider.json'
+          [IO.File]::WriteAllText($Path, [string]$Output, [Text.UTF8Encoding]::new($false))
+          Write-Host "Ordinal provider: runtime=$($Oracle.runtime); os=$($Oracle.os); provider=$($Oracle.provider); sortVersion=$($Oracle.sortVersion); scalars=$($Oracle.scalarCount)"
+          Get-FileHash -LiteralPath $Path -Algorithm SHA256 | Format-List
+      - name: Upload independent ordinal provider evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-ordinal-provider
+          path: ${{ runner.temp }}/icem-ordinal-provider.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Restore Cargo downloads
         id: cargo-downloads
         uses: actions/cache/restore@v5
@@ -91,13 +110,13 @@ jobs:
         shell: pwsh
         run: |
           # Test the native runtime boundary before the much larger desktop graph.
-          cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows
+          cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows -p icem-emulation --features icem-emulation/ordinal-icu-26100
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings
+          cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -p icem-emulation --features icem-emulation/ordinal-icu-26100 -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify source and skeleton
         shell: pwsh
-        run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
+        run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline -OrdinalIcu26100
       - name: Verify independent MQTT and OPC UA counterparts on Windows
         shell: pwsh
         env:

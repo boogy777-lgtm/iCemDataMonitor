@@ -119,7 +119,7 @@ mod tests {
         sniffer: Option<Capture<icem_platform_windows::sniffer::SystemCapture>>,
     }
     impl Fixture {
-        fn new(save: bool) -> Result<Self, Box<dyn std::error::Error>> {
+        fn new(save: bool, opc_on: bool) -> Result<Self, Box<dyn std::error::Error>> {
             static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
             let root = std::env::temp_dir().join(format!(
                 "icem-layer-owner-{}-{}",
@@ -129,7 +129,7 @@ mod tests {
             std::fs::create_dir(&root)?;
             let settings = IniOptions {
                 modbus_on: 0,
-                opcda_on: 1,
+                opcda_on: i32::from(opc_on),
                 ui_set_as_default: i32::from(save),
                 ..IniOptions::default()
             };
@@ -138,7 +138,7 @@ mod tests {
             let (web, _) = WebState::new(
                 HostLayers {
                     web: true,
-                    opc_da: true,
+                    opc_da: opc_on,
                     set_as_default: save,
                     ..HostLayers::default()
                 },
@@ -180,16 +180,18 @@ mod tests {
     }
     #[test]
     fn web_session_plan_persistence_gate_and_opc_noop() -> TestResult {
-        for save in [false, true] {
-            let mut f = Fixture::new(save)?;
+        for (save, opc_on) in [(false, false), (false, true), (true, false), (true, true)] {
+            let mut f = Fixture::new(save, opc_on)?;
             let original = std::fs::read(f.root.join("config.ini"))?;
             f.toggle(LayerKind::Web)?;
             assert!(!f.web.layers()?.web);
             assert!(f.web.layers()?.last_error.is_empty());
             assert_eq!(f.saved()?.web_on, i32::from(!save));
+            let after_web = std::fs::read(f.root.join("config.ini"))?;
             f.toggle(LayerKind::OpcDa)?;
-            assert!(f.web.layers()?.opc_da);
-            assert_eq!(f.saved()?.opcda_on, 1);
+            assert_eq!(f.web.layers()?.opc_da, opc_on);
+            assert_eq!(f.saved()?.opcda_on, i32::from(opc_on));
+            assert_eq!(std::fs::read(f.root.join("config.ini"))?, after_web);
             assert_eq!(f.saved()?.lansniffer_on, 1);
             if !save {
                 assert_eq!(std::fs::read(f.root.join("config.ini"))?, original);
@@ -202,7 +204,7 @@ mod tests {
     }
     #[test]
     fn failed_save_keeps_session_plan_and_last_saved_projection() -> TestResult {
-        let mut f = Fixture::new(true)?;
+        let mut f = Fixture::new(true, true)?;
         // A directory at the target path fails on both elevated Windows and root Linux.
         let path = f.root.join("config.ini");
         std::fs::remove_file(&path)?;
@@ -229,7 +231,7 @@ mod tests {
     }
     #[test]
     fn failed_bind_reports_actual_state_without_persistence() -> TestResult {
-        let mut f = Fixture::new(true)?;
+        let mut f = Fixture::new(true, true)?;
         let occupied = TcpListener::bind("127.0.0.1:0")?;
         f.bind = occupied.local_addr()?;
         f.toggle(LayerKind::Modbus)?;
@@ -262,7 +264,7 @@ mod tests {
     #[test]
     fn sniffer_capture_layer_persistence_and_actual_failure_projection() -> TestResult {
         for save in [false, true] {
-            let mut f = Fixture::new(save)?;
+            let mut f = Fixture::new(save, true)?;
             let mut capture = Some(Capture::new(
                 Frames {
                     fail: false,
@@ -324,7 +326,7 @@ mod tests {
             assert!(!f.root.join("Data.dat").exists());
             assert!(path.is_dir());
         }
-        let mut f = Fixture::new(false)?;
+        let mut f = Fixture::new(false, true)?;
         let mut capture = Some(Capture::new(
             Frames {
                 fail: true,
