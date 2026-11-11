@@ -1,10 +1,13 @@
 #![cfg(windows)]
+#[path = "fixtures/test_directory.rs"]
+mod test_directory;
 use icem_web::protocol_control::{self, Command, Protocol};
 use std::{
     net::{TcpListener, TcpStream},
     process::{Child, Command as ProcessCommand, Stdio},
     time::{Duration, Instant},
 };
+use test_directory::TestDirectory;
 
 struct OwnedHost(Child);
 impl Drop for OwnedHost {
@@ -14,17 +17,16 @@ impl Drop for OwnedHost {
     }
 }
 
-struct TestDirectory(std::path::PathBuf);
 impl TestDirectory {
     fn host(&self, pipe: &str) -> ProcessCommand {
-        let mut command = ProcessCommand::new(self.0.join("icem-host-dev.exe"));
+        let mut command = ProcessCommand::new(self.path().join("icem-host-dev.exe"));
         command
-            .env("PROGRAMDATA", self.0.join("programdata"))
-            .env("LOCALAPPDATA", self.0.join("localappdata"))
-            .current_dir(&self.0)
+            .env("PROGRAMDATA", self.path().join("programdata"))
+            .env("LOCALAPPDATA", self.path().join("localappdata"))
+            .current_dir(self.path())
             .arg("--autostart")
             .arg("--station-config")
-            .arg(self.0.join("config.ini"))
+            .arg(self.path().join("config.ini"))
             .arg("--tray-icon")
             .arg(
                 std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -42,18 +44,17 @@ impl TestDirectory {
             ui_set_as_default: i32::from(save),
             modbus_on: 0,
             lansniffer_on: 0,
-            mmf_path: self.0.join("absent-bus.dat").to_string_lossy().into_owned(),
+            mmf_path: self
+                .path()
+                .join("absent-bus.dat")
+                .to_string_lossy()
+                .into_owned(),
             mmf_name: format!("Local\\{pipe}-bus"),
             ..Default::default()
         };
         let original = format!("\u{feff}; operator comment\r\n{}", station.render());
-        std::fs::write(self.0.join("config.ini"), &original)?;
+        std::fs::write(self.path().join("config.ini"), &original)?;
         Ok(original)
-    }
-}
-impl Drop for TestDirectory {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
     }
 }
 
@@ -89,12 +90,11 @@ fn assert_da_start_failure(host: &mut OwnedHost) -> Result<(), Box<dyn std::erro
 #[test]
 fn installed_da_plan_and_failure_reach_the_real_pipe_without_touching_ini()
 -> Result<(), Box<dyn std::error::Error>> {
-    let root = TestDirectory(
+    let root = TestDirectory::for_host(
         std::env::temp_dir().join(format!("icem-installed-da-plan-{}", std::process::id())),
-    );
-    std::fs::create_dir(&root.0)?;
+    )?;
     // Deliberately omit the sidecar. No COM class or production installation is touched.
-    let exe = root.0.join("icem-host-dev.exe");
+    let exe = root.path().join("icem-host-dev.exe");
     std::fs::copy(env!("CARGO_BIN_EXE_icem-host-dev"), &exe)?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -104,7 +104,7 @@ fn installed_da_plan_and_failure_reach_the_real_pipe_without_touching_ini()
         let reserved = TcpListener::bind("127.0.0.1:0")?;
         let address = reserved.local_addr()?;
         drop(reserved);
-        let ua = root.0.join("ua.json");
+        let ua = root.path().join("ua.json");
         std::fs::write(
             &ua,
             format!(
@@ -112,7 +112,7 @@ fn installed_da_plan_and_failure_reach_the_real_pipe_without_touching_ini()
             ),
         )?;
         let pipe = format!("icem-installed-da-{}-{save}", std::process::id());
-        let ini = root.0.join("config.ini");
+        let ini = root.path().join("config.ini");
         let original = root.station(&pipe, false, save)?;
         let host = OwnedHost(root.host(&pipe).arg("--opcua-config").arg(&ua).spawn()?);
         runtime.block_on(async {
@@ -152,7 +152,7 @@ fn installed_da_plan_and_failure_reach_the_real_pipe_without_touching_ini()
     }
 
     // ON with an absent bundled sidecar retains the existing fail-fast behavior.
-    let ini = root.0.join("config.ini");
+    let ini = root.path().join("config.ini");
     let mut station = icem_config::IniOptions::read_existing(&ini)?;
     station.opcda_on = 1;
     std::fs::write(&ini, station.render())?;
@@ -170,13 +170,12 @@ fn installed_da_plan_and_failure_reach_the_real_pipe_without_touching_ini()
 #[test]
 fn installed_da_controls_own_a_test_ipc_peer_without_persisting_the_plan()
 -> Result<(), Box<dyn std::error::Error>> {
-    let root = TestDirectory(
+    let root = TestDirectory::for_host(
         std::env::temp_dir().join(format!("icem-installed-da-ipc-{}", std::process::id())),
-    );
-    std::fs::create_dir(&root.0)?;
-    let exe = root.0.join("icem-host-dev.exe");
+    )?;
+    let exe = root.path().join("icem-host-dev.exe");
     std::fs::copy(env!("CARGO_BIN_EXE_icem-host-dev"), &exe)?;
-    let peer = root.0.join("icem-opc-da-sidecar.exe");
+    let peer = root.path().join("icem-opc-da-sidecar.exe");
     let source =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/da_ipc_peer.rs");
     let compiler = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
@@ -193,14 +192,14 @@ fn installed_da_controls_own_a_test_ipc_peer_without_persisting_the_plan()
         .arg(&peer)
         .status()?;
     assert!(status.success(), "test IPC peer did not compile");
-    let marker = root.0.join("da-ipc-starts.log");
+    let marker = root.path().join("da-ipc-starts.log");
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
 
     for (on, save) in [(false, false), (true, true)] {
         let pipe = format!("icem-da-ipc-{}-{on}", std::process::id());
-        let ini = root.0.join("config.ini");
+        let ini = root.path().join("config.ini");
         let original = root.station(&pipe, on, save)?;
         let host = OwnedHost(root.host(&pipe).spawn()?);
         runtime.block_on(async {
@@ -253,12 +252,12 @@ fn installed_da_controls_own_a_test_ipc_peer_without_persisting_the_plan()
     }
 
     // An explicit missing executable wins over the working bundled test peer.
-    let explicit = root.0.join("explicit-da.json");
+    let explicit = root.path().join("explicit-da.json");
     std::fs::write(
         &explicit,
         br#"{"sidecar":"missing-explicit.exe","update_interval_ms":200,"watchdog_ms":1000}"#,
     )?;
-    let ini = root.0.join("config.ini");
+    let ini = root.path().join("config.ini");
     let original = std::fs::read(&ini)?;
     let mut host = OwnedHost(
         root.host(&format!("icem-explicit-da-{}", std::process::id()))

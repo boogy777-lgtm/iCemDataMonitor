@@ -146,7 +146,7 @@ fn manual_restart_and_autostart_quit(
     let icon =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/iCemDataMonitor.ico");
     let root = std::env::temp_dir().join(format!("icem-console-autostart-{}", std::process::id()));
-    std::fs::create_dir_all(&root)?;
+    std::fs::create_dir(&root)?;
     // This test exercises console/tray lifecycle, not COM. An explicit OFF keeps
     // it from launching an installed DA sidecar if one happens to be beside Host.
     let station = icem_config::IniOptions {
