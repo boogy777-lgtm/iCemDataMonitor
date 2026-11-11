@@ -18,7 +18,11 @@ $rawTestSource = Join-Path $PSScriptRoot 'RawRegistrySnapshotTests.cpp'
 $rawHeader = Join-Path $PSScriptRoot '../RawRegistrySnapshot.h'
 $descriptorTestSource = Join-Path $PSScriptRoot 'BoundedSecurityDescriptorTests.cpp'
 $descriptorHeader = Join-Path $PSScriptRoot '../BoundedSecurityDescriptor.h'
-foreach ($path in @($vcvars, $source, $testSource, $rawTestSource, $rawHeader, $descriptorTestSource, $descriptorHeader)) {
+$snapshotSource = Join-Path $PSScriptRoot '../OpcRepairSnapshot.cpp'
+$snapshotHeader = Join-Path $PSScriptRoot '../OpcRepairSnapshot.h'
+$snapshotTestSource = Join-Path $PSScriptRoot 'OpcRepairSnapshotTests.cpp'
+$snapshotInventoryTest = Join-Path $PSScriptRoot 'Test-RepairSnapshotInventory.ps1'
+foreach ($path in @($vcvars, $source, $testSource, $rawTestSource, $rawHeader, $descriptorTestSource, $descriptorHeader, $snapshotSource, $snapshotHeader, $snapshotTestSource, $snapshotInventoryTest)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or $path.IndexOfAny($badChars) -ge 0 -or $path -cmatch '[^\x20-\x7e]') { throw 'Missing or unsupported probe build input.' }
 }
 [IO.Directory]::CreateDirectory($output) | Out-Null
@@ -31,6 +35,9 @@ $rawTest = Join-Path $output 'RawRegistrySnapshotTests.exe'
 $rawTestObj = Join-Path $output 'RawRegistrySnapshotTests.obj'
 $descriptorTest = Join-Path $output 'BoundedSecurityDescriptorTests.exe'
 $descriptorTestObj = Join-Path $output 'BoundedSecurityDescriptorTests.obj'
+$snapshotObj = Join-Path $output 'OpcRepairSnapshot.obj'
+$snapshotTest = Join-Path $output 'OpcRepairSnapshotTests.exe'
+$snapshotTestObj = Join-Path $output 'OpcRepairSnapshotTests.obj'
 $content = @"
 @echo off
 call "$vcvars" amd64 >nul
@@ -48,11 +55,18 @@ if errorlevel 1 exit /b 1
 cl.exe /nologo /EHsc /O2 /W4 /WX /Fo:"$descriptorTestObj" /Fe:"$descriptorTest" "$descriptorTestSource" /link /INCREMENTAL:NO advapi32.lib
 if errorlevel 1 exit /b 1
 "$descriptorTest"
+if errorlevel 1 exit /b 1
+cl.exe /nologo /EHsc /O2 /W4 /WX /DUNICODE /D_UNICODE /c /Fo:"$snapshotObj" "$snapshotSource"
+if errorlevel 1 exit /b 1
+cl.exe /nologo /EHsc /O2 /W4 /WX /DUNICODE /D_UNICODE /Fo:"$snapshotTestObj" /Fe:"$snapshotTest" "$snapshotTestSource" /link /INCREMENTAL:NO advapi32.lib
+if errorlevel 1 exit /b 1
+"$snapshotTest"
 exit /b %errorlevel%
 "@
 [IO.File]::WriteAllText($command, $content, [Text.Encoding]::ASCII)
 & $env:ComSpec /d /c $command
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'Release boundary probe compilation or process-local API test failed.' }
+& $snapshotInventoryTest -Executable $snapshotTest
 $hash = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText("$dll.sha256", "$hash  BoundaryProbe.dll`n", [Text.Encoding]::ASCII)
 Write-Output "TEST ONLY boundary probe: $dll SHA256 $hash"

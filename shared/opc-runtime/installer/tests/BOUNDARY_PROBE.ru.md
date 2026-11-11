@@ -48,6 +48,30 @@ Validator не принимает решений о правах DCOM.
 проверка provenance, concurrency или MSI writer; в production MSI validator
 пока не включён и сохранение permissions при repair всё ещё не реализовано.
 
+`../OpcRepairSnapshot.cpp` объединяет оба примитива для четырёх фиксированных
+owned AppID values: только `HKEY_LOCAL_MACHINE`, явные 32/64 views, nonempty
+`REG_BINARY`, bounded SD и raw property через `MsiGetPropertyW`. Длина чтения
+property выводится из ограниченного machine value, а не из недоверенного ввода.
+Промежуточные результаты не выдаются при любой ошибке; выбранный writer input
+содержит только hex digits без `#x`. На один value действует ресурсный предел
+256 KiB: он больше двух максимальных ACL, двух максимальных SID и header, но
+может отвергнуть валидные SD с очень большими gaps/padding; это **не** системный
+лимит SD. Поддерживаемые ACE и необходимость DWORD alignment те же, что у
+validator выше. Точный эффект `#x` ещё должен быть проверен на собранных MSI
+tables и реальном native writer, а не только по коду reader.
+
+Reader компилируется отдельно с настоящими Win32/MSI declarations, а его
+process-local tests исполняют тот же исходник с fake API, без открытия MSI и
+registry. Они проверяют обе views каждого binding, изменённый между снимками
+value, ошибки чтения/типа/размера и malformed/tampered properties. Отдельный
+test сравнивает manifest компилированного reader с native inventory и отвергает
+пропуск, дубли и некорректные bindings. Это **не** проверка реальных MSI API,
+registry DACL, package/session/host/module/source provenance или невозможности
+изменения value после проверки. Reader ещё не вызывается MSI и не выдаёт права
+на запись. Подмена API/process или активной базы и привилегированное конкурентное
+изменение не исключаются этими тестами; связывать результат с writer до
+доказательства trust boundary небезопасно.
+
 Эти данные описывают **конкретный** процесс и токен теста. `AccessCheck` на его
 DACL не доказывает невозможность injection другим токеном, с включёнными
 привилегиями или через DLL/file replacement; пути сами по себе не доказывают
