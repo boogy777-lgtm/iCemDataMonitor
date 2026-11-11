@@ -14,7 +14,9 @@ if ($LASTEXITCODE -ne 0 -or @($vs).Count -ne 1 -or -not $vs) { throw 'A VS2022 C
 $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvarsall.bat'
 $source = Join-Path $PSScriptRoot 'BoundaryProbe.cpp'
 $testSource = Join-Path $PSScriptRoot 'BoundaryProbeSelfTest.cpp'
-foreach ($path in @($vcvars, $source, $testSource)) {
+$rawTestSource = Join-Path $PSScriptRoot 'RawRegistrySnapshotTests.cpp'
+$rawHeader = Join-Path $PSScriptRoot '../RawRegistrySnapshot.h'
+foreach ($path in @($vcvars, $source, $testSource, $rawTestSource, $rawHeader)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or $path.IndexOfAny($badChars) -ge 0 -or $path -cmatch '[^\x20-\x7e]') { throw 'Missing or unsupported probe build input.' }
 }
 [IO.Directory]::CreateDirectory($output) | Out-Null
@@ -23,6 +25,8 @@ $dll = Join-Path $output 'BoundaryProbe.dll'
 $obj = Join-Path $output 'BoundaryProbe.obj'
 $test = Join-Path $output 'BoundaryProbeSelfTest.exe'
 $testObj = Join-Path $output 'BoundaryProbeSelfTest.obj'
+$rawTest = Join-Path $output 'RawRegistrySnapshotTests.exe'
+$rawTestObj = Join-Path $output 'RawRegistrySnapshotTests.obj'
 $content = @"
 @echo off
 call "$vcvars" amd64 >nul
@@ -32,6 +36,10 @@ if errorlevel 1 exit /b 1
 cl.exe /nologo /EHsc /O2 /W4 /WX /DUNICODE /D_UNICODE /Fo:"$testObj" /Fe:"$test" "$testSource" /link /INCREMENTAL:NO advapi32.lib msi.lib
 if errorlevel 1 exit /b 1
 "$test"
+if errorlevel 1 exit /b 1
+cl.exe /nologo /EHsc /O2 /W4 /WX /Fo:"$rawTestObj" /Fe:"$rawTest" "$rawTestSource" /link /INCREMENTAL:NO
+if errorlevel 1 exit /b 1
+"$rawTest"
 exit /b %errorlevel%
 "@
 [IO.File]::WriteAllText($command, $content, [Text.Encoding]::ASCII)

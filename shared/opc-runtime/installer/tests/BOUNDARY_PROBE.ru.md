@@ -21,6 +21,14 @@ thread token. Он не содержит содержимого registry descrip
 пользователя. Process-local self-test проверяет token/ACL API и восстановление
 token в обычном и self-impersonated потоке, не открывая MSI и registry.
 
+`../RawRegistrySnapshot.h` — отдельный проверенный побайтовый comparator для
+raw `#x` MSI properties и независимых `REG_BINARY` bytes. Его Release tests
+отвергают отсутствующее/пустое значение, неправильный registry type, нечётный,
+не-hex, quoted/injected и несовпадающий transport, включая изменение каждого
+hex digit в полном наборе байтов. Он **не включён в production MSI**, не
+проверяет структуру security descriptor, DACL, доверенность источника или гонки;
+одного успешного сравнения недостаточно для разрешения repair.
+
 Эти данные описывают **конкретный** процесс и токен теста. `AccessCheck` на его
 DACL не доказывает невозможность injection другим токеном, с включёнными
 привилегиями или через DLL/file replacement; пути сами по себе не доказывают
