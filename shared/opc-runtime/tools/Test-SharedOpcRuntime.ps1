@@ -142,10 +142,11 @@ function Invoke-Msi([string[]] $arguments, [string] $phase, [int] $expected) {
         $targetsRuntime = @($arguments | Where-Object { $_ -ceq ('"' + $Candidate + '"') -or $_ -ieq $ProductCode }).Count -gt 0
         if ($expected -eq 0 -and $targetsRuntime) {
             $text = [IO.File]::ReadAllText($log)
-            foreach ($marker in @('ICEM_BOUNDARY_CONTEXT', 'ICEM_BOUNDARY_PROCESS', 'ICEM_BOUNDARY_THREAD', 'ICEM_BOUNDARY_ACCESS', 'ICEM_BOUNDARY_IMAGE', 'ICEM_BOUNDARY_PROPERTY')) {
+            foreach ($marker in @('ICEM_BOUNDARY_CONTEXT', 'ICEM_BOUNDARY_PROCESS', 'ICEM_BOUNDARY_THREAD', 'ICEM_BOUNDARY_ACCESS', 'ICEM_BOUNDARY_RESTRICTED', 'ICEM_BOUNDARY_IMAGE', 'ICEM_BOUNDARY_PROPERTY')) {
                 if (-not $text.Contains($marker, [StringComparison]::Ordinal)) { throw "$phase lacks execute-side boundary evidence: $marker" }
             }
             if (-not [regex]::IsMatch($text, 'ICEM_BOUNDARY_PROPERTY characters=\d+;literalMatch=1')) { throw "$phase did not preserve the raw quoted MSI property through the DLL API." }
+            if (-not [regex]::IsMatch($text, 'ICEM_BOUNDARY_RESTRICTED mediumSameSid=1;adminEnabled=0;openStatus=(?:\d+,){5}\d+(?![\d,])')) { throw "$phase lacks complete restricted-token process access evidence." }
             if ([regex]::Matches($text, 'ICEM_BOUNDARY_REG index=').Count -lt 8) { throw "$phase lacks both registry views for both fixed AppIDs." }
         }
     } finally { $process.Dispose() }

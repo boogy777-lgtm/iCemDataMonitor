@@ -14,8 +14,12 @@ thread token. Он не содержит содержимого registry descrip
 только состояние, тип и размер четырёх фиксированных значений HKLM в обеих
 логических views, а также сравнение тестовой quoted property, прочитанной через
 `MsiGetPropertyW`, с заранее известным литералом. DLL ничего не пишет в registry
-и не меняет MSI properties. Process-local self-test вызывает Win32 token/ACL API
-в обычном и self-impersonated потоке, не открывая MSI и registry.
+и не меняет MSI properties. Дополнительно в test-only потоке временно создаётся
+ограниченный same-SID medium-integrity token без enabled Administrators; под ним
+выполняются только `OpenProcess` и закрытие handles на шесть опасных прав, затем
+исходный thread token восстанавливается. Это не повышение прав и не тест другого
+пользователя. Process-local self-test проверяет token/ACL API и восстановление
+token в обычном и self-impersonated потоке, не открывая MSI и registry.
 
 Эти данные описывают **конкретный** процесс и токен теста. `AccessCheck` на его
 DACL не доказывает невозможность injection другим токеном, с включёнными

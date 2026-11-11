@@ -1,5 +1,5 @@
 // TEST ONLY: collect execute-side evidence; this is not a preservation guard.
-// No registry writes, property updates, privilege changes or descriptor bytes.
+// No registry writes, property updates, elevated privileges or descriptor bytes.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <aclapi.h>
@@ -12,12 +12,24 @@
 #include <vector>
 
 namespace {
+const DWORD ProcessRights[] = { PROCESS_CREATE_THREAD, PROCESS_VM_OPERATION, PROCESS_VM_WRITE,
+                                PROCESS_DUP_HANDLE, WRITE_DAC, WRITE_OWNER };
 struct Handle {
     HANDLE value = nullptr;
     ~Handle() { if (value) CloseHandle(value); }
     Handle() = default;
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
+};
+struct RestoreThread {
+    HANDLE previous;
+    bool pending = false;
+    bool Restore() {
+        if (!SetThreadToken(nullptr, previous)) return false;
+        pending = false;
+        return true;
+    }
+    ~RestoreThread() { if (pending) SetThreadToken(nullptr, previous); }
 };
 
 bool Log(MSIHANDLE install, const std::wstring& text) {
@@ -78,12 +90,10 @@ bool ProcessAccess(HANDLE token, std::wstring& result) {
         STANDARD_RIGHTS_WRITE | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_WRITE |
             PROCESS_DUP_HANDLE | PROCESS_CREATE_PROCESS | PROCESS_SET_QUOTA | PROCESS_SET_INFORMATION,
         STANDARD_RIGHTS_EXECUTE | SYNCHRONIZE, PROCESS_ALL_ACCESS };
-    const DWORD masks[] = { PROCESS_CREATE_THREAD, PROCESS_VM_OPERATION, PROCESS_VM_WRITE,
-                            PROCESS_DUP_HANDLE, WRITE_DAC, WRITE_OWNER };
     std::wostringstream out;
     out << L"sddl=" << sddl << L";allowedMask=";
     DWORD allowedMask = 0;
-    for (DWORD mask : masks) {
+    for (DWORD mask : ProcessRights) {
         PRIVILEGE_SET privileges = {};
         DWORD length = sizeof(privileges), granted = 0;
         BOOL allowed = FALSE;
@@ -96,6 +106,57 @@ bool ProcessAccess(HANDLE token, std::wstring& result) {
     out << allowedMask;
     LocalFree(sddl);
     LocalFree(descriptor);
+    result = out.str();
+    return true;
+}
+
+// Model a same-SID non-admin, medium-integrity token. OpenProcess performs
+// the actual object/MIC access check; the returned handles are never used.
+// This is a bounded test model, not proof about other users or token types.
+bool RestrictedProcessAccess(HANDLE effective, HANDLE previousThread, std::wstring& result) {
+    Handle restricted, medium;
+    if (!CreateRestrictedToken(effective, DISABLE_MAX_PRIVILEGE | LUA_TOKEN, 0, nullptr, 0, nullptr,
+                               0, nullptr, &restricted.value) ||
+        !DuplicateTokenEx(restricted.value, TOKEN_QUERY | TOKEN_ADJUST_DEFAULT | TOKEN_IMPERSONATE,
+                          nullptr, SecurityImpersonation, TokenImpersonation, &medium.value)) return false;
+    BYTE mediumSid[SECURITY_MAX_SID_SIZE] = {};
+    DWORD mediumSidSize = sizeof(mediumSid);
+    if (!CreateWellKnownSid(WinMediumLabelSid, nullptr, mediumSid, &mediumSidSize)) return false;
+    TOKEN_MANDATORY_LABEL label = {};
+    label.Label.Sid = mediumSid;
+    label.Label.Attributes = SE_GROUP_INTEGRITY;
+    if (!SetTokenInformation(medium.value, TokenIntegrityLevel, &label,
+                             sizeof(label) + GetLengthSid(mediumSid))) return false;
+    std::vector<BYTE> originalUser, restrictedUser, integrity;
+    if (!TokenInfo(effective, TokenUser, originalUser) || !TokenInfo(medium.value, TokenUser, restrictedUser) ||
+        !TokenInfo(medium.value, TokenIntegrityLevel, integrity)) return false;
+    PSID originalSid = reinterpret_cast<TOKEN_USER*>(originalUser.data())->User.Sid;
+    PSID restrictedSid = reinterpret_cast<TOKEN_USER*>(restrictedUser.data())->User.Sid;
+    PSID level = reinterpret_cast<TOKEN_MANDATORY_LABEL*>(integrity.data())->Label.Sid;
+    if (!IsValidSid(originalSid) || !IsValidSid(restrictedSid) || !EqualSid(originalSid, restrictedSid) ||
+        !IsValidSid(level) || *GetSidSubAuthorityCount(level) == 0 ||
+        *GetSidSubAuthority(level, *GetSidSubAuthorityCount(level) - 1) != SECURITY_MANDATORY_MEDIUM_RID) return false;
+    BYTE adminSid[SECURITY_MAX_SID_SIZE] = {};
+    DWORD adminSidSize = sizeof(adminSid);
+    BOOL isAdmin = FALSE;
+    if (!CreateWellKnownSid(WinBuiltinAdministratorsSid, nullptr, adminSid, &adminSidSize) ||
+        !CheckTokenMembership(medium.value, adminSid, &isAdmin) || isAdmin) return false;
+    DWORD status[_countof(ProcessRights)] = {};
+    RestoreThread restore{ previousThread };
+    if (!SetThreadToken(nullptr, medium.value)) return false;
+    restore.pending = true;
+    for (size_t i = 0; i < _countof(ProcessRights); ++i) {
+        HANDLE opened = OpenProcess(ProcessRights[i], FALSE, GetCurrentProcessId());
+        status[i] = opened ? ERROR_SUCCESS : GetLastError();
+        if (opened) CloseHandle(opened);
+    }
+    if (!restore.Restore()) return false;
+    std::wostringstream out;
+    out << L"mediumSameSid=1;adminEnabled=0;openStatus=";
+    for (size_t i = 0; i < _countof(status); ++i) {
+        if (i) out << L",";
+        out << status[i];
+    }
     result = out.str();
     return true;
 }
@@ -130,12 +191,13 @@ extern "C" __declspec(dllexport) UINT __stdcall InspectBoundary(MSIHANDLE instal
     try {
         Handle process, thread;
         if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE, &process.value)) return ERROR_INSTALL_FAILURE;
-        bool impersonated = OpenThreadToken(GetCurrentThread(), TOKEN_QUERY | TOKEN_DUPLICATE, TRUE, &thread.value) != FALSE;
+        bool impersonated = OpenThreadToken(GetCurrentThread(), TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_IMPERSONATE, TRUE, &thread.value) != FALSE;
         if (!impersonated && GetLastError() != ERROR_NO_TOKEN) return ERROR_INSTALL_FAILURE;
-        std::wstring processInfo, threadInfo, accessInfo;
+        std::wstring processInfo, threadInfo, accessInfo, restrictedInfo;
         if (!TokenDescription(process.value, processInfo) ||
             (impersonated && !TokenDescription(thread.value, threadInfo)) ||
-            !ProcessAccess(impersonated ? thread.value : process.value, accessInfo)) return ERROR_INSTALL_FAILURE;
+            !ProcessAccess(impersonated ? thread.value : process.value, accessInfo) ||
+            !RestrictedProcessAccess(impersonated ? thread.value : process.value, thread.value, restrictedInfo)) return ERROR_INSTALL_FAILURE;
         std::wostringstream header;
         header << L"ICEM_BOUNDARY_CONTEXT pid=" << GetCurrentProcessId() << L";pointerBits=" << sizeof(void*) * 8
                << L";impersonated=" << (impersonated ? 1 : 0);
@@ -150,6 +212,7 @@ extern "C" __declspec(dllexport) UINT __stdcall InspectBoundary(MSIHANDLE instal
         if (!Log(install, header.str()) || !Log(install, L"ICEM_BOUNDARY_PROCESS " + processInfo) ||
             !Log(install, L"ICEM_BOUNDARY_THREAD " + (impersonated ? threadInfo : L"none")) ||
             !Log(install, L"ICEM_BOUNDARY_ACCESS " + accessInfo) ||
+            !Log(install, L"ICEM_BOUNDARY_RESTRICTED " + restrictedInfo) ||
             !Log(install, std::wstring(L"ICEM_BOUNDARY_IMAGE ") + processPath + L";module=" + modulePath)) return ERROR_INSTALL_FAILURE;
         DWORD length = 0;
         wchar_t empty = L'\0';
