@@ -84,6 +84,10 @@ module, source и unsupported transforms он не проверяет. До фа
 завершения нового hosted run все перечисленные integration results — **не
 проверены**, даже если локальные fake-API fixtures проходят. Production MSI
 по-прежнему author-ит исходные baseline values и не содержит эту DLL.
+Negative property cases используют `/i` + `REINSTALL=ALL REINSTALLMODE=omus`:
+по [документации Microsoft](https://learn.microsoft.com/en-us/windows/win32/msi/command-line-options)
+`/f` игнорирует свойства командной строки. Прямые `/fomus` и `/famus` остаются
+отдельными positive repair-cases; выполнение injection подтверждается marker/log.
 
 Runtime workflow теперь требует `repository.private=true` и совпадение имени
 репозитория в GitHub event до сборки/передачи каких-либо Runtime binaries;

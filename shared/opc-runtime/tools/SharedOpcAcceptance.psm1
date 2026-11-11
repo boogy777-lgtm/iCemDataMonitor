@@ -58,12 +58,18 @@ function Get-SharedOpcSnapshotPropertySets([string[]] $Transport, [string[]] $Wr
     [pscustomobject]@{ property = 'MsiHiddenProperties'; names = [string[]](@($Transport) + @($Writer)) }
 }
 function Resolve-SharedOpcMsiArguments([string[]] $Arguments) {
+    # qb!- exercises basic UI without Cancel or modal dialogs on the runner.
     $ui = @($Arguments | Where-Object { $_ -match '^/q' })
-    if ($ui.Count -gt 1 -or @($ui | Where-Object { $_ -cnotin @('/qn', '/qb!') }).Count) {
+    if ($ui.Count -gt 1 -or @($ui | Where-Object { $_ -cnotin @('/qn', '/qb!-') }).Count) {
         throw 'Unsupported or duplicate disposable MSI UI mode.'
     }
     if ($ui.Count -eq 0) { return @($Arguments) + '/qn' }
     return $Arguments
+}
+function Get-SharedOpcAdversarialRepairArguments([string] $Candidate, [string[]] $Extra) {
+    # /f ignores all command-line properties. /i + REINSTALL is the separate
+    # documented reinstall path that can exercise hostile public properties.
+    return @('/i', ('"' + $Candidate + '"'), 'REINSTALL=ALL', 'REINSTALLMODE=omus') + @($Extra)
 }
 function Assert-SharedOpcPreflightLog([string] $Log) {
     $start = [regex]::Match($Log, '(?m)^Action start [^\r\n]*: OpcCheckForeign\.\r?$')
@@ -103,4 +109,4 @@ function Assert-SharedOpcRollbackLog([string] $Log) {
         throw 'Not an injected rollback after successful application of the install script.'
     }
 }
-Export-ModuleMember -Function Assert-SharedOpcPrivateCi, Read-SharedOpcSnapshot, New-SharedOpcCustomizedDescriptor, Get-SharedOpcComCount, Get-SharedOpcComItem, Get-SharedOpcSnapshotPropertySets, Resolve-SharedOpcMsiArguments, Assert-SharedOpcPreflightLog, Assert-SharedOpcSnapshotRefusalLog, Assert-SharedOpcSnapshotAcceptedLog, Assert-SharedOpcRollbackLog
+Export-ModuleMember -Function Assert-SharedOpcPrivateCi, Read-SharedOpcSnapshot, New-SharedOpcCustomizedDescriptor, Get-SharedOpcComCount, Get-SharedOpcComItem, Get-SharedOpcSnapshotPropertySets, Resolve-SharedOpcMsiArguments, Get-SharedOpcAdversarialRepairArguments, Assert-SharedOpcPreflightLog, Assert-SharedOpcSnapshotRefusalLog, Assert-SharedOpcSnapshotAcceptedLog, Assert-SharedOpcRollbackLog

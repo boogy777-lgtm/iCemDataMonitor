@@ -63,16 +63,21 @@ if ($sets.Count -ne 2 -or $sets[0].property -cne 'SecureCustomProperties' -or
     ($sets[1].names -join '|') -cne 'PUBLIC_A|PUBLIC_B|PrivateA|PrivateB') { throw 'Snapshot transport/hidden property list was flattened or truncated.' }
 $script:checks++
 if ((@(Resolve-SharedOpcMsiArguments @('/fomus', 'candidate.msi')) -join '|') -cne '/fomus|candidate.msi|/qn' -or
-    (@(Resolve-SharedOpcMsiArguments @('/fomus', 'candidate.msi', '/qb!')) -join '|') -cne '/fomus|candidate.msi|/qb!') {
+    (@(Resolve-SharedOpcMsiArguments @('/fomus', 'candidate.msi', '/qb!-')) -join '|') -cne '/fomus|candidate.msi|/qb!-') {
     throw 'Disposable MSI UI arguments were lost or duplicated.'
 }
 $script:checks++
-foreach ($invalid in @(@('/qn', '/qb!'), @('/qf'), @('/qn', '/qn'))) {
+foreach ($invalid in @(@('/qn', '/qb!-'), @('/qf'), @('/qb!'), @('/qn', '/qn'))) {
     $rejected = $false
     try { Resolve-SharedOpcMsiArguments $invalid | Out-Null } catch { $rejected = $true }
     if (-not $rejected) { throw 'Unsupported or duplicate MSI UI mode was accepted.' }
     $script:checks++
 }
+$adversarial = @(Get-SharedOpcAdversarialRepairArguments -Candidate 'C:\test\candidate.msi' -Extra @('ICEM_TEST_TAMPER=tamper', '/qb!-'))
+if (($adversarial -join '|') -cne '/i|"C:\test\candidate.msi"|REINSTALL=ALL|REINSTALLMODE=omus|ICEM_TEST_TAMPER=tamper|/qb!-') {
+    throw 'Adversarial reinstall must preserve property arguments instead of using /f.'
+}
+$script:checks++
 $account = 'S-1-5-21-101-202-303-1001'
 foreach ($pair in @(@('AccessPermission', '0x3'), @('LaunchPermission', '0xb'))) {
     $name, $mask = $pair

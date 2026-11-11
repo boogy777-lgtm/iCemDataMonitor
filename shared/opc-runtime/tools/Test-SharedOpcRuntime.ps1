@@ -218,7 +218,7 @@ function Invoke-Msi([string[]] $arguments, [string] $phase, [int] $expected) {
             if (-not [regex]::IsMatch($text, 'ICEM_BOUNDARY_RESTRICTED mediumSameSid=1;adminEnabled=0;openStatus=(?:\d+,){5}\d+(?![\d,])')) { throw "$phase lacks complete restricted-token process access evidence." }
             if ([regex]::Matches($text, 'ICEM_BOUNDARY_REG index=').Count -lt 8) { throw "$phase lacks both registry views for both fixed AppIDs." }
             if (@($arguments | Where-Object { $_ -cmatch '^/f[a-z]+$' }).Count) { Assert-SharedOpcSnapshotAcceptedLog $text }
-            if ('/qb!' -cin $arguments -and -not [regex]::IsMatch($text, '(?m)^Property\([CS]\): UILevel = 3\r?$')) { throw "$phase did not log basic UI level." }
+            if ('/qb!-' -cin $arguments -and -not [regex]::IsMatch($text, '(?m)^Property\([CS]\): UILevel = 3\r?$')) { throw "$phase did not log basic UI level." }
         }
     } finally { $process.Dispose() }
 }
@@ -417,7 +417,7 @@ try {
             Invoke-Msi @('/fomus', ('"' + $Candidate + '"')) 'descriptor-repair' 0
             Equal-Snapshot $customized (Snapshot 'descriptor-repaired') 'Repair with customized AppID permissions'
             Damage-RepairResources
-            Invoke-Msi @('/fomus', ('"' + $Candidate + '"'), '/qb!') 'descriptor-basic-ui-repair' 0
+            Invoke-Msi @('/fomus', ('"' + $Candidate + '"'), '/qb!-') 'descriptor-basic-ui-repair' 0
             Equal-Snapshot $customized (Snapshot 'descriptor-basic-ui-repaired') 'Basic UI repair with customized AppID permissions'
             Damage-RepairResources
             $null = Snapshot 'descriptor-force-damaged'
@@ -440,19 +440,19 @@ try {
                     if ($original.Length -eq 0) { throw 'Owned descriptor is empty before negative tests.' }
                     function Assert-Refusal([string] $phase, [string[]] $extra) {
                         $state = Snapshot "$phase-before"
-                        $arguments = @('/fomus', ('"' + $Candidate + '"')) + @($extra)
+                        $arguments = @(Get-SharedOpcAdversarialRepairArguments -Candidate $Candidate -Extra $extra)
                         Invoke-Msi $arguments $phase 1603
                         $log = [IO.File]::ReadAllText((Join-Path $EvidenceDirectory "$phase.log"))
                         Assert-SharedOpcSnapshotRefusalLog $log
                         if (@($extra | Where-Object { $_ -clike 'ICEM_TEST_TAMPER=*' }).Count -and
                             -not $log.Contains('ICEM_TEST_SNAPSHOT_TAMPERED', [StringComparison]::Ordinal)) { throw 'Property tampering action did not execute.' }
-                        if ('/qb!' -cin $extra -and -not [regex]::IsMatch($log, '(?m)^Property\([CS]\): UILevel = 3\r?$')) { throw 'Negative case did not run with basic UI level.' }
+                        if ('/qb!-' -cin $extra -and -not [regex]::IsMatch($log, '(?m)^Property\([CS]\): UILevel = 3\r?$')) { throw 'Negative case did not run with basic UI level.' }
                         Equal-Snapshot $state (Snapshot "$phase-after") "Pre-transaction refusal $phase"
                     }
                     foreach ($mode in @('missing', 'tamper', 'odd', 'injection')) {
                         Assert-Refusal "property-$mode" @("ICEM_TEST_TAMPER=$mode")
                     }
-                    Assert-Refusal 'property-tamper-basic-ui' @('ICEM_TEST_TAMPER=tamper', '/qb!')
+                    Assert-Refusal 'property-tamper-basic-ui' @('ICEM_TEST_TAMPER=tamper', '/qb!-')
                     foreach ($mode in @('missing', 'empty', 'string', 'dword', 'malformed')) {
                         try {
                             switch ($mode) {
