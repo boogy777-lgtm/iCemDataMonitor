@@ -19,7 +19,11 @@ public static class OrdinalIdentityOracle {
    if(scalar>=0xd800 && scalar<=0xdfff) continue;
    count++; var text=char.ConvertFromUtf32(scalar);
    if(classes.TryGetValue(text,out int canonical)) map.Add(new[]{scalar,canonical});
-   else classes.Add(text,scalar);
+   else { classes.Add(text,scalar); canonical=scalar; }
+   var representative=char.ConvertFromUtf32(canonical);
+   if(text.Length!=representative.Length || !StringComparer.OrdinalIgnoreCase.Equals(
+    "\0a\U00010400"+text+"\u0301Z", "\0A\U00010428"+representative+"\u0301z"))
+    throw new InvalidOperationException("Contextual ordinal mismatch at U+"+scalar.ToString("X"));
   }
   bool useNls; bool nlsSet=AppContext.TryGetSwitch("System.Globalization.UseNls",out useNls);
   bool invariant; bool invariantSet=AppContext.TryGetSwitch("System.Globalization.Invariant",out invariant);

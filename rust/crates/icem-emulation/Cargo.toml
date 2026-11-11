@@ -8,6 +8,11 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Explicit build target, not automatic OS or runtime detection. The default is
+# the historical 19045 provider; see the provider compatibility policy.
+ordinal-icu-26100 = []
+
 [dependencies]
 icem-config = { path = "../icem-config" }
 icem-protocols = { path = "../icem-protocols" }

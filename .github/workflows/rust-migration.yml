@@ -110,13 +110,13 @@ jobs:
         shell: pwsh
         run: |
           # Test the native runtime boundary before the much larger desktop graph.
-          cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows
+          cargo test --release --locked --offline -p icem-emulator-app -p icem-transport -p icem-platform-windows -p icem-emulation --features icem-emulation/ordinal-icu-26100
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -- -D warnings
+          cargo clippy --release --locked --offline --all-targets -p icem-emulator-app -p icem-transport -p icem-platform-windows -p icem-emulation --features icem-emulation/ordinal-icu-26100 -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify source and skeleton
         shell: pwsh
-        run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
+        run: ./tools/Verify-Scaffold.ps1 -RequireCompleteBaseline -OrdinalIcu26100
       - name: Verify independent MQTT and OPC UA counterparts on Windows
         shell: pwsh
         env:
