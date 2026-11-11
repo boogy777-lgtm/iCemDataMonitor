@@ -20,7 +20,7 @@ jobs:
       - name: Full payload, AddIn provenance and native MSI ownership contracts
         run: ./tools/Test-WindowsPackaging.ps1
       - name: Build both family Setups without building legacy applications or executing MSI
-        run: ./tools/Test-WindowsSetupBuild.ps1
+        run: ../shared/installer/tools/Test-WindowsSetupBuild.ps1
       - name: Build and install fixture MSI using native WiX ownership and original branding
         run: ./tools/Test-WindowsInstaller.ps1
       - name: Upload installer contract logs (no fixture MSI publication)

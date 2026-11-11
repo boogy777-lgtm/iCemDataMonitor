@@ -1,7 +1,8 @@
 #requires -Version 7.4
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'LegacyAddin.psm1')
+$RepositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+Import-Module (Join-Path $RepositoryRoot 'shared/icem-addin/tools/LegacyAddin.psm1')
 
 function Join-PayloadPath([string] $Root, [string] $Relative) {
     $Parts = $Relative -split '[\\/]'

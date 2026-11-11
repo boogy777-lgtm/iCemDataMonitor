@@ -1,6 +1,6 @@
 # Compatibility contract registry
 
-- [Canonical protobuf](../../iCemDataMonitor.Contracts/Protos/telemetry.proto): one source for Rust/.NET; frozen package/tags/oneof/reserved.
+- [Canonical protobuf](../../shared/contracts/telemetry.proto): one source for Rust/.NET; frozen package/tags/oneof/reserved.
 - [Current OpenAPI](http/openapi.json): four active REST GET routes, implemented by Rust Host; unchanged by C11.
 - [Pinned route inventory](http/route-inventory.json): source evidence at `96e2206562c9389d1543095232115d81eae4b692`, not a current tree inventory.
 - [API contracts](../docs/API_SPEC.ru.md): MMF, Modbus, CLI, emulator control, IPC.

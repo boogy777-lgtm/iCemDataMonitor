@@ -1,0 +1,1637 @@
+{
+  "schema_version": 1,
+  "relocations": [
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/Burservis.iCem.DataMonitor.Tests.csproj",
+      "destination_path": "shared/icem-addin/tests/Burservis.iCem.DataMonitor.Tests.csproj"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/BusLayoutTests.cs",
+      "destination_path": "shared/icem-addin/tests/BusLayoutTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/BusWriteQueueTests.cs",
+      "destination_path": "shared/icem-addin/tests/BusWriteQueueTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/BusWriterDaclTests.cs",
+      "destination_path": "shared/icem-addin/tests/BusWriterDaclTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/BusWriterTests.cs",
+      "destination_path": "shared/icem-addin/tests/BusWriterTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/CdabCodecTests.cs",
+      "destination_path": "shared/icem-addin/tests/CdabCodecTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/ComFeedLatchTests.cs",
+      "destination_path": "shared/icem-addin/tests/ComFeedLatchTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/DataMonitorAddressMapTests.cs",
+      "destination_path": "shared/icem-addin/tests/DataMonitorAddressMapTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/DataMonitorEdgeTruthTableTests.cs",
+      "destination_path": "shared/icem-addin/tests/DataMonitorEdgeTruthTableTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/DataMonitorPollLivenessTests.cs",
+      "destination_path": "shared/icem-addin/tests/DataMonitorPollLivenessTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/LanSourceTrackerTests.cs",
+      "destination_path": "shared/icem-addin/tests/LanSourceTrackerTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/PollResolutionTests.cs",
+      "destination_path": "shared/icem-addin/tests/PollResolutionTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/TapLogTests.cs",
+      "destination_path": "shared/icem-addin/tests/TapLogTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/TestAssembly.cs",
+      "destination_path": "shared/icem-addin/tests/TestAssembly.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor.Tests/ZoneLivenessTests.cs",
+      "destination_path": "shared/icem-addin/tests/ZoneLivenessTests.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj",
+      "destination_path": "shared/icem-addin/src/Burservis.iCem.DataMonitor.csproj"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/BusAccessDeniedException.cs",
+      "destination_path": "shared/icem-addin/src/BusAccessDeniedException.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/BusLayout.cs",
+      "destination_path": "shared/icem-addin/src/BusLayout.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/BusSelfTest.cs",
+      "destination_path": "shared/icem-addin/src/BusSelfTest.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/BusWriteQueue.cs",
+      "destination_path": "shared/icem-addin/src/BusWriteQueue.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/BusWriter.cs",
+      "destination_path": "shared/icem-addin/src/BusWriter.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/ComFeedLatch.cs",
+      "destination_path": "shared/icem-addin/src/ComFeedLatch.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/DataMonitorAddressMap.cs",
+      "destination_path": "shared/icem-addin/src/DataMonitorAddressMap.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/DataMonitorModule.cs",
+      "destination_path": "shared/icem-addin/src/DataMonitorModule.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/LanSourceTracker.cs",
+      "destination_path": "shared/icem-addin/src/LanSourceTracker.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/NameNormalizer.cs",
+      "destination_path": "shared/icem-addin/src/NameNormalizer.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/PollResolution.cs",
+      "destination_path": "shared/icem-addin/src/PollResolution.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/Properties/AssemblyInfo.cs",
+      "destination_path": "shared/icem-addin/src/Properties/AssemblyInfo.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/RawCsvFields.cs",
+      "destination_path": "shared/icem-addin/src/RawCsvFields.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/TapLog.cs",
+      "destination_path": "shared/icem-addin/src/TapLog.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/UnixTimestamp.cs",
+      "destination_path": "shared/icem-addin/src/UnixTimestamp.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/ZoneLiveness.cs",
+      "destination_path": "shared/icem-addin/src/ZoneLiveness.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/ZoneStaleness.cs",
+      "destination_path": "shared/icem-addin/src/ZoneStaleness.cs"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/gen_datamonitor_map.ps1",
+      "destination_path": "shared/icem-addin/src/gen_datamonitor_map.ps1"
+    },
+    {
+      "source_path": "Burservis.iCem.DataMonitor/lan_vendor_aliases.csv",
+      "destination_path": "shared/icem-addin/src/lan_vendor_aliases.csv"
+    },
+    {
+      "source_path": "CI.slnf",
+      "destination_path": "dotnet/CI.slnf"
+    },
+    {
+      "source_path": "assets/iCemDataMonitor.ico",
+      "destination_path": "shared/assets/iCemDataMonitor.ico"
+    },
+    {
+      "source_path": "assets/iCemEmule.ico",
+      "destination_path": "shared/assets/iCemEmule.ico"
+    },
+    {
+      "source_path": "assets/iCemEmule_256.png",
+      "destination_path": "shared/assets/iCemEmule_256.png"
+    },
+    {
+      "source_path": "assets/iCemPOC.ico",
+      "destination_path": "shared/assets/iCemPOC.ico"
+    },
+    {
+      "source_path": "assets/iCemPOC_256.png",
+      "destination_path": "shared/assets/iCemPOC_256.png"
+    },
+    {
+      "source_path": "build.ps1",
+      "destination_path": "dotnet/tools/build.ps1"
+    },
+    {
+      "source_path": "global.json",
+      "destination_path": "dotnet/global.json"
+    },
+    {
+      "source_path": "iCemDataMonitor.Contracts.Tests/TelemetryContractTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Contracts.Tests/TelemetryContractTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Contracts.Tests/iCemDataMonitor.Contracts.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Contracts.Tests/iCemDataMonitor.Contracts.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Contracts.Tests/telemetry.proto.fields.json",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Contracts.Tests/telemetry.proto.fields.json"
+    },
+    {
+      "source_path": "iCemDataMonitor.Contracts.Tests/telemetry.proto.sha256",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Contracts.Tests/telemetry.proto.sha256"
+    },
+    {
+      "source_path": "iCemDataMonitor.Contracts/HostChannelNames.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Contracts/HostChannelNames.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Contracts/Protos/telemetry.proto",
+      "destination_path": "shared/contracts/telemetry.proto"
+    },
+    {
+      "source_path": "iCemDataMonitor.Contracts/iCemDataMonitor.Contracts.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Contracts/iCemDataMonitor.Contracts.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Core.Tests/ArchTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Core.Tests/ArchTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Core.Tests/IniConfigTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Core.Tests/IniConfigTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Core.Tests/Usings.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Core.Tests/Usings.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Core.Tests/iCemDataMonitor.Core.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Core.Tests/iCemDataMonitor.Core.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Core/Config/IniConfig.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Core/Config/IniConfig.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Core/Config/LayerFlags.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Core/Config/LayerFlags.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Core/iCemDataMonitor.Core.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Core/iCemDataMonitor.Core.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/ArchitectureTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/ArchitectureTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusAccessDeniedTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusAccessDeniedTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusAddrRingServiceTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusAddrRingServiceTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusDecodeTruthTableTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusDecodeTruthTableTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusOpenTruthTableTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusOpenTruthTableTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusReaderReadOnlyTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusReaderReadOnlyTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusReaderTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusReaderTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusRingServiceTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusRingServiceTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/BusTestFactory.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/BusTestFactory.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/DataBusLogTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/DataBusLogTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/IniConfigSearchOrderTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/IniConfigSearchOrderTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/MetricsSamplerTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/RingHistoryTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/RingHistoryTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/TestBootstrap.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/TestBootstrap.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data.Tests/iCemDataMonitor.Data.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Data.Tests/iCemDataMonitor.Data.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Bus/BusAccessDeniedException.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Bus/BusAccessDeniedException.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Bus/BusAddrRingService.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Bus/BusAddrRingService.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Bus/BusMapping.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Bus/BusMapping.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Bus/BusReader.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Bus/BusReader.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Bus/BusRingService.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Bus/BusRingService.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Bus/RingHistory.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Bus/RingHistory.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/DataBusLog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/DataBusLog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/FamilyAwareCatalog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/FamilyAwareCatalog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/ISourceStore.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/ISourceStore.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/InMemoryConfigStore.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/InMemoryConfigStore.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/SourceStatus.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/SourceStatus.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Telemetry/MetricsSampler.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Telemetry/MetricsSampler.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/Telemetry/RegisterDecoder.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/Telemetry/RegisterDecoder.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Data/iCemDataMonitor.Data.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Data/iCemDataMonitor.Data.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml",
+      "destination_path": "dotnet/src/iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml"
+    },
+    {
+      "source_path": "iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Emulator.WinUI/EmulatorPage.xaml.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Emulator.WinUI/EmulatorViewModel.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Emulator.WinUI/EmulatorViewModel.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml",
+      "destination_path": "dotnet/src/iCemDataMonitor.Emulator.WinUI/ThemeResources.xaml"
+    },
+    {
+      "source_path": "iCemDataMonitor.Emulator.WinUI/UiTrace.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Emulator.WinUI/UiTrace.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Emulator.WinUI/iCemDataMonitor.Emulator.WinUI.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Emulator.WinUI/iCemDataMonitor.Emulator.WinUI.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/DefaultLayerActuator.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/DefaultLayerActuator.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/Endpoints/RegisterMirrorEndpoints.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/Health/BusHealthMonitor.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/Health/BusHealthMonitor.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/HostComposition.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/HostComposition.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/KestrelBinding.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/KestrelBinding.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/LayerRuntimeController.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/LayerRuntimeController.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/StationLogPaths.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/StationLogPaths.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/TrayToggleRules.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/TrayToggleRules.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Core/iCemDataMonitor.Host.Core.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host.Core/iCemDataMonitor.Host.Core.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/AutostartManagerTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/AutostartManagerTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/BootStageTrackerTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/BootStageTrackerTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/BusHealthMonitorTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/BusHealthMonitorTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/CliForwarderTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/CliForwarderTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/CompositionSmokeTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/CompositionSmokeTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/ConsoleCloseProbeTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/ConsoleCloseProbeTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/ConsoleShowAfterHideProbeTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/ConsoleShowAfterHideProbeTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/ConsoleVisibilityServiceTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/ConsoleVisibilityServiceTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/D2GuardTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/D2GuardTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/GrpcChannelIntegrationTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/GrpcChannelIntegrationTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/HeadlessHygieneTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/HeadlessHygieneTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/HostArgsTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/HostArgsTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/HostLifecycleTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/HostLifecycleTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/PlatformSupport.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/PlatformSupport.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/SingleInstanceGuardTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/SingleInstanceGuardTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/StationFileLogHostContractTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/StationFileLogHostContractTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/TelemetryServiceImplTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/TelemetryServiceImplTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/TrayLogicTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/TrayLogicTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/UiNavigationServiceTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/UiNavigationServiceTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/Usings.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/Usings.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/WwwrootHistoryContractGuardTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/WwwrootHistoryContractGuardTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/WwwrootVersionGuardTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/WwwrootVersionGuardTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host.Tests/iCemDataMonitor.Host.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Host.Tests/iCemDataMonitor.Host.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Boot/BootStageTracker.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Boot/BootStageTracker.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/CliMode/CliForwarder.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/CliMode/CliForwarder.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Grpc/TelemetryServiceImpl.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/HostAppFactory.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/HostAppFactory.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/HostArgs.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/HostArgs.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/PlatformSupport.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/PlatformSupport.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Program.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Program.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/SingleInstanceGuard.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/SingleInstanceGuard.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/StartupLog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/StartupLog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/AutostartManager.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/AutostartManager.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/ConsoleCloseGuard.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/ConsoleCloseGuard.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/ConsoleVisibilityPolicy.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/ConsoleVisibilityPolicy.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/ConsoleVisibilityService.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/ConsoleVisibilityService.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/ConsoleWindow.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/ConsoleWindow.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/CrossProcessNames.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/CrossProcessNames.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/HostLifecycle.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/HostLifecycle.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/HostTray.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/HostTray.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/MutexProbe.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/MutexProbe.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/PanelOpen.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/PanelOpen.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/RestartPlan.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/RestartPlan.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/TrayActionGate.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/TrayActionGate.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/TrayCloseContract.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/TrayCloseContract.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/TrayTooltipFormatter.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/TrayTooltipFormatter.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/UiNavigationService.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/UiNavigationService.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/Tray/UiPrefsStore.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/Tray/UiPrefsStore.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/iCemDataMonitor.Host.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/iCemDataMonitor.Host.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/scripts/add-autostart.ps1",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/scripts/add-autostart.ps1"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/scripts/create-desktop-shortcut.ps1",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/scripts/create-desktop-shortcut.ps1"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/wwwroot/favicon.ico",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/wwwroot/favicon.ico"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/wwwroot/favicon.png",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/wwwroot/favicon.png"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/wwwroot/index.html",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/wwwroot/index.html"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/wwwroot/main.css",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/wwwroot/main.css"
+    },
+    {
+      "source_path": "iCemDataMonitor.Host/wwwroot/main.js",
+      "destination_path": "dotnet/src/iCemDataMonitor.Host/wwwroot/main.js"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/BootStageStream.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/BootStageStream.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/EnsureHost.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/EnsureHost.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/GrpcHostClient.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/GrpcHostClient.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/HostLink.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/HostLink.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/HostProcessLauncher.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/HostProcessLauncher.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/HostStatusViewModel.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/HostStatusViewModel.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/HostTooltip.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/HostTooltip.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/IHostApi.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/IHostApi.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/MetricsStream.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/MetricsStream.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.HostClient/iCemDataMonitor.HostClient.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.HostClient/iCemDataMonitor.HostClient.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/CatalogTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/CatalogTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/LanExtensionAddressingTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/LanExtensionAddressingTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/LanFullCoverageTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/LanFullCoverageTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/LantableRegistryTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/LantableRegistryTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/LegacySvBackfillTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/LegacySvBackfillTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/ModbusRegistryFixture.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/ModbusRegistryFixture.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/SsfTemplateLoaderTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/SsfTemplateLoaderTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/UnifiedVariableRegistryTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/UnifiedVariableRegistryTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/Usings.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/Usings.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/VariableUnitGuesserTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/VariableUnitGuesserTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem.Tests/iCemDataMonitor.Plugins.Icem.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Plugins.Icem.Tests/iCemDataMonitor.Plugins.Icem.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/DeviceCatalogRegistry.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/DeviceCatalogRegistry.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/DeviceFamilyRegistry.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/DeviceFamilyRegistry.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/FlecsVariableCatalog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/FlecsVariableCatalog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/LanVariableCatalog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/LanVariableCatalog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/LantableRegistry.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/LantableRegistry.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/PlcVariableCatalog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/PlcVariableCatalog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/SsfTemplateLoader.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/SsfTemplateLoader.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/UnifiedVariableRegistry.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/UnifiedVariableRegistry.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/VariableUnitGuesser.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/VariableUnitGuesser.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/iCemDataMonitor.Plugins.Icem.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Plugins.Icem/iCemDataMonitor.Plugins.Icem.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/AdcPump.ssf",
+      "destination_path": "shared/catalogs/host/AdcPump.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/CanadianBodyloadMastCTU.ssf",
+      "destination_path": "shared/catalogs/host/CanadianBodyloadMastCTU.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/FlecsCTunit.ssf",
+      "destination_path": "shared/catalogs/host/FlecsCTunit.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC.ssf",
+      "destination_path": "shared/catalogs/host/PLC_ADC.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC_kgl_lpm_bar.ssf",
+      "destination_path": "shared/catalogs/host/PLC_ADC_kgl_lpm_bar.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC_km3_m3m_mpa.ssf",
+      "destination_path": "shared/catalogs/host/PLC_ADC_km3_m3m_mpa.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/PLC_ADC_sg_lpm_atm.ssf",
+      "destination_path": "shared/catalogs/host/PLC_ADC_sg_lpm_atm.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/PLC_AdvantageOne_New.ssf",
+      "destination_path": "shared/catalogs/host/PLC_AdvantageOne_New.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/adc_down.ssf",
+      "destination_path": "shared/catalogs/host/adc_down.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/amp.ssf",
+      "destination_path": "shared/catalogs/host/amp.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/c75tc4.ssf",
+      "destination_path": "shared/catalogs/host/c75tc4.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/c75tc4_down.ssf",
+      "destination_path": "shared/catalogs/host/c75tc4_down.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/cmntace.ssf",
+      "destination_path": "shared/catalogs/host/cmntace.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/cmntadc.ssf",
+      "destination_path": "shared/catalogs/host/cmntadc.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/cms.ssf",
+      "destination_path": "shared/catalogs/host/cms.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/cms_down.ssf",
+      "destination_path": "shared/catalogs/host/cms_down.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/coiltube.ssf",
+      "destination_path": "shared/catalogs/host/coiltube.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/compac.ssf",
+      "destination_path": "shared/catalogs/host/compac.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/compac_unipro.ssf",
+      "destination_path": "shared/catalogs/host/compac_unipro.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/cpt300.ssf",
+      "destination_path": "shared/catalogs/host/cpt300.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/ct60079b.ssf",
+      "destination_path": "shared/catalogs/host/ct60079b.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_kgl_lpm_bar.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p16_kgl_lpm_bar.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_km3_m3m_mpa.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p16_km3_m3m_mpa.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_ppg_bpm_psi.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p16_ppg_bpm_psi.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p16_sg_lpm_atm.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p16_sg_lpm_atm.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_kgl_lpm_bar.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p53_kgl_lpm_bar.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_km3_m3m_mpa.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p53_km3_m3m_mpa.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_ppg_bpm_psi.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p53_ppg_bpm_psi.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecs_ver4p53_sg_lpm_atm.ssf",
+      "destination_path": "shared/catalogs/host/flecs_ver4p53_sg_lpm_atm.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecsadc.ssf",
+      "destination_path": "shared/catalogs/host/flecsadc.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecsadc30.ssf",
+      "destination_path": "shared/catalogs/host/flecsadc30.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecsadc30_metric.ssf",
+      "destination_path": "shared/catalogs/host/flecsadc30_metric.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecscmt_3_06_english.ssf",
+      "destination_path": "shared/catalogs/host/flecscmt_3_06_english.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/flecscmt_4_03_english.ssf",
+      "destination_path": "shared/catalogs/host/flecscmt_4_03_english.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/hydrtube.ssf",
+      "destination_path": "shared/catalogs/host/hydrtube.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json",
+      "destination_path": "shared/catalogs/host/lantable_registry.json"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/n2_foam.ssf",
+      "destination_path": "shared/catalogs/host/n2_foam.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/nit_340.ssf",
+      "destination_path": "shared/catalogs/host/nit_340.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/nit_90_660.ssf",
+      "destination_path": "shared/catalogs/host/nit_90_660.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/nitout.ssf",
+      "destination_path": "shared/catalogs/host/nitout.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/nitro_180.ssf",
+      "destination_path": "shared/catalogs/host/nitro_180.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/plc.ssf",
+      "destination_path": "shared/catalogs/host/plc.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/plc_cms.ssf",
+      "destination_path": "shared/catalogs/host/plc_cms.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/plc_cms_IPGenIV.ssf",
+      "destination_path": "shared/catalogs/host/plc_cms_IPGenIV.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/plc_cms_lpm_m3m.ssf",
+      "destination_path": "shared/catalogs/host/plc_cms_lpm_m3m.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/prd.ssf",
+      "destination_path": "shared/catalogs/host/prd.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/s&s_blender.ssf",
+      "destination_path": "shared/catalogs/host/s&s_blender.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/s&s_pump.ssf",
+      "destination_path": "shared/catalogs/host/s&s_pump.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/tanklevel.ssf",
+      "destination_path": "shared/catalogs/host/tanklevel.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/tanklevelmetric.ssf",
+      "destination_path": "shared/catalogs/host/tanklevelmetric.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/wits17cementing.ssf",
+      "destination_path": "shared/catalogs/host/wits17cementing.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/wits1generaltimebased.ssf",
+      "destination_path": "shared/catalogs/host/wits1generaltimebased.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Plugins.Icem/templates/wits4hydraulics.ssf",
+      "destination_path": "shared/catalogs/host/wits4hydraulics.ssf"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk.Tests/BusLayoutTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Sdk.Tests/BusLayoutTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk.Tests/CdabCodecTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Sdk.Tests/CdabCodecTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk.Tests/IniSchemaTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Sdk.Tests/IniSchemaTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk.Tests/RegisterMapV2Tests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Sdk.Tests/RegisterMapV2Tests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk.Tests/StationFileLogTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Sdk.Tests/StationFileLogTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk.Tests/Usings.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Sdk.Tests/Usings.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk.Tests/iCemDataMonitor.Sdk.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Sdk.Tests/iCemDataMonitor.Sdk.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Bus/BusLayout.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Bus/BusLayout.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Bus/IniSchema.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Bus/IniSchema.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Bus/RegisterMapV2.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Bus/RegisterMapV2.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Diagnostics/StationFileLog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/IConfigStore.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/IConfigStore.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/IDataSource.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/IDataSource.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/IDeviceCatalogRegistry.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/IDeviceCatalogRegistry.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/IModbusPublisher.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/IModbusPublisher.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/ISourceReader.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/ISourceReader.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/ITimeseriesStore.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/ITimeseriesStore.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/IVariableCatalog.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/IVariableCatalog.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Models/DeviceConfig.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Models/DeviceConfig.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Models/DeviceFamily.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Models/DeviceFamily.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Models/ModbusRegisterEntry.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Models/ModbusRegisterEntry.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Models/SourceKind.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Models/SourceKind.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Models/SourceSample.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Models/SourceSample.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Models/TimeSeriesSample.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Models/TimeSeriesSample.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/Models/VariableDefinition.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/Models/VariableDefinition.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Sdk/iCemDataMonitor.Sdk.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Sdk/iCemDataMonitor.Sdk.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/App.xaml",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/App.xaml"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/App.xaml.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/App.xaml.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/BootSplashWindow.xaml.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/BootStageItem.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/BootStageItem.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/MainWindow.xaml"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/MainWindow.xaml.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/MainWindow.xaml.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/ShellSession.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/ShellSession.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/ThemeResources.xaml",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/ThemeResources.xaml"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/app.manifest",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/app.manifest"
+    },
+    {
+      "source_path": "iCemDataMonitor.Shell.WinUI/iCemDataMonitor.Shell.WinUI.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Shell.WinUI/iCemDataMonitor.Shell.WinUI.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Tools.IconGen/Program.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Tools.IconGen/Program.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Tools.IconGen/iCemDataMonitor.Tools.IconGen.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Tools.IconGen/iCemDataMonitor.Tools.IconGen.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/AceLanDecodeContractTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/AceLanDecodeContractTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/AceSnifferServiceTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/AceSnifferServiceTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/LiveModbusEmulatorTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/LiveModbusEmulatorTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/ModbusContractTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/ModbusContractTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/PcapngReader.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/PcapngReader.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/ReconnectBackoffTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/ReconnectBackoffTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/ReplayAceFrameSource.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/ReplayAceFrameSource.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/TransportArchitectureTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/TransportArchitectureTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/Usings.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/Usings.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport.Tests/iCemDataMonitor.Transport.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.Transport.Tests/iCemDataMonitor.Transport.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/AceSnifferService.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/AceSnifferService.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/IAceFrameSource.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/IAceFrameSource.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/ModbusTcpPublisher.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/ModbusTcpPublisher.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/Models/AceCaptureStatus.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/Models/AceCaptureStatus.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/Models/AceEquipmentStatus.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/Models/AceEquipmentStatus.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/Models/AceServiceVectorInfo.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/Models/AceServiceVectorInfo.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/Models/AceSignalPreview.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/Models/AceSignalPreview.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/Models/AceSnifferOptions.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/Models/AceSnifferOptions.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/Models/AceSnifferStatus.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/Models/AceSnifferStatus.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/Models/ModbusOptions.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/Models/ModbusOptions.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/ReconnectBackoff.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/ReconnectBackoff.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/SharpPcapAceSource.cs",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/SharpPcapAceSource.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.Transport/iCemDataMonitor.Transport.csproj",
+      "destination_path": "dotnet/src/iCemDataMonitor.Transport/iCemDataMonitor.Transport.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/ContractTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/ContractTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/E3UniquenessTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/E3UniquenessTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/HostClientTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/HostClientTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/LayerRuntimeControllerTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/LayerRuntimeControllerTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/RegisterMirrorTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/RegisterMirrorTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/TrayToggleRulesTests.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/TrayToggleRulesTests.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/Usings.cs",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/Usings.cs"
+    },
+    {
+      "source_path": "iCemDataMonitor.UI.Tests/iCemDataMonitor.UI.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemDataMonitor.UI.Tests/iCemDataMonitor.UI.Tests.csproj"
+    },
+    {
+      "source_path": "iCemDataMonitor.sln",
+      "destination_path": "dotnet/iCemDataMonitor.sln"
+    },
+    {
+      "source_path": "iCemEmulator/App.xaml",
+      "destination_path": "dotnet/src/iCemEmulator/App.xaml"
+    },
+    {
+      "source_path": "iCemEmulator/App.xaml.cs",
+      "destination_path": "dotnet/src/iCemEmulator/App.xaml.cs"
+    },
+    {
+      "source_path": "iCemEmulator/MainWindow.xaml",
+      "destination_path": "dotnet/src/iCemEmulator/MainWindow.xaml"
+    },
+    {
+      "source_path": "iCemEmulator/MainWindow.xaml.cs",
+      "destination_path": "dotnet/src/iCemEmulator/MainWindow.xaml.cs"
+    },
+    {
+      "source_path": "iCemEmulator/Program.cs",
+      "destination_path": "dotnet/src/iCemEmulator/Program.cs"
+    },
+    {
+      "source_path": "iCemEmulator/TrayIconHost.cs",
+      "destination_path": "dotnet/src/iCemEmulator/TrayIconHost.cs"
+    },
+    {
+      "source_path": "iCemEmulator/app.manifest",
+      "destination_path": "dotnet/src/iCemEmulator/app.manifest"
+    },
+    {
+      "source_path": "iCemEmulator/iCemEmulator.csproj",
+      "destination_path": "dotnet/src/iCemEmulator/iCemEmulator.csproj"
+    },
+    {
+      "source_path": "iCemEmulator/run.bat",
+      "destination_path": "dotnet/src/iCemEmulator/run.bat"
+    },
+    {
+      "source_path": "iCemEmulator/templates/firmware_registry.json",
+      "destination_path": "shared/catalogs/emulator/firmware_registry.json"
+    },
+    {
+      "source_path": "iCemEmulator/templates/firmware_variables.json",
+      "destination_path": "shared/catalogs/emulator/firmware_variables.json"
+    },
+    {
+      "source_path": "iCemEmulator/templates/flecs_4.53.json",
+      "destination_path": "shared/catalogs/emulator/flecs_4.53.json"
+    },
+    {
+      "source_path": "iCemEmulator/templates/lantable_registry.json",
+      "destination_path": "shared/catalogs/emulator/lantable_registry.json"
+    },
+    {
+      "source_path": "iCemEmulator/templates/plc_basic.json",
+      "destination_path": "shared/catalogs/emulator/plc_basic.json"
+    },
+    {
+      "source_path": "iCemEmulator/templates/variable_registry.json",
+      "destination_path": "shared/catalogs/emulator/variable_registry.json"
+    },
+    {
+      "source_path": "iCemEmule.Core/Control/CommandProcessor.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Control/CommandProcessor.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Control/ControlClient.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Control/ControlClient.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Control/ControlPipeClient.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Control/ControlPipeClient.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Control/ControlPipeServer.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Control/ControlPipeServer.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Control/EmulatorAppContract.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Control/EmulatorAppContract.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Control/IEmuControl.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Control/IEmuControl.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/AcePayloadProvider.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/AcePayloadProvider.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/CrashLog.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/CrashLog.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/DeviceTemplate.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/DeviceTemplate.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/DfbAcePayloadProvider.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/DfbAcePayloadProvider.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/EmuEngineHost.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/EmuEngineHost.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/EmuIcon.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/EmuIcon.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/EmuSettings.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/EmuSettings.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/FrozenPayloadProvider.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/FrozenPayloadProvider.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/ISignalValueProvider.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/ISignalValueProvider.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/LantableRegistry.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/LantableRegistry.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/ManualOverridePayloadProvider.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/ManualOverridePayloadProvider.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/SignalWireCodec.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/SignalWireCodec.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/SimFileResolver.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/SimFileResolver.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/SimulationEngine.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/SimulationEngine.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/TemplateCatalog.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/TemplateCatalog.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/UnitConversion.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/UnitConversion.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Core/UnitConvertingPayloadProvider.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Core/UnitConvertingPayloadProvider.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/F300HpvtBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/F300HpvtBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/FirstOrderLagBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/FirstOrderLagBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/JobSequencerBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/JobSequencerBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/KickoutLatchBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/KickoutLatchBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/MixerBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/MixerBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/PumpSideBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/PumpSideBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/RawIoBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/RawIoBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/TemperatureBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/TemperatureBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/Blocks/TotalizerBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/Blocks/TotalizerBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/CementUnitNetworkFactory.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/CementUnitNetworkFactory.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/DfbContext.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/DfbContext.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/DfbNetwork.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/DfbNetwork.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/DfbParameter.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/DfbParameter.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/DfbSignal.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/DfbSignal.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/DfbSignalSource.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/DfbSignalSource.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Dfb/IDfbBlock.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Dfb/IDfbBlock.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Emitters/AceFrameBuilder.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Emitters/AceFrameBuilder.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Emitters/AceLanEmitter.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Emitters/AceLanEmitter.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/Emitters/ComSerialEmitter.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/Emitters/ComSerialEmitter.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/SelfTest/CommandChannelTests.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/SelfTest/CommandChannelTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/SelfTest/FrameRoundTrip.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/SelfTest/FrameRoundTrip.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/SelfTest/LanLoopbackDiag.cs",
+      "destination_path": "dotnet/src/iCemEmule.Core/SelfTest/LanLoopbackDiag.cs"
+    },
+    {
+      "source_path": "iCemEmule.Core/iCemEmule.Core.csproj",
+      "destination_path": "dotnet/src/iCemEmule.Core/iCemEmule.Core.csproj"
+    },
+    {
+      "source_path": "iCemEmule.Tests/CommandProcessorParityTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/CommandProcessorParityTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/ControlPipeClientTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/ControlPipeClientTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/ControlPipeServerTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/ControlPipeServerTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/CrashLogTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/CrashLogTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/DeterminismTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/DeterminismTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/EmulatorAppTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/EmulatorAppTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/EngineDefaultStateTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/EngineDefaultStateTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/EngineStreamToggleTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/EngineStreamToggleTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/InProcControlChannelTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/InProcControlChannelTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/KickoutLatchTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/KickoutLatchTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/LanDiagnosticsTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/LanDiagnosticsTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/LanFreezeCouplingTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/LanFreezeCouplingTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/PayloadSmokeTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/PayloadSmokeTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/PumpSideTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/PumpSideTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/SignalSourceTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/SignalSourceTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/TestEmitters.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/TestEmitters.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/TotalizerTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/TotalizerTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/WireFormatTests.cs",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/WireFormatTests.cs"
+    },
+    {
+      "source_path": "iCemEmule.Tests/iCemEmule.Tests.csproj",
+      "destination_path": "dotnet/tests/iCemEmule.Tests/iCemEmule.Tests.csproj"
+    },
+    {
+      "source_path": "installer/Product.wxs",
+      "destination_path": "dotnet/installer/Product.wxs"
+    },
+    {
+      "source_path": "installer/assets/Burservis_logo_cyr_red.png",
+      "destination_path": "dotnet/installer/assets/Burservis_logo_cyr_red.png"
+    },
+    {
+      "source_path": "installer/assets/app-icon.ico",
+      "destination_path": "dotnet/installer/assets/app-icon.ico"
+    },
+    {
+      "source_path": "installer/assets/banner_red.bmp",
+      "destination_path": "dotnet/installer/assets/banner_red.bmp"
+    },
+    {
+      "source_path": "installer/assets/burservis_logo.bmp",
+      "destination_path": "dotnet/installer/assets/burservis_logo.bmp"
+    },
+    {
+      "source_path": "installer/assets/ui-banner.bmp",
+      "destination_path": "dotnet/installer/assets/ui-banner.bmp"
+    },
+    {
+      "source_path": "installer/assets/ui-dialog.bmp",
+      "destination_path": "dotnet/installer/assets/ui-dialog.bmp"
+    },
+    {
+      "source_path": "installer/assets/ui-welcome.bmp",
+      "destination_path": "dotnet/installer/assets/ui-welcome.bmp"
+    },
+    {
+      "source_path": "installer/build-msi.ps1",
+      "destination_path": "dotnet/installer/build-msi.ps1"
+    },
+    {
+      "source_path": "installer/gen-payload.ps1",
+      "destination_path": "dotnet/installer/gen-payload.ps1"
+    },
+    {
+      "source_path": "installer/gen-ui-bmps.ps1",
+      "destination_path": "dotnet/installer/gen-ui-bmps.ps1"
+    },
+    {
+      "source_path": "scripts/make-release.ps1",
+      "destination_path": "dotnet/tools/scripts/make-release.ps1"
+    },
+    {
+      "source_path": "templates/flecs_4.53.json",
+      "destination_path": "shared/catalogs/host/flecs_4.53.json"
+    },
+    {
+      "source_path": "templates/plc_basic.json",
+      "destination_path": "shared/catalogs/host/plc_basic.json"
+    },
+    {
+      "source_path": "templates/variable_registry.json",
+      "destination_path": "shared/catalogs/host/variable_registry.json"
+    }
+  ]
+}

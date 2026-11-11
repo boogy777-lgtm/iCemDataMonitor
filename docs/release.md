@@ -40,7 +40,7 @@ retirement; manifest/ledger сохраняют настоящую provenance.
 
 ## Legacy reference release
 
-Корневые `installer/build-msi.ps1`, `VERSION`, `.github/workflows/release.yml`
+`dotnet/installer/build-msi.ps1`, root `VERSION`, `.github/workflows/release.yml`
 и legacy `v*` сохранены как отдельный reference/build path. Версия старого builder
 читается из `VERSION`, override — `-MsiVersion X.Y.Z`. Итоговый MSI, build log
 и имеющиеся установщики runtime собираются в `dist/legacy/`; `-OutputDir`

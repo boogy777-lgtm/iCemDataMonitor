@@ -25,7 +25,9 @@ manifest, divergence approvals, timeout budgets и CI routing не меняют�
 Этот test добавлен в C6 и отсутствует в pinned source-manifest/legacy ledger;
 исторические файлы и hash approvals не переписываются.
 
-Валидация: точный SDK из global.json10.0.302/runtime10.0.10, Linux;
+Валидация исторически запускалась до layout relocation; актуальный project path —
+`dotnet/tests/iCemDataMonitor.Host.Tests/iCemDataMonitor.Host.Tests.csproj`.
+Точный SDK теперь закреплён в `dotnet/global.json`. Историческая команда была:
 `dotnet test iCemDataMonitor.Host.Tests/iCemDataMonitor.Host.Tests.csproj
 --filter FullyQualifiedName~LatestBusConsumerTests -m:1 -nodeReuse:false
 -p:UseSharedCompilation=false` — PASS4/4, failures/skips0.

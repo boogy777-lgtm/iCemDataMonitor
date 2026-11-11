@@ -5,33 +5,33 @@
     {
       "path": ".github/workflows/ci.yml",
       "baseline_blob_sha1": "51066ec6838698e002fbf1b954cf8470c7005a8a",
-      "approved_blob_sha1": "09ecd846f931ea7d3614baba0958cb7cf39b8d9b",
+      "approved_blob_sha1": "64eb6d51bd3545cdf52b5ca611282ba2c332d698",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/50",
-        "commit": "656c446bae9554affd362b31376ddbf94eccbd49",
-        "reason": "Preserve the accepted CI-1 verified diff, immutable baseline, routing selftests, full Rust/browser/differential and unchanged legacy build/test/MSI workloads. Subsequent owner requirement 2026-11-10: separate Rust and legacy build/install pipelines so legacy failures cannot block Rust. ci.yml now owns Rust/packaging and Rust CI gate; independent legacy-ci.yml owns legacy and Legacy CI gate. Both use one ci-inputs.yml for unconditional classify/baseline/routing selftests. Exact family dependency schemas reject malformed results and unexpected skips without continue-on-error or disabling legacy checks. Original .NET projects, net48 AddIn, frozen contracts and source manifest remain unchanged. Python 3.12 32-bit 53/53 and actionlint 1.7.12 pass; hosted execution remains required. PR50 and this reviewed source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "7afdce73cb7839af8b8f5174cde01cf4cc574767",
+        "reason": "Historical owner-approved PR50: preserve the accepted CI-1 verified diff, immutable baseline, routing selftests, full Rust/browser/differential and unchanged legacy build/test/MSI workloads. Subsequent owner requirement 2026-11-10 split Rust and legacy build/install pipelines so legacy failures cannot block Rust; ci.yml owns Rust/packaging and Rust gate, legacy-ci.yml owns legacy and Legacy gate, and ci-inputs.yml supplies unconditional classify/baseline/routing tests. Exact family dependency schemas reject malformed results and unexpected skips without continue-on-error or disabling legacy checks. Owner-authorized stage 2 in PR51 source commit 7afdce73 moved common Setup and routing/family-gate consumers mechanically; ci.yml now calls root tools/ci/routing.py while preserving the same jobs, dependencies and gate schema. Common routing tests run unconditionally from tools/ci; Rust cache/vendor/toolchain tests remain under rust/tools/ci and execute only in the Rust family workflow. Original .NET projects, net48 AddIn, frozen contracts and immutable source manifest remain unchanged. This exact workflow blob and PR51 source commit provide approval provenance; hosted execution is required."
       },
       "operation": "modify"
     },
     {
       "path": ".github/workflows/release.yml",
       "baseline_blob_sha1": "c1eeef21286f688da9b9e05d4fddc99277b7366d",
-      "approved_blob_sha1": "416e056fb115d76629b00c504ef0395060f4da24",
+      "approved_blob_sha1": "8a42e409014d4a4c62fb5f959a5afa641fed2f7a",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/50",
-        "commit": "656c446bae9554affd362b31376ddbf94eccbd49",
-        "reason": "Preserve accepted unattended -NoPause and repository-root dist/legacy output policy from PR45, separate from dist/rust. Subsequent owner requirement 2026-11-10: independently build and deliver .NET and Rust Setups that can explicitly remove either installed MSI family. Legacy release wraps only its own verified MSI using the existing shared launcher, emits MSI/Setup checksums and verifies both artifacts before publishing. No Rust application build/CI dependency, automatic cross-family deletion, .NET application/AddIn changes or altered historical MSI uninstall policy. Both family launcher Release builds and exact embedded MSI/family, selected removal policy, stale/foreign, tamper, unsupported-family and no-overwrite contracts pass without executing MSI. Real bidirectional uninstall and release acceptance remain open. PR50 and this reviewed source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Historical owner-approved PR50: preserve unattended -NoPause and repository-root dist/legacy output policy, separate from dist/rust. Owner requirement 2026-11-10: independently build and deliver .NET and Rust Setups that can explicitly remove either installed MSI family. Legacy release wraps only its own verified MSI using the shared launcher, emits MSI/Setup checksums and verifies both artifacts before publishing. No Rust application build/CI dependency, automatic cross-family deletion, .NET application/AddIn changes or altered historical MSI uninstall policy. Owner-authorized stage 2 in PR51 source commit 7afdce73 rehomes the shared launcher and Release-only producer to shared/installer; this workflow now calls that common producer directly. Exact embedded MSI/family, selected ProductCode revalidation/refusal, checksums, no-overwrite, explicit consent and each product's own MSI /x remain unchanged. Build/read-only fixture checks pass without executing MSI; real bidirectional uninstall/release acceptance remain open. This exact workflow blob and PR51 source commit provide approval provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
     {
       "path": "docs/development.md",
       "baseline_blob_sha1": "66ccd373b78e913acf66d0679158cba8a01eaf91",
-      "approved_blob_sha1": "5b198a68367ae975cc6e8e411ba5825ac650d96c",
+      "approved_blob_sha1": "c5314ae1ccdb556dfc12383f5261eb41acdce308",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
-        "commit": "6f3fd105cf9b21e6bdd67f7af0d59ca029b613f4",
-        "reason": "Document CI fixes and current validation limits. Subsequent C11 approval: Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Document CI fixes and current validation limits. Subsequent C11 approval: Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -223,11 +223,11 @@
     {
       "path": "iCemDataMonitor.Host.Tests/SnifferWitnessSurfaceGuardTests.cs",
       "baseline_blob_sha1": "86e60a66a6e2af8f8d11c13a3cb21714c957dafa",
-      "approved_blob_sha1": "9f5faafc10485abf8f890ac69a4a31c04a2a73ae",
+      "approved_blob_sha1": "828c7cc01bbae9ef542555ea517c5df8a472682b",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
-        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
-        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-requested legacy refactoring C2/L02-L04, implemented and independently reviewed by sequential GPT-6.1 Sol medium agents. Correct observed layer status via one capture and production probes; serialize layer mutations through one async owner with queued cancellation and accepted-operation completion. Preserve requested toggle law, Web persist-only, external OPC DA no-op, rollback/persist failure policy and strict RefreshIni errors. Intentional deltas: corrected observed gRPC after failed bind, queued rather than racy Busy admission, explicit cancellation boundary, successful SetSetAsDefault clears stale LastError. Combined C1/C2 Host regressions 38/38 and existing UI controller tests 14/14 pass; historical source manifest, oracle fixtures and frozen surfaces remain unchanged. Subsequent C11 approval: Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -399,11 +399,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/LiveModbusEmulatorTests.cs",
       "baseline_blob_sha1": "5abc1d22a88b5bcd94d5b806941b806bf8002477",
-      "approved_blob_sha1": "219176df02c85f57cf6ec8639d7c160d0e85adff",
+      "approved_blob_sha1": "259c6a840d65f25a9fe4e1e40efada59351fd88d",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/34",
-        "commit": "e126c5100b459b6e5e38d54a828d92c9a1643b9a",
-        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C5/L03 legacy refactoring and confirmed C4 ownership follow-up: BusSnapshot copies constructor/init/with input and exposes read-only owned words; existing consumers use indexed reads or owned copies. One small SDK OwnedReadOnlyList protects snapshot/catalog/family/register-map storage from public mutation and ICollection.SyncRoot alias. Preserve MMF/wire bits, int32 time, independent LAN/RAW, Modbus resize/header/stale/active-overwrite and schedules; update compile sites and regression tests. Public Words/constructor/deconstruct type intentionally changes from array to IReadOnlyList (rebuild consumers); JSON array shape preserved. Sequential GPT-6.1 Sol medium analysis, implementation and independent review; Data18/18 and Plugin169/169. Exact reviewed code commits and PR34 provide provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -476,11 +476,11 @@
     {
       "path": "Burservis.iCem.DataMonitor/Burservis.iCem.DataMonitor.csproj",
       "baseline_blob_sha1": "b2e07d754433cffaa4207850430546dccb11b95a",
-      "approved_blob_sha1": "4ef07f988d42d93a64f25a599f7ee0764dab79c3",
+      "approved_blob_sha1": "95bbad3b140a32b827b40014039a6e798c9e021d",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
-        "commit": "cf5b611d6eb67167edb58487e233d62befe07bea",
-        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -542,11 +542,11 @@
     {
       "path": "iCemDataMonitor.Sdk.Tests/iCemDataMonitor.Sdk.Tests.csproj",
       "baseline_blob_sha1": "882d3349d89b2edd2101ebeefc74c690f65030b6",
-      "approved_blob_sha1": "769c6592206d904e9d74a946015a465a490da083",
+      "approved_blob_sha1": "83f5518e39dd0e8a7901e6dfdf2f037cb911d6df",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
-        "commit": "d473b24833a7ebe9b151979c43bc476d8508ba5c",
-        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C7/L09 legacy refactoring: one internal BCL C#7.3 file-log core is used by net10 SDK and linked net48 TapLog; append, truncate, explicit owned clear and retention share a per-file coordinator with Windows path identity. Sink owns fixed UTC/local timestamp formatting under the gate, preserving channel paths/prefixes/culture/BOM/newlines and existing amortized25MiB/12.5MiB/pre60th-write policy. Correct double Host timestamp and wildcard deletion of foreign logs; retain default-directory/override behavior, DataBus dedup and AddIn throttles. Existing Emulator SDK dependency replaces duplicate writers; no new packages/assemblies/RPC/INI, no MMF/wire/Rust runtime changes. Sequential GPT-6.1 Sol medium implementation and independent review; exact format/ownership/concurrency vectors and Windows Roslyn linked-source CLR4 helper added. Local SDK99+1 Windows skip, Host7 DataBus6 Emu15; Windows/vendor boundaries explicit. Actual PR and exact reviewed source commit provide provenance. Historical approval retained; Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -674,11 +674,11 @@
     {
       "path": "iCemDataMonitor.UI.Tests/iCemDataMonitor.UI.Tests.csproj",
       "baseline_blob_sha1": "e30b3a2af7d868c6ccfdb66587d0890c3949c8e9",
-      "approved_blob_sha1": "a61bc72e34ff682090c7bdc685472e05adede978",
+      "approved_blob_sha1": "5c0d8f62861103bf849781174dff1020f76af69f",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/38",
-        "commit": "8522f15f623eab2a024a841490b893ff74aa9f4a",
-        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C9 legacy refactor: shared emulator decode/parser, staged logical steps and shutdown ownership, shell bootstrap coordination, and source-linked AddIn pair preparation. Preserve layout5, CDAB source time, independent zones, value/order and command contracts; see docs/LEGACY_REFACTORING_C9.ru.md for bounded validation.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -730,11 +730,11 @@
       "path": "iCemDataMonitor.Core.Tests/iCemDataMonitor.Core.Tests.csproj",
       "operation": "modify",
       "baseline_blob_sha1": "3da90787fd9889a38a9592ff19006a3995de61a4",
-      "approved_blob_sha1": "89d49f70a1a52442ac310472e18f454aa9fd8543",
+      "approved_blob_sha1": "5851fdba92ed85841d7ed1dff5c1c6d1c609ad3d",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/39",
-        "commit": "7613060e4be9896b4a47e7dba0723081b5c8a341",
-        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C10 retirement of dormant v1 orchestration, its exclusive tests/dependencies and inert publisher configuration API; preserve active Core.Config, Host composition and C8 lifecycle. Explicit exact-path deletion proof for retired files; bounded consumer/release evidence and validation in docs/LEGACY_REFACTORING_C10.ru.md.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       }
     },
     {
@@ -854,11 +854,11 @@
     {
       "path": "README.md",
       "baseline_blob_sha1": "1cc13aab5d4274ec185e65e2aa99d565d2369656",
-      "approved_blob_sha1": "4684735608fc8eedc9dd8419418413aeb3a2fc1b",
+      "approved_blob_sha1": "d8e6a93b371c4c2d6d2c3114a8c79586ac4ad4ed",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -887,22 +887,22 @@
     {
       "path": "docs/install.md",
       "baseline_blob_sha1": "84ec4832c8e545fcf77ea171fe3868f76242c770",
-      "approved_blob_sha1": "afb2e95cf07509bc1ee873cca34631453f143ed5",
+      "approved_blob_sha1": "ca2117a299b296b09e1cac44936ab6a2daedff69",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent installer lifecycle repair: Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation. Actual Windows follow-up: document native Files in Use radio/OK confirmation separately from force consent; probe-only dialog handling and strict post-failure rollback script/operation and DACL checks retain all owner/hash/registration/state assertions. Exact published source 54bcb426 and PR45 provide updated documentation provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent installer lifecycle repair: Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation. Actual Windows follow-up: document native Files in Use radio/OK confirmation separately from force consent; probe-only dialog handling and strict post-failure rollback script/operation and DACL checks retain all owner/hash/registration/state assertions. Exact published source 54bcb426 and PR45 provide updated documentation provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
     {
       "path": "docs/release.md",
       "baseline_blob_sha1": "f57a3104c227cbb997c059a8969554343e1be698",
-      "approved_blob_sha1": "ec720d2ff266dd7121db054961f71353346db47e",
+      "approved_blob_sha1": "1cf7549b3e20b8797607d57bd7035cb5f798db93",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C11 current documentation closure: describe the implemented Rust Host/GPUI Shell and independent emulator engine, retained vendor iCem/net48 AddIn single MMF writer, single 200ms acquisition and typed shared snapshots, Modbus/Web/MQTT/OPC UA/OPC DA sidecar, actual build/package/launch paths and explicit software versus release/hardware/operator/visual acceptance. Preserve historical pinned contracts and failures with current-status overrides; document 21 dormant routes as retired, external com0com driver KEEP, and capture-to-file internals outside the approved wrapper retirement. PR44 and this published documentation source commit provide exact provenance. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -1000,11 +1000,11 @@
     {
       "path": "iCemDataMonitor.Transport.Tests/iCemDataMonitor.Transport.Tests.csproj",
       "baseline_blob_sha1": "0cf39bfb10f22be4e9ffed1173722782bd2998df",
-      "approved_blob_sha1": "3aecb789a70737d8c7de428c7ae2749cf5449cfb",
+      "approved_blob_sha1": "4174fdf7d28810cc7b6fe05764d50ec7c6ab3719",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/44",
-        "commit": "ba8b7a1faef43b44f34d490c7e601855f8f2c2d3",
-        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized C11 retirement of the accepted 17-file dead legacy closure: remove unreachable dormant REST/admin wrappers, SerialTeeService/Com0ComMonitor and exclusively owned abstractions/models/tests; make five minimal guard/interface/project edits. Preserve active Host wiring, four active REST GET/OpenAPI contracts, passive ACE sniffer, standalone COM/LAN emulator, com0com driver, AddIn single MMF writer and Rust runtime. Capture-to-file internals are not automatically removed by wrapper retirement. PR44 and this published reviewed code source commit provide exact provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       },
       "operation": "modify"
     },
@@ -1148,11 +1148,11 @@
       "path": "installer/build-msi.ps1",
       "baseline_blob_sha1": "d057ca637febb604b7dd3b970e98bf9118ee9e45",
       "operation": "modify",
-      "approved_blob_sha1": "f159a67bd09769df37bbe6fc55800e8e458ee6e7",
+      "approved_blob_sha1": "d143119909ccdf04f4e9bb30c83b013510b5a98f",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "17e5ec53686ce3fa593377b717899aa9c333ce5f",
-        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance. Follow-up CI proof: PowerShell script-scoped trap is hoisted, so preflight failures must propagate before the build transcript is initialized; initialize the log state and rethrow the original invalid-output-path error. Windows lifecycle fixture covers the reserved-stage boundary."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized full legacy/Rust MSI lifecycle repair (PR45): replace broken immediate WMI/JScript process gate with native file-owner Restart Manager and operation-local force consent; remove Cancel process kills and recursive unowned-data wipe. Transactional replacement retains legacy downgrade/hidden-ARP/GUID policy, paths and opt-ins persist with CLI priority, repeat repairs complete payload; symmetric family detection allows installed maintenance. Real AddIn is mandatory for production; incomplete smoke is explicit GitHub Actions only. New Windows lifecycle/UI/rollback/owner-isolation fixtures are separate from SDK evidence. Published source commit and PR45 provide exact provenance. Subsequent independent integrated review preserves pre-execute cancellation semantics, exercises actual native family detection and post-InstallExecute rollback with files/options/registration restoration. Reviewed published source da3f9ca4 and PR45 pin the final authoring/documentation. Subsequent output-path repair: Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance. Follow-up CI proof: PowerShell script-scoped trap is hoisted, so preflight failures must propagate before the build transcript is initialized; initialize the log state and rethrow the original invalid-output-path error. Windows lifecycle fixture covers the reserved-stage boundary.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       }
     },
     {
@@ -1190,12 +1190,320 @@
       "path": "scripts/make-release.ps1",
       "baseline_blob_sha1": "4ade480bd5683bb59649bd35587048af1fdea89f",
       "operation": "modify",
-      "approved_blob_sha1": "0bbfe505f4e7ebe97f63b66c3126c0a56c5e30d7",
+      "approved_blob_sha1": "a052af3fa5bdd50b32a0ccfe8b1c6da92c09c165",
       "provenance": {
-        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/45",
-        "commit": "1ba91dc6739374beb8a9e8cc0602cc2a7b756442",
-        "reason": "Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance."
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized final output-path consolidation: all final legacy handoff MSI/log/optional runtime installers use repository-root dist/legacy; Rust MSI/checksum and verified internal ZIP use dist/rust. Active producers, CI upload/download/release consumers, make-release and current docs agree; explicit relative output paths are repository-root based, absolute overrides remain honored, compiler intermediates and runtime install locations remain separate. Protect explicit output folders and overlapping ancestors/descendants from bin/obj cleanup; reject output inside reserved installer/stage before staging. Preserve branding/harvester/proto/runtime behavior. Python47 producer-consumer closure checks and Windows fixture output/cleanup guards validate the class; exact published code commit and PR45 provide provenance.\n\nOwner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
       }
+    },
+    {
+      "path": ".vscode/tasks.json",
+      "baseline_blob_sha1": "35b2f6f1df711cda47f4cd830181603ddcd0e2e6",
+      "approved_blob_sha1": "f10118c2cb8e6a13cc5b2c42d9ff9726d85d0804",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor.Tests/Burservis.iCem.DataMonitor.Tests.csproj",
+      "baseline_blob_sha1": "0410bab1ff4090c6b3285d23a3a15e389f9a52c2",
+      "approved_blob_sha1": "691941eff123d06f597390bdd8f3f2d237ca247e",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "Burservis.iCem.DataMonitor/gen_datamonitor_map.ps1",
+      "baseline_blob_sha1": "d5e5d45552192394dc6d96da9f9e66c673cdb88b",
+      "approved_blob_sha1": "61d28b15d6df20364bcb56366f34ce31d9d419b8",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "CI.slnf",
+      "baseline_blob_sha1": "4fb782b92866b62d8aac981ddf1491e015e4a14a",
+      "approved_blob_sha1": "24c196ac3832f6cba40bc91f5d4fa4edeb651dc5",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "PROTOCOL.md",
+      "baseline_blob_sha1": "c5259ee6774cb936f25d6bc560bf71a15e537c49",
+      "approved_blob_sha1": "e10c157a7e303a69926ea45cc3e7492dc12a5cf0",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "build.ps1",
+      "baseline_blob_sha1": "a9d935c0b06b06db595e262dbb59f5f31ff91adc",
+      "approved_blob_sha1": "08c8dd9ca1263425d0abd853b77e8e99a058ea78",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "docs/Wireshark/PROTOCOL.md",
+      "baseline_blob_sha1": "c5259ee6774cb936f25d6bc560bf71a15e537c49",
+      "approved_blob_sha1": "e10c157a7e303a69926ea45cc3e7492dc12a5cf0",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Contracts.Tests/TelemetryContractTests.cs",
+      "baseline_blob_sha1": "b047081168534c418e2caf65e136ca4dc32a5a2c",
+      "approved_blob_sha1": "585d06c5c7873893f2723652e8add09e76c1ed40",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Contracts.Tests/iCemDataMonitor.Contracts.Tests.csproj",
+      "baseline_blob_sha1": "38f859f32b29bf24a3702b8fb87d9e487f2b57f4",
+      "approved_blob_sha1": "65443ea91c3826a4fe32c5086e921d8e4d6ae7f6",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Contracts/iCemDataMonitor.Contracts.csproj",
+      "baseline_blob_sha1": "b586358962fdfaad48e0294b1aefe33d90d48dd8",
+      "approved_blob_sha1": "3092443f91ffe4b12a3607d353ec041bd807ead8",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/ArchitectureTests.cs",
+      "baseline_blob_sha1": "7bfdd31d079c8fcb7d2b5985203864551380ab38",
+      "approved_blob_sha1": "7c3acef8d5171655301a236406c87de1fa81825b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Data.Tests/iCemDataMonitor.Data.Tests.csproj",
+      "baseline_blob_sha1": "768bb6b9f464b9dd9d291d49e218adc53d03c407",
+      "approved_blob_sha1": "5d6f48cddc218aee6c13a41e3834eddf6c05416d",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/D2GuardTests.cs",
+      "baseline_blob_sha1": "4b5a96102ed7b15f8ddc1699129c500ad6985c57",
+      "approved_blob_sha1": "39f7b0208037f5aa87ec784734269c948028d08b",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/HeadlessHygieneTests.cs",
+      "baseline_blob_sha1": "456fbf73b6904470786be0972797b6d87c1ba3e9",
+      "approved_blob_sha1": "aeae1d2b6d9ebdaac12d9f8c5d5aec25502ee9b0",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/WwwrootHistoryContractGuardTests.cs",
+      "baseline_blob_sha1": "86a208b25e3579595dc8bb7c8ea3dca921d6cd24",
+      "approved_blob_sha1": "ba3efc9e45b0f0b8306985f7e3499be2f201d921",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/WwwrootVersionGuardTests.cs",
+      "baseline_blob_sha1": "abc9708e2219b323aea09833dffb936d576f6b70",
+      "approved_blob_sha1": "3739d26e0336e9bf82b12184aa2035899ad65f06",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host.Tests/iCemDataMonitor.Host.Tests.csproj",
+      "baseline_blob_sha1": "c39094b39f9f63c05333fa7d408f4b2775221cd5",
+      "approved_blob_sha1": "f17a8857b1d4d6b87bff268b56562767025531d7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Host/iCemDataMonitor.Host.csproj",
+      "baseline_blob_sha1": "852bca27a01d0a5ba2b253e45fdddba625e458d5",
+      "approved_blob_sha1": "94104ed1a4fbfe53400855b9b872364750b6b0e1",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.HostClient/HostProcessLauncher.cs",
+      "baseline_blob_sha1": "822daeac0957f39f006ba1a4a45934f2795f6a61",
+      "approved_blob_sha1": "c22f4629decb3898582fb83cea5e9bd16f49ae4f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/LantableRegistryTests.cs",
+      "baseline_blob_sha1": "71fc8e283e3bdc326e74cbb135f15dfb47d2b5c2",
+      "approved_blob_sha1": "0dcf384709755bdd6ee9e313fb169133cf9c34c1",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem.Tests/iCemDataMonitor.Plugins.Icem.Tests.csproj",
+      "baseline_blob_sha1": "d091a1d6872c8bc27a5c6fd91a7d7460f5aed6c8",
+      "approved_blob_sha1": "bdc178b45085a689194276944cfddbebc192753f",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Plugins.Icem/iCemDataMonitor.Plugins.Icem.csproj",
+      "baseline_blob_sha1": "5c69ad9ab8a86f2a260a6720af6a80ddd942e0dc",
+      "approved_blob_sha1": "585759f4c17bc0badeb61f3b50b97ca8942c27aa",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Shell.WinUI/iCemDataMonitor.Shell.WinUI.csproj",
+      "baseline_blob_sha1": "cfe1d48f1f1298b7a4cde7570e1232f37956ab53",
+      "approved_blob_sha1": "4fb89563700fe20eb433c0aaec809d1a971b072a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.Transport.Tests/AceSnifferServiceTests.cs",
+      "baseline_blob_sha1": "dfbf9d923a2c8d1937a6b8da25319ea0eca401ae",
+      "approved_blob_sha1": "c51d15a24dfa5d4472d5d6f36e0d2d5f04f3b8c7",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.UI.Tests/HostClientTests.cs",
+      "baseline_blob_sha1": "d332e684966e65b94382216ac474ed909b064f9c",
+      "approved_blob_sha1": "a11aaa5296ce789880361e61e73813c163b467a9",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemDataMonitor.sln",
+      "baseline_blob_sha1": "3f39ac89a671cee80e1b15c0a6a029703cfd5ed7",
+      "approved_blob_sha1": "b2bcbec30c50b4bc091cf9d38b9f35a6bf9545ed",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmulator/iCemEmulator.csproj",
+      "baseline_blob_sha1": "0a89c531143b876322b047dd6f58f5c167a165b9",
+      "approved_blob_sha1": "d24137519f708613822e754210f21e43493d8b26",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
+    },
+    {
+      "path": "iCemEmule.Tests/iCemEmule.Tests.csproj",
+      "baseline_blob_sha1": "6b4f1284a0aeb437bf7531728193a3ffa67f0d03",
+      "approved_blob_sha1": "039f31f73f412dcf1fec226badb72fffb842707a",
+      "provenance": {
+        "pull_request": "https://github.com/boogy777-lgtm/iCemDataMonitor/pull/51",
+        "commit": "241341dea6b7b0349eb2c8ed4e5bee8866e99c45",
+        "reason": "Owner-authorized repository-layout completion in PR #51, source commit 241341dea6b7b0349eb2c8ed4e5bee8866e99c45. This logical baseline-owned file changed only for its approved move, direct project/build/test/CI/documentation consumer update, or relocation guard; preserve application behavior, public identities, installed paths, frozen bytes/oracles, and the immutable source manifest. Approval is exact to this logical path and Git blob; no deletion or broad baseline reset. Full Rust/legacy verdict requires hosted Release CI."
+      },
+      "operation": "modify"
     }
   ]
 }

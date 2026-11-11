@@ -8,7 +8,8 @@
       "label": "build: solution",
       "type": "shell",
       "command": "dotnet",
-      "args": ["build", "iCemDataMonitor.sln", "-c", "Debug"],
+      "args": ["build", "iCemDataMonitor.sln", "-c", "Release"],
+      "options": { "cwd": "${workspaceFolder}/dotnet" },
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": "$msCompile"
     },
@@ -16,7 +17,8 @@
       "label": "test: solution",
       "type": "shell",
       "command": "dotnet",
-      "args": ["test", "iCemDataMonitor.sln", "-c", "Debug"],
+      "args": ["test", "iCemDataMonitor.sln", "-c", "Release"],
+      "options": { "cwd": "${workspaceFolder}/dotnet" },
       "group": { "kind": "test", "isDefault": true },
       "problemMatcher": "$msCompile"
     },
@@ -29,7 +31,7 @@
       "command": "powershell",
       "args": [
         "-ExecutionPolicy", "Bypass",
-        "-File", "${workspaceFolder}/installer/build-msi.ps1",
+        "-File", "${workspaceFolder}/dotnet/installer/build-msi.ps1",
         "-NoPause"
       ],
       "problemMatcher": []
@@ -38,7 +40,7 @@
       "label": "installer: conflict-gate harness",
       "type": "shell",
       "command": "cscript",
-      "args": ["//nologo", "${workspaceFolder}/installer/assets/CheckConflicts.harness.js"],
+      "args": ["//nologo", "${workspaceFolder}/dotnet/installer/assets/CheckConflicts.harness.js"],
       "problemMatcher": []
     }
   ]

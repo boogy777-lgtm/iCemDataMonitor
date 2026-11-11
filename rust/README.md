@@ -30,9 +30,9 @@ Windows x64, PowerShell7.6 (.NET 10), Rust1.99.1 (rust-toolchain.toml), MSVC/Win
 ```powershell
 cargo fetch --locked
 cargo fmt --all --check
-cargo check --workspace --all-targets --locked --offline
-cargo test --workspace --locked --offline
-cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+cargo check --release --workspace --all-targets --locked --offline
+cargo test --release --workspace --locked --offline
+cargo clippy --release --workspace --all-targets --locked --offline -- -D warnings
 cargo build --release --locked --offline -p icem-host-app -p icem-shell-app -p icem-emulator-app -p icem-opc-da-sidecar
 pwsh -NoProfile -File tools/Verify-Scaffold.ps1 -RequireCompleteBaseline
 ```
@@ -59,6 +59,9 @@ pwsh -NoProfile -File .\rust\tools\Build-WindowsRelease.ps1 -Version 0.1.0
 AddIn bundle. Полный пакет обязательно содержит исходный net48 AddIn; отсутствие
 DLL фатально. MSI/checksum: `dist/rust/`. ZIP — build intermediate.
 [Runbook, SDK runner и отличие synthetic installer contracts](installer/README.md).
+
+Общий OPC Runtime MSI и его lifecycle tooling принадлежат `shared/opc-runtime/`,
+а не application installer Rust. Эта стадия описана в [отчёте о структуре](docs/REPOSITORY_LAYOUT_REORGANIZATION_2026-11-10.ru.md).
 
 ## Документы и статус
 

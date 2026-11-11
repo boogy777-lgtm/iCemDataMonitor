@@ -1,0 +1,21 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><AssemblyName>iCemDataMonitor-Setup</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion><PlatformTarget>x64</PlatformTarget>
+    <FrameworkPathOverride>C:\Windows\Microsoft.NET\Framework64\v4.0.30319</FrameworkPathOverride>
+    <LangVersion>8.0</LangVersion><Optimize>true</Optimize><DebugType>none</DebugType>
+    <OutputPath>bin\Release\</OutputPath><ApplicationIcon>$(MSBuildThisFileDirectory)..\..\..\dotnet\installer\assets\app-icon.ico</ApplicationIcon>
+    <Deterministic>true</Deterministic><WarningLevel>4</WarningLevel><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System"/><Reference Include="System.Core"/>
+    <Reference Include="System.Drawing"/><Reference Include="System.Windows.Forms"/>
+    <Compile Include="Setup.cs"/>
+    <EmbeddedResource Include="$(PayloadPath)"><LogicalName>payload.msi</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="$(InventoryPath)"><LogicalName>families.txt</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="$(HashPath)"><LogicalName>payload.sha256</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="$(FamilyPath)"><LogicalName>payload.family</LogicalName></EmbeddedResource>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

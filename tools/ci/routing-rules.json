@@ -1,0 +1,165 @@
+{
+  "workloads": {
+    "legacy": [
+      "legacy"
+    ],
+    "rust": [
+      "rust",
+      "packaging"
+    ],
+    "shared-contracts": [
+      "legacy",
+      "rust",
+      "packaging"
+    ],
+    "packaging": [
+      "rust",
+      "packaging"
+    ],
+    "infrastructure": [
+      "legacy",
+      "rust",
+      "packaging"
+    ],
+    "documentation": []
+  },
+  "rules": [
+    {
+      "category": "infrastructure",
+      "paths": [
+        ".github/**",
+        "rust/migration/**",
+        "rust/tools/BaselineMetadata.psm1",
+        "rust/tools/SourceRelocations.psm1",
+        "tools/ci/**",
+        "dotnet/global.json"
+      ]
+    },
+    {
+      "category": "shared-contracts",
+      "paths": [
+        "shared/installer/**",
+        "shared/icem-addin/**",
+        "shared/contracts/**",
+        "shared/assets/**",
+        "shared/catalogs/**",
+        "dotnet/src/iCemEmule.Core/**",
+        "dotnet/src/iCemDataMonitor.Contracts/**",
+        "specs/**",
+        "dotnet/src/iCemDataMonitor.Plugins.Icem/LantableRegistry.cs",
+        "Directory.Build.props",
+        "Directory.Build.targets",
+        "dotnet/global.json",
+        "dotnet/src/iCemDataMonitor.Host/wwwroot/**",
+        "dotnet/src/iCemDataMonitor.Sdk/Bus/**",
+        "dotnet/src/iCemDataMonitor.Sdk/Models/ModbusRegisterEntry.cs",
+        "dotnet/src/iCemDataMonitor.Sdk/IModbusPublisher.cs",
+        "dotnet/src/iCemDataMonitor.Transport/Modbus*.cs",
+        "dotnet/src/iCemDataMonitor.Transport/Models/Modbus*.cs",
+        "dotnet/src/iCemDataMonitor.Host/Grpc/**",
+        "dotnet/src/iCemDataMonitor.Host.Core/Endpoints/**",
+        "rust/contracts/**",
+        "rust/crates/icem-bus/**",
+        "rust/crates/icem-protocols/**",
+        "dotnet/src/iCemDataMonitor.Data/Bus/**",
+        "dotnet/src/iCemDataMonitor.Data/Telemetry/RegisterDecoder.cs",
+        "rust/migration/**",
+        "docs/Wireshark/**"
+      ],
+      "exclude": [
+        "shared/installer/README.md"
+      ]
+    },
+    {
+      "category": "packaging",
+      "paths": [
+        "dotnet/installer/**",
+        "shared/installer/**",
+        "shared/opc-runtime/**",
+        "shared/icem-addin/**",
+        "rust/installer/**",
+        "rust/tools/Build-Windows*.ps1",
+        "rust/tools/WindowsPackagingFixture.psm1",
+        "rust/tools/Test-Windows*.ps1"
+      ],
+      "exclude": [
+        "shared/opc-runtime/README.md",
+        "shared/installer/README.md"
+      ]
+    },
+    {
+      "category": "documentation",
+      "paths": [
+        "README.md",
+        "PROTOCOL.md",
+        "AGENTS.md",
+        "docs/*.md",
+        "docs/images/*.svg",
+        "rust/*.md",
+        "rust/docs/*.md",
+        "rust/installer/README.md",
+        "shared/opc-runtime/README.md",
+        "shared/installer/README.md"
+      ]
+    },
+    {
+      "category": "rust",
+      "paths": [
+        "rust/**"
+      ],
+      "exclude": [
+        "README.md",
+        "PROTOCOL.md",
+        "AGENTS.md",
+        "docs/*.md",
+        "rust/*.md",
+        "rust/docs/*.md",
+        "rust/installer/README.md"
+      ]
+    },
+    {
+      "category": "legacy",
+      "paths": [
+        "dotnet/src/**",
+        "dotnet/tests/**",
+        "shared/icem-addin/**",
+        "dotnet/tools/**",
+        "dotnet/installer/**"
+      ],
+      "extensions": [
+        ".cs",
+        ".csproj",
+        ".json",
+        ".xaml",
+        ".ps1",
+        ".bmp",
+        ".js",
+        ".ico",
+        ".png",
+        ".manifest",
+        ".csv",
+        ".sha256",
+        ".proto",
+        ".html",
+        ".css",
+        ".bat",
+        ".wxs",
+        ".ssf",
+        ".sln",
+        ".slnf",
+        ".props",
+        ".targets"
+      ]
+    },
+    {
+      "category": "legacy",
+      "paths": [
+        "dotnet/CI.slnf",
+        "dotnet/iCemDataMonitor.sln",
+        "VERSION",
+        "dotnet/tools/**",
+        "dotnet/installer/**"
+      ]
+    }
+  ]
+}

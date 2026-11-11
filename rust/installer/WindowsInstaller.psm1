@@ -74,7 +74,7 @@ function Write-WindowsInstallerPayload([string] $PayloadDirectory, [string] $Rep
         Copy-Item -LiteralPath (Join-Path $PayloadDirectory $Relative) -Destination $Target
     }
     $Wxs = Join-Path $WorkDirectory 'payload.wxs'
-    & (Join-Path $RepositoryRoot 'installer/gen-payload.ps1') -StageRoot $Stage -OutputPath $Wxs -RootFolders @('runtime') -EmulatorFolder '' | Out-Host
+    & (Join-Path $RepositoryRoot 'dotnet/installer/gen-payload.ps1') -StageRoot $Stage -OutputPath $Wxs -RootFolders @('runtime') -EmulatorFolder '' | Out-Host
     $Xml = [xml](Get-Content -Raw -LiteralPath $Wxs)
     $Ns = [Xml.XmlNamespaceManager]::new($Xml.NameTable); $Ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
     $Files = @($Xml.SelectNodes('//w:File', $Ns))
@@ -93,7 +93,7 @@ function Write-WindowsInstallerPayload([string] $PayloadDirectory, [string] $Rep
     return $Wxs
 }
 function New-WindowsInstallerAssets([string] $RepositoryRoot, [string] $WorkDirectory) {
-    $Legacy = Join-Path $RepositoryRoot 'installer'
+    $Legacy = Join-Path $RepositoryRoot 'dotnet/installer'
     $Adapter = Join-Path $WorkDirectory 'branding'
     $Assets = Join-Path $Adapter 'assets'
     [IO.Directory]::CreateDirectory($Assets) | Out-Null

@@ -33,10 +33,12 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+          global-json-file: dotnet/global.json
 
       - name: Install WiX v5 toolset
         run: dotnet tool install --global wix --version 5.0.2
         shell: pwsh
+        working-directory: dotnet
 
       - name: Add dotnet global tools to PATH
         run: |
@@ -45,7 +47,7 @@ jobs:
         shell: pwsh
 
       - name: Build MSI
-        run: installer/build-msi.ps1 -MsiVersion $env:MSI_VERSION -NoPause
+        run: ./dotnet/installer/build-msi.ps1 -MsiVersion $env:MSI_VERSION -NoPause
         shell: pwsh
 
       - name: Compute SHA256 checksums
@@ -61,7 +63,7 @@ jobs:
       - name: Build legacy Setup with explicit cross-family removal
         shell: pwsh
         run: |
-          $Setup = ./rust/tools/Build-WindowsSetup.ps1 -Msi "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
+          $Setup = ./shared/installer/tools/Build-WindowsSetup.ps1 -Msi "dist/legacy/iCemDataMonitor-$($env:MSI_VERSION)-x64.msi"
           Get-Content -LiteralPath $Setup.checksum | Add-Content -LiteralPath dist/legacy/SHA256SUMS.txt -Encoding ascii
 
       - name: Create GitHub release and upload artifacts

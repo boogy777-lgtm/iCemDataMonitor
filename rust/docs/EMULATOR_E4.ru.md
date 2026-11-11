@@ -66,7 +66,7 @@ COM/LAN и сохранность потока после malformed command; run
 Из `rust/` (пути к templates/config должны соответствовать вашей копии):
 
 ```powershell
-cargo run -p icem-emulator-app --bin icem-emulator-engine-dev -- --config .\emule-dev.xml --templates ..\iCemEmulator\templates
+cargo run --release -p icem-emulator-app --bin icem-emulator-engine-dev -- --config .\emule-dev.xml --templates ..\shared\catalogs\emulator
 ```
 
 Во втором терминале:

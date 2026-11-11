@@ -40,7 +40,7 @@
       "destination": "assets/iCemEmule.ico"
     },
     {
-      "source": "installer/assets/Burservis_logo_cyr_red.png",
+      "source": "dotnet/installer/assets/Burservis_logo_cyr_red.png",
       "destination": "assets/Burservis_logo_cyr_red.png"
     },
     {
@@ -60,17 +60,17 @@
       "destination": "README-Windows.txt"
     },
     {
-      "source": "templates/variable_registry.json",
+      "source": "shared/catalogs/host/variable_registry.json",
       "destination": "templates/variable_registry.json"
     },
     {
-      "source": "iCemDataMonitor.Plugins.Icem/templates/lantable_registry.json",
+      "source": "shared/catalogs/host/lantable_registry.json",
       "destination": "templates/lantable_registry.json"
     }
   ],
   "directories": [
     {
-      "source": "iCemEmulator/templates",
+      "source": "shared/catalogs/emulator",
       "destination": "emulator/templates",
       "pattern": "*.json"
     }

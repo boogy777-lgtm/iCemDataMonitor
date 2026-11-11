@@ -40,17 +40,19 @@ cargo run -p icem-host-app --bin icem-host-dev -- --modbus-fixture tests/fixture
 
 ## Legacy reference/build compatibility
 
-Корневая `iCemDataMonitor.sln`, `.NET` assemblies и `installer/` сохранены.
-Их сборка не переключает приложение на production Rust. Для reference build
-нужен Windows x64, .NET SDK из `global.json` (10.0.302), WinUI tooling;
+Solution, `.NET` assemblies и legacy installer принадлежат `dotnet/`.
+Сборка не переключает приложение на production Rust. Для reference build
+нужен Windows x64, .NET SDK из `dotnet/global.json` (10.0.302), WinUI tooling;
 net48 AddIn требует настоящие vendor references из установки iCem.
 
 ```powershell
-dotnet build iCemDataMonitor.sln -p:Platform=x64
-dotnet test CI.slnf --filter "Category!=Live" -p:Platform=x64
+Push-Location dotnet
+dotnet build CI.slnf -c Release -p:Platform=x64
+dotnet test CI.slnf -c Release --no-build --filter "Category!=Live" -p:Platform=x64
+Pop-Location
 ```
 
-Полный legacy Windows gate задаётся `.github/workflows/ci.yml`, а не успехом
+Полный legacy Windows gate задаётся `.github/workflows/legacy-ci.yml`, а не успехом
 изолированного Linux-теста. Никаких SDK stubs для release AddIn.
 [MSI build и prerequisites](../rust/installer/README.md).
 

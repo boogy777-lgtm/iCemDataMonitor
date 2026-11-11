@@ -40,6 +40,12 @@ Hardware/operator/visual/real SDK/release acceptance и production cutover
 
 ## Исходники с наиболее важными контрактами
 
+Ниже сохранены исторические logical origins из immutable source manifest. Их
+текущие физические владельцы после relocation: `dotnet/src/` и `dotnet/tests/`,
+единственный AddIn — `shared/icem-addin/`, канонический proto —
+`shared/contracts/telemetry.proto`; полный проверяемый old→new map — в
+[отчёте о layout](REPOSITORY_LAYOUT_REORGANIZATION_2026-11-10.ru.md).
+
 - `Burservis.iCem.DataMonitor/BusLayout.cs`, `BusWriter.cs` — остающийся producer.
 - `iCemDataMonitor.Sdk/Bus/BusLayout.cs`, `Data/Bus/BusReader.cs` — layout и reader.
 - `iCemDataMonitor.Transport/ModbusTcpPublisher.cs` — фактическая Modbus семантика.

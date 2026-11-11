@@ -28,7 +28,7 @@ jobs:
       - name: Classify verified changed paths (unknown input selects all)
         id: route
         shell: pwsh
-        run: python rust/tools/ci/routing.py classify
+        run: python tools/ci/routing.py classify
   baseline:
     timeout-minutes: 10
     runs-on: windows-latest
@@ -50,4 +50,4 @@ jobs:
           python-version: '3.12'
       - name: Routing, diff, dependency and family gate contracts
         shell: pwsh
-        run: python -m unittest discover -s rust/tools/ci -p "test_*.py" -v
+        run: python -m unittest discover -s tools/ci -p "test_*.py" -v

@@ -19,7 +19,7 @@ try {
     $One = [xml](Get-Content -Raw (Write-WindowsInstallerPayload $Payload $Fixture.repo $First))
     $Two = [xml](Get-Content -Raw (Write-WindowsInstallerPayload $Payload $Fixture.repo $Second))
     $LegacyFile = Join-Path $Work 'legacy-payload.wxs'
-    & (Join-Path $Fixture.repo 'installer/gen-payload.ps1') -StageRoot (Join-Path $First 'stage') -OutputPath $LegacyFile -RootFolders @('runtime') -EmulatorFolder '' | Out-Host
+    & (Join-Path $Fixture.repo 'dotnet/installer/gen-payload.ps1') -StageRoot (Join-Path $First 'stage') -OutputPath $LegacyFile -RootFolders @('runtime') -EmulatorFolder '' | Out-Host
     $Legacy = [xml](Get-Content -Raw $LegacyFile)
     $Ns = [Xml.XmlNamespaceManager]::new($One.NameTable); $Ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
     $LegacyGuids = @($Legacy.SelectNodes('//w:Component', $Ns) | ForEach-Object { [guid]$_.Guid })

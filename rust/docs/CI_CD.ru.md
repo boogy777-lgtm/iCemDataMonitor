@@ -56,7 +56,7 @@ Legacy job имеет один исполняемый источник в `legac
 | Только разрешённая Markdown-документация | — | — | — |
 | Невосстановимый base/diff, manual dispatch | Да | Да | Да |
 
-Категории складываются: например, `iCemEmule.Core/**` — `legacy` и
+Категории складываются: например, `dotnet/src/iCemEmule.Core/**` — `legacy` и
 `shared-contracts`; `rust/crates/icem-bus/**` — `rust` и `shared-contracts`;
 `rust/installer/**` — `rust` и `packaging`. JSON содержит отдельную таблицу
 category → workloads. Нет правила «все .NET изменения запускают Rust» или
@@ -65,22 +65,26 @@ category → workloads. Нет правила «все .NET изменения �
 
 ## Почему shared scopes шире proto
 
-- `iCemEmule.Core/**`: C# differential oracles компилируют Core/Control/Dfb/Emitters;
+- `dotnet/src/iCemEmule.Core/**`: C# differential oracles компилируют Core/Control/Dfb/Emitters;
   broad scope покрывает новые исходники этих семей без brittle пофайлового списка.
-- `iCemDataMonitor.Sdk/Bus/**`, `Data/Bus/**`, decoder/register/Modbus interfaces,
-  `Transport/Modbus*.cs` и models: MMF layout и wire projections являются
+- `dotnet/src/iCemDataMonitor.Sdk/Bus/**`, `dotnet/src/iCemDataMonitor.Data/Bus/**`,
+  decoder/register/Modbus interfaces, `dotnet/src/iCemDataMonitor.Transport/Modbus*.cs`
+  и models: MMF layout и wire projections являются
   межъязыковыми обязательствами. Rust `icem-bus`, `icem-protocols` и `contracts`
   также проверяют обе реализации. Остальные Rust crates сохраняют независимость.
-- `Host/Grpc/**`, `Host.Core/Endpoints/**`, `iCemDataMonitor.Contracts/**`,
-  `specs/**` и frozen `Host/wwwroot/**`: API, schema и сохранённая web surface.
+- `dotnet/src/iCemDataMonitor.Host/Grpc/**`, `dotnet/src/iCemDataMonitor.Host.Core/Endpoints/**`,
+  `dotnet/src/iCemDataMonitor.Contracts/**`, `specs/**` и frozen
+  `dotnet/src/iCemDataMonitor.Host/wwwroot/**`: API, schema и сохранённая web surface.
   В частности, `icem-config/src/lib.rs` делает `include_str!` для
   `specs/dotnet-server/Э5_config.csv`.
-- `templates/**`, `iCemEmulator/templates/**`, `Plugins.Icem/LantableRegistry.cs`
-  и `Plugins.Icem/templates/**`: Host/emulator catalogs и действующий decoder.
+- `shared/catalogs/host/**`, `shared/catalogs/emulator/**`,
+  `dotnet/src/iCemDataMonitor.Plugins.Icem/LantableRegistry.cs`: Host/emulator catalogs
+  и действующий decoder.
 - `docs/Wireshark/**` проверяется до любого docs-only shortcut:
   `tests/support/HostSnifferOracle.cs` читает настоящий `iCemCrio.pcapng.bin`.
-- `assets/**`, root `installer/**`, `Burservis.iCem.DataMonitor/**`,
-  Directory.Build props/targets и global.json: frozen icons, branding/bitmap
+- `shared/assets/**`, `dotnet/installer/**`, `shared/installer/**`,
+  `shared/icem-addin/**`, Directory.Build props/targets и `dotnet/global.json`:
+  frozen icons, branding/bitmap
   generator/harvester и реальные SDK/build inputs. Весь общий `installer/**` и `Burservis.iCem.DataMonitor/**`, включая
   следующий неизвестный тип build input, запускают обе реализации.
 
@@ -169,9 +173,12 @@ release не отменяется новым PR или самостоятель�
 
 ## Проверка и границы доказательства
 
-Локально запускается Python stdlib suite:
+Common routing/family-gate tests живут в root `tools/ci`; Rust cache/vendor/toolchain
+tests остаются в `rust/tools/ci` и запускаются только внутри Rust family workflow.
+Локально запускаются обе Python stdlib suites:
 
 ```text
+python -m unittest discover -s tools/ci -p "test_*.py" -v
 python -m unittest discover -s rust/tools/ci -p "test_*.py" -v
 ```
 
@@ -354,9 +361,10 @@ cold/warm время должны быть проверены отдельно; 
 
 Локальный прогон выявил ещё один CI-дефект: Python 3.12 на Windows с CP1251
 читал UTF-8 C# oracle через системную кодировку и завершал routing-тест
-`UnicodeDecodeError`. В `rust/tools/ci/*.py` текстовые файлы теперь читаются и
-записываются с явным UTF-8 (или UTF-8-SIG); AST-тест автоматически проверяет
-все CI Python files и отвергает пропущенную/неверную кодировку.
+`UnicodeDecodeError`. Python CI sources в common `tools/ci/` и Rust-specific
+`rust/tools/ci/` используют явный UTF-8 (или UTF-8-SIG). Единственный AST guard
+`rust/tools/ci/test_encoding.py` обнаруживает implicit/wrong encoding в обеих
+директориях; synthetic regression проверяет, что новый common `.py` реально сканируется.
 
 На этой VMware VM Python 3.12 **32-bit** после исправления: 50/50 CI routing/cache/
 vendor/encoding tests PASS; до исправления на том же Python воспроизведён FAIL.

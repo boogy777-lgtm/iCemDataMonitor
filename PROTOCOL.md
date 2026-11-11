@@ -19,7 +19,7 @@
 > **Canonical (2026-08-21, owner decree).** THIS file is the single source of truth for the ACE
 > wire format (root `PROTOCOL.md` retired to a pointer stub — this variant is the superset:
 > golden proofs §8–§9, pacing §9.3, units §12). Wire constants are backed by the emitter code:
-> `iCemEmule.Core\Emitters\AceFrameBuilder.cs` / `AceLanEmitter.cs` (canonical emulator home;
+> `dotnet/src/iCemEmule.Core/Emitters/AceFrameBuilder.cs` / `AceLanEmitter.cs` (canonical emulator home;
 > the `FlecsEmu\…` paths cited below are the project-era form — a verbatim copy lives under
 > `Transfer\FlecsEmu\`). Divergence between this file and the emitter code = defect → ticket.
 

@@ -61,10 +61,10 @@ superframe помещается в 1 s; перегрузка/длительны�
 ## Запуск на Windows из rust/
 
 ```powershell
-cargo build --workspace --locked
-.\target\debug\icem-host-dev.exe --modbus-fixture .\tests\fixtures\bus-v5-minimal.bin --bind 127.0.0.1:1502 --web-bind 127.0.0.1:8090 --rpc-pipe iCemDataMonitor.Host --tray-icon .\assets\iCemDataMonitor.ico --duration-ms 0
-.\target\debug\icem-shell-dev.exe --pipe iCemDataMonitor.Host --web-url http://127.0.0.1:8090
-.\target\debug\icem-emulator-engine-dev.exe --config .\emule-dev.xml --templates ..\iCemEmulator\templates --desktop
+cargo build --release --locked
+.\target\release\icem-host-dev.exe --modbus-fixture .\tests\fixtures\bus-v5-minimal.bin --bind 127.0.0.1:1502 --web-bind 127.0.0.1:8090 --rpc-pipe iCemDataMonitor.Host --tray-icon .\assets\iCemDataMonitor.ico --duration-ms 0
+.\target\release\icem-shell-dev.exe --pipe iCemDataMonitor.Host --web-url http://127.0.0.1:8090
+.\target\release\icem-emulator-engine-dev.exe --config .\emule-dev.xml --templates ..\shared\catalogs\emulator --desktop
 ```
 
 Fixture содержит codec NaN; для REST/browser demo используйте finite fixture как в browser

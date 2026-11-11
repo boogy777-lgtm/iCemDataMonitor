@@ -14,7 +14,7 @@ $Root = Split-Path $PSScriptRoot -Parent
 $RepositoryRoot = Split-Path $Root -Parent
 Import-Module (Join-Path $Root 'installer/WindowsPayload.psm1') -Force
 Import-Module (Join-Path $Root 'installer/WindowsInstaller.psm1') -Force
-Import-Module (Join-Path $Root 'installer/LegacyAddin.psm1') -Force
+Import-Module (Join-Path $RepositoryRoot 'shared/icem-addin/tools/LegacyAddin.psm1') -Force
 Assert-WindowsMsiVersion $Version
 if (-not $OutputDirectory) { $OutputDirectory = 'dist/rust' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $RepositoryRoot)
@@ -32,7 +32,7 @@ try {
     }
     if (-not $AddinDirectory) {
         $AddinWork = Join-Path ([IO.Path]::GetTempPath()) ('icem-release-addin-' + [guid]::NewGuid().ToString('N'))
-        & (Join-Path $PSScriptRoot 'Build-LegacyAddin.ps1') -OutputDirectory $AddinWork
+        & (Join-Path $RepositoryRoot 'shared/icem-addin/tools/Build-LegacyAddin.ps1') -OutputDirectory $AddinWork
         $AddinDirectory = $AddinWork
     }
     $null = Test-LegacyAddinBundle $AddinDirectory $RepositoryRoot
@@ -58,7 +58,7 @@ try {
     Write-Host "Windows x64 archive: $($Result.archive)"
     Write-Host "SHA256: $($Result.sha256)"
     $Installer = & (Join-Path $PSScriptRoot 'Build-WindowsMsi.ps1') -Archive $Result.archive -OutputDirectory $OutputDirectory
-    $Setup = & (Join-Path $PSScriptRoot 'Build-WindowsSetup.ps1') -Msi $Installer.msi -OutputDirectory $OutputDirectory
+    $Setup = & (Join-Path $RepositoryRoot 'shared/installer/tools/Build-WindowsSetup.ps1') -Msi $Installer.msi -OutputDirectory $OutputDirectory
     return [pscustomobject]@{ archive = $Result.archive; msi = $Installer.msi; checksum = $Installer.checksum; setup = $Setup.setup; setup_checksum = $Setup.checksum; version = $Version }
 } finally {
     [Environment]::SetEnvironmentVariable('CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS', $SavedFlags)

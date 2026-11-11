@@ -153,7 +153,7 @@ function New-LegacyFamilyFixture {
 </Wix>
 '@)
     $Msi = Join-Path $Build 'foreign.msi'
-    Push-Location (Join-Path $Root 'installer')
+    Push-Location (Join-Path $RepositoryRoot 'shared/installer')
     try {
         & dotnet tool run wix -- build -arch x64 -wx -o $Msi $Source | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Legacy family fixture compilation failed' }
@@ -193,7 +193,7 @@ function New-FailingUpgrade([string] $ArchivePath, [string] $Version) {
     $Branding = New-WindowsInstallerAssets $RepositoryRoot $Fixture
     & (Join-Path $Branding 'gen-ui-bmps.ps1')
     $Result = Join-Path $Fixture 'rollback.msi'
-    Push-Location (Join-Path $Root 'installer')
+    Push-Location (Join-Path $RepositoryRoot 'shared/installer')
     try {
         $WixVersion = (Get-Content -Raw .config/dotnet-tools.json | ConvertFrom-Json).tools.wix.version
         & dotnet tool run wix -- build $Source $PayloadSource -arch x64 -wx -dcl high -ext "WixToolset.UI.wixext/$WixVersion" -ext "WixToolset.Util.wixext/$WixVersion" -define "AssetsDir=$(Join-Path $Branding 'assets')" -intermediateFolder (Join-Path $Fixture 'obj') -o $Result | Out-Host

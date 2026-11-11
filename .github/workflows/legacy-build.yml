@@ -16,10 +16,12 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+          global-json-file: dotnet/global.json
 
       - name: Install WiX v5 toolset
         run: dotnet tool install --global wix --version 5.0.2
         shell: pwsh
+        working-directory: dotnet
 
       - name: Add dotnet global tools to PATH
         run: |
@@ -44,9 +46,11 @@ jobs:
           dotnet --info 2>&1 | Tee-Object -FilePath (Join-Path $diag "dotnet-info.txt")
           $infoExit = $LASTEXITCODE
           exit $infoExit
+        working-directory: dotnet
 
       - name: Build solution
-        # CI.slnf = iCemDataMonitor.sln minus Burservis.iCem.DataMonitor (+ Tests):
+        # The filter builds/tests .NET application sources; the shared net48 AddIn
+        # is built separately by its SDK-owner workflow and is not duplicated here:
         # the AddIn links the proprietary Halliburton iCem SDK via absolute
         # HintPaths (C:\Program Files\Halliburton\iCem\Bin) that exist only on a
         # dev machine with iCem installed; build-msi.ps1 skips it there too.
@@ -55,6 +59,7 @@ jobs:
           $buildExit = $LASTEXITCODE
           exit $buildExit
         shell: pwsh
+        working-directory: dotnet
 
       - name: Run tests
         # Category!=Live: LIVE interop tests (LiveModbusEmulatorTests) require a
@@ -64,19 +69,20 @@ jobs:
           $testExit = $LASTEXITCODE
           exit $testExit
         shell: pwsh
+        working-directory: dotnet
 
       - name: Build MSI (CI smoke, numeric version - MSI ProductVersion must be x.y.z)
         # 2026-09-02: the step hung >1 h on the runner once (first-ever CI MSI
         # build, cold cache). Cap it so a hang fails fast and leaves a full log
         # for diagnosis instead of burning the 6 h job limit.
         timeout-minutes: 30
-        run: installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause -AllowMissingAddinForCi
+        run: ./dotnet/installer/build-msi.ps1 -MsiVersion 0.0.0 -NoPause -AllowMissingAddinForCi
         shell: pwsh
 
       - name: Verify legacy MSI lifecycle with disposable payload
         timeout-minutes: 15
         shell: pwsh
-        run: installer/tests/Test-LegacyInstaller.ps1
+        run: ./dotnet/installer/tests/Test-LegacyInstaller.ps1
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v5
@@ -96,6 +102,6 @@ jobs:
             **/TestResults/**/*.trx
             **/TestResults/**/*Sequence.xml
             **/TestResults/**/*.log
-            installer/artifacts/*.log
+            dotnet/installer/artifacts/*.log
           if-no-files-found: warn
           retention-days: 7

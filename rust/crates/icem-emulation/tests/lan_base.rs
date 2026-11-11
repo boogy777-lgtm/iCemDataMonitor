@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 fn templates() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../iCemEmulator/templates")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../shared/catalogs/emulator")
 }
 fn sig(offset: i32, size: i32, kind: &str) -> SignalDef {
     SignalDef {
